@@ -1,0 +1,36 @@
+spring:
+  application.name: stockwellness
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  jpa:
+    show-sql: false
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+  docker:
+    compose:
+      lifecycle-management: start_only
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+
+jwt:
+  secret-key: c3ByaW5nLWJvb3Qtc2VjdXJlLWNvb2tpZS1qd3Qtc2VjcmV0LWtleQ==
+  access-token-expiry-ms: 3600000
+  refresh-token-expiry-ms: 2592000000
+
+logging.level.p6spy: DEBUG
+logging.level.org.hibernate.SQL: OFF
+logging.level.org.hibernate.type: OFF
+
+---
+spring:
+  config.activate.on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
