@@ -27,6 +27,8 @@ repositories {
 val mockitoAgent = configurations.create("mockitoAgent")
 
 dependencies {
+    //httpclient5
+    implementation ("org.apache.httpcomponents.client5:httpclient5")
     //redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     //jwt
