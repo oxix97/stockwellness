@@ -2,11 +2,14 @@ package org.stockwellness.adapter.out.external.krx;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.stockwellness.adapter.out.external.krx.dto.KrxCommonResponse;
 import org.stockwellness.adapter.out.external.krx.dto.KrxListedInfoResponse;
 import org.stockwellness.adapter.out.external.krx.dto.KrxStockPriceResponse;
+import org.stockwellness.adapter.out.external.krx.dto.StockPriceDto;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -36,12 +39,24 @@ public class KrxClient {
                 .body(KrxStockPriceResponse.class);
     }
 
+    public KrxCommonResponse<StockPriceDto> stockPriceResponse(String date) {
+        URI uri = uriBuilder("/GetStockSecuritiesInfoService/getStockPriceInfo")
+                .queryParam("basDt", date)
+                .build(true)
+                .toUri();
+
+        return restClient.get()
+                .uri(uri)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
     /**
      * 금융위원회_주식목록
      */
     public KrxListedInfoResponse stockInfos(String date) {
         URI uri = uriBuilder("/GetKrxListedInfoService/getItemInfo")
-                .queryParam("basDt",date)
+                .queryParam("basDt", date)
                 .build(true)
                 .toUri();
         return restClient.get()
