@@ -10,9 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.stock.dto.StockDetailResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
-import org.stockwellness.adapter.out.external.krx.dto.KrxStockPriceResponse;
 import org.stockwellness.application.service.StockReadService;
-import org.stockwellness.application.service.StockSyncService;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -21,7 +19,6 @@ import org.stockwellness.application.service.StockSyncService;
 public class StockController {
 
     private final StockReadService stockReadService;
-    private final StockSyncService stockSyncService;
 
     @GetMapping
     public ResponseEntity<Slice<StockResponse>> searchStocks(
@@ -39,10 +36,5 @@ public class StockController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/krx/price")
-    public ResponseEntity<KrxStockPriceResponse> getKrxStockPrice(
-            @RequestParam(name = "name") String name
-    ) {
-        return ResponseEntity.ok(stockSyncService.stockPriceInfo(name));
-    }
+
 }

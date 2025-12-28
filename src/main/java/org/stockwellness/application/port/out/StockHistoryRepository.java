@@ -1,8 +1,8 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.application.port.out;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.stockwellness.domain.stock.StockHistory;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.Optional;
  * StockHistory 엔티티(시세 정보) 접근을 위한 Repository
  * 복합키(StockHistoryId)를 사용합니다.
  */
-public interface StockHistoryRepository extends JpaRepository<StockHistory, StockHistoryId> {
+public interface StockHistoryRepository {
     /**
      * 특정 종목의 특정 기간 시세 조회 (AI 학습 및 차트용 핵심 쿼리)
      * <p>BaseDate 기준으로 정렬하여 반환</p>

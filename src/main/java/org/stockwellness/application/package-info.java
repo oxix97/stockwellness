@@ -1,4 +1,4 @@
-@NullMarked
+@NonNullApi
 package org.stockwellness.application;
 
-import org.jspecify.annotations.NullMarked;
+import reactor.util.annotation.NonNullApi;
