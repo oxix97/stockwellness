@@ -1,12 +1,13 @@
 package org.stockwellness.domain.stock;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import static lombok.AccessLevel.PROTECTED;
 
 /**
  * 주식 일별 시세 엔티티
@@ -16,7 +17,10 @@ import java.time.LocalDate;
  */
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(access = PROTECTED)
+@Table(name = "stock_history", indexes = {
+        @Index(name = "idx_stock_history_calc", columnList = "isin_code, base_date DESC")
+})
 @IdClass(StockHistoryId.class)
 public class StockHistory {
 
@@ -109,19 +113,22 @@ public class StockHistory {
      * 5일 이동평균선
      */
     @Column(name = "ma_5", precision = 19, scale = 2)
-    private BigDecimal movingAverage5;
+    private BigDecimal ma5;
 
     /**
      * 20일 이동평균선
      */
     @Column(name = "ma_20", precision = 19, scale = 2)
-    private BigDecimal movingAverage20;
+    private BigDecimal ma20;
 
     /**
      * RSI (14일 기준)
      */
     @Column(name = "rsi_14", precision = 10, scale = 4)
     private BigDecimal rsi14;
+
+    @Column(precision = 19, scale = 4)
+    private BigDecimal macd;  // MACD (12, 26)
 
     public static StockHistory create(
             String isinCode, LocalDate baseDate,
@@ -144,9 +151,30 @@ public class StockHistory {
         return history;
     }
 
-    public void updateIndicators(BigDecimal ma5, BigDecimal ma20, BigDecimal rsi14) {
-        this.movingAverage5 = ma5;
-        this.movingAverage20 = ma20;
+    public void updateMa5(BigDecimal ma5) {
+        this.ma5 = ma5;
+    }
+
+    public void updateMa20(BigDecimal ma20) {
+        this.ma20 = ma20;
+    }
+
+    public void updateRsi14(BigDecimal rsi14) {
         this.rsi14 = rsi14;
+    }
+
+    public void updateMacd(BigDecimal macd) {
+        this.macd = macd;
+    }
+
+    public void updateIndicators(TechnicalIndicators indicators) {
+        if (indicators == null) return;
+
+        this.ma5 = indicators.ma5();
+        this.ma20 = indicators.ma20();
+        this.rsi14 = indicators.rsi14();
+        this.macd = indicators.macd();
+        // Audit 용으로 updated_at 갱신이 필요하다면 여기서 처리하거나 @PreUpdate 활용
+        // this.updatedAt = LocalDate.now();
     }
 }

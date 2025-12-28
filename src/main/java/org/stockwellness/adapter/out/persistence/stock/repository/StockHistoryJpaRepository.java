@@ -1,16 +1,16 @@
-package org.stockwellness.application.port.out;
+package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockHistoryId;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * StockHistory 엔티티(시세 정보) 접근을 위한 Repository
- * 복합키(StockHistoryId)를 사용합니다.
- */
-public interface StockHistoryRepository {
+public interface StockHistoryJpaRepository extends JpaRepository<StockHistory, StockHistoryId> {
     /**
      * 특정 종목의 특정 기간 시세 조회 (AI 학습 및 차트용 핵심 쿼리)
      * <p>BaseDate 기준으로 정렬하여 반환</p>
@@ -33,19 +33,21 @@ public interface StockHistoryRepository {
      */
     List<StockHistory> findByBaseDate(LocalDate baseDate);
 
+    /**
+     * 특정 종목의 N일치 이동평균선 계산 등을 위해 최근 N건만 가져오기
+     * <p>JPQL 사용 예시</p>
+     */
+    @Query("SELECT h FROM StockHistory h WHERE h.isinCode = :isinCode AND h.baseDate <= :targetDate ORDER BY h.baseDate DESC LIMIT :limit")
     List<StockHistory> findRecentHistory(
-            String isinCode,
-            LocalDate targetDate,
-            int limit
+            @Param("isinCode") String isinCode,
+            @Param("targetDate") LocalDate targetDate,
+            @Param("limit") int limit
     );
-
-    void saveAll(List<StockHistory> histories);
-
-    void bulkInsert(List<StockHistory> histories);
 
     List<StockHistory> findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(String isinCode, LocalDate baseDate);
 
     List<StockHistory> findAllByIsinCodeOrderByBaseDateAsc(String isinCode);
 
+    @Query("SELECT distinct isinCode FROM StockHistory")
     List<String> findAllIsinCodes();
 }

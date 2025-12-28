@@ -2,8 +2,10 @@ package org.stockwellness.application.service.mapper;
 
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.external.krx.dto.KrxListedInfoResponse;
+import org.stockwellness.adapter.out.external.krx.dto.StockPriceDto;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockCandle;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.math.BigDecimal;
@@ -20,6 +22,30 @@ import java.time.format.DateTimeFormatter;
 public class StockMapper {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    /**
+     * [Quant Data] Entity -> StockCandle(Domain Record) 변환
+     * <p>
+     * 지표 계산(ta4j)을 위해 엔티티에서 필요한 순수 데이터(OHLCV)만 추출합니다.
+     * 엔티티가 null인 필드를 가질 수 있다면 안전하게 0으로 처리합니다.
+     */
+    public StockCandle toStockCandle(StockHistory history) {
+        return new StockCandle(
+                history.getBaseDate(), // 복합키에서 날짜 추출
+                defaultValue(history.getOpenPrice()),
+                defaultValue(history.getHighPrice()),
+                defaultValue(history.getLowPrice()),
+                defaultValue(history.getClosePrice()),
+                history.getVolume() != null ? history.getVolume() : 0L
+        );
+    }
+
+    /**
+     * Null Safe 처리 유틸 (BigDecimal)
+     */
+    private BigDecimal defaultValue(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
 
     /**
      * [Master Data] DTO -> Stock Entity 변환
@@ -46,7 +72,7 @@ public class StockMapper {
      * <p>
      * API의 모든 금액/비율 필드를 BigDecimal로 변환하여 정밀도를 보장합니다.
      */
-    public StockHistory toHistoryEntity(KrxListedInfoResponse.Item item) {
+    public StockHistory toHistoryEntity(StockPriceDto item) {
         return StockHistory.create(
                 item.isinCode(),                            // isinCd
                 parseDateSafe(item.baseDate()),             // basDt
