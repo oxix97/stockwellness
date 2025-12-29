@@ -1,5 +1,12 @@
 spring:
   application.name: stockwellness
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydatabase
+    username: myuser
+    password: secret
+    hikari:
+     maximum-pool-size: 30
+     minimum-idle: 10
   data:
     redis:
       host: localhost
@@ -8,10 +15,16 @@ spring:
     show-sql: false
     open-in-view: false
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
   docker:
     compose:
-      lifecycle-management: start_only
+      enabled: false
+  threads.virtual.enabled: true
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
 
 decorator:
   datasource:
@@ -19,18 +32,38 @@ decorator:
       enable-logging: true
 
 jwt:
-  secret-key: c3ByaW5nLWJvb3Qtc2VjdXJlLWNvb2tpZS1qd3Qtc2VjcmV0LWtleQ==
+  secret-key: ${jwt-secret}
   access-token-expiry-ms: 3600000
   refresh-token-expiry-ms: 2592000000
 
-logging.level.p6spy: DEBUG
-logging.level.org.hibernate.SQL: OFF
-logging.level.org.hibernate.type: OFF
+krx:
+  service-key: ${krx-secret}
+  base-url: https://apis.data.go.kr/1160100/service
 
+logging:
+  level:
+    org.springframework.web.client.RestClient: DEBUG
+    org.apache.hc.client5.http: DEBUG  # 아파치 클라이언트를 쓴다면
+    p6spy: DEBUG
+    org.hibernate.SQL: OFF
+    org.hibernate.type: OFF
 ---
 spring:
   config.activate.on-profile: test
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
   jpa:
     hibernate:
       ddl-auto: create-drop
     open-in-view: false
+  h2:
+    console:
+      enabled: true
+
+krx:
+  service-key: dummy-test-key
+
+
+
