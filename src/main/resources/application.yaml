@@ -5,8 +5,8 @@ spring:
     username: myuser
     password: secret
     hikari:
-     maximum-pool-size: 30
-     minimum-idle: 10
+      maximum-pool-size: 30
+      minimum-idle: 10
   data:
     redis:
       host: localhost
@@ -47,23 +47,20 @@ logging:
     p6spy: DEBUG
     org.hibernate.SQL: OFF
     org.hibernate.type: OFF
+
 ---
 spring:
-  config.activate.on-profile: test
-  datasource:
-    url: jdbc:h2:mem:testdb
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    open-in-view: false
-  h2:
-    console:
-      enabled: true
+  config:
+    activate:
+      on-profile: test
+  batch:
+    job:
+      enabled: false
 
+krx-secret: "dummy-krx-secret"
 krx:
-  service-key: dummy-test-key
+  service-key: "dummy-krx-service-key"
 
-
-
+jwt-secret: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
+jwt:
+  secret-key: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
