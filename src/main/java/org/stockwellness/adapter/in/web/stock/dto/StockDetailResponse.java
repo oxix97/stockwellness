@@ -73,7 +73,7 @@ public record StockDetailResponse(
                 history.getTradingValue(),
                 history.getMarketCap(),
                 history.getRsi14(),
-                history.getMovingAverage20()
+                history.getMa20()
         );
     }
 }

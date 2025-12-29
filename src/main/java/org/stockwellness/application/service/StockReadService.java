@@ -9,8 +9,8 @@ import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;
-import org.stockwellness.domain.stock.StockHistoryRepository;
-import org.stockwellness.domain.stock.StockRepository;
+import org.stockwellness.application.port.out.StockHistoryRepository;
+import org.stockwellness.application.port.out.StockRepository;
 
 @Service
 @Transactional(readOnly = true)
