@@ -4,16 +4,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.auth.dto.LoginRequest;
 import org.stockwellness.adapter.in.web.auth.dto.LoginResponse;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueRequest;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueResponse;
 import org.stockwellness.application.service.AuthService;
 import org.stockwellness.domain.member.Member;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,5 +37,10 @@ public class AuthController {
     public ResponseEntity<Void> logout(@AuthenticationPrincipal Member member) {  // JwtAuthenticationFilter에서 Member principal
         authService.logout(member.getId());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/test")
+    public Map<String, String> test() {
+        return Map.of("status", "ok", "service", "stockwellness");
     }
 }
