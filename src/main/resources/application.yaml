@@ -61,9 +61,14 @@ spring:
   h2:
     console:
       enabled: true
-
+  batch:
+    job:
+      enabled: false
+krx-secret: "dummy-krx-secret"
 krx:
-  service-key: dummy-test-key
-
+  service-key: "dummy-krx-service-key"
+jwt-secret: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
+jwt:
+  secret-key: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
 
 

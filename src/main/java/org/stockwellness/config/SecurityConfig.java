@@ -39,8 +39,11 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",          // 로그인, 재발급, 더미 로그인 등
                                 "/oauth2/**",               // 소셜 로그인 콜백 (나중에 추가)
                                 "/actuator/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/docs/**",       // DocsController 및 yaml 파일
+                                "/swagger-ui/**",          // Swagger UI 경로
+                                "/v3/api-docs/**",         // (혹시 모를 호환성)
+                                "/webjars/**",             // [필수] WebJars 리소스 (js, css)
+                                "/favicon.ico"             // [권장] 파비콘 에러 방지
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
                         .anyRequest().authenticated())
