@@ -20,13 +20,23 @@ public class StockHistoryAdapter implements StockHistoryRepository {
     private final JdbcTemplate jdbcTemplate;
 
     @Override
+    public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode,LocalDate baseDate) {
+        return historyJpaRepository.findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(isinCode,baseDate);
+    }
+
+    @Override
     public List<StockHistory> findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(String isinCode, LocalDate baseDate) {
-        return historyJpaRepository.findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(isinCode,baseDate);
+        return historyJpaRepository.findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(isinCode, baseDate);
     }
 
     @Override
     public List<String> findAllIsinCodes() {
         return historyJpaRepository.findAllIsinCodes();
+    }
+
+    @Override
+    public List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode) {
+        return historyJpaRepository.findTop2ByIsinCodeOrderByBaseDateDesc(isinCode);
     }
 
     @Override
@@ -66,18 +76,18 @@ public class StockHistoryAdapter implements StockHistoryRepository {
     @Override
     public void bulkInsert(List<StockHistory> histories) {
         String sql = """
-            INSERT INTO stock_history 
-            (isin_code, base_date, close_price, open_price, high_price, low_price, 
-             price_change, fluctuation_rate, volume, trading_value, market_cap, 
-             ma_5, ma_20, rsi_14)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (isin_code, base_date) 
-            DO UPDATE SET
-                close_price = EXCLUDED.close_price,
-                volume = EXCLUDED.volume,
-                market_cap = EXCLUDED.market_cap,
-                fluctuation_rate = EXCLUDED.fluctuation_rate
-        """;
+                    INSERT INTO stock_history 
+                    (isin_code, base_date, close_price, open_price, high_price, low_price, 
+                     price_change, fluctuation_rate, volume, trading_value, market_cap, 
+                     ma_5, ma_20, rsi_14)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (isin_code, base_date) 
+                    DO UPDATE SET
+                        close_price = EXCLUDED.close_price,
+                        volume = EXCLUDED.volume,
+                        market_cap = EXCLUDED.market_cap,
+                        fluctuation_rate = EXCLUDED.fluctuation_rate
+                """;
 
         jdbcTemplate.batchUpdate(sql, histories, 1000, (ps, history) -> {
             ps.setString(1, history.getIsinCode());
