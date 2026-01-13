@@ -33,10 +33,6 @@ public class TechnicalIndicatorService {
      * ta4j는 시계열 순서가 중요하므로, 내부적으로 날짜 오름차순 정렬을 수행합니다.
      */
     public Map<LocalDate, TechnicalIndicators> calculate(List<StockCandle> candles) {
-        if (candles == null || candles.isEmpty()) {
-            return new HashMap<>();
-        }
-
         // 1. 데이터 정렬 (과거 -> 현재)
         List<StockCandle> sortedCandles = candles.stream()
                 .sorted(Comparator.comparing(StockCandle::baseDate))
@@ -62,6 +58,8 @@ public class TechnicalIndicatorService {
         // MA (이동평균)
         SMAIndicator ma5Indicator = new SMAIndicator(closePrice, 5);
         SMAIndicator ma20Indicator = new SMAIndicator(closePrice, 20);
+        SMAIndicator ma60Indicator = new SMAIndicator(closePrice, 60);
+        SMAIndicator ma120Indicator = new SMAIndicator(closePrice, 120);
 
         // RSI (14일)
         RSIIndicator rsi14Indicator = new RSIIndicator(closePrice, 14);
@@ -76,13 +74,16 @@ public class TechnicalIndicatorService {
         for (int i = 0; i < barCount; i++) {
             LocalDate date = series.getBar(i).getEndTime().toLocalDate();
 
-            // 각 지표 값 추출 (데이터 부족 시 0 처리)
-            BigDecimal ma5 = safeGet(ma5Indicator, i);
-            BigDecimal ma20 = safeGet(ma20Indicator, i);
-            BigDecimal rsi14 = safeGet(rsi14Indicator, i);
-            BigDecimal macd = safeGet(macdIndicator, i);
+            BigDecimal ma5 = (i >= 4) ? safeGet(ma5Indicator, i) : null;
+            BigDecimal ma20 = (i >= 19) ? safeGet(ma20Indicator, i) : null;
+            BigDecimal ma60 = (i >= 59) ? safeGet(ma60Indicator, i) : null;
+            BigDecimal ma120 = (i >= 119) ? safeGet(ma120Indicator, i) : null;
+            BigDecimal rsi14 = (i >= 13) ? safeGet(rsi14Indicator, i) : null;
 
-            resultMap.put(date, new TechnicalIndicators(ma5, ma20, rsi14, macd));
+            // MACD (12, 26)은 보통 장기 지수이동평균(26)이 생성된 후부터 유효하다고 봄
+            BigDecimal macd = (i >= 25) ? safeGet(macdIndicator, i) : null;
+
+            resultMap.put(date, new TechnicalIndicators(ma5, ma20, ma60, ma120, rsi14, macd));
         }
 
         return resultMap;
@@ -192,6 +193,16 @@ public class TechnicalIndicatorService {
         if (series.getBarCount() >= 20) {
             SMAIndicator sma20 = new SMAIndicator(closePrice, 20);
             target.updateMa20(toBigDecimal(sma20.getValue(endIndex)));
+        }
+
+        if (series.getBarCount() >= 60) {
+            SMAIndicator sma60 = new SMAIndicator(closePrice, 20);
+            target.updateMa60(toBigDecimal(sma60.getValue(endIndex)));
+        }
+
+        if (series.getBarCount() >= 120) {
+            SMAIndicator sma120 = new SMAIndicator(closePrice, 20);
+            target.updateMa120(toBigDecimal(sma120.getValue(endIndex)));
         }
 
         if (series.getBarCount() >= 14) {

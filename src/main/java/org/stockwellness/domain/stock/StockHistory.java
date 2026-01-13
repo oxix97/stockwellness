@@ -122,6 +122,17 @@ public class StockHistory {
     private BigDecimal ma20;
 
     /**
+     * 60일 이동평균선
+     */
+    @Column(name = "ma_60", precision = 19, scale = 2)
+    private BigDecimal ma60;
+
+    /**
+     * 120일 이동평균선
+     */
+    @Column(name = "ma_120", precision = 19, scale = 2)
+    private BigDecimal ma120;
+    /**
      * RSI (14일 기준)
      */
     @Column(name = "rsi_14", precision = 10, scale = 4)
@@ -168,13 +179,40 @@ public class StockHistory {
     }
 
     public void updateIndicators(TechnicalIndicators indicators) {
+        // 1. DTO 자체의 null 체크
         if (indicators == null) return;
 
-        this.ma5 = indicators.ma5();
-        this.ma20 = indicators.ma20();
-        this.rsi14 = indicators.rsi14();
-        this.macd = indicators.macd();
-        // Audit 용으로 updated_at 갱신이 필요하다면 여기서 처리하거나 @PreUpdate 활용
-        // this.updatedAt = LocalDate.now();
+        if (indicators.ma5() != null) {
+            this.ma5 = indicators.ma5();
+        }
+
+        if (indicators.ma20() != null) {
+            this.ma20 = indicators.ma20();
+        }
+
+        if (indicators.ma60() != null) {
+            this.ma60 = indicators.ma60();
+        }
+
+        if (indicators.ma120() != null) {
+            this.ma120 = indicators.ma120();
+        }
+
+        if (indicators.rsi14() != null) {
+            this.rsi14 = indicators.rsi14();
+        }
+
+        if (indicators.macd() != null) {
+            this.macd = indicators.macd();
+        }
+    }
+
+    public void updateMa60(BigDecimal ma60) {
+        this.ma60 = ma60;
+
+    }
+
+    public void updateMa120(BigDecimal ma120) {
+        this.ma120 = ma120;
     }
 }
