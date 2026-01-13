@@ -48,4 +48,8 @@ public interface StockHistoryRepository {
     List<StockHistory> findAllByIsinCodeOrderByBaseDateAsc(String isinCode);
 
     List<String> findAllIsinCodes();
+
+    List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode);
+
+    List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode,LocalDate baseDate);
 }
