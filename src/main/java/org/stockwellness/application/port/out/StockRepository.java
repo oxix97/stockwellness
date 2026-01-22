@@ -43,4 +43,6 @@ public interface StockRepository {
             StockStatus status,
             Pageable pageable
     );
+
+    List<String> findAllStockCodes();
 }

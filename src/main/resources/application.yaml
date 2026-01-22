@@ -25,15 +25,25 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: always
+  # Spring AI 설정
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-5-mini
+          temperature: 1.0
 
 decorator:
   datasource:
     p6spy:
       enable-logging: true
 
+
 jwt:
   secret-key: ${jwt-secret}
-  access-token-expiry-ms: 3600000
+#  access-token-expiry-ms: 3600000
+  access-token-expiry-ms: 2592000000
   refresh-token-expiry-ms: 2592000000
 
 krx:
@@ -42,11 +52,32 @@ krx:
 
 logging:
   level:
+    # 1. 전역 설정: 너무 시끄러운 로그는 INFO로 잠재움
+    root: INFO
+
+    # 2. 우리 프로젝트 (핵심): 내가 짠 코드의 로그는 다 보여야 함
+    org.stockwellness: DEBUG
+
+    # 3. Spring AI & Web (AI 요청/응답 확인용)
+    # RestClient의 요청/응답 헤더 및 바디를 보려면 DEBUG 필요
     org.springframework.web.client.RestClient: DEBUG
-    org.apache.hc.client5.http: DEBUG  # 아파치 클라이언트를 쓴다면
-    p6spy: DEBUG
+    org.springframework.ai: DEBUG
+
+    # 4. Apache HTTP (너무 시끄러움 -> WARN 권장)
+    # DEBUG로 두면 TCP 패킷(Hex dump)까지 찍혀서 콘솔이 터집니다. 연결 문제 있을 때만 DEBUG.
+    org.apache.hc.client5.http: WARN
+
+    # 5. DB Query (P6Spy 사용 시)
+    # p6spy가 파라미터 바인딩된 SQL을 보여주므로 Hibernate 원본 로그는 끕니다.
+    p6spy: INFO  # P6Spy 자체의 로깅 레벨 (쿼리 로그는 P6Spy 설정파일에서 제어됨)
     org.hibernate.SQL: OFF
-    org.hibernate.type: OFF
+    org.hibernate.type.descriptor.sql.BasicBinder: OFF
+
+    # 6. Spring Batch (배치 흐름 확인)
+    org.springframework.batch: INFO
+
+    # 7. Transaction (트랜잭션 시작/종료 확인 - 필요시 DEBUG)
+    org.springframework.transaction: INFO
 
 ---
 spring:

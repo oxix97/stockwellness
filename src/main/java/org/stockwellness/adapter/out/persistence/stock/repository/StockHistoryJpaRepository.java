@@ -50,4 +50,15 @@ public interface StockHistoryJpaRepository extends JpaRepository<StockHistory, S
 
     @Query("SELECT distinct isinCode FROM StockHistory")
     List<String> findAllIsinCodes();
+
+    /**
+     * [AI Context용]
+     * 특정 종목의 가장 최근 데이터 2건 조회 (오늘, 어제)
+     * - 골든/데드 크로스 및 전일 대비 변화량 계산에 사용
+     */
+    List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode);
+
+    List<StockHistory> findTop200ByIsinCodeOrderByBaseDateDesc(String isinCode);
+
+    List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate);
 }
