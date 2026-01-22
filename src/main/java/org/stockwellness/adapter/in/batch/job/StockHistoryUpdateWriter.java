@@ -20,7 +20,7 @@ public class StockHistoryUpdateWriter implements ItemWriter<List<StockHistory>> 
 
     private static final String UPDATE_SQL = """
         UPDATE stock_history 
-        SET ma_5 = ?, ma_20 = ?, rsi_14 = ?, macd = ?, updated_at = CURRENT_DATE
+        SET ma_5 = ?, ma_20 = ?, ma_60 = ?, ma_120 = ?, rsi_14 = ?, macd = ?, updated_at = CURRENT_DATE
         WHERE isin_code = ? AND base_date = ?
     """;
 
@@ -35,10 +35,12 @@ public class StockHistoryUpdateWriter implements ItemWriter<List<StockHistory>> 
         jdbcTemplate.batchUpdate(UPDATE_SQL, allHistories, 1000, (ps, history) -> {
             ps.setBigDecimal(1, history.getMa5());
             ps.setBigDecimal(2, history.getMa20());
-            ps.setBigDecimal(3, history.getRsi14());
-            ps.setBigDecimal(4, history.getMacd());
-            ps.setString(5, history.getIsinCode());
-            ps.setDate(6, Date.valueOf(history.getBaseDate()));
+            ps.setBigDecimal(3, history.getMa60());
+            ps.setBigDecimal(4, history.getMa120());
+            ps.setBigDecimal(5, history.getRsi14());
+            ps.setBigDecimal(6, history.getMacd());
+            ps.setString(7, history.getIsinCode());
+            ps.setDate(8, Date.valueOf(history.getBaseDate()));
         });
     }
 }
