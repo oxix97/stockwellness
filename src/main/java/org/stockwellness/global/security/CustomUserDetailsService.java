@@ -19,12 +19,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Cacheable(value = "member", key = "#username")
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Long memeberId = Long.parseLong(username);
+        Long memberId = Long.parseLong(username);
 
-        Member member = memberRepository.findById(memeberId)
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new UsernameNotFoundException("해당 회원을 찾을 수 없습니다."));
 
-        if (member.isActive())
+        if (!member.isActive())
             throw new DisabledException("비활성화된 계정입니다.");
 
         return member;

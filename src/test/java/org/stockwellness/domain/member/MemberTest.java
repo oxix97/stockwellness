@@ -31,7 +31,7 @@ class MemberTest {
         // 기본값 검증
         assertThat(member.getRole()).isEqualTo(MemberRole.USER);
         assertThat(member.getRiskLevel()).isEqualTo(RiskLevel.MEDIUM);
-        assertThat(member.getStatus()).isEqualTo(MemberStatus.PENDING);
+        assertThat(member.getStatus()).isEqualTo(MemberStatus.ACTIVE);
     }
 
     @Test
