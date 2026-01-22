@@ -48,4 +48,9 @@ public class StockAdapter implements StockRepository {
     public Slice<Stock> searchByCondition(String keyword, MarketType marketType, StockStatus status, Pageable pageable) {
         return stockRepository.searchByCondition(keyword, marketType, status, pageable);
     }
+
+    @Override
+    public List<String> findAllStockCodes() {
+        return stockRepository.findAllByIsinCode();
+    }
 }

@@ -1,5 +1,6 @@
 package org.stockwellness.domain.member;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -57,7 +58,7 @@ public class Member extends AbstractEntity implements UserDetails {
         member.nickname = validateNickname(nickname);
         member.riskLevel = RiskLevel.MEDIUM;
         member.loginType = loginType;
-        member.status = MemberStatus.PENDING;
+        member.status = ACTIVE;
         return member;
     }
 
@@ -69,6 +70,7 @@ public class Member extends AbstractEntity implements UserDetails {
         return nickname;
     }
 
+    @JsonIgnore
     public boolean isActive() {
         return this.status == ACTIVE;
     }
@@ -82,17 +84,44 @@ public class Member extends AbstractEntity implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
     @Override
+    @JsonIgnore
     public @Nullable String getPassword() {
         return "";
     }
 
     @Override
+    @JsonIgnore
     public String getUsername() {
         return this.getId().toString();
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    @JsonIgnore
+    public boolean isEnabled() {
+        return isActive();
     }
 }
