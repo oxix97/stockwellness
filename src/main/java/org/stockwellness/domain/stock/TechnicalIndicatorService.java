@@ -112,64 +112,6 @@ public class TechnicalIndicatorService {
     }
 
     /**
-     * [Batch Backfill용]
-     * 특정 종목의 전체 히스토리 리스트를 받아, 모든 날짜의 기술적 지표를 일괄 재계산합니다.
-     * 기존 convertToBarSeries와 toBigDecimal 메서드를 재사용합니다.
-     *
-     * @param histories 해당 종목의 전체 히스토리 (날짜 무관)
-     * @return 지표가 계산되어 업데이트된 리스트
-     */
-    public List<StockHistory> calculateFullHistory(List<StockHistory> histories) {
-        // 1. 방어 로직
-        if (histories == null || histories.isEmpty()) {
-            return histories;
-        }
-
-        // 2. 정렬 (Time Series 보장): 과거 -> 현재 순서로 정렬
-        // BarSeries의 인덱스와 List의 인덱스를 일치시키기 위해 필수입니다.
-        histories.sort(Comparator.comparing(StockHistory::getBaseDate));
-
-        // 3. Ta4j BarSeries 변환 (기존 메서드 재사용)
-        // 리스트의 첫 번째 요소에서 종목 코드를 가져옵니다.
-        BarSeries series = convertToBarSeries(histories.get(0).getIsinCode(), histories);
-
-        // 4. 지표 계산 엔진 준비 (루프 밖에서 1회 생성)
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma5 = new SMAIndicator(closePrice, 5);
-        SMAIndicator sma20 = new SMAIndicator(closePrice, 20);
-        RSIIndicator rsi = new RSIIndicator(closePrice, 14);
-        MACDIndicator macd = new MACDIndicator(closePrice, 12, 26);
-
-        // 5. 전체 루프를 돌며 값 주입
-        // series.getBarCount()는 histories.size()와 동일함이 보장됨
-        for (int i = 0; i < series.getBarCount(); i++) {
-            StockHistory h = histories.get(i);
-
-            // 5-1. MA5 (데이터 5개 이상일 때부터, index 4부터)
-            if (i >= 4) {
-                h.updateMa5(toBigDecimal(sma5.getValue(i)));
-            }
-
-            // 5-2. MA20 (데이터 20개 이상일 때부터, index 19부터)
-            if (i >= 19) {
-                h.updateMa20(toBigDecimal(sma20.getValue(i)));
-            }
-
-            // 5-3. RSI (14일)
-            if (i >= 13) {
-                h.updateRsi14(toBigDecimal(rsi.getValue(i)));
-            }
-
-            // 5-4. MACD (12, 26) -> 26일 데이터 필요
-            if (i >= 25) {
-                h.updateMacd(toBigDecimal(macd.getValue(i)));
-            }
-        }
-
-        return histories;
-    }
-
-    /**
      * [Realtime Daily용]
      * 과거 데이터와 현재 데이터를 합쳐 기술적 지표를 계산하고, target 엔티티에 값을 주입합니다.
      */

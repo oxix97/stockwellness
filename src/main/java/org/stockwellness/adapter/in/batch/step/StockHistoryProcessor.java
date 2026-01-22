@@ -76,8 +76,8 @@ public class StockHistoryProcessor implements ItemProcessor<String, List<StockHi
     /**
      * StockHistory 리스트를 ta4j BarSeries로 변환
      */
-    private BarSeries createBarSeries(String symbol, List<StockHistory> historyList) {
-        BarSeries series = new BaseBarSeries(symbol);
+    private BarSeries createBarSeries(String isinCode, List<StockHistory> historyList) {
+        BarSeries series = new BaseBarSeries(isinCode);
 
         for (StockHistory h : historyList) {
             series.addBar(

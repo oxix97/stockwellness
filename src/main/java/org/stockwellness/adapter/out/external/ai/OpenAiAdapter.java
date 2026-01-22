@@ -1,63 +1,60 @@
 package org.stockwellness.adapter.out.external.ai;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.stockwellness.adapter.out.external.ai.dto.OpenAiRequest;
-import org.stockwellness.adapter.out.external.ai.dto.OpenAiResponse;
+import org.stockwellness.adapter.out.external.ai.dto.AiReport;
 import org.stockwellness.application.port.out.LlmClientPort;
+
+import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class OpenAiAdapter implements LlmClientPort {
 
-    private final RestClient aiRestClient;
+    private final ChatClient chatClient;
 
-    @Value("${ai.model}")
-    private String model;
-
-    @Override
-    public String generateInsight(String systemInstruction, String userContext) {
-        log.info("[AI Request] Model: {}, Context Length: {}", model, userContext.length());
-
-        // 1. 요청 객체 생성 (DTO)
-        OpenAiRequest request = OpenAiRequest.of(model, systemInstruction, userContext);
-
-        // 2. RestClient 호출 (Virtual Thread 환경에서 Non-blocking 처럼 동작)
-        OpenAiResponse response = aiRestClient.post()
-                .uri("/chat/completions")
-                .body(request)
-                .retrieve()
-                // 3. 에러 핸들링 (간단 예시)
-                .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-                    throw new RuntimeException("AI API Client Error: " + res.getStatusCode());
-                })
-                .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
-                    throw new RuntimeException("AI API Server Error: " + res.getStatusCode());
-                })
-                .body(OpenAiResponse.class);
-
-        // 4. 응답 파싱 및 반환
-        return extractContent(response);
+    public OpenAiAdapter(ChatClient.Builder builder) {
+        this.chatClient = builder
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .withModel("gpt-4o-mini") // 기본 모델 설정 (비용 절감)
+                        .withTemperature(0.3f)     // 낮을수록 사실적/분석적 (0.0 ~ 1.0)
+                        .build())
+                .build();
     }
 
-    private String extractContent(OpenAiResponse response) {
-        if (response == null || response.choices() == null || response.choices().isEmpty()) {
-            log.error("AI Response is empty or null");
-            throw new RuntimeException("AI 응답을 받아오지 못했습니다.");
+    @Override
+    @Retryable(
+            retryFor = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000)
+    )
+    public AiReport generateInsight(String systemInstruction, String userContext) {
+        log.info("📡 Requesting AI Analysis... (Length: {})", userContext.length());
+        var outputConverter = new BeanOutputConverter<>(AiReport.class);
+
+        try {
+            // Fluent API를 사용한 호출
+            return chatClient.prompt()
+                    .system(systemInstruction) // 시스템 프롬프트 (페르소나)
+                    .user(u -> u.text(userContext + "\n\n반드시 아래 JSON 포맷을 준수하여 응답해:\n{format}")
+                            .param("format", outputConverter.getFormat()))
+                    .call()
+                    .entity(outputConverter);
+        } catch (Exception e) {
+            log.error("❌ AI Parsing Failed: {}", e.getMessage());
+            // 실패 시 Fallback(기본값) 리턴 또는 에러 전파
+            return new AiReport(
+                    AiReport.InvestmentDecision.HOLD,
+                    0,
+                    "분석 시스템 일시 장애",
+                    List.of("AI 응답을 처리하는 중 오류가 발생했습니다."),
+                    ""
+            );
         }
-
-        // 토큰 사용량 로깅 (비용 추적용)
-        log.info("[AI Response] Tokens Used - Prompt: {}, Completion: {}, Total: {}", 
-            response.usage().prompt_tokens(),
-            response.usage().completion_tokens(),
-            response.usage().total_tokens()
-        );
-
-        return response.choices().getFirst().message().content();
     }
 }

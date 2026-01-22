@@ -2,19 +2,20 @@ package org.stockwellness.adapter.in.web.stock;
 
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.stockwellness.adapter.in.web.stock.dto.StockAnalysisResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockDetailResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
+import org.stockwellness.application.port.StockAnalysisCommand;
+import org.stockwellness.application.port.StockAnalysisResult;
 import org.stockwellness.application.port.in.GetStockAnalysisUseCase;
-import org.stockwellness.application.port.in.GetStockAnalysisUseCase.StockAnalysisCommand;
-import org.stockwellness.application.port.in.GetStockAnalysisUseCase.StockAnalysisResult;
 import org.stockwellness.application.service.StockReadService;
-import org.stockwellness.global.security.CurrentMemberId;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -40,17 +41,20 @@ public class StockController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/analysis/{isinCode}")
-    public ResponseEntity<StockAnalysisResult> getAnalysis(
-            @PathVariable String isinCode,
-            @CurrentMemberId Long userId
+    @GetMapping("/analysis")
+    public ResponseEntity<StockAnalysisResponse> getAiAnalysis(
+            @Pattern(regexp = "^[0-9A-Za-z]{4,12}$", message = "올바른 종목 코드가 아닙니다.")
+            @RequestParam(name = "isin_code") String isinCode
     ) {
-        // Command 객체 생성
-        var command = new StockAnalysisCommand(isinCode, userId);
+        log.info("📥 Web Request: Analyze Stock [{}]", isinCode);
 
-        // UseCase 실행
+        // 1. Command 객체 생성 (Input Mapping)
+        StockAnalysisCommand command = new StockAnalysisCommand(isinCode);
+
+        // 2. UseCase 실행 (Business Logic)
         StockAnalysisResult result = getStockAnalysisUseCase.analyze(command);
 
-        return ResponseEntity.ok(result);
+        // 3. Response DTO 변환 (Output Mapping)
+        return ResponseEntity.ok(StockAnalysisResponse.from(result));
     }
 }
