@@ -1,7 +1,8 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.adapter.in.batch.step;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.stockwellness.domain.stock.StockHistory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

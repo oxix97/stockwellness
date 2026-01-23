@@ -1,6 +1,6 @@
-package org.stockwellness.application.port;
+package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.adapter.out.external.ai.dto.AiReport;
+import org.stockwellness.domain.stock.analysis.AiReport;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 
 import java.time.LocalDateTime;

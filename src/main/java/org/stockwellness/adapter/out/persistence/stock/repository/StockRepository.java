@@ -17,7 +17,7 @@ import java.util.Optional;
  * Stock 엔티티(종목 마스터) 접근을 위한 Repository
  * 기본적으로 Spring Data JPA를 사용합니다.
  */
-public interface StockJpaRepository extends JpaRepository<Stock, String> {
+public interface StockRepository extends JpaRepository<Stock, String> {
     /**
      * 티커(단축코드)로 종목 조회
      * <p>ISIN 코드가 PK이지만, 사용자나 외부 API는 티커를 주로 사용함</p>

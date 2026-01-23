@@ -7,8 +7,9 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.external.ai.dto.AiReport;
-import org.stockwellness.application.port.out.LlmClientPort;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.AiReport;
+import org.stockwellness.application.port.out.stock.LlmClientPort;
 
 import java.util.List;
 
@@ -17,14 +18,16 @@ import java.util.List;
 public class OpenAiAdapter implements LlmClientPort {
 
     private final ChatClient chatClient;
+    private final PromptTemplateMapper promptTemplateMapper;
 
-    public OpenAiAdapter(ChatClient.Builder builder) {
+    public OpenAiAdapter(ChatClient.Builder builder, PromptTemplateMapper promptTemplateMapper) {
         this.chatClient = builder
                 .defaultOptions(OpenAiChatOptions.builder()
                         .withModel("gpt-4o-mini") // 기본 모델 설정 (비용 절감)
                         .withTemperature(0.3f)     // 낮을수록 사실적/분석적 (0.0 ~ 1.0)
                         .build())
                 .build();
+        this.promptTemplateMapper = promptTemplateMapper;
     }
 
     @Override
@@ -33,7 +36,10 @@ public class OpenAiAdapter implements LlmClientPort {
             maxAttempts = 3,
             backoff = @Backoff(delay = 1000)
     )
-    public AiReport generateInsight(String systemInstruction, String userContext) {
+    public AiReport generateInsight(String systemInstruction, AiAnalysisContext context) {
+        // 도메인 객체를 프롬프트 문자열로 변환 (Adapter의 역할)
+        String userContext = promptTemplateMapper.toPromptString(context);
+
         log.info("📡 Requesting AI Analysis... (Length: {})", userContext.length());
         var outputConverter = new BeanOutputConverter<>(AiReport.class);
 

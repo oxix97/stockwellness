@@ -12,9 +12,9 @@ import org.stockwellness.adapter.in.web.stock.dto.StockAnalysisResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockDetailResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
-import org.stockwellness.application.port.StockAnalysisCommand;
-import org.stockwellness.application.port.StockAnalysisResult;
-import org.stockwellness.application.port.in.GetStockAnalysisUseCase;
+import org.stockwellness.application.port.in.stock.StockAnalysisCommand;
+import org.stockwellness.application.port.out.stock.StockAnalysisResult;
+import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
 import org.stockwellness.application.service.StockReadService;
 
 @Slf4j
@@ -23,7 +23,7 @@ import org.stockwellness.application.service.StockReadService;
 @RestController
 public class StockController {
     private final StockReadService stockReadService;
-    private final GetStockAnalysisUseCase getStockAnalysisUseCase;
+    private final StockAnalysisUseCase stockAnalysisUseCase;
 
     @GetMapping
     public ResponseEntity<Slice<StockResponse>> searchStocks(
@@ -52,7 +52,7 @@ public class StockController {
         StockAnalysisCommand command = new StockAnalysisCommand(isinCode);
 
         // 2. UseCase 실행 (Business Logic)
-        StockAnalysisResult result = getStockAnalysisUseCase.analyze(command);
+        StockAnalysisResult result = stockAnalysisUseCase.analyze(command);
 
         // 3. Response DTO 변환 (Output Mapping)
         return ResponseEntity.ok(StockAnalysisResponse.from(result));

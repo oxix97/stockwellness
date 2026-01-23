@@ -1,4 +1,4 @@
-package org.stockwellness.application.port;
+package org.stockwellness.application.port.in.stock;
 
 public record StockAnalysisCommand(
     String isinCode

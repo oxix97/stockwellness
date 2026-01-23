@@ -4,22 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.stockwellness.adapter.out.external.ai.dto.AiAnalysisContext;
-import org.stockwellness.adapter.out.external.ai.PromptTemplateMapper;
-import org.stockwellness.adapter.out.external.ai.dto.AiReport;
-import org.stockwellness.application.port.StockAnalysisCommand;
-import org.stockwellness.application.port.StockAnalysisResult;
-import org.stockwellness.application.port.in.GetStockAnalysisUseCase;
-import org.stockwellness.application.port.out.LlmClientPort;
-import org.stockwellness.application.port.out.LoadTechnicalDataPort;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.AiReport;
+import org.stockwellness.application.port.in.stock.StockAnalysisCommand;
+import org.stockwellness.application.port.out.stock.StockAnalysisResult;
+import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
+import org.stockwellness.application.port.out.stock.LlmClientPort;
+import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GetStockAnalysisService implements GetStockAnalysisUseCase {
+public class StockAnalysisService implements StockAnalysisUseCase {
 
     private final LoadTechnicalDataPort technicalDataPort;
-    private final PromptTemplateMapper promptTemplateMapper;
     private final LlmClientPort llmClientPort;
 
     private static final String SYSTEM_INSTRUCTION = """
@@ -43,15 +41,15 @@ public class GetStockAnalysisService implements GetStockAnalysisUseCase {
     public StockAnalysisResult analyze(StockAnalysisCommand command) {
         log.info("🔍 AI Analysis Request: {}", command.isinCode());
 
+        // 1. 도메인 데이터 로드 (Port -> Domain DTO)
         AiAnalysisContext context = technicalDataPort.loadTechnicalContext(command.isinCode());
 
-        String userContext = promptTemplateMapper.toPromptString(context);
-
-        AiReport report = llmClientPort.generateInsight(SYSTEM_INSTRUCTION, userContext);
+        // 2. AI 분석 요청 (String 변환 책임은 Adapter로 위임됨)
+        AiReport report = llmClientPort.generateInsight(SYSTEM_INSTRUCTION, context);
 
         return new StockAnalysisResult(
                 context.isinCode(),
-                context.technicalSignal().trendStatus(), // Context에 TrendStatus Enum이 있다고 가정
+                context.technicalSignal().trendStatus(),
                 report
         );
     }
