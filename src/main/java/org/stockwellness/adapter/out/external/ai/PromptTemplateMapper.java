@@ -1,7 +1,7 @@
 package org.stockwellness.adapter.out.external.ai;
 
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.external.ai.dto.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 

@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.krx.KrxClient;
 import org.stockwellness.adapter.out.external.krx.dto.StockPriceDto;
-import org.stockwellness.application.service.mapper.StockMapper;
+import org.stockwellness.adapter.in.batch.mapper.StockBatchMapper;
 import org.stockwellness.domain.stock.StockHistory;
 
 import javax.sql.DataSource;
@@ -30,7 +30,7 @@ public class StockHistoryFetch {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final KrxClient krxClient;
-    private final StockMapper stockMapper;
+    private final StockBatchMapper stockMapper;
     private final DataSource dataSource;
 
     @Bean

@@ -7,7 +7,7 @@
 //import org.mockito.InjectMocks;
 //import org.mockito.Mock;
 //import org.mockito.junit.jupiter.MockitoExtension;
-//import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryJpaRepository;
+//import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryRepository;
 //import org.stockwellness.domain.stock.StockHistory;
 //
 //import java.math.BigDecimal;
@@ -25,7 +25,7 @@
 //    private PromptContextService promptContextService;
 //
 //    @Mock
-//    private StockHistoryJpaRepository stockHistoryRepository;
+//    private StockHistoryRepository stockHistoryRepository;
 //
 //    private final String ISIN_CODE = "KR7005930003"; // 삼성전자 예시
 //

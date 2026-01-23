@@ -1,6 +1,6 @@
-package org.stockwellness.application.port.out;
+package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.adapter.out.external.ai.dto.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 
 public interface LoadTechnicalDataPort {
     /**

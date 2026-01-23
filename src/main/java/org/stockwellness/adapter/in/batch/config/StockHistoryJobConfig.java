@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.in.batch.job.StockPriceReader;
 import org.stockwellness.adapter.in.batch.job.StockPriceWriter;
-import org.stockwellness.application.port.out.FetchStockPricePort;
+import org.stockwellness.application.port.out.stock.FetchStockPricePort;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.time.LocalDate;
