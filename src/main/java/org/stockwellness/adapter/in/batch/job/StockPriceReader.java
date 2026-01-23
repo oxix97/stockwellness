@@ -2,7 +2,7 @@ package org.stockwellness.adapter.in.batch.job;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ItemReader;
-import org.stockwellness.application.port.out.FetchStockPricePort;
+import org.stockwellness.application.port.out.stock.FetchStockPricePort;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.time.LocalDate;
