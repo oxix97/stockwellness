@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface StockHistoryJpaRepository extends JpaRepository<StockHistory, StockHistoryId> {
+public interface StockHistoryRepository extends JpaRepository<StockHistory, StockHistoryId> {
     /**
      * 특정 종목의 특정 기간 시세 조회 (AI 학습 및 차트용 핵심 쿼리)
      * <p>BaseDate 기준으로 정렬하여 반환</p>
@@ -59,6 +59,8 @@ public interface StockHistoryJpaRepository extends JpaRepository<StockHistory, S
     List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode);
 
     List<StockHistory> findTop200ByIsinCodeOrderByBaseDateDesc(String isinCode);
+
+    List<StockHistory> findTop300ByIsinCodeOrderByBaseDateDesc(String isinCode);
 
     List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate);
 }

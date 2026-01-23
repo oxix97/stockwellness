@@ -3,8 +3,7 @@ package org.stockwellness.adapter.out.persistence.stock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryJpaRepository;
-import org.stockwellness.application.port.out.StockHistoryRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryRepository;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.sql.Date;
@@ -14,57 +13,56 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class StockHistoryAdapter implements StockHistoryRepository {
+public class StockHistoryAdapter {
 
-    private final StockHistoryJpaRepository historyJpaRepository;
+    private final StockHistoryRepository historyJpaRepository;
     private final JdbcTemplate jdbcTemplate;
 
-    @Override
-    public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode,LocalDate baseDate) {
-        return historyJpaRepository.findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(isinCode,baseDate);
+    public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate) {
+        return historyJpaRepository.findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(isinCode, baseDate);
     }
 
-    @Override
+
     public List<StockHistory> findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(String isinCode, LocalDate baseDate) {
         return historyJpaRepository.findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(isinCode, baseDate);
     }
 
-    @Override
+
     public List<String> findAllIsinCodes() {
         return historyJpaRepository.findAllIsinCodes();
     }
 
-    @Override
+
     public List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode) {
         return historyJpaRepository.findTop2ByIsinCodeOrderByBaseDateDesc(isinCode);
     }
 
-    @Override
+
     public List<StockHistory> findAllByIsinCodeOrderByBaseDateAsc(String isinCode) {
         return historyJpaRepository.findAllByIsinCodeOrderByBaseDateAsc(isinCode);
     }
 
-    @Override
+
     public List<StockHistory> findByIsinCodeAndBaseDateBetweenOrderByBaseDateAsc(String isinCode, LocalDate startDate, LocalDate endDate) {
         return historyJpaRepository.findByIsinCodeAndBaseDateBetweenOrderByBaseDateAsc(isinCode, startDate, endDate);
     }
 
-    @Override
+
     public Optional<StockHistory> findTopByIsinCodeOrderByBaseDateDesc(String isinCode) {
         return historyJpaRepository.findTopByIsinCodeOrderByBaseDateDesc(isinCode);
     }
 
-    @Override
+
     public List<StockHistory> findByBaseDate(LocalDate baseDate) {
         return historyJpaRepository.findByBaseDate(baseDate);
     }
 
-    @Override
+
     public List<StockHistory> findRecentHistory(String isinCode, LocalDate targetDate, int limit) {
         return historyJpaRepository.findRecentHistory(isinCode, targetDate, limit);
     }
 
-    @Override
+
     public void saveAll(List<StockHistory> histories) {
         historyJpaRepository.saveAll(histories);
     }
@@ -73,7 +71,7 @@ public class StockHistoryAdapter implements StockHistoryRepository {
      * PostgreSQL Bulk Insert (Upsert 적용)
      * ON CONFLICT 구문을 사용하여 재실행 시에도 안전하게 업데이트
      */
-    @Override
+
     public void bulkInsert(List<StockHistory> histories) {
         String sql = """
                     INSERT INTO stock_history 

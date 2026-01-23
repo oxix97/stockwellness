@@ -1,11 +1,10 @@
-package org.stockwellness.application.service.mapper;
+package org.stockwellness.adapter.in.batch.mapper;
 
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.external.krx.dto.KrxListedInfoResponse;
 import org.stockwellness.adapter.out.external.krx.dto.StockPriceDto;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockCandle;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.math.BigDecimal;
@@ -13,39 +12,15 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * StockMapper
+ * StockBatchMapper
  * <p>
- * 역할: 외부 API DTO(KrxStockPriceItem)를 도메인 Entity(Stock, StockHistory)로 변환
- * 특징: API의 String 데이터를 안전하게 Parsing하여 타입 불일치 오류 방지
+ * 역할: 배치 작업에서 외부 API DTO(KrxStockPriceItem)를 도메인 Entity(Stock, StockHistory)로 변환
+ * 위치: adapter.in.batch.mapper (외부 DTO 의존성을 어댑터 계층에 가둠)
  */
 @Component
-public class StockMapper {
+public class StockBatchMapper {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
-
-    /**
-     * [Quant Data] Entity -> StockCandle(Domain Record) 변환
-     * <p>
-     * 지표 계산(ta4j)을 위해 엔티티에서 필요한 순수 데이터(OHLCV)만 추출합니다.
-     * 엔티티가 null인 필드를 가질 수 있다면 안전하게 0으로 처리합니다.
-     */
-    public StockCandle toStockCandle(StockHistory history) {
-        return new StockCandle(
-                history.getBaseDate(), // 복합키에서 날짜 추출
-                defaultValue(history.getOpenPrice()),
-                defaultValue(history.getHighPrice()),
-                defaultValue(history.getLowPrice()),
-                defaultValue(history.getClosePrice()),
-                history.getVolume() != null ? history.getVolume() : 0L
-        );
-    }
-
-    /**
-     * Null Safe 처리 유틸 (BigDecimal)
-     */
-    private BigDecimal defaultValue(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
-    }
 
     /**
      * [Master Data] DTO -> Stock Entity 변환
@@ -60,7 +35,7 @@ public class StockMapper {
                 item.isinCode(),        // isinCd (PK)
                 item.itemName(),        // itmsNm
                 item.ticker(),          // srtnCd
-                MarketType.fromString(item.marketCategory()),  // mrktCtg (Enum 변환 로직은 Stock 내부 혹은 별도 처리)
+                MarketType.fromString(item.marketCategory()),  // mrktCtg
                 totalShares,             // lstgStCnt
                 item.corporationNo(),
                 item.corporationName()
@@ -87,6 +62,7 @@ public class StockMapper {
                 parseBigDecimalSafe(item.marketCap())       // mrktTotAmt
         );
     }
+
     /**
      * 날짜 파싱 (YYYYMMDD -> LocalDate)
      */

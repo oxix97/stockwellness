@@ -1,4 +1,4 @@
-package org.stockwellness.application.port.out;
+package org.stockwellness.application.port.out.stock;
 
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;

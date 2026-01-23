@@ -3,9 +3,9 @@ package org.stockwellness.adapter.out.persistence.stock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.adapter.out.external.ai.dto.AiAnalysisContext;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryJpaRepository;
-import org.stockwellness.application.port.out.LoadTechnicalDataPort;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryRepository;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
 import org.stockwellness.domain.stock.StockHistory;
 import org.stockwellness.domain.stock.analysis.MarketCondition;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
@@ -18,7 +18,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class StockTechnicalDataAdapter implements LoadTechnicalDataPort {
 
-    private final StockHistoryJpaRepository stockHistoryRepository;
+    private final StockHistoryRepository stockHistoryRepository;
 
     @Override
     public AiAnalysisContext loadTechnicalContext(String isinCode) {

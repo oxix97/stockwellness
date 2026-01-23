@@ -1,7 +1,10 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.adapter.in.batch.step;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.stockwellness.domain.stock.StockCandle;
+import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.TechnicalIndicators;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;

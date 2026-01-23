@@ -1,8 +1,8 @@
 package org.stockwellness.adapter.in.web.stock.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.stockwellness.adapter.out.external.ai.dto.AiReport;
-import org.stockwellness.application.port.StockAnalysisResult;
+import org.stockwellness.domain.stock.analysis.AiReport;
+import org.stockwellness.application.port.out.stock.StockAnalysisResult;
 
 import java.time.LocalDateTime;
 import java.util.List;

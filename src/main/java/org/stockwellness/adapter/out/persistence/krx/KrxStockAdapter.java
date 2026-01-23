@@ -7,8 +7,8 @@ import org.stockwellness.adapter.out.external.krx.KrxClient;
 import org.stockwellness.adapter.out.external.krx.dto.KrxCommonResponse;
 import org.stockwellness.adapter.out.external.krx.dto.KrxListedInfoResponse;
 import org.stockwellness.adapter.out.external.krx.dto.StockPriceDto;
-import org.stockwellness.application.port.out.FetchStockPricePort;
-import org.stockwellness.application.service.mapper.StockMapper;
+import org.stockwellness.application.port.out.stock.FetchStockPricePort;
+import org.stockwellness.adapter.in.batch.mapper.StockBatchMapper;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;
 
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class KrxStockAdapter implements FetchStockPricePort {
     private final KrxClient krxClient;
-    private final StockMapper stockMapper;
+    private final StockBatchMapper stockMapper;
 
     @Override
     public List<Stock> fetchDaily(LocalDate date) {

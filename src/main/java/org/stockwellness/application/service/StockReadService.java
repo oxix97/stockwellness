@@ -7,10 +7,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.in.web.stock.dto.StockDetailResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;
-import org.stockwellness.application.port.out.StockHistoryRepository;
-import org.stockwellness.application.port.out.StockRepository;
 
 @Service
 @Transactional(readOnly = true)
