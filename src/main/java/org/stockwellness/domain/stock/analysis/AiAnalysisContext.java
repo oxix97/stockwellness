@@ -1,7 +1,4 @@
-package org.stockwellness.adapter.out.external.ai.dto;
-
-import org.stockwellness.domain.stock.analysis.CrossoverSignal;
-import org.stockwellness.domain.stock.analysis.TrendStatus;
+package org.stockwellness.domain.stock.analysis;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

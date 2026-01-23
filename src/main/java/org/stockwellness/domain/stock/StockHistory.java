@@ -215,4 +215,18 @@ public class StockHistory {
     public void updateMa120(BigDecimal ma120) {
         this.ma120 = ma120;
     }
+
+    /**
+     * 지표 계산을 위한 Candle VO 변환
+     */
+    public StockCandle toCandle() {
+        return new StockCandle(
+                this.baseDate,
+                this.openPrice != null ? this.openPrice : BigDecimal.ZERO,
+                this.highPrice != null ? this.highPrice : BigDecimal.ZERO,
+                this.lowPrice != null ? this.lowPrice : BigDecimal.ZERO,
+                this.closePrice != null ? this.closePrice : BigDecimal.ZERO,
+                this.volume != null ? this.volume : 0L
+        );
+    }
 }

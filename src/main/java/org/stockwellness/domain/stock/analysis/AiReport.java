@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.out.external.ai.dto;
+package org.stockwellness.domain.stock.analysis;
 
 import java.util.List;
 
