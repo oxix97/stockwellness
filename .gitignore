@@ -229,4 +229,36 @@ gradle-app.setting
 # Java heap dump
 *.hprof
 
+### Gemini Conductor ###
+
+# =============================================
+# Gemini CLI + Conductor 관련 ignore 패턴
+# =============================================
+
+# Conductor 임시/캐시 파일들 (핵심 *.md는 보존)
+conductor/*.tmp
+conductor/tmp/
+conductor/.cache/
+conductor/drafts/
+conductor/logs/
+conductor/tmp-*
+
+# API 키/비밀 정보 (존재할 경우)
+conductor/secrets.*
+conductor/config/private.*
+
+# Gemini CLI 전역 캐시 (프로젝트별)
+.gemini-cli/
+.gemini-cache/
+
+# Gemini CLI 도구별 무시 파일 (.geminiignore와 별개)
+*.gemini.log
+.geminiignore.bak
+
+# 빌드 결과물 (Conductor가 참조 안 하는 부분)
+**/target/
+**/dist/
+**/node_modules/
+
+
 # End of https://www.toptal.com/developers/gitignore/api/java,kotlin,gradle,macos,windows,intellij+all,git

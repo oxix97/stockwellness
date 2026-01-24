@@ -3,14 +3,16 @@ package org.stockwellness.adapter.in.web.auth;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.auth.dto.LoginRequest;
 import org.stockwellness.adapter.in.web.auth.dto.LoginResponse;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueRequest;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueResponse;
-import org.stockwellness.application.service.AuthService;
-import org.stockwellness.domain.member.Member;
+import org.stockwellness.application.port.in.auth.AuthUseCase;
+import org.stockwellness.application.port.in.auth.command.LoginCommand;
+import org.stockwellness.application.port.in.auth.result.LoginResult;
+import org.stockwellness.application.port.in.auth.result.ReissueResult;
+import org.stockwellness.global.security.CurrentMemberId;
 
 import java.util.Map;
 
@@ -19,23 +21,37 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
+    private final AuthUseCase authUseCase;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
+        LoginCommand command = new LoginCommand(request.email(), request.nickname(), request.loginType());
+        LoginResult result = authUseCase.login(command);
+        
+        LoginResponse response = new LoginResponse(
+            result.accessToken(),
+            result.refreshToken(),
+            result.memberId(),
+            result.email(),
+            result.nickname()
+        );
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/reissue")
     public ResponseEntity<ReissueResponse> reissue(@Valid @RequestBody ReissueRequest request) {
-        ReissueResponse response = authService.reissue(request.refreshToken());
+        ReissueResult result = authUseCase.reissue(request.refreshToken());
+        
+        ReissueResponse response = new ReissueResponse(
+            result.accessToken(),
+            result.refreshToken()
+        );
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal Member member) {  // JwtAuthenticationFilter에서 Member principal
-        authService.logout(member.getId());
+    public ResponseEntity<Void> logout(@CurrentMemberId Long memberId) {
+        authUseCase.logout(memberId);
         return ResponseEntity.ok().build();
     }
 

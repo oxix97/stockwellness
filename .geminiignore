@@ -1,0 +1,22 @@
+# .geminiignore - Gemini CLI 컨텍스트 무시 파일
+# (node_modules, 빌드 결과 등 대용량 파일 무시)
+
+# 빌드/의존성
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+
+# 로그/임시
+**/*.log
+**/logs/
+conductor/tmp/
+conductor/.cache/
+
+# 환경/비밀
+**/.env*
+**/secrets*
+
+# IDE
+.vscode/settings.json
+.idea/

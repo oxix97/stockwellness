@@ -6,39 +6,6 @@ info:
 servers:
 - url: http://localhost:8080
 tags: []
-paths:
-  /api/v1/auth/test:
-    get:
-      tags:
-      - System
-      summary: 시스템 상태 확인
-      description: 서버가 정상적으로 동작 중인지 확인합니다.
-      operationId: health-check
-      responses:
-        "200":
-          description: "200"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/api-v1-auth-test-1110985947"
-              examples:
-                health-check:
-                  value: |-
-                    {
-                      "service" : "stockwellness",
-                      "status" : "ok"
-                    }
+paths: {}
 components:
-  schemas:
-    api-v1-auth-test-1110985947:
-      required:
-      - service
-      - status
-      type: object
-      properties:
-        service:
-          type: string
-          description: 서비스명
-        status:
-          type: string
-          description: 상태 코드 (ok)
+  schemas: {}
