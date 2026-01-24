@@ -1,0 +1,8 @@
+{
+  "track_id": "auth_hex_review_20260124",
+  "type": "chore",
+  "status": "new",
+  "created_at": "2026-01-24T00:00:00Z",
+  "updated_at": "2026-01-24T00:00:00Z",
+  "description": "헥사고날 아키텍처에 알맞은지 검토. @src/main/java/org/stockwellness/adapter/in/web/auth/"
+}
