@@ -2,13 +2,14 @@ package org.stockwellness.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
-import org.stockwellness.adapter.out.external.jwt.JwtProvider;
+import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.out.RefreshTokenPort;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.member.SaveMemberPort;
@@ -54,12 +55,14 @@ public class AuthService implements AuthUseCase {
 
     @Override
     public ReissueResult reissue(String oldRefreshToken) {
-        // 1. 토큰 유효성
-        if (!jwtProvider.isTokenValid(oldRefreshToken)) {
-            throw new BusinessException(ErrorCode.EXPIRED_JWT);
+        // 1. 토큰 유효성 및 ID 추출 (한 번에 수행)
+        Long memberId;
+        try {
+            memberId = jwtProvider.validateAndGetId(oldRefreshToken);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.EXPIRED_JWT); // 또는 INVALID_TOKEN
         }
 
-        Long memberId = jwtProvider.extractMemberId(oldRefreshToken);
         RefreshToken stored = refreshTokenPort.findByMemberId(memberId);
         if (stored == null || !stored.tokenValue().equals(oldRefreshToken) || stored.isExpired()) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
@@ -85,6 +88,7 @@ public class AuthService implements AuthUseCase {
     }
 
     @Override
+    @CacheEvict(value = "member", key = "#memberId")
     public void logout(Long memberId) {
         refreshTokenPort.deleteByMemberId(memberId);
     }

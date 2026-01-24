@@ -1,6 +1,7 @@
 package org.stockwellness.application.port.out;
 
+import io.jsonwebtoken.JwtException;
+
 public interface ValidateTokenPort {
-    Long extractMemberId(String token);
-    boolean isTokenValid(String token);
+    Long validateAndGetId(String token) throws JwtException;
 }

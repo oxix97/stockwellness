@@ -90,7 +90,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-portfolios-portfolioId486549215"
+                $ref: "#/components/schemas/api-v1-stocks486549215"
               examples:
                 stock-search:
                   value: |-
@@ -115,26 +115,92 @@ paths:
                       "last" : true,
                       "empty" : false
                     }
-  /api/v1/auth/test:
-    get:
+  /api/v1/auth/login:
+    post:
       tags:
-      - System
-      summary: 시스템 상태 확인
-      description: 서버가 정상적으로 동작 중인지 확인합니다.
-      operationId: health-check
+      - Auth
+      summary: 로그인
+      description: 소셜 로그인 정보를 통해 액세스 토큰 및 리프레시 토큰을 발급받습니다.
+      operationId: auth-login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              auth-login:
+                value: |-
+                  {
+                    "email" : "test@example.com",
+                    "nickname" : "tester",
+                    "loginType" : "GOOGLE"
+                  }
       responses:
         "200":
           description: "200"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-test-1110985947"
+                $ref: "#/components/schemas/LoginResponse"
               examples:
-                health-check:
+                auth-login:
                   value: |-
                     {
-                      "service" : "stockwellness",
-                      "status" : "ok"
+                      "accessToken" : "access.token.dummy",
+                      "refreshToken" : "refresh.token.dummy",
+                      "memberId" : 1,
+                      "email" : "test@example.com",
+                      "nickname" : "tester"
+                    }
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: 로그아웃
+      description: 서버에서 리프레시 토큰을 삭제합니다.
+      operationId: auth-logout
+      parameters:
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      responses:
+        "200":
+          description: "200"
+  /api/v1/auth/reissue:
+    post:
+      tags:
+      - Auth
+      summary: 토큰 재발급
+      description: 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다.
+      operationId: auth-reissue
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReissueRequest"
+            examples:
+              auth-reissue:
+                value: |-
+                  {
+                    "refreshToken" : "refresh.token.dummy"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReissueResponse"
+              examples:
+                auth-reissue:
+                  value: |-
+                    {
+                      "accessToken" : "new.access.token",
+                      "refreshToken" : "new.refresh.token"
                     }
   /api/v1/portfolios/{portfolioId}:
     get:
@@ -248,10 +314,10 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/api-v1-portfolios-portfolioId486549215"
+              $ref: "#/components/schemas/api-v1-stocks486549215"
             examples:
               portfolio-delete:
-                value: _csrf=j9bSBqU0NtdPAmbJYhGrg5QM1uNFJtbLNp8ajPOtkAdmoOqgue_gPp0DUuNiZwD7ATyfsaFq-4FxEe_mVa4stZWd82YAwd-S
+                value: _csrf=adD18_ysOb1zhAZzqSUjEj3TYt92q5eRL3as2m3b6J6CMk_PD7aUkpjOAdhevGIVkAgXc1vmT70Tmva8G0-buAi4iqjgA3yu
       responses:
         "204":
           description: "204"
@@ -405,18 +471,48 @@ components:
               assetType:
                 type: string
                 description: 자산 타입
-    api-v1-auth-test-1110985947:
+    LoginRequest:
+      title: LoginRequest
       required:
-      - service
-      - status
+      - email
+      - loginType
+      - nickname
       type: object
       properties:
-        service:
+        loginType:
           type: string
-          description: 서비스명
-        status:
+          description: "로그인 타입 (GOOGLE, KAKAO, NAVER)"
+        nickname:
           type: string
-          description: 상태 코드 (ok)
+          description: 닉네임
+        email:
+          type: string
+          description: 이메일
+    LoginResponse:
+      title: LoginResponse
+      required:
+      - accessToken
+      - email
+      - memberId
+      - nickname
+      - refreshToken
+      type: object
+      properties:
+        nickname:
+          type: string
+          description: 닉네임
+        accessToken:
+          type: string
+          description: 액세스 토큰
+        email:
+          type: string
+          description: 이메일
+        memberId:
+          type: number
+          description: 회원 ID
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
     PortfolioCreateRequest:
       title: PortfolioCreateRequest
       required:
@@ -448,6 +544,28 @@ components:
               assetType:
                 type: string
                 description: 자산 타입 (STOCK/CASH)
+    ReissueResponse:
+      title: ReissueResponse
+      required:
+      - accessToken
+      - refreshToken
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: 새로운 액세스 토큰
+        refreshToken:
+          type: string
+          description: 새로운 리프레시 토큰
+    ReissueRequest:
+      title: ReissueRequest
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
     PortfolioResponse:
       title: PortfolioResponse
       required:
@@ -491,5 +609,5 @@ components:
               assetType:
                 type: string
                 description: 자산 타입
-    api-v1-portfolios-portfolioId486549215:
+    api-v1-stocks486549215:
       type: object

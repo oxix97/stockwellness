@@ -1,10 +1,8 @@
-package org.stockwellness.adapter.out.external.jwt;
+package org.stockwellness.adapter.out.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,29 +15,28 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.domain.shared.Email;
 
+import java.util.Base64;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
 class JwtProviderTest {
-    @Mock
-    Member member;
 
-    String secretKey;
-    JwtProvider jwtProvider;
+    private JwtProvider jwtProvider;
+    private JwtProperties jwtProperties;
+    private String secretKeyPlain = "test-secret-key-test-secret-key-test-secret-key";
+    private String secretKeyBase64;
+
+    @Mock
+    private Member member;
 
     @BeforeEach
     void setUp() {
-        // 1. 테스트용 SecretKey 생성 (HS512 알고리즘에 적합한 길이)
-        secretKey = Encoders.BASE64.encode(Keys.secretKeyFor(SignatureAlgorithm.HS512).getEncoded());
-        JwtProperties jwtProperties = new JwtProperties(
-                secretKey,          // secretKey
-                3600000L,           // accessTokenExpiryMs (1시간)
-                604800000L          // refreshTokenExpiryMs (7일)
-        );
-        // 2. Provider 생성 및 초기화 (생성자 주입 -> init 수동 호출)
+        secretKeyBase64 = Base64.getEncoder().encodeToString(secretKeyPlain.getBytes());
+        jwtProperties = new JwtProperties(secretKeyBase64, 3600000L, 86400000L);
         jwtProvider = new JwtProvider(jwtProperties);
-        jwtProvider.init(); // @PostConstruct 역할을 수동으로 수행
+        jwtProvider.init();
     }
 
     @Test
@@ -51,9 +48,8 @@ class JwtProviderTest {
         MemberRole role = MemberRole.USER;
         LoginType loginType = LoginType.GOOGLE;
 
-        // Member Mock 동작 정의
         given(member.getId()).willReturn(memberId);
-        given(member.getEmail()).willReturn(new Email(email)); // Email은 값 객체라 실제 객체 사용 가능
+        given(member.getEmail()).willReturn(new Email(email));
         given(member.getRole()).willReturn(role);
         given(member.getLoginType()).willReturn(loginType);
 
@@ -63,9 +59,8 @@ class JwtProviderTest {
         // then
         assertThat(token).isNotNull();
 
-        // 토큰 복호화 및 검증
         Claims claims = Jwts.parser()
-                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
+                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKeyBase64)))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -90,13 +85,12 @@ class JwtProviderTest {
         assertThat(refreshToken).isNotNull();
 
         Claims claims = Jwts.parser()
-                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
+                .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKeyBase64)))
                 .build()
                 .parseSignedClaims(refreshToken)
                 .getPayload();
 
         assertThat(claims.getSubject()).isEqualTo(String.valueOf(memberId));
-        // Refresh Token에는 보통 상세 개인정보를 넣지 않으므로 email 등은 확인하지 않음
     }
 
     @Test
@@ -105,7 +99,6 @@ class JwtProviderTest {
         // given
         Long memberId = 100L;
         given(member.getId()).willReturn(memberId);
-        // 테스트 편의를 위해 generateRefreshToken 사용하여 토큰 생성 (AccessToken 생성 시 설정이 더 많아서)
         String token = jwtProvider.generateRefreshToken(member);
 
         // when
@@ -135,7 +128,7 @@ class JwtProviderTest {
         // given
         given(member.getId()).willReturn(1L);
         String validToken = jwtProvider.generateRefreshToken(member);
-        String tamperedToken = validToken + "d"; // 토큰 내용 임의 변경
+        String tamperedToken = validToken + "d";
 
         // when
         boolean isValid = jwtProvider.isTokenValid(tamperedToken);

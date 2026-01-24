@@ -13,7 +13,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.stockwellness.adapter.out.external.jwt.JwtProvider;
+import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.global.security.CustomUserDetailsService;
 
 import java.io.IOException;
@@ -36,8 +36,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = extractJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && jwtProvider.isTokenValid(jwt)) {
-                Long memberId = jwtProvider.extractMemberId(jwt);
+            if (StringUtils.hasText(jwt)) {
+                // 토큰 검증과 ID 추출을 한 번에 수행 (성능 최적화)
+                Long memberId = jwtProvider.validateAndGetId(jwt);
 
                 UserDetails userDetails = userDetailService.loadUserByUsername(memberId.toString());
 
@@ -45,8 +46,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("JWT 인증 성공 - memberId: {}", memberId);
             }
         } catch (Exception e) {
-            log.error("JWT 인증 처리 중 오류 발생 - URI: {}", request.getRequestURI(), e);
-            // JwtExceptionFilter에서 ProblemDetail로 변환되므로 여기서는 그냥 넘김
+            // 인증 실패 로그는 WARN 레벨로 낮춤 (정상적인 실패 케이스 포함)
+            log.warn("JWT 인증 실패 - URI: {}, Message: {}", request.getRequestURI(), e.getMessage());
+            // 예외를 다시 던져서 JwtExceptionFilter가 처리하도록 함 (중요)
+            throw e; 
         }
 
         filterChain.doFilter(request, response);
