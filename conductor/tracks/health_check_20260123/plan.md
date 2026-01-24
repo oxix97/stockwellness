@@ -1,10 +1,10 @@
 # Implementation Plan - System Health Check & Architecture Audit
 
 ## Phase 1: Build & Test Verification
-- [~] Task: Verify Clean Build
+- [x] Task: Verify Clean Build
     - [ ] Verify that the project compiles and builds using `./gradlew clean build -x test`.
     - [ ] Fix any immediate build configuration errors if they prevent compilation.
-- [ ] Task: Verify Test Suite
+- [x] Task: Verify Test Suite
     - [ ] Execute all tests using `./gradlew test`.
     - [ ] Analyze test results. If tests fail, document them. (Do not spend excessive time fixing complex logic bugs; the goal is to assess state).
 - [ ] Task: Conductor - User Manual Verification 'Build & Test Verification' (Protocol in workflow.md)

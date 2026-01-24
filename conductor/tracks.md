@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: System Health Check & Architecture Audit**
+- [~] **Track: System Health Check & Architecture Audit**
   *Link: [./tracks/health_check_20260123/](./tracks/health_check_20260123/)*
