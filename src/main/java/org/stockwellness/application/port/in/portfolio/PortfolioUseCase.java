@@ -9,6 +9,7 @@ import java.util.List;
 public interface PortfolioUseCase {
     Long createPortfolio(CreatePortfolioCommand command);
     void updatePortfolio(UpdatePortfolioCommand command);
+    void deletePortfolio(Long memberId, Long portfolioId);
     PortfolioResponse getPortfolio(Long memberId, Long portfolioId);
     List<PortfolioResponse> getMyPortfolios(Long memberId);
 }

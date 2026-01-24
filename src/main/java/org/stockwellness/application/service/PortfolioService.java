@@ -7,6 +7,7 @@ import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.PortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
+import org.stockwellness.application.port.out.portfolio.DeletePortfolioPort;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SavePortfolioPort;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
@@ -25,6 +26,7 @@ public class PortfolioService implements PortfolioUseCase {
 
     private final LoadPortfolioPort loadPortfolioPort;
     private final SavePortfolioPort savePortfolioPort;
+    private final DeletePortfolioPort deletePortfolioPort;
     private final LoadStockPort loadStockPort;
 
     @Override
@@ -96,6 +98,21 @@ public class PortfolioService implements PortfolioUseCase {
                 .toList();
 
         portfolio.updateItems(newItems);
+    }
+
+    @Override
+    @Transactional
+    public void deletePortfolio(Long memberId, Long portfolioId) {
+        // 소유권 확인 (updatePortfolio와 동일한 로직)
+        loadPortfolioPort.loadPortfolio(portfolioId, memberId)
+                .orElseThrow(() -> {
+                    if (loadPortfolioPort.findById(portfolioId).isPresent()) {
+                        throw new BusinessException(ErrorCode.UNAUTHORIZED);
+                    }
+                    return new BusinessException(ErrorCode.PORTFOLIO_NOT_FOUND);
+                });
+
+        deletePortfolioPort.deletePortfolio(portfolioId);
     }
 
     private void validateStockCode(String stockCode, AssetType assetType) {

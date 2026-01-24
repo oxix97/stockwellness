@@ -106,4 +106,17 @@ public class PortfolioController {
         portfolioUseCase.updatePortfolio(command);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * 포트폴리오 삭제
+     * DELETE /api/v1/portfolios/{portfolioId}
+     */
+    @DeleteMapping("/{portfolioId}")
+    public ResponseEntity<Void> deletePortfolio(
+            @CurrentMemberId Long memberId,
+            @PathVariable Long portfolioId) {
+
+        portfolioUseCase.deletePortfolio(memberId, portfolioId);
+        return ResponseEntity.noContent().build();
+    }
 }

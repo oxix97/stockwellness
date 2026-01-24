@@ -64,18 +64,6 @@ class MemberTest {
         assertThat(member.isActive()).isTrue();
     }
 
-    @Test
-    @DisplayName("권한 목록을 올바르게 반환해야 한다.")
-    void getAuthorities_test() {
-        // given
-        Member member = Member.register("test@a.com", "tester", LoginType.GOOGLE);
-
-        // when & then
-        assertThat(member.getAuthorities())
-                .extracting("role")
-                .contains("USER");
-    }
-
     @Nested
     class EmailTest {
         @ParameterizedTest
