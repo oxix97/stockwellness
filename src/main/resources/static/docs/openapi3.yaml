@@ -46,6 +46,75 @@ paths:
       responses:
         "201":
           description: "201"
+  /api/v1/stocks:
+    get:
+      tags:
+      - Stock
+      summary: 종목 검색
+      description: 종목명 또는 티커로 종목을 검색합니다.
+      operationId: stock-search
+      parameters:
+      - name: keyword
+        in: query
+        description: 검색어 (종목명/티커)
+        required: false
+        schema:
+          type: string
+      - name: marketType
+        in: query
+        description: 시장 구분 (KOSPI/KOSDAQ)
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        description: 상장 상태 (ACTIVE/DELISTED)
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: 페이지 번호
+        required: false
+        schema:
+          type: string
+      - name: size
+        in: query
+        description: 페이지 크기
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId486549215"
+              examples:
+                stock-search:
+                  value: |-
+                    {
+                      "content" : [ {
+                        "isinCode" : "KR7005930003",
+                        "ticker" : "TICKER",
+                        "name" : "삼성전자",
+                        "marketType" : "KOSPI",
+                        "totalShares" : 1000000
+                      } ],
+                      "pageable" : "INSTANCE",
+                      "size" : 1,
+                      "number" : 0,
+                      "sort" : {
+                        "empty" : true,
+                        "sorted" : false,
+                        "unsorted" : true
+                      },
+                      "numberOfElements" : 1,
+                      "first" : true,
+                      "last" : true,
+                      "empty" : false
+                    }
   /api/v1/auth/test:
     get:
       tags:
@@ -64,8 +133,8 @@ paths:
                 health-check:
                   value: |-
                     {
-                      "status" : "ok",
-                      "service" : "stockwellness"
+                      "service" : "stockwellness",
+                      "status" : "ok"
                     }
   /api/v1/portfolios/{portfolioId}:
     get:
@@ -182,12 +251,129 @@ paths:
               $ref: "#/components/schemas/api-v1-portfolios-portfolioId486549215"
             examples:
               portfolio-delete:
-                value: _csrf=DWb1rhjf4EzgjqM1vf1y3hN7JHTHVm7gReCzI3H-uogcdmQ4aVDNlnu6hHXN65BWjtBG7iQfCUz3NAzNJ4OCFEOag7F_QVIP
+                value: _csrf=j9bSBqU0NtdPAmbJYhGrg5QM1uNFJtbLNp8ajPOtkAdmoOqgue_gPp0DUuNiZwD7ATyfsaFq-4FxEe_mVa4stZWd82YAwd-S
       responses:
         "204":
           description: "204"
+  /api/v1/stocks/{ticker}:
+    get:
+      tags:
+      - Stock
+      summary: 종목 상세 조회
+      description: 종목 상세 조회
+      operationId: stock-get-detail
+      parameters:
+      - name: ticker
+        in: path
+        description: 조회할 종목 티커
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockDetailResponse"
+              examples:
+                stock-get-detail:
+                  value: |-
+                    {
+                      "isinCode" : "KR7005930003",
+                      "ticker" : "TICKER",
+                      "name" : "삼성전자",
+                      "marketType" : "KOSPI",
+                      "sector" : null,
+                      "totalShares" : 1000000,
+                      "baseDate" : "2026-01-24",
+                      "closePrice" : 50000,
+                      "priceChange" : 0,
+                      "fluctuationRate" : 0,
+                      "openPrice" : 50000,
+                      "highPrice" : 51000,
+                      "lowPrice" : 49000,
+                      "volume" : 100000,
+                      "tradingValue" : 5000000000,
+                      "marketCap" : 300000000000000,
+                      "rsi14" : 50,
+                      "ma20" : 50000
+                    }
 components:
   schemas:
+    StockDetailResponse:
+      title: StockDetailResponse
+      required:
+      - baseDate
+      - closePrice
+      - fluctuationRate
+      - highPrice
+      - isinCode
+      - lowPrice
+      - marketCap
+      - marketType
+      - name
+      - openPrice
+      - priceChange
+      - ticker
+      - totalShares
+      - tradingValue
+      - volume
+      type: object
+      properties:
+        ma20:
+          type: number
+          description: 20일 이평선
+          nullable: true
+        priceChange:
+          type: number
+          description: 대비
+        marketCap:
+          type: number
+          description: 시가총액
+        ticker:
+          type: string
+          description: 티커
+        baseDate:
+          type: string
+          description: 기준일자
+        fluctuationRate:
+          type: number
+          description: 등락률
+        openPrice:
+          type: number
+          description: 시가
+        tradingValue:
+          type: number
+          description: 거래대금
+        marketType:
+          type: string
+          description: 시장 구분
+        totalShares:
+          type: number
+          description: 상장주식수
+        volume:
+          type: number
+          description: 거래량
+        lowPrice:
+          type: number
+          description: 저가
+        rsi14:
+          type: number
+          description: RSI(14)
+          nullable: true
+        highPrice:
+          type: number
+          description: 고가
+        name:
+          type: string
+          description: 종목명
+        closePrice:
+          type: number
+          description: 종가
+        isinCode:
+          type: string
+          description: ISIN 코드
     PortfolioUpdateRequest:
       title: PortfolioUpdateRequest
       required:

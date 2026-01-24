@@ -4,7 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
@@ -27,6 +31,17 @@ public class StockAdapter implements LoadStockPort {
     @Override
     public boolean existsByIsinCode(String isinCode) {
         return stockRepository.existsById(isinCode);
+    }
+
+    @Override
+    public Optional<Stock> loadStockByTicker(String ticker) {
+        return stockRepository.findByTicker(ticker);
+    }
+
+    @Override
+    public Slice<Stock> searchStocks(SearchStockQuery query) {
+        PageRequest pageable = PageRequest.of(query.page() - 1, query.size(), Sort.by("name").ascending());
+        return stockRepository.searchByCondition(query.keyword(), query.marketType(), query.status(), pageable);
     }
 
     public Stock save(Stock stock) {
