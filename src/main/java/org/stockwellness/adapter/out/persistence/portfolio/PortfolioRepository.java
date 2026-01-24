@@ -8,7 +8,7 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import java.util.List;
 import java.util.Optional;
 
-public interface PortfolioJpaRepository extends JpaRepository<Portfolio, Long> {
+public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
     List<Portfolio> findAllByMemberId(Long memberId);
 
     Optional<Portfolio> findByIdAndMemberId(Long id, Long memberId);

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockHistoryRepository;
+import org.stockwellness.application.port.out.stock.LoadStockHistoryPort;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.sql.Date;
@@ -13,10 +14,15 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class StockHistoryAdapter {
+public class StockHistoryAdapter implements LoadStockHistoryPort {
 
     private final StockHistoryRepository historyJpaRepository;
     private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public Optional<StockHistory> findLatestHistory(String isinCode) {
+        return historyJpaRepository.findTopByIsinCodeOrderByBaseDateDesc(isinCode);
+    }
 
     public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate) {
         return historyJpaRepository.findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(isinCode, baseDate);

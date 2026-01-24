@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.out.external.jwt;
+package org.stockwellness.adapter.out.security.jwt;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
