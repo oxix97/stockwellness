@@ -42,8 +42,7 @@ decorator:
 
 jwt:
   secret-key: ${jwt-secret}
-#  access-token-expiry-ms: 3600000
-  access-token-expiry-ms: 2592000000
+  access-token-expiry-ms: 3600000
   refresh-token-expiry-ms: 2592000000
 
 krx:
