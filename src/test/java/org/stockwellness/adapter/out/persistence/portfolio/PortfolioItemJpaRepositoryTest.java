@@ -22,10 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PortfolioItemRepositoryTest {
 
     @Autowired
-    PortfolioItemJpaRepository portfolioItemRepository;
+    PortfolioItemRepository portfolioItemRepository;
 
     @Autowired
-    PortfolioJpaRepository portfolioRepository;
+    PortfolioRepository portfolioRepository;
 
     @Autowired
     TestEntityManager em;

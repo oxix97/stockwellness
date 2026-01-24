@@ -9,16 +9,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.lang.Nullable;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.shared.Email;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
 
 import static jakarta.persistence.EnumType.STRING;
 import static java.util.Objects.requireNonNull;
@@ -29,7 +23,7 @@ import static org.stockwellness.domain.member.MemberStatus.ACTIVE;
 @Getter
 @ToString
 @NoArgsConstructor(access = PROTECTED)
-public class Member extends AbstractEntity implements UserDetails {
+public class Member extends AbstractEntity {
     @Embedded
     private Email email;
 
@@ -67,6 +61,9 @@ public class Member extends AbstractEntity implements UserDetails {
         if (nickname.isBlank()) {
             throw new IllegalArgumentException("닉네임은 공백만으로 이루어질 수 없습니다.");
         }
+        if (nickname.length() > 20) {
+            throw new IllegalArgumentException("닉네임은 20자를 초과할 수 없습니다.");
+        }
         return nickname;
     }
 
@@ -81,47 +78,5 @@ public class Member extends AbstractEntity implements UserDetails {
 
     public void deactivate() {
         this.status = MemberStatus.DEACTIVATED;
-    }
-
-    @Override
-    @JsonIgnore
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
-    }
-
-    @Override
-    @JsonIgnore
-    public @Nullable String getPassword() {
-        return "";
-    }
-
-    @Override
-    @JsonIgnore
-    public String getUsername() {
-        return this.getId().toString();
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isEnabled() {
-        return isActive();
     }
 }

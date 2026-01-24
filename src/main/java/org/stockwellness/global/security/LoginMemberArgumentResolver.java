@@ -27,6 +27,12 @@ public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolve
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof CustomUserDetails userDetails) {
+            return userDetails.getId();
+        }
+
+        // Fallback or explicit parsing if needed, though CustomUserDetails should be primary
         try {
             return Long.parseLong(authentication.getName());
         } catch (NumberFormatException e) {

@@ -1,6 +1,5 @@
 package org.stockwellness.application.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,13 +7,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
-import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
-import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioJpaRepository;
-import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
+import org.stockwellness.application.port.out.portfolio.DeletePortfolioPort;
+import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
+import org.stockwellness.application.port.out.portfolio.SavePortfolioPort;
+import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.fixture.PortfolioFixture;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
 
@@ -28,76 +29,78 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@ExtendWith(MockitoExtension.class) // Mockito 확장 사용
-@DisplayName("Portfolio Service 테스트")
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Portfolio 서비스 단위 테스트")
 class PortfolioServiceTest {
 
     @InjectMocks
-    PortfolioService portfolioService;
+    private PortfolioService portfolioService;
 
     @Mock
-    PortfolioJpaRepository portfolioRepository;
+    private LoadPortfolioPort loadPortfolioPort;
 
-    // 테스트 데이터
-    final Long memberId = 1L;
-    PortfolioCreateRequest createRequest;
-    PortfolioUpdateRequest updateRequest;
+    @Mock
+    private SavePortfolioPort savePortfolioPort;
 
-    @BeforeEach
-    void setUp() {
-        // [Given] 공통 요청 데이터 생성 (총 8조각)
-        List<PortfolioItemRequest> items = List.of(
-                new PortfolioItemRequest("AAPL", 4, AssetType.STOCK),
-                new PortfolioItemRequest("KRW", 4, AssetType.CASH)
-        );
+    @Mock
+    private DeletePortfolioPort deletePortfolioPort;
 
-        createRequest = new PortfolioCreateRequest("내 연금", "설명", items);
-        updateRequest = new PortfolioUpdateRequest(items);
-    }
+    @Mock
+    private LoadStockPort loadStockPort;
 
     @Nested
     @DisplayName("포트폴리오 생성 (Create)")
     class Create {
 
         @Test
-        @DisplayName("성공: 중복된 이름이 없고 데이터가 유효하면 포트폴리오가 생성된다")
-        void success() {
+        @DisplayName("성공: 데이터가 유효하면 포트폴리오를 저장하고 ID를 반환한다")
+        void create_success() {
             // given
-            given(portfolioRepository.existsByMemberIdAndName(memberId, createRequest.name()))
-                    .willReturn(false); // 중복 아님
+            CreatePortfolioCommand command = PortfolioFixture.createCreateCommand(List.of(
+                    PortfolioFixture.createStockItem("AAPL", 4),
+                    PortfolioFixture.createCashItem(4)
+            ));
 
-            // save 호출 시, 입력된 엔티티를 그대로 리턴한다고 가정 (ID만 임의 부여)
-            given(portfolioRepository.save(any(Portfolio.class)))
-                    .willAnswer(invocation -> {
-                        Portfolio p = invocation.getArgument(0);
-                        // Reflection 등을 쓰지 않고 Mocking 관점에서는 객체가 반환됨을 확인
-                        return p;
-                    });
+            given(loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
+            given(loadStockPort.existsByIsinCode("AAPL")).willReturn(true);
+            given(savePortfolioPort.savePortfolio(any(Portfolio.class)))
+                    .willReturn(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID));
 
             // when
-            Long resultId = portfolioService.createPortfolio(memberId, createRequest);
+            Long portfolioId = portfolioService.createPortfolio(command);
 
             // then
-            // 1. 중복 검사가 호출되었는지 확인
-            verify(portfolioRepository).existsByMemberIdAndName(memberId, createRequest.name());
-            // 2. 저장이 호출되었는지 확인
-            verify(portfolioRepository).save(any(Portfolio.class));
+            assertThat(portfolioId).isEqualTo(PortfolioFixture.PORTFOLIO_ID);
+            verify(savePortfolioPort).savePortfolio(any(Portfolio.class));
         }
 
         @Test
-        @DisplayName("실패: 이미 존재하는 포트폴리오 이름이면 예외가 발생한다")
+        @DisplayName("실패: 동일한 이름의 포트폴리오가 이미 존재하면 예외가 발생한다")
         void fail_duplicate_name() {
             // given
-            given(portfolioRepository.existsByMemberIdAndName(memberId, createRequest.name()))
-                    .willReturn(true); // 이미 존재함
+            CreatePortfolioCommand command = PortfolioFixture.createCreateCommand(List.of());
+            given(loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(true);
 
             // when & then
-            assertThatThrownBy(() -> portfolioService.createPortfolio(memberId, createRequest))
+            assertThatThrownBy(() -> portfolioService.createPortfolio(command))
                     .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_PORTFOLIO_NAME); // ErrorCode 추가 필요
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+        }
 
-            // save는 호출되지 않아야 함
-            verify(portfolioRepository, times(0)).save(any(Portfolio.class));
+        @Test
+        @DisplayName("실패: 존재하지 않는 주식 종목 코드(ISIN)를 포함하면 예외가 발생한다")
+        void fail_invalid_stock_code() {
+            // given
+            CreatePortfolioCommand command = PortfolioFixture.createCreateCommand(List.of(
+                    PortfolioFixture.createStockItem("INVALID_CODE", 1)
+            ));
+            given(loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
+            given(loadStockPort.existsByIsinCode("INVALID_CODE")).willReturn(false);
+
+            // when & then
+            assertThatThrownBy(() -> portfolioService.createPortfolio(command))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.RESOURCE_NOT_FOUND);
         }
     }
 
@@ -106,34 +109,48 @@ class PortfolioServiceTest {
     class Read {
 
         @Test
-        @DisplayName("성공: 내 포트폴리오를 상세 조회하면 정보를 반환한다")
-        void success() {
+        @DisplayName("성공: 내 포트폴리오 정보를 상세 조회한다")
+        void read_success() {
             // given
-            Long portfolioId = 100L;
-            Portfolio mockPortfolio = Portfolio.create(memberId, "내 연금", "설명");
-            // (필요 시 Reflection으로 ID 주입 가능하지만, 여기선 흐름만 검증)
-
-            given(portfolioRepository.findWithItems(portfolioId, memberId))
-                    .willReturn(Optional.of(mockPortfolio));
+            Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.of(portfolio));
 
             // when
-            PortfolioResponse response = portfolioService.getPortfolio(memberId, portfolioId);
+            PortfolioResponse response = portfolioService.getPortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID);
 
             // then
-            assertThat(response).isNotNull();
-            assertThat(response.name()).isEqualTo("내 연금");
+            assertThat(response.id()).isEqualTo(PortfolioFixture.PORTFOLIO_ID);
+            assertThat(response.name()).isEqualTo(PortfolioFixture.NAME);
         }
 
         @Test
-        @DisplayName("실패: 존재하지 않거나 내 것이 아닌 포트폴리오는 예외가 발생한다")
+        @DisplayName("실패: 다른 사용자의 포트폴리오를 조회하려고 하면 UNAUTHORIZED 예외가 발생한다")
+        void fail_unauthorized() {
+            // given
+            Long otherMemberId = 999L;
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, otherMemberId))
+                    .willReturn(Optional.empty());
+            given(loadPortfolioPort.findById(PortfolioFixture.PORTFOLIO_ID))
+                    .willReturn(Optional.of(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID)));
+
+            // when & then
+            assertThatThrownBy(() -> portfolioService.getPortfolio(otherMemberId, PortfolioFixture.PORTFOLIO_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는 포트폴리오를 조회하면 PORTFOLIO_NOT_FOUND 예외가 발생한다")
         void fail_not_found() {
             // given
-            Long portfolioId = 999L;
-            given(portfolioRepository.findWithItems(portfolioId, memberId))
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.empty());
+            given(loadPortfolioPort.findById(PortfolioFixture.PORTFOLIO_ID))
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> portfolioService.getPortfolio(memberId, portfolioId))
+            assertThatThrownBy(() -> portfolioService.getPortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PORTFOLIO_NOT_FOUND);
         }
@@ -144,35 +161,101 @@ class PortfolioServiceTest {
     class Update {
 
         @Test
-        @DisplayName("성공: 포트폴리오 구성 종목을 변경한다")
-        void success() {
+        @DisplayName("성공: 이름, 설명 및 종목 구성을 모두 수정한다")
+        void update_success() {
             // given
-            Long portfolioId = 100L;
-            Portfolio mockPortfolio = Portfolio.create(memberId, "기존 포트", "설명");
+            Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
+            UpdatePortfolioCommand command = PortfolioFixture.createUpdateCommand(
+                    PortfolioFixture.PORTFOLIO_ID, "수정된 이름", List.of(PortfolioFixture.updateStockItem("TSLA", 8))
+            );
 
-            given(portfolioRepository.findByIdAndMemberId(portfolioId, memberId))
-                    .willReturn(Optional.of(mockPortfolio));
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.of(portfolio));
+            given(loadPortfolioPort.existsPortfolioName(PortfolioFixture.MEMBER_ID, "수정된 이름")).willReturn(false);
+            given(loadStockPort.existsByIsinCode("TSLA")).willReturn(true);
 
             // when
-            portfolioService.updatePortfolio(memberId, portfolioId, updateRequest);
+            portfolioService.updatePortfolio(command);
 
             // then
-            // 포트폴리오 내부 아이템이 업데이트 되었는지 확인 (도메인 로직은 Unit Test에서 검증했으므로 호출 여부만 확인)
-            assertThat(mockPortfolio.getTotalPieces()).isEqualTo(8);
+            assertThat(portfolio.getName()).isEqualTo("수정된 이름");
+            assertThat(portfolio.getTotalPieces()).isEqualTo(8);
         }
 
         @Test
-        @DisplayName("실패: 수정하려는 포트폴리오가 없으면 예외가 발생한다")
-        void fail_not_found() {
+        @DisplayName("실패: 변경하려는 이름이 이미 다른 포트폴리오에서 사용 중이면 예외가 발생한다")
+        void fail_duplicate_name_on_update() {
             // given
-            Long portfolioId = 999L;
-            given(portfolioRepository.findByIdAndMemberId(portfolioId, memberId))
+            Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
+            UpdatePortfolioCommand command = PortfolioFixture.createUpdateCommand(
+                    PortfolioFixture.PORTFOLIO_ID, "중복된 이름", List.of()
+            );
+
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.of(portfolio));
+            given(loadPortfolioPort.existsPortfolioName(PortfolioFixture.MEMBER_ID, "중복된 이름")).willReturn(true);
+
+            // when & then
+            assertThatThrownBy(() -> portfolioService.updatePortfolio(command))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+        }
+    }
+
+    @Nested
+    @DisplayName("포트폴리오 삭제 (Delete)")
+    class Delete {
+
+        @Test
+        @DisplayName("성공: 내 포트폴리오를 삭제한다")
+        void delete_success() {
+            // given
+            // 소유권 확인 로직이 loadPortfolioPort.loadPortfolio(id, memberId)를 사용할 것으로 예상
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.of(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID)));
+
+            // when
+            portfolioService.deletePortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID);
+
+            // then
+            verify(deletePortfolioPort).deletePortfolio(PortfolioFixture.PORTFOLIO_ID);
+        }
+
+        @Test
+        @DisplayName("실패: 다른 사람의 포트폴리오를 삭제하려고 하면 UNAUTHORIZED 예외가 발생한다")
+        void fail_unauthorized() {
+            // given
+            Long otherMemberId = 999L;
+            // ID로는 존재함
+            given(loadPortfolioPort.findById(PortfolioFixture.PORTFOLIO_ID))
+                    .willReturn(Optional.of(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID)));
+            // MemberId로는 존재하지 않음 (내 것이 아님)
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, otherMemberId))
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> portfolioService.updatePortfolio(memberId, portfolioId, updateRequest))
+            assertThatThrownBy(() -> portfolioService.deletePortfolio(otherMemberId, PortfolioFixture.PORTFOLIO_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
+            
+            verify(deletePortfolioPort, times(0)).deletePortfolio(any());
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않는 포트폴리오를 삭제하려고 하면 PORTFOLIO_NOT_FOUND 예외가 발생한다")
+        void fail_not_found() {
+            // given
+            given(loadPortfolioPort.findById(PortfolioFixture.PORTFOLIO_ID))
+                    .willReturn(Optional.empty());
+            given(loadPortfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> portfolioService.deletePortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PORTFOLIO_NOT_FOUND);
+
+            verify(deletePortfolioPort, times(0)).deletePortfolio(any());
         }
     }
 }

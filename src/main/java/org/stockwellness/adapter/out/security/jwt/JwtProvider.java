@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.out.external.jwt;// adapter/out/external/jwt/JwtTokenProvider.java (이름 JwtProvider로 추천)
+package org.stockwellness.adapter.out.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -25,7 +25,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
     @PostConstruct
     public void init() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.secretKey());
-        this.secretKey = Keys.hmacShaKeyFor(keyBytes);  // 최신 방식 (알고리즘 자동 선택)
+        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     @Override
@@ -40,7 +40,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
                 .claim("role", member.getRole().name())
                 .issuedAt(now)
                 .expiration(expiry)
-                .signWith(secretKey)  // 0.12.x 최신: Key만 넣으면 알고리즘 자동
+                .signWith(secretKey, Jwts.SIG.HS256) // 알고리즘 명시
                 .compact();
     }
 
@@ -53,36 +53,39 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
                 .subject(member.getId().toString())
                 .issuedAt(now)
                 .expiration(expiry)
-                .signWith(secretKey)
+                .signWith(secretKey, Jwts.SIG.HS256)
                 .compact();
     }
 
-    // 추출 메서드들 (필터에서 사용)
+    /**
+     * 토큰 검증 및 MemberId 추출을 한 번에 수행 (성능 최적화)
+     * @return memberId (유효하지 않으면 예외 발생)
+     */
     @Override
-    public Long extractMemberId(String token) {
-        return Long.valueOf(getClaims(token).getSubject());
-    }
-
-    // 기타 extract 메서드 추가 가능
-
-    @Override
-    public boolean isTokenValid(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private Claims getClaims(String token) {
-        return Jwts.parser()
+    public Long validateAndGetId(String token) {
+        Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+        
+        return Long.valueOf(claims.getSubject());
+    }
+    
+    // extractMemberId (RefreshTokenPort 등 다른 곳에서 쓸 수 있으므로 public 유지 또는 private로 변경 검토)
+    // 현재는 ValidateTokenPort를 통해서만 호출되므로 제거해도 됨. 
+    // 하지만 AuthService.reissue에서 extractMemberId를 쓰고 있음. -> AuthService 수정 필요.
+    
+    public Long extractMemberId(String token) {
+        return validateAndGetId(token);
+    }
+    
+    public boolean isTokenValid(String token) {
+        try {
+            validateAndGetId(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

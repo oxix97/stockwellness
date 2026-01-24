@@ -1,0 +1,35 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+  batch:
+    job:
+      enabled: false
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+  ai:
+    openai:
+      api-key: "dummy-key"
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+
+jwt:
+  secret-key: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
+  access-token-expiry-ms: 3600000
+  refresh-token-expiry-ms: 86400000
+
+krx:
+  service-key: "dummy-krx-service-key"
+  base-url: "http://localhost:8080"

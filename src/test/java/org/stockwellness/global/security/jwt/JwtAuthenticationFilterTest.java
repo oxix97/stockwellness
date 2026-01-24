@@ -15,12 +15,13 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.stockwellness.adapter.out.external.jwt.JwtProvider;
+import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.global.security.CustomUserDetailsService;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -50,8 +51,7 @@ class JwtAuthenticationFilterTest {
         void valid_token_sets_authentication() throws ServletException, IOException {
             // given
             String token = "valid.jwt.token";
-            given(jwtProvider.isTokenValid(token)).willReturn(true);
-            given(jwtProvider.extractMemberId(anyString())).willReturn(1L);
+            given(jwtProvider.validateAndGetId(token)).willReturn(1L);
             given(userDetailsService.loadUserByUsername("1")).willReturn(userDetails);
 
             MockHttpServletRequest request = new MockHttpServletRequest();
@@ -72,10 +72,9 @@ class JwtAuthenticationFilterTest {
         void doFilterInternal_fail_disabled() throws ServletException, IOException {
             // given
             String token = "valid.token";
-            given(jwtProvider.isTokenValid(anyString())).willReturn(true);
-            given(jwtProvider.extractMemberId(anyString())).willReturn(1L);
+            given(jwtProvider.validateAndGetId(token)).willReturn(1L);
 
-            // Service가 DisabledException을 던지도록 설정 (isActive 체크 로직은 Service에 있음)
+            // Service가 DisabledException을 던지도록 설정
             given(userDetailsService.loadUserByUsername("1"))
                     .willThrow(new DisabledException("비활성화된 계정"));
 
@@ -83,12 +82,13 @@ class JwtAuthenticationFilterTest {
             request.addHeader("Authorization", "Bearer " + token);
             MockHttpServletResponse response = new MockHttpServletResponse();
 
-            // when
-            jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+            // when & then
+            // 필터가 예외를 다시 던지므로 검증
+            assertThatThrownBy(() -> jwtAuthenticationFilter.doFilterInternal(request, response, filterChain))
+                    .isInstanceOf(DisabledException.class);
 
-            // then
             assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-            verify(filterChain).doFilter(request, response);
+            verify(filterChain, never()).doFilter(request, response);
         }
     }
 
@@ -107,7 +107,7 @@ class JwtAuthenticationFilterTest {
 
             // then
             assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-            verify(jwtProvider, never()).isTokenValid(anyString()); // 검증 시도조차 안 함
+            verify(jwtProvider, never()).validateAndGetId(anyString()); // 검증 시도조차 안 함
             verify(filterChain).doFilter(request, response);
         }
 
@@ -136,14 +136,15 @@ class JwtAuthenticationFilterTest {
             request.addHeader("Authorization", "Bearer " + token);
             MockHttpServletResponse response = new MockHttpServletResponse();
 
-            given(jwtProvider.isTokenValid(token)).willReturn(false); // 검증 실패
+            // 예외를 던지도록 설정 (필터 내부에서 catch 후 rethrow)
+            given(jwtProvider.validateAndGetId(token)).willThrow(new io.jsonwebtoken.JwtException("Invalid Token"));
 
-            // when
-            jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+            // when & then
+            assertThatThrownBy(() -> jwtAuthenticationFilter.doFilterInternal(request, response, filterChain))
+                    .isInstanceOf(io.jsonwebtoken.JwtException.class);
 
-            // then
             assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-            verify(filterChain).doFilter(request, response);
+            verify(filterChain, never()).doFilter(request, response);
         }
     }
 }
