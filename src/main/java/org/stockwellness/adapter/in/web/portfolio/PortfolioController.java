@@ -9,7 +9,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.application.service.PortfolioService;
+import org.stockwellness.application.port.in.portfolio.PortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.global.security.CurrentMemberId;
 
 import java.net.URI;
@@ -19,7 +21,7 @@ import java.util.List;
 @RequestMapping("/api/v1/portfolios")
 @RequiredArgsConstructor
 public class PortfolioController {
-    private final PortfolioService portfolioService;
+    private final PortfolioUseCase portfolioUseCase;
 
     /**
      * 포트폴리오 생성
@@ -28,11 +30,23 @@ public class PortfolioController {
     @PostMapping
     public ResponseEntity<Void> createPortfolio(
             @CurrentMemberId Long memberId,
-            @RequestBody @Valid PortfolioCreateRequest request) { // DTO에 @NotNull 등 추가 권장
+            @RequestBody @Valid PortfolioCreateRequest request) {
 
-        Long portfolioId = portfolioService.createPortfolio(memberId, request);
+        CreatePortfolioCommand command = new CreatePortfolioCommand(
+            memberId,
+            request.name(),
+            request.description(),
+            request.items().stream()
+                .map(item -> new CreatePortfolioCommand.PortfolioItemCommand(
+                    item.stockCode(),
+                    item.pieceCount(),
+                    item.assetType()
+                ))
+                .toList()
+        );
 
-        // RESTful 원칙: 생성된 리소스의 위치(URI)를 Header에 담아 201 Created 반환
+        Long portfolioId = portfolioUseCase.createPortfolio(command);
+
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(portfolioId)
@@ -48,7 +62,7 @@ public class PortfolioController {
     public ResponseEntity<List<PortfolioResponse>> getMyPortfolios(
             @CurrentMemberId Long memberId) {
 
-        List<PortfolioResponse> responses = portfolioService.getMyPortfolios(memberId);
+        List<PortfolioResponse> responses = portfolioUseCase.getMyPortfolios(memberId);
         return ResponseEntity.ok(responses);
     }
 
@@ -61,14 +75,13 @@ public class PortfolioController {
             @CurrentMemberId Long memberId,
             @PathVariable Long portfolioId) {
 
-        PortfolioResponse response = portfolioService.getPortfolio(memberId, portfolioId);
+        PortfolioResponse response = portfolioUseCase.getPortfolio(memberId, portfolioId);
         return ResponseEntity.ok(response);
     }
 
     /**
      * 포트폴리오 수정 (구성 종목 변경)
      * PUT /api/portfolios/{portfolioId}
-     * (전체 구성을 갈아끼우므로 PUT 사용, 부분 변경이라면 PATCH 권장)
      */
     @PutMapping("/{portfolioId}")
     public ResponseEntity<Void> updatePortfolio(
@@ -76,7 +89,19 @@ public class PortfolioController {
             @PathVariable Long portfolioId,
             @RequestBody @Valid PortfolioUpdateRequest request) {
 
-        portfolioService.updatePortfolio(memberId, portfolioId, request);
+        UpdatePortfolioCommand command = new UpdatePortfolioCommand(
+            memberId,
+            portfolioId,
+            request.items().stream()
+                .map(item -> new UpdatePortfolioCommand.PortfolioItemCommand(
+                    item.stockCode(),
+                    item.pieceCount(),
+                    item.assetType()
+                ))
+                .toList()
+        );
+
+        portfolioUseCase.updatePortfolio(command);
         return ResponseEntity.noContent().build();
     }
 }

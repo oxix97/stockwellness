@@ -12,7 +12,7 @@ import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioJpaRepository;
+import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.global.error.ErrorCode;
@@ -36,7 +36,7 @@ class PortfolioServiceTest {
     PortfolioService portfolioService;
 
     @Mock
-    PortfolioJpaRepository portfolioRepository;
+    PortfolioRepository portfolioRepository;
 
     // 테스트 데이터
     final Long memberId = 1L;

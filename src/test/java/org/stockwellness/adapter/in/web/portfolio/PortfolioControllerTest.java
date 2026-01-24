@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioJpaRepository;
+import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -45,7 +45,7 @@ class PortfolioIntegrationTest {
     ObjectMapper objectMapper;
 
     @Autowired
-    PortfolioJpaRepository portfolioRepository;
+    PortfolioRepository portfolioRepository;
 
     // 테스트용 사용자 ID (String "1" -> ArgumentResolver가 Long 1L로 변환)
     static final String MY_ID = "1";
