@@ -77,30 +77,3 @@ logging:
 
     # 7. Transaction (트랜잭션 시작/종료 확인 - 필요시 DEBUG)
     org.springframework.transaction: INFO
-
----
-spring:
-  config:
-    activate:
-      on-profile: test
-  batch:
-    job:
-      enabled: false
-  datasource:
-    url: jdbc:h2:mem:testdb
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    open-in-view: false
-  h2:
-    console:
-      enabled: true
-      
-krx-secret: "dummy-krx-secret"
-krx:
-  service-key: "dummy-krx-service-key"
-jwt-secret: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
-jwt:
-  secret-key: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"

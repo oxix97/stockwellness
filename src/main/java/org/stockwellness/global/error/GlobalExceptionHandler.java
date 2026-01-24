@@ -2,6 +2,7 @@ package org.stockwellness.global.error;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -10,6 +11,7 @@ import org.stockwellness.global.error.exception.BusinessException;
 
 import static org.stockwellness.global.error.ErrorCode.*;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -36,7 +38,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception e) {
-        e.printStackTrace(); // 로깅은 나중에 Logback으로
+        log.error("Unexpected error occurred: ", e);
         return createProblemDetail(INTERNAL_SERVER_ERROR);
     }
 
