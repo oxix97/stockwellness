@@ -5,9 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
 import org.stockwellness.domain.shared.AbstractEntity;
-import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
 
 import static jakarta.persistence.FetchType.LAZY;
 import static lombok.AccessLevel.PROTECTED;
@@ -54,7 +53,7 @@ public class PortfolioItem extends AbstractEntity {
     // 최소 1조각 검증
     private static void validatePieceCount(int pieceCount) {
         if (pieceCount < 1) {
-            throw new BusinessException(ErrorCode.INVALID_ITEM_PIECE_COUNT);
+            throw new PortfolioDomainException("각 종목은 최소 1조각 이상이어야 합니다.");
         }
     }
 

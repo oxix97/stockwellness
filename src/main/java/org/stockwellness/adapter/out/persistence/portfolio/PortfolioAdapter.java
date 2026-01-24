@@ -16,6 +16,11 @@ public class PortfolioAdapter implements LoadPortfolioPort, SavePortfolioPort {
     private final PortfolioRepository portfolioRepository;
 
     @Override
+    public Optional<Portfolio> findById(Long id) {
+        return portfolioRepository.findById(id);
+    }
+
+    @Override
     public Optional<Portfolio> loadPortfolio(Long id, Long memberId) {
         return portfolioRepository.findWithItems(id, memberId);
     }

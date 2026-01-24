@@ -92,6 +92,8 @@ public class PortfolioController {
         UpdatePortfolioCommand command = new UpdatePortfolioCommand(
             memberId,
             portfolioId,
+            request.name(),
+            request.description(),
             request.items().stream()
                 .map(item -> new UpdatePortfolioCommand.PortfolioItemCommand(
                     item.stockCode(),

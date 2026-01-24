@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
@@ -14,9 +15,19 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class StockAdapter {
+public class StockAdapter implements LoadStockPort {
 
     private final StockRepository stockRepository;
+
+    @Override
+    public Optional<Stock> loadStockByIsinCode(String isinCode) {
+        return stockRepository.findById(isinCode);
+    }
+
+    @Override
+    public boolean existsByIsinCode(String isinCode) {
+        return stockRepository.existsById(isinCode);
+    }
 
     public Stock save(Stock stock) {
         return stockRepository.save(stock);
