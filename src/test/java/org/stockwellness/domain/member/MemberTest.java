@@ -24,7 +24,7 @@ class MemberTest {
         Member member = Member.register(email, nickname, loginType);
 
         // then
-        assertThat(member.getEmail().address()).isEqualTo(email); // Email 객체 구조에 따라 조정
+        assertThat(member.getEmail().getAddress()).isEqualTo(email); // Email 객체 구조에 따라 조정
         assertThat(member.getNickname()).isEqualTo(nickname);
         assertThat(member.getLoginType()).isEqualTo(loginType);
 
@@ -80,7 +80,7 @@ class MemberTest {
             Email email = new Email(validAddress);
             ;
             // then
-            assertThat(email.address()).isEqualTo(validAddress);
+            assertThat(email.getAddress()).isEqualTo(validAddress);
         }
 
         @ParameterizedTest
