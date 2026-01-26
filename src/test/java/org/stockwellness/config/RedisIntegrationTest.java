@@ -37,9 +37,10 @@ class RedisIntegrationTest {
 
         // Then
         assertThat(cachedMember).isNotNull();
-        assertThat(cachedMember.getEmail().address()).isEqualTo(member.getEmail().address());
+        assertThat(cachedMember.getLoginType()).isEqualTo(member.getLoginType());
+        assertThat(cachedMember.getEmail().getAddress()).isEqualTo(member.getEmail().getAddress());
         assertThat(cachedMember.getNickname()).isEqualTo(member.getNickname());
-        
+
         // Clean up
         memberCache.evict(memberId.toString());
     }

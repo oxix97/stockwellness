@@ -25,7 +25,7 @@ public class StockHistoryAdapter implements LoadStockHistoryPort {
     }
 
     public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate) {
-        return historyJpaRepository.findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(isinCode, baseDate);
+        return historyJpaRepository.findRecentHistory(isinCode, baseDate, 150);
     }
 
 
@@ -36,11 +36,6 @@ public class StockHistoryAdapter implements LoadStockHistoryPort {
 
     public List<String> findAllIsinCodes() {
         return historyJpaRepository.findAllIsinCodes();
-    }
-
-
-    public List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode) {
-        return historyJpaRepository.findTop2ByIsinCodeOrderByBaseDateDesc(isinCode);
     }
 
 

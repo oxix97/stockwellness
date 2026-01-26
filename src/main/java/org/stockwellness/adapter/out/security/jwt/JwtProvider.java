@@ -35,7 +35,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
 
         return Jwts.builder()
                 .subject(member.getId().toString())  // memberId
-                .claim("email", member.getEmail().address())
+                .claim("email", member.getEmail().getAddress())
                 .claim("loginType", member.getLoginType())
                 .claim("role", member.getRole().name())
                 .issuedAt(now)
