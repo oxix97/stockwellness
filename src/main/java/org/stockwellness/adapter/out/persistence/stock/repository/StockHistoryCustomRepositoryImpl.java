@@ -10,7 +10,7 @@ import java.util.List;
 import static org.stockwellness.domain.stock.QStockHistory.stockHistory;
 
 @RequiredArgsConstructor
-public class StockHistoryRepositoryImpl implements StockHistoryCustomRepository {
+public class StockHistoryCustomRepositoryImpl implements StockHistoryCustomRepository {
 
     private final JPAQueryFactory queryFactory;
 

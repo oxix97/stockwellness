@@ -11,7 +11,7 @@ import static org.stockwellness.domain.portfolio.QPortfolio.portfolio;
 import static org.stockwellness.domain.portfolio.QPortfolioItem.portfolioItem;
 
 @RequiredArgsConstructor
-public class PortfolioRepositoryImpl implements PortfolioCustomRepository {
+public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository {
 
     private final JPAQueryFactory queryFactory;
 

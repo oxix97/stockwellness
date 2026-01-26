@@ -16,7 +16,7 @@ import java.util.List;
 import static org.stockwellness.domain.stock.QStock.stock;
 
 @RequiredArgsConstructor
-public class StockRepositoryImpl implements StockCustomRepository {
+public class StockCustomRepositoryImpl implements StockCustomRepository {
 
     private final JPAQueryFactory queryFactory;
 
