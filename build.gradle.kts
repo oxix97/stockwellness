@@ -1,5 +1,6 @@
 plugins {
     java
+    id("jacoco")
     // [변경 1] Spring Boot 3.4.1 (최신 안정 버전)
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
@@ -113,8 +114,40 @@ dependencies {
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 }
 
+// JaCoCo 설정
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test) // 리포트 생성 전 테스트 실행 강제
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    // 커버리지 측정 제외 대상 설정
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "**/Q*",                         // QueryDSL 생성 클래스
+                    "**/*Application*",              // 메인 애플리케이션
+                    "**/*Config*",                   // 설정 파일
+                    "**/*Dto*",                      // DTO
+                    "**/*Request*",                  // Request 객체
+                    "**/*Response*",                 // Response 객체
+                    "**/*Exception*",                // 예외 클래스
+                    "**/global/security/jwt/**"      // 보안 관련 라이브러리성 코드
+                )
+            }
+        })
+    )
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport) // 테스트 후 리포트 자동 생성
 }
 
 openapi3 {

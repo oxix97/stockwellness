@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.config.TestJpaConfig;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -16,7 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Import(TestJpaConfig.class)
+@Import({TestJpaConfig.class, QueryDslConfig.class})
 @DataJpaTest
 @DisplayName("PortfolioItem Repository 테스트")
 class PortfolioItemRepositoryTest {
