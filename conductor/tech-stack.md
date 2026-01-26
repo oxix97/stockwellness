@@ -8,6 +8,7 @@
 ## 2. Data & Persistence
 - **Primary Database:** PostgreSQL
 - **Caching:** Redis (for session management and technical indicator caching)
+- **Query Engine:** QueryDSL (for type-safe dynamic queries)
 - **In-Memory Database:** H2 (for integration and repository testing)
 
 ## 3. Specialized Engines
