@@ -28,7 +28,7 @@ public class PortfolioAdapter implements LoadPortfolioPort, SavePortfolioPort, D
 
     @Override
     public List<Portfolio> loadAllPortfolios(Long memberId) {
-        return portfolioRepository.findAllByMemberId(memberId);
+        return portfolioRepository.findAllByMemberIdWithItems(memberId);
     }
 
     @Override
