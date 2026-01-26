@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface StockHistoryRepository extends JpaRepository<StockHistory, StockHistoryId> {
+public interface StockHistoryRepository extends JpaRepository<StockHistory, StockHistoryId>, StockHistoryCustomRepository {
     /**
      * 특정 종목의 특정 기간 시세 조회 (AI 학습 및 차트용 핵심 쿼리)
      * <p>BaseDate 기준으로 정렬하여 반환</p>
@@ -33,17 +33,6 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Stoc
      */
     List<StockHistory> findByBaseDate(LocalDate baseDate);
 
-    /**
-     * 특정 종목의 N일치 이동평균선 계산 등을 위해 최근 N건만 가져오기
-     * <p>JPQL 사용 예시</p>
-     */
-    @Query("SELECT h FROM StockHistory h WHERE h.isinCode = :isinCode AND h.baseDate <= :targetDate ORDER BY h.baseDate DESC LIMIT :limit")
-    List<StockHistory> findRecentHistory(
-            @Param("isinCode") String isinCode,
-            @Param("targetDate") LocalDate targetDate,
-            @Param("limit") int limit
-    );
-
     List<StockHistory> findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(String isinCode, LocalDate baseDate);
 
     List<StockHistory> findAllByIsinCodeOrderByBaseDateAsc(String isinCode);
@@ -51,16 +40,4 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Stoc
     @Query("SELECT distinct isinCode FROM StockHistory")
     List<String> findAllIsinCodes();
 
-    /**
-     * [AI Context용]
-     * 특정 종목의 가장 최근 데이터 2건 조회 (오늘, 어제)
-     * - 골든/데드 크로스 및 전일 대비 변화량 계산에 사용
-     */
-    List<StockHistory> findTop2ByIsinCodeOrderByBaseDateDesc(String isinCode);
-
-    List<StockHistory> findTop200ByIsinCodeOrderByBaseDateDesc(String isinCode);
-
-    List<StockHistory> findTop300ByIsinCodeOrderByBaseDateDesc(String isinCode);
-
-    List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate);
 }

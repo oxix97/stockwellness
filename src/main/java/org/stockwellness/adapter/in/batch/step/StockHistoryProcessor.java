@@ -26,7 +26,7 @@ public class StockHistoryProcessor implements ItemProcessor<String, List<StockHi
     @Override
     public List<StockHistory> process(String isinCode) throws Exception {
         // 1. 해당 종목의 최근 히스토리 조회 (최대 300일)
-        List<StockHistory> rawHistory = stockHistoryRepository.findTop300ByIsinCodeOrderByBaseDateDesc(isinCode);
+        List<StockHistory> rawHistory = stockHistoryRepository.findRecentHistory(isinCode, LocalDate.now(), 300);
 
         if (rawHistory.isEmpty()) {
             return null; // 데이터가 없으면 Skip

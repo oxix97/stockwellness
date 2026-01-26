@@ -23,7 +23,7 @@ public class StockTechnicalDataAdapter implements LoadTechnicalDataPort {
     @Override
     public AiAnalysisContext loadTechnicalContext(String isinCode) {
         // 1. DB 조회
-        List<StockHistory> histories = stockHistoryRepository.findTop2ByIsinCodeOrderByBaseDateDesc(isinCode);
+        List<StockHistory> histories = stockHistoryRepository.findRecentHistory(isinCode, java.time.LocalDate.now(), 2);
 
         if (histories.isEmpty()) {
             throw new IllegalArgumentException("데이터가 부족하여 분석할 수 없습니다. Code: " + isinCode);
