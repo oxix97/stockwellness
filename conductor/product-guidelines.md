@@ -27,3 +27,12 @@
     - Accuracy of financial data is paramount.
     - Must include logic to verify batch data consistency.
     - Design **Retry mechanisms** to handle scenarios of data corruption or processing failure.
+
+## 5. Workflow & Branching Strategy
+- For detailed procedures, branch naming conventions, and merge strategies, refer to the **[GUIDE.md](../GUIDE.md)** at the project root.
+- **Key Principles:**
+    - **Issue-Driven:** All work starts with an issue and follows a hierarchy (Epic -> Task).
+    - **Hierarchical Branching:** Use `feature/` for features and `task/` for sub-tasks.
+    - **Selective Merging:** Use **Merge** for sub-tasks to preserve history, and **Squash Merge** for features to maintain a clean main branch history.
+    - **Pre-Commit Review:** NEVER commit automatically. Always present a summary of changes and the proposed commit message for user approval.
+    - **Automation:** Mandatory CI verification (Tests, Coverage, Style) before any merge.
