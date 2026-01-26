@@ -23,5 +23,7 @@
 
 ## 5. Infrastructure & Devops
 - **Containerization:** Docker & Docker Compose (local development environment)
+- **CI/CD:** GitHub Actions (Automated build, test, and containerization)
+- **Registry:** GitHub Container Registry (GHCR)
 - **Messaging:** Kafka (event-driven architecture for data consistency)
 - **Deployment Target:** Kubernetes (AWS EKS) for high availability and scalability

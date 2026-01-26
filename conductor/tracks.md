@@ -2,6 +2,12 @@
 
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
 
-- [Stock Domain QueryDSL Implementation](conductor/tracks/querydsl_stock/index.md)
-- [Portfolio Domain QueryDSL Implementation](conductor/tracks/querydsl_portfolio/index.md)
+---
 
+- [x] **Track: Stock Domain QueryDSL Implementation**
+*Link: [./querydsl_stock/](./querydsl_stock/)*
+
+---
+
+- [x] **Track: Portfolio Domain QueryDSL Implementation**
+*Link: [./querydsl_portfolio/](./querydsl_portfolio/)*
