@@ -32,6 +32,11 @@ public class MemberAdapter implements LoadMemberPort, SaveMemberPort {
     }
 
     @Override
+    public boolean existsByNickname(String nickname) {
+        return memberRepository.existsByNickname(nickname);
+    }
+
+    @Override
     public Member saveMember(Member member) {
         return memberRepository.save(member);
     }

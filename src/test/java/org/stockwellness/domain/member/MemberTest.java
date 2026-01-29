@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.shared.Email;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,7 +25,7 @@ class MemberTest {
         Member member = Member.register(email, nickname, loginType);
 
         // then
-        assertThat(member.getEmail().getAddress()).isEqualTo(email); // Email 객체 구조에 따라 조정
+        assertThat(member.getEmail().getAddress()).isEqualTo(email);
         assertThat(member.getNickname()).isEqualTo(nickname);
         assertThat(member.getLoginType()).isEqualTo(loginType);
 
@@ -38,7 +39,7 @@ class MemberTest {
     @DisplayName("닉네임이 null이면 예외가 발생한다.")
     void register_fail_nickname_null() {
         assertThatThrownBy(() -> Member.register("test@a.com", null, LoginType.GOOGLE))
-                .isInstanceOf(NullPointerException.class)
+                .isInstanceOf(MemberDomainException.class)
                 .hasMessage("닉네임은 null일 수 없습니다.");
     }
 
@@ -47,7 +48,7 @@ class MemberTest {
     @DisplayName("닉네임이 공백이면 예외가 발생한다.")
     void register_fail_nickname_blank(String invalidNickname) {
         assertThatThrownBy(() -> Member.register("test@a.com", invalidNickname, LoginType.GOOGLE))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(MemberDomainException.class);
     }
 
     @Test
@@ -78,7 +79,6 @@ class MemberTest {
         void create_success(String validAddress) {
             // when
             Email email = new Email(validAddress);
-            ;
             // then
             assertThat(email.getAddress()).isEqualTo(validAddress);
         }
@@ -102,7 +102,6 @@ class MemberTest {
         @Test
         @DisplayName("이메일 주소가 null이면 NullPointerException이 발생한다.")
         void create_fail_null() {
-            // 현재 코드 로직상 matcher(address)에서 NPE 발생
             assertThatThrownBy(() -> new Email(null))
                     .isInstanceOf(NullPointerException.class);
         }
