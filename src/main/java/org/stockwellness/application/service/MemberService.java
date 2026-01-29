@@ -9,6 +9,8 @@ import org.stockwellness.application.port.in.member.command.UpdateMemberCommand;
 import org.stockwellness.application.port.in.member.result.MemberResult;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.domain.member.Member;
+import org.stockwellness.domain.member.exception.MemberNotFoundException;
+import org.stockwellness.domain.member.exception.NicknameDuplicateException;
 import org.stockwellness.global.error.exception.BusinessException;
 
 import static org.stockwellness.global.error.ErrorCode.*;
@@ -37,7 +39,7 @@ public class MemberService implements MemberUseCase {
 
         if (command.nickname() != null && !member.getNickname().equals(command.nickname())) {
             if (loadMemberPort.existsByNickname(command.nickname())) {
-                throw new BusinessException(DUPLICATE_NICKNAME);
+                throw new NicknameDuplicateException();
             }
         }
         member.update(command.nickname(), command.riskLevel());
@@ -51,6 +53,6 @@ public class MemberService implements MemberUseCase {
 
     private Member findMember(Long memberId) {
         return loadMemberPort.loadMember(memberId)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+                .orElseThrow(MemberNotFoundException::new);
     }
 }

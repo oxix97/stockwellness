@@ -15,6 +15,7 @@ import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.member.SaveMemberPort;
 import org.stockwellness.domain.auth.RefreshToken;
 import org.stockwellness.domain.member.Member;
+import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
@@ -73,7 +74,7 @@ public class AuthService implements AuthUseCase {
         }
 
         Member member = loadMemberPort.loadMember(memberId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+                .orElseThrow(MemberNotFoundException::new);
 
         if (!member.isActive()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
