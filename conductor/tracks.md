@@ -11,4 +11,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Portfolio Domain QueryDSL Implementation**
 *Link: [./querydsl_portfolio/](./querydsl_portfolio/)*
-
