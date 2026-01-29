@@ -94,6 +94,23 @@ class AuthServiceTest {
             assertThat(result.accessToken()).isEqualTo(AuthFixture.ACCESS_TOKEN);
             verify(saveMemberPort).saveMember(any(Member.class));
         }
+
+        @Test
+        @DisplayName("탈퇴한 회원이 로그인하면 예외가 발생한다")
+        void login_deactivated_member() {
+            // given
+            LoginCommand command = AuthFixture.createLoginCommand();
+            Member member = AuthFixture.createMember();
+            member.deactivate();
+
+            given(loadMemberPort.loadMemberByEmailAndLoginType(any(), any()))
+                    .willReturn(Optional.of(member));
+
+            // when & then
+            assertThatThrownBy(() -> authService.login(command))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
+        }
     }
 
     @Nested

@@ -103,16 +103,16 @@ paths:
                         "totalShares" : 1000000
                       } ],
                       "pageable" : "INSTANCE",
-                      "size" : 1,
-                      "number" : 0,
-                      "sort" : {
-                        "empty" : true,
-                        "sorted" : false,
-                        "unsorted" : true
-                      },
                       "numberOfElements" : 1,
                       "first" : true,
                       "last" : true,
+                      "size" : 1,
+                      "number" : 0,
+                      "sort" : {
+                        "sorted" : false,
+                        "unsorted" : true,
+                        "empty" : true
+                      },
                       "empty" : false
                     }
   /api/v1/auth/login:
@@ -317,7 +317,7 @@ paths:
               $ref: "#/components/schemas/api-v1-stocks486549215"
             examples:
               portfolio-delete:
-                value: _csrf=adD18_ysOb1zhAZzqSUjEj3TYt92q5eRL3as2m3b6J6CMk_PD7aUkpjOAdhevGIVkAgXc1vmT70Tmva8G0-buAi4iqjgA3yu
+                value: _csrf=4S5aRr5JXe6pQE81s7QehGN2bWq8fpKJxIR0nrCVDsisdHkR0B8-ctt9ON6EJXcMh5kqvABAQFKIGvSk8-USqISgO6mZRB8j
       responses:
         "204":
           description: "204"
@@ -352,7 +352,7 @@ paths:
                       "marketType" : "KOSPI",
                       "sector" : null,
                       "totalShares" : 1000000,
-                      "baseDate" : "2026-01-24",
+                      "baseDate" : "2026-01-29",
                       "closePrice" : 50000,
                       "priceChange" : 0,
                       "fluctuationRate" : 0,

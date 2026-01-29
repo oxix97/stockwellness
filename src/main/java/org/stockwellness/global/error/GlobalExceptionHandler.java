@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
 import org.stockwellness.global.error.exception.BusinessException;
 
@@ -17,6 +18,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PortfolioDomainException.class)
     public ProblemDetail handlePortfolioDomainException(PortfolioDomainException e) {
+        return ProblemDetail.forStatusAndDetail(INVALID_INPUT_VALUE.getStatus(), e.getMessage());
+    }
+
+    @ExceptionHandler(MemberDomainException.class)
+    public ProblemDetail handleMemberDomainException(MemberDomainException e) {
         return ProblemDetail.forStatusAndDetail(INVALID_INPUT_VALUE.getStatus(), e.getMessage());
     }
 

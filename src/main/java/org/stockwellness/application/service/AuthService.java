@@ -43,6 +43,10 @@ public class AuthService implements AuthUseCase {
                     return saveMemberPort.saveMember(newMember);
                 });
 
+        if (!member.isActive()) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
 
