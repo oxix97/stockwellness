@@ -14,6 +14,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: member 관련된 custom exception 구현.**
+- [x] **Track: member 관련된 custom exception 구현.**
 *Link: [./tracks/member_exceptions_20260129/](./tracks/member_exceptions_20260129/)*
 
