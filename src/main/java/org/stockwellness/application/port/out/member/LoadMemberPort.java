@@ -10,4 +10,5 @@ public interface LoadMemberPort {
     Optional<Member> loadMember(Long memberId);
     Optional<Member> loadMemberByEmail(Email email);
     Optional<Member> loadMemberByEmailAndLoginType(Email email, LoginType loginType);
+    boolean existsByNickname(String nickname);
 }
