@@ -317,7 +317,7 @@ paths:
               $ref: "#/components/schemas/api-v1-stocks486549215"
             examples:
               portfolio-delete:
-                value: _csrf=4S5aRr5JXe6pQE81s7QehGN2bWq8fpKJxIR0nrCVDsisdHkR0B8-ctt9ON6EJXcMh5kqvABAQFKIGvSk8-USqISgO6mZRB8j
+                value: _csrf=3cmmAAp4cK7-9aF1Lx9e_sa669BsrXGyFXMbGRtUDP6lMlol5PHFYzNAEpnTlJgQGjJqzveDxuldm0mfc0Z6LHhjOZ-cUGoU
       responses:
         "204":
           description: "204"
