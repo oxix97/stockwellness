@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,8 +36,16 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         // 1. 기본 서비스로 사용자 정보 로드
         OAuth2User oAuth2User = delegate.loadUser(userRequest);
 
-        // 2. 서비스 구분 (kakao 등)
-        LoginType loginType = LoginType.valueOf(userRequest.getClientRegistration().getRegistrationId().toUpperCase());
+        // 2. 서비스 구분 (Registration ID 추출 및 검증)
+        String registrationId = userRequest.getClientRegistration().getRegistrationId().toUpperCase();
+
+        LoginType loginType = switch (registrationId) {
+            case "KAKAO" -> LoginType.KAKAO;
+            case "GOOGLE" -> LoginType.GOOGLE;
+            default -> throw new OAuth2AuthenticationException(
+                    new OAuth2Error("invalid_provider"), "지원하지 않는 소셜 로그인입니다: " + registrationId
+            );
+        };
 
         // 3. 속성 가져오기
         Map<String, Object> attributes = oAuth2User.getAttributes();

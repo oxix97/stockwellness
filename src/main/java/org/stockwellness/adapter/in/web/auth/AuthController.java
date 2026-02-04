@@ -28,7 +28,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginCommand command = new LoginCommand(request.email(), request.nickname(), request.loginType());
         LoginResult result = authUseCase.login(command);
-        
+
         LoginResponse response = new LoginResponse(
             result.accessToken(),
             result.refreshToken(),
