@@ -3,7 +3,7 @@ package org.stockwellness.domain.portfolio;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
+import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 
 import java.util.List;
 
@@ -76,8 +76,7 @@ class PortfolioTest {
 
             // when & then
             assertThatThrownBy(() -> portfolio.updateItems(items))
-                    .isInstanceOf(PortfolioDomainException.class)
-                    .hasMessageContaining("1개 이상");
+                    .isInstanceOf(InvalidPortfolioException.class);
         }
 
         @Test
@@ -92,8 +91,7 @@ class PortfolioTest {
 
             // when & then
             assertThatThrownBy(() -> portfolio.updateItems(items))
-                    .isInstanceOf(PortfolioDomainException.class)
-                    .hasMessageContaining("8개 이하");
+                    .isInstanceOf(InvalidPortfolioException.class);
         }
 
         @Test
@@ -101,8 +99,7 @@ class PortfolioTest {
         void fail_item_zero_piece() {
             // when & then
             assertThatThrownBy(() -> PortfolioItem.createStock("AAPL", 0))
-                    .isInstanceOf(PortfolioDomainException.class)
-                    .hasMessageContaining("최소 1조각 이상");
+                    .isInstanceOf(InvalidPortfolioException.class);
         }
 
         @Test
@@ -110,8 +107,7 @@ class PortfolioTest {
         void fail_item_negative_piece() {
             // when & then
             assertThatThrownBy(() -> PortfolioItem.createCash(-1))
-                    .isInstanceOf(PortfolioDomainException.class)
-                    .hasMessageContaining("최소 1조각 이상");
+                    .isInstanceOf(InvalidPortfolioException.class);
         }
     }
 }

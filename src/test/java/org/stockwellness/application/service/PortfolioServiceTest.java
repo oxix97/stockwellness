@@ -15,9 +15,11 @@ import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SavePortfolioPort;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameException;
+import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
+import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 import org.stockwellness.fixture.PortfolioFixture;
-import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
 
 import java.util.List;
 import java.util.Optional;
@@ -83,8 +85,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.createPortfolio(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+                    .isInstanceOf(DuplicatePortfolioNameException.class);
         }
 
         @Test
@@ -99,8 +100,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.createPortfolio(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.RESOURCE_NOT_FOUND);
+                    .isInstanceOf(InvalidStockCodeException.class);
         }
     }
 
@@ -136,8 +136,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.getPortfolio(otherMemberId, PortfolioFixture.PORTFOLIO_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
+                    .isInstanceOf(PortfolioAccessDeniedException.class);
         }
 
         @Test
@@ -151,8 +150,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.getPortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PORTFOLIO_NOT_FOUND);
+                    .isInstanceOf(PortfolioNotFoundException.class);
         }
     }
 
@@ -197,8 +195,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.updatePortfolio(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+                    .isInstanceOf(DuplicatePortfolioNameException.class);
         }
     }
 
@@ -235,8 +232,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.deletePortfolio(otherMemberId, PortfolioFixture.PORTFOLIO_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
+                    .isInstanceOf(PortfolioAccessDeniedException.class);
             
             verify(deletePortfolioPort, times(0)).deletePortfolio(any());
         }
@@ -252,8 +248,7 @@ class PortfolioServiceTest {
 
             // when & then
             assertThatThrownBy(() -> portfolioService.deletePortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PORTFOLIO_NOT_FOUND);
+                    .isInstanceOf(PortfolioNotFoundException.class);
 
             verify(deletePortfolioPort, times(0)).deletePortfolio(any());
         }

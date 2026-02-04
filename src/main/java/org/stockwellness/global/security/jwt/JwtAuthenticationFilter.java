@@ -11,12 +11,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.global.security.CustomUserDetailsService;
 
 import java.io.IOException;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -27,11 +29,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailService;
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final List<String> EXCLUDE_URLS = List.of("/api/v1/auth/**", "/oauth2/**", "/login/**");
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return EXCLUDE_URLS.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
         try {
             String jwt = extractJwtFromRequest(request);
@@ -49,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 인증 실패 로그는 WARN 레벨로 낮춤 (정상적인 실패 케이스 포함)
             log.warn("JWT 인증 실패 - URI: {}, Message: {}", request.getRequestURI(), e.getMessage());
             // 예외를 다시 던져서 JwtExceptionFilter가 처리하도록 함 (중요)
-            throw e; 
+            throw e;
         }
 
         filterChain.doFilter(request, response);

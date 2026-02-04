@@ -6,7 +6,7 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
+import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class Portfolio extends AbstractEntity {
                 .sum();
 
         if (sum < 1 || sum > MAX_PIECES) {
-            throw new PortfolioDomainException("포트폴리오 총 조각 수는 1개 이상, " + MAX_PIECES + "개 이하여야 합니다.");
+            throw new InvalidPortfolioException();
         }
     }
 

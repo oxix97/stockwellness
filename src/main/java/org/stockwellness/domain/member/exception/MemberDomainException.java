@@ -1,7 +1,14 @@
 package org.stockwellness.domain.member.exception;
 
-public class MemberDomainException extends RuntimeException {
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.BusinessException;
+
+public class MemberDomainException extends BusinessException {
     public MemberDomainException(String message) {
-        super(message);
+        super(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    public MemberDomainException(ErrorCode errorCode) {
+        super(errorCode);
     }
 }

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.stockwellness.support.annotation.MockMember;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioItemRequest;
@@ -43,8 +43,8 @@ class PortfolioControllerTest extends RestDocsSupport {
     @Autowired
     StockRepository stockRepository;
 
-    static final String MY_ID = "1";
-    static final String OTHER_ID = "99";
+    static final Long MY_ID = 1L;
+    static final Long OTHER_ID = 99L;
 
     // setUp()은 부모 클래스(RestDocsSupport)에서 처리됨
 
@@ -53,7 +53,7 @@ class PortfolioControllerTest extends RestDocsSupport {
     class Success {
 
         @Test
-        @WithMockUser(username = MY_ID)
+        @MockMember(id = 1L)
         @DisplayName("생성 및 조회: 포트폴리오를 생성하고 상세 조회한다")
         void create_and_get_portfolio() throws Exception {
             // [Given] 필수 종목 데이터 생성
@@ -136,7 +136,7 @@ class PortfolioControllerTest extends RestDocsSupport {
         }
 
         @Test
-        @WithMockUser(username = MY_ID)
+        @MockMember(id = 1L)
         @DisplayName("수정: 이름과 구성을 수정한다")
         void update_portfolio() throws Exception {
             // [Given] 필수 종목 데이터 생성
@@ -186,7 +186,7 @@ class PortfolioControllerTest extends RestDocsSupport {
         }
 
         @Test
-        @WithMockUser(username = MY_ID)
+        @MockMember(id = 1L)
         @DisplayName("삭제: 포트폴리오를 삭제한다")
         void delete_portfolio() throws Exception {
             // given
@@ -221,7 +221,7 @@ class PortfolioControllerTest extends RestDocsSupport {
     class Failure {
 
         @Test
-        @WithMockUser(username = MY_ID)
+        @MockMember(id = 1L)
         @DisplayName("검증: 총 조각 수가 8개를 초과하면 400 에러")
         void fail_too_many_pieces() throws Exception {
             // [Given] 필수 종목 데이터 생성
@@ -247,17 +247,24 @@ class PortfolioControllerTest extends RestDocsSupport {
         }
 
         @Test
-        @WithMockUser(username = MY_ID)
-        @DisplayName("보안: 타인의 포트폴리오 수정 시도 시 403 Forbidden")
+        @MockMember(id = 1L)
+        @DisplayName("보안: 타인의 포트폴리오 수정 시도 시 401 Unauthorized")
         void fail_update_others_portfolio() throws Exception {
-            Portfolio otherPortfolio = savePortfolio(Long.parseLong(OTHER_ID), "남의꺼");
-            PortfolioUpdateRequest request = PortfolioFixture.createUpdateRequest("탈취시도", List.of());
+            // [Given] 다른 사용자의 포트폴리오 저장 (이름 중복 방지를 위해 유니크한 이름 사용)
+            Portfolio otherPortfolio = savePortfolio(OTHER_ID, "남의꺼_" + System.currentTimeMillis());
+            
+            // [Given] 유효한 아이템 구성
+            List<PortfolioItemRequest> items = List.of(
+                    PortfolioFixture.createItemRequest("KRW", 1, AssetType.CASH)
+            );
+            PortfolioUpdateRequest request = PortfolioFixture.createUpdateRequest("탈취시도", items);
 
             mockMvc.perform(put("/api/v1/portfolios/{portfolioId}", otherPortfolio.getId())
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .with(csrf())
                             .contentType(APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
+                    .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                     .andExpect(status().isUnauthorized());
         }
     }
