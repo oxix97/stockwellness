@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.stockwellness.adapter.in.web.auth.dto.LoginRequest;
 import org.stockwellness.adapter.in.web.auth.dto.LoginResponse;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueRequest;
@@ -12,7 +13,7 @@ import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
-import org.stockwellness.global.security.CurrentMemberId;
+import org.stockwellness.global.security.MemberPrincipal;
 
 import java.util.Map;
 
@@ -50,8 +51,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@CurrentMemberId Long memberId) {
-        authUseCase.logout(memberId);
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+        authUseCase.logout(memberPrincipal.id());
         return ResponseEntity.ok().build();
     }
 

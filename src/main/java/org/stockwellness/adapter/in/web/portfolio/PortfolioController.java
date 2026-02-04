@@ -4,6 +4,7 @@ package org.stockwellness.adapter.in.web.portfolio;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
@@ -12,7 +13,7 @@ import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
 import org.stockwellness.application.port.in.portfolio.PortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
-import org.stockwellness.global.security.CurrentMemberId;
+import org.stockwellness.global.security.MemberPrincipal;
 
 import java.net.URI;
 import java.util.List;
@@ -29,11 +30,11 @@ public class PortfolioController {
      */
     @PostMapping
     public ResponseEntity<Void> createPortfolio(
-            @CurrentMemberId Long memberId,
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid PortfolioCreateRequest request) {
 
         CreatePortfolioCommand command = new CreatePortfolioCommand(
-            memberId,
+            memberPrincipal.id(),
             request.name(),
             request.description(),
             request.items().stream()
@@ -60,9 +61,9 @@ public class PortfolioController {
      */
     @GetMapping
     public ResponseEntity<List<PortfolioResponse>> getMyPortfolios(
-            @CurrentMemberId Long memberId) {
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
 
-        List<PortfolioResponse> responses = portfolioUseCase.getMyPortfolios(memberId);
+        List<PortfolioResponse> responses = portfolioUseCase.getMyPortfolios(memberPrincipal.id());
         return ResponseEntity.ok(responses);
     }
 
@@ -72,10 +73,10 @@ public class PortfolioController {
      */
     @GetMapping("/{portfolioId}")
     public ResponseEntity<PortfolioResponse> getPortfolio(
-            @CurrentMemberId Long memberId,
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        PortfolioResponse response = portfolioUseCase.getPortfolio(memberId, portfolioId);
+        PortfolioResponse response = portfolioUseCase.getPortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(response);
     }
 
@@ -85,12 +86,12 @@ public class PortfolioController {
      */
     @PutMapping("/{portfolioId}")
     public ResponseEntity<Void> updatePortfolio(
-            @CurrentMemberId Long memberId,
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId,
             @RequestBody @Valid PortfolioUpdateRequest request) {
 
         UpdatePortfolioCommand command = new UpdatePortfolioCommand(
-            memberId,
+            memberPrincipal.id(),
             portfolioId,
             request.name(),
             request.description(),
@@ -113,10 +114,10 @@ public class PortfolioController {
      */
     @DeleteMapping("/{portfolioId}")
     public ResponseEntity<Void> deletePortfolio(
-            @CurrentMemberId Long memberId,
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        portfolioUseCase.deletePortfolio(memberId, portfolioId);
+        portfolioUseCase.deletePortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.noContent().build();
     }
 }
