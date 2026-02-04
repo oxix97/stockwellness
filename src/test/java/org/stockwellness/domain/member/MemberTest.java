@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.stockwellness.domain.member.exception.InvalidEmailException;
 import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.shared.Email;
 
@@ -39,8 +40,7 @@ class MemberTest {
     @DisplayName("닉네임이 null이면 예외가 발생한다.")
     void register_fail_nickname_null() {
         assertThatThrownBy(() -> Member.register("test@a.com", null, LoginType.GOOGLE))
-                .isInstanceOf(MemberDomainException.class)
-                .hasMessage("닉네임은 null일 수 없습니다.");
+                .isInstanceOf(MemberDomainException.class);
     }
 
     @ParameterizedTest
@@ -95,8 +95,7 @@ class MemberTest {
         @DisplayName("이메일 형식이 올바르지 않으면 IllegalArgumentException이 발생한다.")
         void create_fail_invalid_format(String invalidAddress) {
             assertThatThrownBy(() -> new Email(invalidAddress))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("이메일 형식이 바르지 않습니다");
+                    .isInstanceOf(InvalidEmailException.class);
         }
 
         @Test

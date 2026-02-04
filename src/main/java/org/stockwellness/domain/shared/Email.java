@@ -5,6 +5,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.stockwellness.domain.member.exception.InvalidEmailException;
+
 import java.util.regex.Pattern;
 
 import static lombok.AccessLevel.PROTECTED;
@@ -21,7 +23,7 @@ public class Email {
 
     public Email(String address) {
         if (!EMAIL_PATTERN.matcher(address).matches()) {
-            throw new IllegalArgumentException("이메일 형식이 바르지 않습니다: " + address);
+            throw new InvalidEmailException("이메일 형식이 바르지 않습니다: " + address);
         }
         this.address = address;
     }

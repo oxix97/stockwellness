@@ -3,11 +3,12 @@ package org.stockwellness.adapter.in.web.member;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.member.dto.UpdateMemberRequest;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.result.MemberResult;
-import org.stockwellness.global.security.CurrentMemberId;
+import org.stockwellness.global.security.MemberPrincipal;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -20,8 +21,8 @@ public class MemberController {
      * 내 정보 조회
      */
     @GetMapping("/me")
-    public ResponseEntity<MemberResult> getMember(@CurrentMemberId Long memberId) {
-        MemberResult member = memberUseCase.getMember(memberId);
+    public ResponseEntity<MemberResult> getMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+        MemberResult member = memberUseCase.getMember(memberPrincipal.id());
         return ResponseEntity.ok(member);
     }
 
@@ -30,10 +31,10 @@ public class MemberController {
      */
     @PutMapping("/me")
     public ResponseEntity<Void> updateMember(
-            @CurrentMemberId Long memberId,
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid UpdateMemberRequest request
     ) {
-        memberUseCase.updateMember(memberId, request.toCommand(memberId));
+        memberUseCase.updateMember(memberPrincipal.id(), request.toCommand(memberPrincipal.id()));
         return ResponseEntity.ok().build();
     }
 
@@ -41,8 +42,8 @@ public class MemberController {
      * 회원 탈퇴
      */
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deactivateMember(@CurrentMemberId Long memberId) {
-        memberUseCase.withdrawMember(memberId);
+    public ResponseEntity<Void> deactivateMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+        memberUseCase.withdrawMember(memberPrincipal.id());
         return ResponseEntity.ok().build();
     }
 }
