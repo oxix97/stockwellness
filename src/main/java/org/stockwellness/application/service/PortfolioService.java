@@ -14,8 +14,10 @@ import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameException;
+import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
+import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 
 import java.util.List;
 
@@ -33,7 +35,7 @@ public class PortfolioService implements PortfolioUseCase {
     @Transactional
     public Long createPortfolio(CreatePortfolioCommand command) {
         if (loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())) {
-            throw new BusinessException(ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+            throw new DuplicatePortfolioNameException();
         }
 
         Portfolio portfolio = Portfolio.create(command.memberId(), command.name(), command.description());
@@ -55,9 +57,9 @@ public class PortfolioService implements PortfolioUseCase {
         Portfolio portfolio = loadPortfolioPort.loadPortfolio(portfolioId, memberId)
                 .orElseThrow(() -> {
                     if (loadPortfolioPort.findById(portfolioId).isPresent()) {
-                        throw new BusinessException(ErrorCode.UNAUTHORIZED);
+                        throw new PortfolioAccessDeniedException();
                     }
-                    return new BusinessException(ErrorCode.PORTFOLIO_NOT_FOUND);
+                    return new PortfolioNotFoundException();
                 });
 
         return PortfolioResponse.from(portfolio);
@@ -76,15 +78,15 @@ public class PortfolioService implements PortfolioUseCase {
         Portfolio portfolio = loadPortfolioPort.loadPortfolio(command.portfolioId(), command.memberId())
                 .orElseThrow(() -> {
                     if (loadPortfolioPort.findById(command.portfolioId()).isPresent()) {
-                        throw new BusinessException(ErrorCode.UNAUTHORIZED);
+                        throw new PortfolioAccessDeniedException();
                     }
-                    return new BusinessException(ErrorCode.PORTFOLIO_NOT_FOUND);
+                    return new PortfolioNotFoundException();
                 });
 
         // 1. 기본 정보 수정 (이름 변경 시 중복 체크)
         if (!portfolio.getName().equals(command.name())) {
             if (loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())) {
-                throw new BusinessException(ErrorCode.DUPLICATE_PORTFOLIO_NAME);
+                throw new DuplicatePortfolioNameException();
             }
         }
         portfolio.updateBasicInfo(command.name(), command.description());
@@ -107,9 +109,9 @@ public class PortfolioService implements PortfolioUseCase {
         loadPortfolioPort.loadPortfolio(portfolioId, memberId)
                 .orElseThrow(() -> {
                     if (loadPortfolioPort.findById(portfolioId).isPresent()) {
-                        throw new BusinessException(ErrorCode.UNAUTHORIZED);
+                        throw new PortfolioAccessDeniedException();
                     }
-                    return new BusinessException(ErrorCode.PORTFOLIO_NOT_FOUND);
+                    return new PortfolioNotFoundException();
                 });
 
         deletePortfolioPort.deletePortfolio(portfolioId);
@@ -117,7 +119,7 @@ public class PortfolioService implements PortfolioUseCase {
 
     private void validateStockCode(String stockCode, AssetType assetType) {
         if (assetType == AssetType.STOCK && !loadStockPort.existsByIsinCode(stockCode)) {
-            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND); // 혹은 전용 에러코드 STOCK_NOT_FOUND
+            throw new InvalidStockCodeException("Stock not found with code: " + stockCode);
         }
     }
 
