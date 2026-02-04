@@ -18,12 +18,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PortfolioDomainException.class)
     public ProblemDetail handlePortfolioDomainException(PortfolioDomainException e) {
-        return ProblemDetail.forStatusAndDetail(INVALID_INPUT_VALUE.getStatus(), e.getMessage());
+        return createProblemDetail(e.getErrorCode());
     }
 
     @ExceptionHandler(MemberDomainException.class)
     public ProblemDetail handleMemberDomainException(MemberDomainException e) {
-        return ProblemDetail.forStatusAndDetail(INVALID_INPUT_VALUE.getStatus(), e.getMessage());
+        return createProblemDetail(e.getErrorCode());
     }
 
     @ExceptionHandler(BusinessException.class)

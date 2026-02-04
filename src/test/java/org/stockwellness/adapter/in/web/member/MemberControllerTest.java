@@ -2,9 +2,9 @@ package org.stockwellness.adapter.in.web.member;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.stockwellness.support.annotation.MockMember;
 import org.stockwellness.adapter.in.web.member.dto.UpdateMemberRequest;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.result.MemberResult;
@@ -23,12 +23,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MemberControllerTest extends RestDocsSupport {
 
-    @MockBean
+    @MockitoBean
     private MemberUseCase memberUseCase;
 
     @Test
     @DisplayName("내 정보 조회 API")
-    @WithMockUser(username = "1")
+    @MockMember(id = 1L)
     void getMember() throws Exception {
         MemberResult result = new MemberResult(
                 1L,
@@ -52,7 +52,7 @@ class MemberControllerTest extends RestDocsSupport {
 
     @Test
     @DisplayName("내 정보 수정 API")
-    @WithMockUser(username = "1")
+    @MockMember(id = 1L)
     void updateMember() throws Exception {
         UpdateMemberRequest request = new UpdateMemberRequest("newNickname", RiskLevel.HIGH);
 
@@ -65,7 +65,7 @@ class MemberControllerTest extends RestDocsSupport {
 
     @Test
     @DisplayName("회원 탈퇴 API")
-    @WithMockUser(username = "1")
+    @MockMember(id = 1L)
     void deactivateMember() throws Exception {
         mockMvc.perform(delete("/api/v1/members/me")
                         .contentType(MediaType.APPLICATION_JSON))

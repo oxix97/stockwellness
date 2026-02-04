@@ -1,20 +1,23 @@
 package org.stockwellness.adapter.out.security.jwt;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.GenerateTokenPort;
 import org.stockwellness.application.port.out.ValidateTokenPort;
+import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
+import org.stockwellness.domain.member.MemberRole;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
@@ -30,27 +33,37 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
 
     @Override
     public String generateAccessToken(Member member) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtProperties.accessTokenExpiryMs());
-
-        return Jwts.builder()
-                .subject(member.getId().toString())  // memberId
-                .claim("email", member.getEmail().getAddress())
-                .claim("loginType", member.getLoginType())
-                .claim("role", member.getRole().name())
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(secretKey, Jwts.SIG.HS256) // 알고리즘 명시
-                .compact();
+        return generateAccessToken(member.getId(), member.getEmail().getAddress(), member.getLoginType(), member.getRole());
     }
 
     @Override
     public String generateRefreshToken(Member member) {
+        return generateRefreshToken(member.getId());
+    }
+
+    @Override
+    public String generateAccessToken(Long id, String email, LoginType loginType, MemberRole role) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + jwtProperties.accessTokenExpiryMs());
+
+        return Jwts.builder()
+                .subject(id.toString())
+                .claim("email", email)
+                .claim("loginType", loginType)
+                .claim("role", role.name())
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(secretKey, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    @Override
+    public String generateRefreshToken(Long id) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.refreshTokenExpiryMs());
 
         return Jwts.builder()
-                .subject(member.getId().toString())
+                .subject(id.toString())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey, Jwts.SIG.HS256)

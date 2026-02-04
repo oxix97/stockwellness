@@ -5,11 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.adapter.out.security.jwt.JwtProperties;
+import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
-import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.out.RefreshTokenPort;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.member.SaveMemberPort;
@@ -20,6 +21,7 @@ import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -31,6 +33,7 @@ public class AuthService implements AuthUseCase {
     private final SaveMemberPort saveMemberPort;
     private final JwtProvider jwtProvider;
     private final RefreshTokenPort refreshTokenPort;
+    private final JwtProperties jwtProperties;
 
     @Override
     public LoginResult login(LoginCommand command) {
@@ -51,7 +54,8 @@ public class AuthService implements AuthUseCase {
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
 
-        LocalDateTime expiredAt = LocalDateTime.now().plusDays(30); // jwtProperties에서 가져오게 수정 가능
+        Duration expiryDuration = Duration.ofMillis(jwtProperties.refreshTokenExpiryMs());
+        LocalDateTime expiredAt = LocalDateTime.now().plus(expiryDuration);
         RefreshToken rt = RefreshToken.create(member.getId(), refreshToken, expiredAt);
         refreshTokenPort.save(rt);
 

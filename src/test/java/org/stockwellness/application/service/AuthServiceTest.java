@@ -1,5 +1,6 @@
 package org.stockwellness.application.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.adapter.out.security.jwt.JwtProperties;
 import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +46,13 @@ class AuthServiceTest {
     private JwtProvider jwtProvider;
     @Mock
     private RefreshTokenPort refreshTokenPort;
+    @Mock
+    private JwtProperties jwtProperties;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(jwtProperties.refreshTokenExpiryMs()).thenReturn(2592000000L);
+    }
 
     @Nested
     @DisplayName("로그인 (Login)")
