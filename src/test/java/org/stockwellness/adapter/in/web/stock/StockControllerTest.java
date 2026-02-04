@@ -5,7 +5,7 @@ import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.SliceImpl;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
@@ -32,10 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("Stock 컨트롤러 통합 테스트 (RestDocs)")
 class StockControllerTest extends RestDocsSupport {
 
-    @MockBean
+    @MockitoBean
     private StockReadUseCase stockReadUseCase;
 
-    @MockBean
+    @MockitoBean
     private StockAnalysisUseCase stockAnalysisUseCase;
 
     @Nested

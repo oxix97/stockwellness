@@ -5,8 +5,8 @@ import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.stockwellness.support.annotation.MockMember;
 import org.stockwellness.adapter.in.web.auth.dto.LoginRequest;
 import org.stockwellness.adapter.in.web.auth.dto.ReissueRequest;
 import org.stockwellness.application.port.in.auth.AuthUseCase;
@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("Auth 컨트롤러 통합 테스트 (RestDocs)")
 class AuthControllerTest extends RestDocsSupport {
 
-    @MockBean
+    @MockitoBean
     private AuthUseCase authUseCase;
 
     @Nested
@@ -117,7 +117,7 @@ class AuthControllerTest extends RestDocsSupport {
     @DisplayName("로그아웃 API")
     class Logout {
         @Test
-        @WithMockUser(username = "1")
+        @MockMember(id = 1L)
         @DisplayName("로그아웃 성공 시 200 OK를 반환한다")
         void logout_success() throws Exception {
             // when & then
