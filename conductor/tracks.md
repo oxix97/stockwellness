@@ -16,3 +16,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [~] **Track: Kakao OAuth2 Login Implementation**
 *Link: [./kakao_oauth2_login_20260130/](./kakao_oauth2_login_20260130/)*
+
+---
+
+- [~] **Track: Portfolio Health Diagnosis Enhancement**
+*Link: [./portfolio_health_diagnosis_20260205/](./portfolio_health_diagnosis_20260205/)*

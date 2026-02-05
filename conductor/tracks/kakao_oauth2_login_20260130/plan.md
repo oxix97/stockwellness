@@ -13,7 +13,7 @@
 ## Phase 3: Security Integration & Token Issuance
 - [x] Task: Update `SecurityConfig` to enable OAuth2 login and register the `CustomOAuth2UserService` and `SuccessHandler`
 - [x] Task: Integrate with `AuthService` to generate and return JWTs upon successful OAuth2 authentication
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Security Integration & Token Issuance' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Security Integration & Token Issuance' (Protocol in workflow.md)
 
 ## Phase 4: Verification & Feedback
 - [~] Task: (User) Write Integration Tests for OAuth2 login flow (Mocking Kakao Response)
