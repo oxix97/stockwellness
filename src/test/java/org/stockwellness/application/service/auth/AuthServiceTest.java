@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
