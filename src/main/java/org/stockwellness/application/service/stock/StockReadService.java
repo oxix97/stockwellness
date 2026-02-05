@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.stock;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;

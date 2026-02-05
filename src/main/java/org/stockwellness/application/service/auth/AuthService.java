@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.auth;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
