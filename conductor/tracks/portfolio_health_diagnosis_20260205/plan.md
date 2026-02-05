@@ -34,10 +34,11 @@ Implement the logic to aggregate individual stock scores into a portfolio-wide d
 ## Phase 3: AI Insight Integration
 Integrate Spring AI to provide human-readable summaries and actionable advice.
 
-- [ ] Task: Implement `AiDiagnosisService`
-    - [ ] Define prompt templates for "Growth Archer" style summaries and beginner-friendly insights.
-    - [ ] Integrate Spring AI to generate `summary`, `insight`, and `nextSteps` based on calculated scores.
-    - [ ] Write integration tests for AI prompt generation (mocking AI response if necessary).
+- [x] Task: Implement `AiDiagnosisService`
+    - [x] Define prompt templates for "Growth Archer" style summaries and beginner-friendly insights.
+    - [x] Integrate Spring AI to generate `summary`, `insight`, and `nextSteps` based on calculated scores.
+    - [x] Write integration tests for AI prompt generation (mocking AI response if necessary).
+- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Web Interface & Documentation
