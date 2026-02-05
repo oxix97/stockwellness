@@ -10,62 +10,29 @@ import org.stockwellness.domain.stock.StockHistory;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
 public class StockHistoryAdapter implements LoadStockHistoryPort {
 
-    private final StockHistoryRepository historyJpaRepository;
+    private final StockHistoryRepository stockHistoryRepository;
     private final JdbcTemplate jdbcTemplate;
 
     @Override
     public Optional<StockHistory> findLatestHistory(String isinCode) {
-        return historyJpaRepository.findTopByIsinCodeOrderByBaseDateDesc(isinCode);
+        return stockHistoryRepository.findTopByIsinCodeOrderByBaseDateDesc(isinCode);
     }
 
-    public List<StockHistory> findTop150ByIsinCodeAndBaseDateOrderByBaseDateDesc(String isinCode, LocalDate baseDate) {
-        return historyJpaRepository.findRecentHistory(isinCode, baseDate, 150);
+    @Override
+    public List<StockHistory> loadRecentHistories(String isinCode, int limit) {
+        return stockHistoryRepository.findRecentHistory(isinCode, LocalDate.now(), limit);
     }
 
-
-    public List<StockHistory> findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(String isinCode, LocalDate baseDate) {
-        return historyJpaRepository.findTop60ByIsinCodeAndBaseDateBeforeOrderByBaseDateAsc(isinCode, baseDate);
-    }
-
-
-    public List<String> findAllIsinCodes() {
-        return historyJpaRepository.findAllIsinCodes();
-    }
-
-
-    public List<StockHistory> findAllByIsinCodeOrderByBaseDateAsc(String isinCode) {
-        return historyJpaRepository.findAllByIsinCodeOrderByBaseDateAsc(isinCode);
-    }
-
-
-    public List<StockHistory> findByIsinCodeAndBaseDateBetweenOrderByBaseDateAsc(String isinCode, LocalDate startDate, LocalDate endDate) {
-        return historyJpaRepository.findByIsinCodeAndBaseDateBetweenOrderByBaseDateAsc(isinCode, startDate, endDate);
-    }
-
-
-    public Optional<StockHistory> findTopByIsinCodeOrderByBaseDateDesc(String isinCode) {
-        return historyJpaRepository.findTopByIsinCodeOrderByBaseDateDesc(isinCode);
-    }
-
-
-    public List<StockHistory> findByBaseDate(LocalDate baseDate) {
-        return historyJpaRepository.findByBaseDate(baseDate);
-    }
-
-
-    public List<StockHistory> findRecentHistory(String isinCode, LocalDate targetDate, int limit) {
-        return historyJpaRepository.findRecentHistory(isinCode, targetDate, limit);
-    }
-
-
-    public void saveAll(List<StockHistory> histories) {
-        historyJpaRepository.saveAll(histories);
+    @Override
+    public Map<String, List<StockHistory>> loadRecentHistoriesBatch(List<String> isinCodes, int limit) {
+        return stockHistoryRepository.findRecentHistoryBatch(isinCodes, limit);
     }
 
     /**
