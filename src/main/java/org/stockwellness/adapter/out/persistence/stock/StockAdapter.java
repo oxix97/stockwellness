@@ -29,6 +29,11 @@ public class StockAdapter implements LoadStockPort {
     }
 
     @Override
+    public List<Stock> loadStocksByIsinCodes(List<String> isinCodes) {
+        return stockRepository.findAllById(isinCodes);
+    }
+
+    @Override
     public boolean existsByIsinCode(String isinCode) {
         return stockRepository.existsById(isinCode);
     }
