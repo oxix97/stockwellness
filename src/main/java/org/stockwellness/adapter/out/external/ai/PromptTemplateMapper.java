@@ -1,12 +1,16 @@
 package org.stockwellness.adapter.out.external.ai;
 
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
+import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
+import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
+import java.util.stream.Collectors;
 
 @Component
 public class PromptTemplateMapper {
@@ -31,6 +35,32 @@ public class PromptTemplateMapper {
         
         위 데이터를 바탕으로 매수/매도 심리를 분석하고 향후 방향성을 예측해줘.
         """;
+
+    private static final String PORTFOLIO_PROMPT_TEMPLATE = """
+        [포트폴리오 건강 진단 데이터]
+        - 종합 점수: %d / 100
+        
+        [카테고리별 점수]
+        - 방어력 (Defense): %d
+        - 공격력 (Attack): %d
+        - 지구력 (Endurance): %d
+        - 민첩성 (Agility): %d
+        - 균형성 (Balance): %d
+        
+        위 점수들을 바탕으로 현재 포트폴리오의 상태를 진단하고, 초보 투자자가 이해하기 쉬운 언어로 조언을 해줘.
+        """;
+
+    public String toPortfolioPromptString(PortfolioAiContext context) {
+        var categories = context.categories();
+        return PORTFOLIO_PROMPT_TEMPLATE.formatted(
+                context.overallScore(),
+                categories.getOrDefault(DiagnosisCategory.DEFENSE.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.ATTACK.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.ENDURANCE.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.AGILITY.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.BALANCE.getKey(), 0)
+        );
+    }
 
     public String toPromptString(AiAnalysisContext context) {
         var priceInfo = context.priceInfo();
