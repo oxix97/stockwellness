@@ -1,15 +1,12 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.portfolio;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
-import org.stockwellness.application.port.in.portfolio.PortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
-import org.stockwellness.application.port.out.portfolio.DeletePortfolioPort;
-import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
-import org.stockwellness.application.port.out.portfolio.SavePortfolioPort;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
@@ -23,18 +20,15 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class PortfolioService implements PortfolioUseCase {
+@Transactional
+public class PortfolioCommandService implements ManagePortfolioUseCase {
 
-    private final LoadPortfolioPort loadPortfolioPort;
-    private final SavePortfolioPort savePortfolioPort;
-    private final DeletePortfolioPort deletePortfolioPort;
+    private final PortfolioPort portfolioPort;
     private final LoadStockPort loadStockPort;
 
     @Override
-    @Transactional
     public Long createPortfolio(CreatePortfolioCommand command) {
-        if (loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())) {
+        if (portfolioPort.existsPortfolioName(command.memberId(), command.name())) {
             throw new DuplicatePortfolioNameException();
         }
 
@@ -49,43 +43,16 @@ public class PortfolioService implements PortfolioUseCase {
         
         portfolio.updateItems(items);
 
-        return savePortfolioPort.savePortfolio(portfolio).getId();
+        return portfolioPort.savePortfolio(portfolio).getId();
     }
 
     @Override
-    public PortfolioResponse getPortfolio(Long memberId, Long portfolioId) {
-        Portfolio portfolio = loadPortfolioPort.loadPortfolio(portfolioId, memberId)
-                .orElseThrow(() -> {
-                    if (loadPortfolioPort.findById(portfolioId).isPresent()) {
-                        throw new PortfolioAccessDeniedException();
-                    }
-                    return new PortfolioNotFoundException();
-                });
-
-        return PortfolioResponse.from(portfolio);
-    }
-
-    @Override
-    public List<PortfolioResponse> getMyPortfolios(Long memberId) {
-        return loadPortfolioPort.loadAllPortfolios(memberId).stream()
-                .map(PortfolioResponse::from)
-                .toList();
-    }
-
-    @Override
-    @Transactional
     public void updatePortfolio(UpdatePortfolioCommand command) {
-        Portfolio portfolio = loadPortfolioPort.loadPortfolio(command.portfolioId(), command.memberId())
-                .orElseThrow(() -> {
-                    if (loadPortfolioPort.findById(command.portfolioId()).isPresent()) {
-                        throw new PortfolioAccessDeniedException();
-                    }
-                    return new PortfolioNotFoundException();
-                });
+        Portfolio portfolio = loadOwnedPortfolio(command.portfolioId(), command.memberId());
 
         // 1. 기본 정보 수정 (이름 변경 시 중복 체크)
         if (!portfolio.getName().equals(command.name())) {
-            if (loadPortfolioPort.existsPortfolioName(command.memberId(), command.name())) {
+            if (portfolioPort.existsPortfolioName(command.memberId(), command.name())) {
                 throw new DuplicatePortfolioNameException();
             }
         }
@@ -103,18 +70,19 @@ public class PortfolioService implements PortfolioUseCase {
     }
 
     @Override
-    @Transactional
     public void deletePortfolio(Long memberId, Long portfolioId) {
-        // 소유권 확인 (updatePortfolio와 동일한 로직)
-        loadPortfolioPort.loadPortfolio(portfolioId, memberId)
+        loadOwnedPortfolio(portfolioId, memberId);
+        portfolioPort.deletePortfolio(portfolioId);
+    }
+
+    private Portfolio loadOwnedPortfolio(Long portfolioId, Long memberId) {
+        return portfolioPort.loadPortfolio(portfolioId, memberId)
                 .orElseThrow(() -> {
-                    if (loadPortfolioPort.findById(portfolioId).isPresent()) {
+                    if (portfolioPort.findById(portfolioId).isPresent()) {
                         throw new PortfolioAccessDeniedException();
                     }
                     return new PortfolioNotFoundException();
                 });
-
-        deletePortfolioPort.deletePortfolio(portfolioId);
     }
 
     private void validateStockCode(String stockCode, AssetType assetType) {

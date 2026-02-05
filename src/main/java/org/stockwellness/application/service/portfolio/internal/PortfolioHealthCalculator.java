@@ -1,49 +1,31 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.portfolio.internal;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadStockHistoryPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
+import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.result.StockStatResult;
-
+import org.stockwellness.application.service.stock.StockStatCalculator;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.diagnosis.type.BalanceScorePolicy;
 import org.stockwellness.domain.portfolio.diagnosis.type.CashScorePolicy;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
-import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
-@Service
+@Component
 @RequiredArgsConstructor
-public class PortfolioDiagnosisService {
+public class PortfolioHealthCalculator {
 
-    private final LoadPortfolioPort loadPortfolioPort;
-    private final LoadStockPort loadStockPort;
-    private final LoadStockHistoryPort loadStockHistoryPort;
     private final StockStatCalculator stockStatCalculator;
 
-    public PortfolioHealthResult diagnose(Long portfolioId) {
-        Portfolio portfolio = loadPortfolioPort.findById(portfolioId)
-                .orElseThrow(PortfolioNotFoundException::new);
-
-        List<String> isinCodes = portfolio.getItems().stream()
-                .filter(item -> item.getAssetType() == AssetType.STOCK)
-                .map(PortfolioItem::getIsinCode)
-                .toList();
-
-        Map<String, Stock> stockMap = loadStockPort.loadStocksByIsinCodes(isinCodes).stream()
-                .collect(Collectors.toMap(Stock::getIsinCode, stock -> stock));
-
-        Map<String, List<StockHistory>> historyMap = loadStockHistoryPort.loadRecentHistoriesBatch(isinCodes, 5);
+    public CalculatedHealth calculate(DiagnosisContext context) {
+        Portfolio portfolio = context.portfolio();
+        Map<String, Stock> stockMap = context.stockMap();
+        Map<String, List<StockHistory>> historyMap = context.historyMap();
 
         double totalDefense = 0;
         double totalAttack = 0;
@@ -94,13 +76,6 @@ public class PortfolioDiagnosisService {
 
         int overallScore = (int) Math.round(average);
 
-        return new PortfolioHealthResult(
-                overallScore,
-                categories,
-                List.of(),
-                "",
-                "",
-                List.of()
-        );
+        return new CalculatedHealth(overallScore, categories);
     }
 }

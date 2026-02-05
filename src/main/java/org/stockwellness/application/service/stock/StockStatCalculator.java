@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.stock;
 
 import org.springframework.stereotype.Service;
 import org.stockwellness.application.port.in.portfolio.result.StockStatResult;
