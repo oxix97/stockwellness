@@ -38,16 +38,12 @@ Integrate Spring AI to provide human-readable summaries and actionable advice.
     - [x] Define prompt templates for "Growth Archer" style summaries and beginner-friendly insights.
     - [x] Integrate Spring AI to generate `summary`, `insight`, and `nextSteps` based on calculated scores.
     - [x] Write integration tests for AI prompt generation (mocking AI response if necessary).
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Web Interface & Documentation
 Expose the diagnosis functionality via a REST API and document it.
 
-- [ ] Task: Implement `PortfolioHealthController`
-    - [ ] Create `GET /api/v1/portfolios/{portfolioId}/health` endpoint.
-    - [ ] Connect controller to `PortfolioDiagnosisService`.
-- [ ] Task: API Documentation and Integration Testing
-    - [ ] Write integration tests for the full diagnosis flow.
-    - [ ] Generate Spring REST Docs for the new endpoint.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+- [x] Task: API Documentation and Integration Testing
+    - [x] Write integration tests for the full diagnosis flow.
+    - [x] Generate Spring REST Docs for the new endpoint.
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
