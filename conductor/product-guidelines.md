@@ -14,6 +14,9 @@
 - **Trustworthy & Stable:** Employ a color palette (e.g., deep blues, professional greens, and balanced neutrals) that conveys stability, reliability, and professional financial management.
 
 ## 4. Engineering & Operational Principles
+- **Collaborative Engineering:**
+    - The development follows a "Human-Implementer, AI-Advisor" model.
+    - AI provides logic refinement, code reviews, and test design, while the Human leads the implementation.
 - **Pragmatic Hexagonal Architecture:**
     - Separate business logic from technical details in principle, but allow for a **Hybrid Model** where Domain Models and JPA Entities are integrated for development efficiency.
     - **Constraint:** Even in this hybrid approach, ensure domain logic remains unpolluted by external libraries. Strictly maintain the structure of external communication via Service interfaces and Ports.

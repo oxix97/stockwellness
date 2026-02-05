@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.stock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

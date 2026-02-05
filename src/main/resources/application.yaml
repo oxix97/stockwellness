@@ -55,8 +55,12 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
-          model: gpt-5-mini
-          temperature: 1.0
+          model: gpt-4o-mini
+          temperature: 0.3
+      base-url: https://api.openai.com
+      # 타임아웃 설정 (Spring AI 1.0.0-M1 기준)
+      # 실제로는 RestClientCustomizer나 별도 빈 설정이 확실할 수 있으나, 일단 설정을 시도합니다.
+
 
 decorator:
   datasource:

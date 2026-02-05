@@ -10,7 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.stockwellness.application.service.CustomOAuth2UserService;
+import org.stockwellness.application.service.auth.CustomOAuth2UserService;
 import org.stockwellness.global.security.handler.OAuth2LoginSuccessHandler;
 import org.stockwellness.global.security.jwt.JwtAccessDeniedHandler;
 import org.stockwellness.global.security.jwt.JwtAuthenticationEntryPoint;

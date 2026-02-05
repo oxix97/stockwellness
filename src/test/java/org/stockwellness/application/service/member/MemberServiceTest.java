@@ -1,4 +1,4 @@
-package org.stockwellness.application.service;
+package org.stockwellness.application.service.member;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
