@@ -1,5 +1,7 @@
 package org.stockwellness.domain.stock.analysis;
 
+import org.stockwellness.domain.stock.StockHistory;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -11,12 +13,30 @@ public record AiAnalysisContext(
         PortfolioRisk riskInfo      // 리스크 정보 (변동성 등)
 ) {
 
+    public static AiAnalysisContext of(StockHistory today, MarketCondition condition) {
+        return new AiAnalysisContext(
+                today.getIsinCode(),
+                today.getBaseDate(),
+                PriceSummary.from(today),
+                TechnicalSignal.of(today, condition),
+                new PortfolioRisk(false, 0.0)
+        );
+    }
+
     // 1. 가격 정보 그룹
     public record PriceSummary(
             BigDecimal closePrice,      // 종가
             BigDecimal fluctuationRate, // 등락률 (전일 대비)
             BigDecimal volume           // 거래량 (보조 지표용)
-    ) {}
+    ) {
+        public static PriceSummary from(StockHistory history) {
+            return new PriceSummary(
+                    history.getClosePrice(),
+                    history.getFluctuationRate(),
+                    new BigDecimal(history.getVolume())
+            );
+        }
+    }
 
     // 2. 기술적 신호 그룹 (도메인 Enum 활용)
     public record TechnicalSignal(
@@ -31,7 +51,21 @@ public record AiAnalysisContext(
             BigDecimal ma20,
             BigDecimal ma60,
             BigDecimal ma120
-    ) {}
+    ) {
+        public static TechnicalSignal of(StockHistory history, MarketCondition condition) {
+            return new TechnicalSignal(
+                    condition.trendStatus(),
+                    history.getRsi14(),
+                    TechnicalCalculator.analyzeRsiLevel(history.getRsi14()),
+                    history.getMacd(),
+                    condition.signal(),
+                    history.getMa5(),
+                    history.getMa20(),
+                    history.getMa60(),
+                    history.getMa120()
+            );
+        }
+    }
 
     // 3. 리스크 정보 그룹 (확장성 고려)
     public record PortfolioRisk(
