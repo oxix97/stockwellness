@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
+import org.stockwellness.domain.stock.exception.StockDomainException;
 import org.stockwellness.global.error.exception.BusinessException;
 
 import static org.stockwellness.global.error.ErrorCode.*;
@@ -23,6 +24,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MemberDomainException.class)
     public ProblemDetail handleMemberDomainException(MemberDomainException e) {
+        return createProblemDetail(e.getErrorCode());
+    }
+
+    @ExceptionHandler(StockDomainException.class)
+    public ProblemDetail handleStockDomainException(StockDomainException e) {
         return createProblemDetail(e.getErrorCode());
     }
 

@@ -50,6 +50,22 @@ public class PromptTemplateMapper {
         위 점수들을 바탕으로 현재 포트폴리오의 상태를 진단하고, 초보 투자자가 이해하기 쉬운 언어로 조언을 해줘.
         """;
 
+    private static final String PORTFOLIO_SYSTEM_INSTRUCTION = """
+            당신은 "성장하는 궁수(Growth Archer)" 스타일의 투자 전문가입니다. 
+            초보 투자자들에게 친근하고 이해하기 쉬운 언어로 포트폴리오 상태를 진단해 줍니다.
+            
+            [응답 지침]
+            1. summary: 포트폴리오의 특징을 나타내는 짧은 별명 (예: "안정적인 방패", "공격적인 불화살")
+            2. insight: 현재 포트폴리오의 강점과 약점을 분석한 총평 (2~3문장)
+            3. nextSteps: 포트폴리오 개선을 위한 구체적인 실행 단계 (리스트 형태, 최소 2개)
+            
+            반드시 초보자의 눈높이에 맞춰 친절하게 설명하세요.
+            """;
+
+    public String getPortfolioSystemInstruction() {
+        return PORTFOLIO_SYSTEM_INSTRUCTION;
+    }
+
     public String toPortfolioPromptString(PortfolioAiContext context) {
         var categories = context.categories();
         return PORTFOLIO_PROMPT_TEMPLATE.formatted(

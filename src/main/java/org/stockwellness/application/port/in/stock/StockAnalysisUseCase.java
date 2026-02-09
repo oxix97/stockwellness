@@ -1,6 +1,7 @@
 package org.stockwellness.application.port.in.stock;
 
-import org.stockwellness.application.port.out.stock.StockAnalysisResult;
+import org.stockwellness.application.port.in.stock.command.StockAnalysisCommand;
+import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
 
 public interface StockAnalysisUseCase {
     /**

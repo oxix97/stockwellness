@@ -55,7 +55,6 @@ public class StockReadService implements StockReadUseCase {
                 stock.getTicker(),
                 stock.getName(),
                 stock.getMarketType().name(),
-                null,
                 stock.getTotalShares(),
                 h != null ? h.getBaseDate() : null,
                 h != null ? h.getClosePrice() : BigDecimal.ZERO,
