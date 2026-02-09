@@ -91,7 +91,7 @@ public class StockFixture {
      */
     public static StockDetailResult createDetailResult(String isinCode, String name) {
         return new StockDetailResult(
-                isinCode, "TICKER", name, "KOSPI", null, 1000000L,
+                isinCode, "TICKER", name, "KOSPI", 1000000L,
                 LocalDate.now(), BigDecimal.valueOf(50000), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(50000), BigDecimal.valueOf(51000), BigDecimal.valueOf(49000),
                 100000L, BigDecimal.valueOf(5000000000L), BigDecimal.valueOf(300000000000000L),

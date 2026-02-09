@@ -2,7 +2,7 @@ package org.stockwellness.adapter.in.web.stock.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.stockwellness.domain.stock.analysis.AiReport;
-import org.stockwellness.application.port.out.stock.StockAnalysisResult;
+import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +15,14 @@ public record StockAnalysisResponse(
         @Schema(description = "종목 코드", example = "005930")
         String isinCode,
 
-        @Schema(description = "기술적 추세 상태 (REGULAR: 정배열, INVERSE: 역배열)", example = "REGULAR")
+        @Schema(description = "기술적 추세 상태 (REGULAR, INVERSE, NEUTRAL)", example = "REGULAR")
         String trendStatus,
+
+        @Schema(description = "추세 상태 설명", example = "정배열 (상승추세)")
+        String trendStatusDescription,
+
+        @Schema(description = "추세 상태 색상 코드", example = "#F44336")
+        String trendStatusColor,
 
         @Schema(description = "AI 구조화된 분석 리포트")
         AiAnalysisDetail aiResult,
@@ -30,16 +36,20 @@ public record StockAnalysisResponse(
         return new StockAnalysisResponse(
                 result.isinCode(),
                 result.trendStatus() != null ? result.trendStatus().name() : "UNKNOWN",
+                result.trendStatus() != null ? result.trendStatus().getDescription() : "알 수 없음",
+                result.trendStatus() != null ? result.trendStatus().getColorCode() : "#9E9E9E",
                 AiAnalysisDetail.from(result.report()), // 도메인 객체 매핑
                 result.analyzedAt()
         );
     }
 
     // [Inner Record] AI 분석 상세 데이터
-    // 도메인 모델(AiReport)이 변경되어도 API 스펙은 보호하기 위해 별도 DTO로 정의
     public record AiAnalysisDetail(
             @Schema(description = "투자 의견 (BUY, SELL, HOLD)", example = "BUY")
             String decision,
+
+            @Schema(description = "투자 의견 한글 라벨", example = "매수")
+            String decisionLabel,
 
             @Schema(description = "AI 확신도 (0~100)", example = "85")
             int confidenceScore,
@@ -57,6 +67,7 @@ public record StockAnalysisResponse(
             if (report == null) return null;
             return new AiAnalysisDetail(
                     report.decision() != null ? report.decision().name() : "HOLD",
+                    report.decision() != null ? report.decision().getLabel() : "관망",
                     report.confidenceScore(),
                     report.title(),
                     report.keyReasons(),

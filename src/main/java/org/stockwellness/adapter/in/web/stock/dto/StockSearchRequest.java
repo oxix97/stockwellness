@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 
 public record StockSearchRequest(
         String keyword,         // 검색어 (종목명 or 티커)
@@ -29,5 +30,10 @@ public record StockSearchRequest(
     public Pageable toPageable() {
         // 사용자는 1페이지부터 시작하지만, Spring Data는 0부터 시작
         return PageRequest.of(page - 1, size, Sort.by("name").ascending());
+    }
+
+    // 도메인 쿼리 객체로 변환
+    public SearchStockQuery toQuery() {
+        return new SearchStockQuery(keyword, marketType, status, page, size);
     }
 }

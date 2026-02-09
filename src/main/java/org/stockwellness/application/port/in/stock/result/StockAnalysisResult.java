@@ -1,4 +1,4 @@
-package org.stockwellness.application.port.out.stock;
+package org.stockwellness.application.port.in.stock.result;
 
 import org.stockwellness.domain.stock.analysis.AiReport;
 import org.stockwellness.domain.stock.analysis.TrendStatus;

@@ -8,7 +8,6 @@ public record StockDetailResult(
         String ticker,
         String name,
         String marketType,
-        String sector,
         Long totalShares,
         LocalDate baseDate,
         BigDecimal closePrice,
