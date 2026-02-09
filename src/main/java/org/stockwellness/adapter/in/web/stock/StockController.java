@@ -2,7 +2,6 @@ package org.stockwellness.adapter.in.web.stock;
 
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Slice;
@@ -12,13 +11,12 @@ import org.stockwellness.adapter.in.web.stock.dto.StockAnalysisResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockDetailResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockResponse;
 import org.stockwellness.adapter.in.web.stock.dto.StockSearchRequest;
-import org.stockwellness.application.port.in.stock.StockAnalysisCommand;
+import org.stockwellness.application.port.in.stock.command.StockAnalysisCommand;
 import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
 import org.stockwellness.application.port.in.stock.StockReadUseCase;
-import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.in.stock.result.StockDetailResult;
 import org.stockwellness.application.port.in.stock.result.StockSearchResult;
-import org.stockwellness.application.port.out.stock.StockAnalysisResult;
+import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -32,21 +30,10 @@ public class StockController {
     public ResponseEntity<Slice<StockResponse>> searchStocks(
             @Valid @ModelAttribute StockSearchRequest request
     ) {
-        SearchStockQuery query = new SearchStockQuery(
-                request.keyword(),
-                request.marketType(),
-                request.status(),
-                request.page(),
-                request.size()
-        );
+        Slice<StockSearchResult> results = stockReadUseCase.searchStocks(request.toQuery());
 
-        Slice<StockSearchResult> results = stockReadUseCase.searchStocks(query);
-        
-        // Result -> Web DTO 변환
-        Slice<StockResponse> response = results.map(r -> new StockResponse(
-                r.isinCode(), r.ticker(), r.name(), r.marketType(), r.totalShares()
-        ));
-        
+        var response = results.map(StockResponse::from);
+
         return ResponseEntity.ok(response);
     }
 
@@ -54,33 +41,22 @@ public class StockController {
     public ResponseEntity<StockDetailResponse> getStockDetail(
             @PathVariable("ticker") String ticker
     ) {
-        StockDetailResult r = stockReadUseCase.getStockDetail(ticker);
+        StockDetailResult result = stockReadUseCase.getStockDetail(ticker);
 
-        // Result -> Web DTO 변환
-        StockDetailResponse response = new StockDetailResponse(
-                r.isinCode(), r.ticker(), r.name(), r.marketType(), r.sector(), r.totalShares(),
-                r.baseDate(), r.closePrice(), r.priceChange(), r.fluctuationRate(),
-                r.openPrice(), r.highPrice(), r.lowPrice(), r.volume(), r.tradingValue(),
-                r.marketCap(), r.rsi14(), r.ma20()
-        );
-        
+        var response = StockDetailResponse.from(result);
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/analysis")
     public ResponseEntity<StockAnalysisResponse> getAiAnalysis(
-            @Pattern(regexp = "^[0-9A-Za-z]{4,12}$", message = "올바른 종목 코드가 아닙니다.")
             @RequestParam(name = "isin_code") String isinCode
     ) {
-        log.info("📥 Web Request: Analyze Stock [{}]", isinCode);
-
-        // 1. Command 객체 생성 (Input Mapping)
         StockAnalysisCommand command = new StockAnalysisCommand(isinCode);
 
-        // 2. UseCase 실행 (Business Logic)
         StockAnalysisResult result = stockAnalysisUseCase.analyze(command);
 
-        // 3. Response DTO 변환 (Output Mapping)
-        return ResponseEntity.ok(StockAnalysisResponse.from(result));
+        var response = StockAnalysisResponse.from(result);
+        return ResponseEntity.ok(response);
     }
 }

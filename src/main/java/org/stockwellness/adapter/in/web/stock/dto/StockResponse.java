@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.in.web.stock.dto;
 
+import org.stockwellness.application.port.in.stock.result.StockSearchResult;
 import org.stockwellness.domain.stock.Stock;
 
 public record StockResponse(
@@ -17,6 +18,17 @@ public record StockResponse(
                 stock.getName(),
                 stock.getMarketType().name(),
                 stock.getTotalShares()
+        );
+    }
+
+    // Result -> DTO 변환 팩토리 메서드
+    public static StockResponse from(StockSearchResult result) {
+        return new StockResponse(
+                result.isinCode(),
+                result.ticker(),
+                result.name(),
+                result.marketType(),
+                result.totalShares()
         );
     }
 }
