@@ -1,8 +1,25 @@
 package org.stockwellness.domain.stock.analysis;
 
+import org.stockwellness.domain.stock.StockHistory;
+
 import java.math.BigDecimal;
 
 public class TechnicalCalculator {
+
+    /**
+     * StockHistory 엔티티를 직접 받아 분석하는 편의 메서드
+     */
+    public static MarketCondition analyze(StockHistory today, StockHistory yesterday) {
+        if (today == null) {
+            return new MarketCondition(TrendStatus.NEUTRAL, CrossoverSignal.NONE, "데이터 없음");
+        }
+
+        return analyze(
+                today.getMa5(), today.getMa20(), today.getMa60(), today.getMa120(),
+                yesterday != null ? yesterday.getMa5() : null,
+                yesterday != null ? yesterday.getMa20() : null
+        );
+    }
 
     /**
      * 이동평균선 분석 로직 (BigDecimal 전용)
@@ -55,6 +72,21 @@ public class TechnicalCalculator {
     }
 
     // --- Helper Methods (가독성 향상) ---
+
+    /**
+     * RSI 수준 분석 로직
+     */
+    public static String analyzeRsiLevel(BigDecimal rsi) {
+        if (rsi == null) return "데이터 없음";
+
+        if (gt(rsi, new BigDecimal("70"))) {
+            return "과매수(Overbought) - 조정 가능성 높음";
+        }
+        if (lt(rsi, new BigDecimal("30"))) {
+            return "과매도(Oversold) - 반등 가능성 높음";
+        }
+        return "중립(Neutral)";
+    }
 
     // a > b
     private static boolean gt(BigDecimal a, BigDecimal b) {
