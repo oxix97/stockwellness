@@ -16,6 +16,6 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Security Integration & Token Issuance' (Protocol in workflow.md)
 
 ## Phase 4: Verification & Feedback
-- [~] Task: (User) Write Integration Tests for OAuth2 login flow (Mocking Kakao Response)
-- [ ] Task: (User) Share implemented code for review and feedback
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Verification & Feedback' (Protocol in workflow.md)
+- [x] Task: (User) Write Integration Tests for OAuth2 login flow (Mocking Kakao Response)
+- [x] Task: (User) Share implemented code for review and feedback
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Verification & Feedback' (Protocol in workflow.md)
