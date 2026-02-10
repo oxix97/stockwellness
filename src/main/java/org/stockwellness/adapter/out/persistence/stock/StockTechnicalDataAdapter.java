@@ -13,6 +13,8 @@ import org.stockwellness.domain.stock.exception.StockDataNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -36,5 +38,22 @@ public class StockTechnicalDataAdapter implements LoadTechnicalDataPort {
         MarketCondition condition = TechnicalCalculator.analyze(today, yesterday);
 
         return AiAnalysisContext.of(today, condition);
+    }
+
+    @Override
+    public Map<String, AiAnalysisContext> loadTechnicalContexts(List<String> isinCodes) {
+        Map<String, List<StockHistory>> historiesMap = stockHistoryRepository.findRecentHistoryBatch(isinCodes, RECENT_HISTORY_LIMIT);
+
+        return historiesMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> {
+                            List<StockHistory> histories = e.getValue();
+                            StockHistory today = histories.get(0);
+                            StockHistory yesterday = histories.size() > 1 ? histories.get(1) : null;
+                            MarketCondition condition = TechnicalCalculator.analyze(today, yesterday);
+                            return AiAnalysisContext.of(today, condition);
+                        }
+                ));
     }
 }
