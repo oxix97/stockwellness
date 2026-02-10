@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import org.springframework.restdocs.payload.JsonFieldType;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.relaxedResponseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
@@ -100,24 +101,24 @@ class StockControllerTest extends RestDocsSupport {
                                     )
                                     .responseSchema(Schema.schema("StockDetailResponse"))
                                     .responseFields(
-                                            fieldWithPath("isinCode").description("ISIN 코드"),
-                                            fieldWithPath("ticker").description("티커"),
-                                            fieldWithPath("name").description("종목명"),
-                                            fieldWithPath("marketType").description("시장 구분"),
-                                            fieldWithPath("sector").description("업종").optional(),
-                                            fieldWithPath("totalShares").description("상장주식수"),
-                                            fieldWithPath("baseDate").description("기준일자"),
-                                            fieldWithPath("closePrice").description("종가"),
-                                            fieldWithPath("priceChange").description("대비"),
-                                            fieldWithPath("fluctuationRate").description("등락률"),
-                                            fieldWithPath("openPrice").description("시가"),
-                                            fieldWithPath("highPrice").description("고가"),
-                                            fieldWithPath("lowPrice").description("저가"),
-                                            fieldWithPath("volume").description("거래량"),
-                                            fieldWithPath("tradingValue").description("거래대금"),
-                                            fieldWithPath("marketCap").description("시가총액"),
-                                            fieldWithPath("rsi14").description("RSI(14)").optional(),
-                                            fieldWithPath("ma20").description("20일 이평선").optional()
+                                            fieldWithPath("isinCode").type(JsonFieldType.STRING).description("ISIN 코드"),
+                                            fieldWithPath("ticker").type(JsonFieldType.STRING).description("티커"),
+                                            fieldWithPath("name").type(JsonFieldType.STRING).description("종목명"),
+                                            fieldWithPath("marketType").type(JsonFieldType.STRING).description("시장 구분"),
+                                            fieldWithPath("sector").type(JsonFieldType.STRING).description("업종").optional(),
+                                            fieldWithPath("totalShares").type(JsonFieldType.NUMBER).description("상장주식수"),
+                                            fieldWithPath("baseDate").type(JsonFieldType.STRING).description("기준일자"),
+                                            fieldWithPath("closePrice").type(JsonFieldType.NUMBER).description("종가"),
+                                            fieldWithPath("priceChange").type(JsonFieldType.NUMBER).description("대비"),
+                                            fieldWithPath("fluctuationRate").type(JsonFieldType.NUMBER).description("등락률"),
+                                            fieldWithPath("openPrice").type(JsonFieldType.NUMBER).description("시가"),
+                                            fieldWithPath("highPrice").type(JsonFieldType.NUMBER).description("고가"),
+                                            fieldWithPath("lowPrice").type(JsonFieldType.NUMBER).description("저가"),
+                                            fieldWithPath("volume").type(JsonFieldType.NUMBER).description("거래량"),
+                                            fieldWithPath("tradingValue").type(JsonFieldType.NUMBER).description("거래대금"),
+                                            fieldWithPath("marketCap").type(JsonFieldType.NUMBER).description("시가총액"),
+                                            fieldWithPath("rsi14").type(JsonFieldType.NUMBER).description("RSI(14)").optional(),
+                                            fieldWithPath("ma20").type(JsonFieldType.NUMBER).description("20일 이평선").optional()
                                     )
                                     .build())
                     ));
