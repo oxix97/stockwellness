@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.stockwellness.adapter.out.security.jwt.JwtProperties;
 import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
@@ -48,6 +49,8 @@ class AuthServiceTest {
     private RefreshTokenPort refreshTokenPort;
     @Mock
     private JwtProperties jwtProperties;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
