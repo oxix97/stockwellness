@@ -2,6 +2,7 @@ package org.stockwellness.application.service.auth;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.member.SaveMemberPort;
 import org.stockwellness.domain.auth.RefreshToken;
 import org.stockwellness.domain.member.Member;
+import org.stockwellness.domain.member.event.MemberCreatedEvent;
 import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.error.ErrorCode;
@@ -34,6 +36,7 @@ public class AuthService implements AuthUseCase {
     private final JwtProvider jwtProvider;
     private final RefreshTokenPort refreshTokenPort;
     private final JwtProperties jwtProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public LoginResult login(LoginCommand command) {
@@ -44,7 +47,9 @@ public class AuthService implements AuthUseCase {
                             command.nickname(),
                             command.loginType()
                     );
-                    return saveMemberPort.saveMember(newMember);
+                    Member savedMember = saveMemberPort.saveMember(newMember);
+                    eventPublisher.publishEvent(new MemberCreatedEvent(savedMember));
+                    return savedMember;
                 });
 
         if (!member.isActive()) {
