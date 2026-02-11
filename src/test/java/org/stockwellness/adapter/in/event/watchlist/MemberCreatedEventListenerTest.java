@@ -12,11 +12,13 @@ import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.event.MemberCreatedEvent;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@ActiveProfiles("test")
 @SpringBootTest
 @Transactional
 class MemberCreatedEventListenerTest {
@@ -35,13 +37,13 @@ class MemberCreatedEventListenerTest {
     void handleMemberCreatedEvent() {
         // given
         Member member = Member.register("test@test.com", "tester", LoginType.KAKAO);
-        saveMemberPort.saveMember(member);
+        Member savedMember = saveMemberPort.saveMember(member);
 
         // when
-        eventPublisher.publishEvent(new MemberCreatedEvent(member));
+        eventPublisher.publishEvent(new MemberCreatedEvent(savedMember));
 
         // then
-        List<WatchlistGroup> groups = watchlistPort.findAllGroupsByMemberId(member.getId());
+        List<WatchlistGroup> groups = watchlistPort.findAllGroupsByMemberId(savedMember.getId());
         assertThat(groups).hasSize(1);
         assertThat(groups.get(0).getName()).isEqualTo("기본 그룹");
     }
