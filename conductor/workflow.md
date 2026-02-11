@@ -3,7 +3,13 @@
 ## Guiding Principles
 
 1. **The Plan is the Source of Truth:** All work must be tracked in `plan.md`
-2. **The Tech Stack is Deliberate:** Changes to the tech stack must be documented in `tech-stack.md` *before*
+2. **AI-Human Collaboration Model:**
+    - **User:** Primary implementer. Responsible for writing the actual application and test code.
+    - **AI (Conductor):** Architect and Advisor. Responsible for:
+        - Providing architectural ideas and logic refinement.
+        - Reviewing code quality (Clean Code, Hexagonal Architecture, Performance).
+        - Defining test cases and guiding TDD practices.
+3. **The Tech Stack is Deliberate:** Changes to the tech stack must be documented in `tech-stack.md` *before*
    implementation
 3. **Test-Driven Development:** Write unit tests before implementing functionality
 4. **High Code Coverage:** Aim for >80% code coverage for all modules

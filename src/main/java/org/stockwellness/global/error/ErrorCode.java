@@ -18,6 +18,7 @@ public enum ErrorCode {
 
     // 인증/인가
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     EXPIRED_JWT(HttpStatus.UNAUTHORIZED, "만료된 토큰입니다."),
     INVALID_JWT(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),
@@ -33,7 +34,14 @@ public enum ErrorCode {
     INVALID_PORTFOLIO_TOTAL_PIECE(BAD_REQUEST, "포트폴리오 총 조각 수는 1개 이상, 8개 이하여야 합니다."),
     INVALID_ITEM_PIECE_COUNT(BAD_REQUEST, "각 종목은 최소 1조각 이상이어야 합니다."),
     DUPLICATE_PORTFOLIO_NAME(CONFLICT, "이미 사용 중인 포트폴리오 이름입니다."),
-    PORTFOLIO_NOT_FOUND(NOT_FOUND, "포트폴리오를 찾을 수 없습니다.");
+    PORTFOLIO_NOT_FOUND(NOT_FOUND, "포트폴리오를 찾을 수 없습니다."),
+
+        // 관심 종목 (Watchlist)
+
+        WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "관심 그룹은 최대 10개까지 생성할 수 있습니다."),
+
+        WATCHLIST_ITEM_LIMIT_EXCEEDED(BAD_REQUEST, "관심 종목은 한 그룹당 최대 50개까지 추가할 수 있습니다."),
+    DUPLICATE_WATCHLIST_ITEM(CONFLICT, "이미 그룹에 등록된 종목입니다.");
 
     private final HttpStatus status;
     private final String message;

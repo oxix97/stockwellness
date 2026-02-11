@@ -7,12 +7,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.stockwellness.adapter.in.web.portfolio.dto.DiagnosisResponse;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioResponse;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.application.port.in.portfolio.PortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.DiagnosePortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.LoadPortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.global.security.MemberPrincipal;
 
 import java.net.URI;
@@ -22,7 +26,9 @@ import java.util.List;
 @RequestMapping("/api/v1/portfolios")
 @RequiredArgsConstructor
 public class PortfolioController {
-    private final PortfolioUseCase portfolioUseCase;
+    private final ManagePortfolioUseCase managePortfolioUseCase;
+    private final LoadPortfolioUseCase loadPortfolioUseCase;
+    private final DiagnosePortfolioUseCase diagnosePortfolioUseCase;
 
     /**
      * 포트폴리오 생성
@@ -46,7 +52,7 @@ public class PortfolioController {
                 .toList()
         );
 
-        Long portfolioId = portfolioUseCase.createPortfolio(command);
+        Long portfolioId = managePortfolioUseCase.createPortfolio(command);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -63,7 +69,7 @@ public class PortfolioController {
     public ResponseEntity<List<PortfolioResponse>> getMyPortfolios(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
 
-        List<PortfolioResponse> responses = portfolioUseCase.getMyPortfolios(memberPrincipal.id());
+        List<PortfolioResponse> responses = loadPortfolioUseCase.getMyPortfolios(memberPrincipal.id());
         return ResponseEntity.ok(responses);
     }
 
@@ -76,7 +82,7 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        PortfolioResponse response = portfolioUseCase.getPortfolio(memberPrincipal.id(), portfolioId);
+        PortfolioResponse response = loadPortfolioUseCase.getPortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(response);
     }
 
@@ -104,7 +110,7 @@ public class PortfolioController {
                 .toList()
         );
 
-        portfolioUseCase.updatePortfolio(command);
+        managePortfolioUseCase.updatePortfolio(command);
         return ResponseEntity.noContent().build();
     }
 
@@ -117,7 +123,20 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        portfolioUseCase.deletePortfolio(memberPrincipal.id(), portfolioId);
+        managePortfolioUseCase.deletePortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 포트폴리오 건강 진단
+     * GET /api/v1/portfolios/{portfolioId}/health
+     */
+    @GetMapping("/{portfolioId}/health")
+    public ResponseEntity<DiagnosisResponse> diagnosePortfolio(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long portfolioId) {
+
+        PortfolioHealthResult result = diagnosePortfolioUseCase.diagnosePortfolio(memberPrincipal.id(), portfolioId);
+        return ResponseEntity.ok(DiagnosisResponse.from(result));
     }
 }
