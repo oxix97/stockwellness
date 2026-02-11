@@ -77,6 +77,11 @@ krx:
   service-key: ${KRX_SECRET}
   base-url: https://apis.data.go.kr/1160100/service
 
+kis:
+  base-url: https://openapi.koreainvestment.com:9443
+  app-key: ${KIS_APP_KEY}
+  app-secret: ${KIS_APP_SECRET}
+
 logging:
   level:
     # 1. 전역 설정: 너무 시끄러운 로그는 INFO로 잠재움
