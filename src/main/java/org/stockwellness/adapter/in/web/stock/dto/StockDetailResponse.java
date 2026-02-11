@@ -1,23 +1,19 @@
 package org.stockwellness.adapter.in.web.stock.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import org.stockwellness.application.port.in.stock.result.StockDetailResult;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockHistory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * 주식 상세 정보 응답 DTO
- * <p>Stock(마스터) + 최신 StockHistory(시세)를 결합하여 제공</p>
- */
 public record StockDetailResponse(
         // --- Master Data ---
         String isinCode,
         String ticker,
         String name,
         String marketType,
-        String sector,      // 업종 (추후 확장 대비)
         Long totalShares,   // 상장주식수
 
         // --- Latest Price Data ---
@@ -39,6 +35,18 @@ public record StockDetailResponse(
         BigDecimal ma20
 ) {
     /**
+     * Result -> DTO 변환 팩토리 메서드
+     */
+    public static StockDetailResponse from(StockDetailResult r) {
+        return new StockDetailResponse(
+                r.isinCode(), r.ticker(), r.name(), r.marketType(), r.totalShares(),
+                r.baseDate(), r.closePrice(), r.priceChange(), r.fluctuationRate(),
+                r.openPrice(), r.highPrice(), r.lowPrice(), r.volume(), r.tradingValue(),
+                r.marketCap(), r.rsi14(), r.ma20()
+        );
+    }
+
+    /**
      * Entity 결합 팩토리 메서드
      * history가 null일 경우(신규 상장 등) 안전하게 처리
      */
@@ -47,7 +55,7 @@ public record StockDetailResponse(
             // 시세 데이터가 없는 경우 마스터 정보만 반환
             return new StockDetailResponse(
                     stock.getIsinCode(), stock.getTicker(), stock.getName(),
-                    stock.getMarketType().name(), null, stock.getTotalShares(),
+                    stock.getMarketType().name(), stock.getTotalShares(),
                     null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     0L, BigDecimal.ZERO, BigDecimal.ZERO, null, null
@@ -59,7 +67,6 @@ public record StockDetailResponse(
                 stock.getTicker(),
                 stock.getName(),
                 stock.getMarketType().name(),
-                null, // Sector 정보는 현재 엔티티에 없으므로 null
                 stock.getTotalShares(),
 
                 history.getBaseDate(),

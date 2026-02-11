@@ -2,9 +2,7 @@ package org.stockwellness.adapter.out.persistence.portfolio;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.portfolio.DeletePortfolioPort;
-import org.stockwellness.application.port.out.portfolio.LoadPortfolioPort;
-import org.stockwellness.application.port.out.portfolio.SavePortfolioPort;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 
 import java.util.List;
@@ -12,7 +10,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class PortfolioAdapter implements LoadPortfolioPort, SavePortfolioPort, DeletePortfolioPort {
+public class PortfolioAdapter implements PortfolioPort {
 
     private final PortfolioRepository portfolioRepository;
 
