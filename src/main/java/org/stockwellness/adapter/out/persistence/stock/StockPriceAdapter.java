@@ -10,6 +10,7 @@ import org.stockwellness.application.port.out.stock.LoadStockPricePort;
 import org.stockwellness.domain.stock.StockPrice;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,10 +21,10 @@ public class StockPriceAdapter implements LoadStockPricePort, LoadBenchmarkPort 
 
     private final StockPriceRepository stockPriceRepository;
     private final BenchmarkRepository benchmarkRepository;
+    private final StockPriceCacheAdapter stockPriceCacheAdapter;
 
     @Override
     public Optional<StockPrice> findLateststockPrice(String isinCode) {
-        // 기존 메서드는 유지 (필요 시 구현)
         return Optional.empty();
     }
 
@@ -39,12 +40,27 @@ public class StockPriceAdapter implements LoadStockPricePort, LoadBenchmarkPort 
 
     @Override
     public List<StockPriceResult> loadPricesByYear(String ticker, int year) {
-        return stockPriceRepository.findAllByTickerAndYear(ticker, year);
+        return stockPriceCacheAdapter.loadPricesByYear(ticker, year);
     }
 
     @Override
     public List<StockPriceResult> loadPricesByTicker(String ticker, LocalDate start, LocalDate end) {
-        return stockPriceRepository.findAllByTickerAndPeriod(ticker, start, end);
+        List<StockPriceResult> allPrices = new ArrayList<>();
+        int startYear = start.getYear();
+        int endYear = end.getYear();
+
+        for (int year = startYear; year <= endYear; year++) {
+            List<StockPriceResult> yearPrices = stockPriceCacheAdapter.loadPricesByYear(ticker, year);
+            
+            // 기간에 해당하는 데이터만 필터링
+            final int currentYear = year;
+            List<StockPriceResult> filtered = yearPrices.stream()
+                    .filter(p -> !p.baseDate().isBefore(start) && !p.baseDate().isAfter(end))
+                    .toList();
+            allPrices.addAll(filtered);
+        }
+
+        return allPrices;
     }
 
     @Override
