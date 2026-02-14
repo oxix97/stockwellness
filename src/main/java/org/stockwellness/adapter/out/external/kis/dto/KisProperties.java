@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.out.external.kis.config;
+package org.stockwellness.adapter.out.external.kis.dto;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

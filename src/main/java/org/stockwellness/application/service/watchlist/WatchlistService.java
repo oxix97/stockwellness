@@ -77,7 +77,7 @@ public class WatchlistService implements WatchlistUseCase {
     @Override
     public void addItem(Long memberId, Long groupId, String isinCode) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        Stock stock = loadStockPort.loadStockByIsinCode(isinCode)
+        Stock stock = loadStockPort.loadStockByTicker(isinCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         group.addItem(stock);
@@ -100,13 +100,13 @@ public class WatchlistService implements WatchlistUseCase {
 
     private List<WatchlistItemDetail> toItemDetails(List<WatchlistItem> items) {
         List<String> isinCodes = items.stream()
-                .map(item -> item.getStock().getIsinCode())
+                .map(item -> item.getStock().getStandardCode())
                 .toList();
 
         Map<String, StockDataPort.StockWellnessDetail> details = stockDataPort.getStockDetails(isinCodes);
 
         return items.stream()
-                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getIsinCode())))
+                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getStandardCode())))
                 .toList();
     }
 

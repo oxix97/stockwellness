@@ -2,8 +2,6 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.in.portfolio.result.StockStatResult;
-import org.stockwellness.application.service.stock.StockStatCalculator;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -12,7 +10,7 @@ import org.stockwellness.domain.portfolio.diagnosis.type.CashScorePolicy;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockPrice;
 
 import java.util.*;
 
@@ -20,12 +18,12 @@ import java.util.*;
 @RequiredArgsConstructor
 public class PortfolioHealthCalculator {
 
-    private final StockStatCalculator stockStatCalculator;
+//    private final StockStatCalculator stockStatCalculator;
 
     public CalculatedHealth calculate(DiagnosisContext context) {
         Portfolio portfolio = context.portfolio();
         Map<String, Stock> stockMap = context.stockMap();
-        Map<String, List<StockHistory>> historyMap = context.historyMap();
+        Map<String, List<StockPrice>> stockPriceMap = context.stockPriceMap();
 
         double totalDefense = 0;
         double totalAttack = 0;
@@ -45,13 +43,13 @@ public class PortfolioHealthCalculator {
 
                 marketTypes.add(stock.getMarketType());
 
-                List<StockHistory> histories = historyMap.getOrDefault(item.getIsinCode(), List.of());
-                StockStatResult stat = stockStatCalculator.calculate(stock, histories);
+                List<StockPrice> histories = stockPriceMap.getOrDefault(item.getIsinCode(), List.of());
+//                StockStatResult stat = stockStatCalculator.calculate(stock, histories);
 
-                totalDefense += stat.defense() * weight;
-                totalAttack += stat.attack() * weight;
-                totalEndurance += stat.endurance() * weight;
-                totalAgility += stat.agility() * weight;
+//                totalDefense += stat.defense() * weight;
+//                totalAttack += stat.attack() * weight;
+//                totalEndurance += stat.endurance() * weight;
+//                totalAgility += stat.agility() * weight;
             } else if (item.getAssetType() == AssetType.CASH) {
                 totalDefense += CashScorePolicy.DEFENSE.getScore() * weight;
                 totalAttack += CashScorePolicy.ATTACK.getScore() * weight;

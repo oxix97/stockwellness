@@ -1,10 +1,9 @@
 plugins {
     java
     id("jacoco")
-    // [변경 1] Spring Boot 3.4.1 (최신 안정 버전)
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.epages.restdocs-api-spec") version "0.19.2"
+    id("com.epages.restdocs-api-spec") version "0.19.4"
 }
 
 group = "org"
@@ -12,7 +11,6 @@ version = "0.0.1-SNAPSHOT"
 description = "stockwellness"
 
 val springAiVersion = "1.0.0-M1"
-// [변경 2] Spring Cloud 버전 (Boot 3.4.x와 호환되는 버전)
 val springCloudVersion = "2024.0.0"
 
 java {
@@ -34,9 +32,7 @@ repositories {
 
 dependencyManagement {
     imports {
-        // Spring AI BOM
         mavenBom("org.springframework.ai:spring-ai-bom:$springAiVersion")
-        // [변경 3] Spring Cloud BOM 추가 (필수: 이 부분이 없으면 에러 발생)
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
     }
 }
@@ -50,6 +46,7 @@ dependencies {
 
     // batch
     implementation("org.springframework.boot:spring-boot-starter-batch")
+    testImplementation("org.springframework.batch:spring-batch-test")
 
     // httpclient5
     implementation("org.apache.httpcomponents.client5:httpclient5")
@@ -115,31 +112,51 @@ dependencies {
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 }
 
-// JaCoCo 설정
+// === QueryDSL 빌드 옵션 ===
+val querydslDir = layout.buildDirectory.dir("generated/querydsl")
+
+sourceSets {
+    main {
+        java {
+            srcDir(querydslDir)
+        }
+    }
+}
+
+tasks.withType<JavaCompile> {
+    options.generatedSourceOutputDirectory.set(querydslDir)
+}
+
+tasks.named("clean") {
+    doLast {
+        delete(querydslDir)
+    }
+}
+
+// === JaCoCo 설정 ===
 jacoco {
     toolVersion = "0.8.11"
 }
 
 tasks.jacocoTestReport {
-    dependsOn(tasks.test) // 리포트 생성 전 테스트 실행 강제
+    dependsOn(tasks.test)
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
 
-    // 커버리지 측정 제외 대상 설정
     classDirectories.setFrom(
         files(classDirectories.files.map {
             fileTree(it) {
                 exclude(
-                    "**/Q*",                         // QueryDSL 생성 클래스
-                    "**/*Application*",              // 메인 애플리케이션
-                    "**/*Config*",                   // 설정 파일
-                    "**/*Dto*",                      // DTO
-                    "**/*Request*",                  // Request 객체
-                    "**/*Response*",                 // Response 객체
-                    "**/*Exception*",                // 예외 클래스
-                    "**/global/security/jwt/**"      // 보안 관련 라이브러리성 코드
+                    "**/Q*",
+                    "**/*Application*",
+                    "**/*Config*",
+                    "**/*Dto*",
+                    "**/*Request*",
+                    "**/*Response*",
+                    "**/*Exception*",
+                    "**/global/security/jwt/**"
                 )
             }
         })
@@ -148,9 +165,10 @@ tasks.jacocoTestReport {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    finalizedBy(tasks.jacocoTestReport) // 테스트 후 리포트 자동 생성
+    finalizedBy(tasks.jacocoTestReport)
 }
 
+// === OpenAPI 설정 ===
 openapi3 {
     setServer("http://localhost:8080")
     title = "Stockwellness API"
@@ -159,15 +177,31 @@ openapi3 {
     format = "yaml"
 }
 
-val copyOasToStatic by tasks.registering(Copy::class) {
-    dependsOn("openapi3")
-    from(layout.buildDirectory.dir("api-spec/openapi3.yaml"))
-    into("src/main/resources/static/docs/")
+// openapi3 태스크의 기본 의존성 재설정
+afterEvaluate {
+    tasks.named("openapi3") {
+        setDependsOn(listOf(tasks.test))
+    }
 }
 
-tasks.bootJar {
-    dependsOn(copyOasToStatic)
+// jar 태스크 비활성화
+tasks.jar {
+    enabled = false
 }
+
+// 소스 디렉토리의 openapi3.yaml을 최신으로 업데이트
+tasks.register<Copy>("updateOpenApiSpec") {
+    dependsOn("openapi3")
+    from(layout.buildDirectory.file("api-spec/openapi3.yaml"))
+    into("src/main/resources/static/docs")
+}
+
+// build 실행 시 openapi3.yaml 자동 업데이트
+tasks.build {
+    dependsOn("updateOpenApiSpec")
+}
+
+// bootRun 실행 시에도 최신 문서로 업데이트
 tasks.bootRun {
-    dependsOn(copyOasToStatic)
+    dependsOn("updateOpenApiSpec")
 }
