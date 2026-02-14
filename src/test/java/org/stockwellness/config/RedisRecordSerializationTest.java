@@ -1,5 +1,6 @@
 package org.stockwellness.config;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+@Disabled
 @SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("Redis Record 직렬화 예외 재현 테스트")

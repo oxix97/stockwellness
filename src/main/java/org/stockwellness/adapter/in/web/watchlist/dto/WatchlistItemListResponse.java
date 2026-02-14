@@ -22,13 +22,13 @@ public record WatchlistItemListResponse(
         public static WatchlistItemDetail of(WatchlistItem item, StockDataPort.StockWellnessDetail detail) {
             if (detail == null) {
                 return new WatchlistItemDetail(
-                        item.getStock().getIsinCode(),
+                        item.getStock().getStandardCode(),
                         item.getStock().getName(),
                         null, null, null, "데이터 없음", "데이터가 부족하여 AI 분석을 제공할 수 없습니다."
                 );
             }
             return new WatchlistItemDetail(
-                    item.getStock().getIsinCode(),
+                    item.getStock().getStandardCode(),
                     item.getStock().getName(),
                     detail.currentPrice(),
                     detail.fluctuationRate(),

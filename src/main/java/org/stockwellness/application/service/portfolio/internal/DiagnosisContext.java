@@ -2,7 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockPrice;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +13,6 @@ import java.util.Map;
 public record DiagnosisContext(
         Portfolio portfolio,
         Map<String, Stock> stockMap,
-        Map<String, List<StockHistory>> historyMap
+        Map<String, List<StockPrice>> stockPriceMap
 ) {
 }

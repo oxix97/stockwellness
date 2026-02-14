@@ -79,7 +79,7 @@ public class WatchlistGroup extends AbstractEntity {
     
     public void removeItem(String isinCode) {
         WatchlistItem itemToRemove = this.items.stream()
-                .filter(item -> item.getStock().getIsinCode().equals(isinCode) && item.getDeletedAt() == null)
+                .filter(item -> item.getStock().getStandardCode().equals(isinCode) && item.getDeletedAt() == null)
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
         
@@ -98,7 +98,7 @@ public class WatchlistGroup extends AbstractEntity {
 
     private void validateDuplicateItem(Stock stock) {
         boolean isDuplicate = this.items.stream()
-                .anyMatch(item -> item.getStock().getIsinCode().equals(stock.getIsinCode()) && item.getDeletedAt() == null);
+                .anyMatch(item -> item.getStock().getStandardCode().equals(stock.getStandardCode()) && item.getDeletedAt() == null);
         if (isDuplicate) {
             throw new BusinessException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
         }

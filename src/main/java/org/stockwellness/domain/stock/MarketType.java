@@ -1,15 +1,17 @@
 package org.stockwellness.domain.stock;
 
 
-public enum MarketType {
-    KOSPI, KOSDAQ, KONEX, ETC;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
-    public static MarketType fromString(String value) {
-        if (value == null) return ETC;
-        try {
-            return MarketType.valueOf(value.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return ETC;
-        }
-    }
+@Getter
+@RequiredArgsConstructor
+public enum MarketType {
+    KOSPI("코스피"),
+    KOSDAQ("코스닥"),
+    NASDAQ("나스닥"),
+    NYSE("뉴욕"),
+    AMEX("아멕스");
+
+    private final String description;
 }

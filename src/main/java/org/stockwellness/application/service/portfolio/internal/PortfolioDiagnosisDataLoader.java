@@ -3,14 +3,14 @@ package org.stockwellness.application.service.portfolio.internal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadStockHistoryPort;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
+import org.stockwellness.application.port.out.stock.LoadStockPricePort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockPrice;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +22,7 @@ public class PortfolioDiagnosisDataLoader {
 
     private final PortfolioPort portfolioPort;
     private final LoadStockPort loadStockPort;
-    private final LoadStockHistoryPort loadStockHistoryPort;
+    private final LoadStockPricePort loadStockPricePort;
 
     public DiagnosisContext load(Long portfolioId) {
         Portfolio portfolio = portfolioPort.findById(portfolioId)
@@ -33,11 +33,11 @@ public class PortfolioDiagnosisDataLoader {
                 .map(PortfolioItem::getIsinCode)
                 .toList();
 
-        Map<String, Stock> stockMap = loadStockPort.loadStocksByIsinCodes(isinCodes).stream()
-                .collect(Collectors.toMap(Stock::getIsinCode, stock -> stock));
+        Map<String, Stock> stockMap = loadStockPort.loadStocksByTickers(isinCodes).stream()
+                .collect(Collectors.toMap(Stock::getStandardCode, stock -> stock));
 
-        Map<String, List<StockHistory>> historyMap = loadStockHistoryPort.loadRecentHistoriesBatch(isinCodes, 5);
+        Map<String, List<StockPrice>> stockPriceMap = loadStockPricePort.loadRecentHistoriesBatch(isinCodes, 5);
 
-        return new DiagnosisContext(portfolio, stockMap, historyMap);
+        return new DiagnosisContext(portfolio, stockMap, stockPriceMap);
     }
 }

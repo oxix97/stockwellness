@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.watchlist.WatchlistPort;
 import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
-import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
@@ -61,6 +60,6 @@ public class WatchlistAdapter implements WatchlistPort {
 
     @Override
     public Optional<WatchlistItem> findItemByGroupAndStock(WatchlistGroup group, String isinCode) {
-        return watchlistItemRepository.findByGroupAndStockIsinCodeAndDeletedAtIsNull(group, isinCode);
+        return watchlistItemRepository.findByGroupAndStockTickerAndDeletedAtIsNull(group, isinCode);
     }
 }

@@ -12,5 +12,5 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
     List<WatchlistItem> findAllByGroupAndDeletedAtIsNull(WatchlistGroup group);
     long countByGroupAndDeletedAtIsNull(WatchlistGroup group);
     boolean existsByGroupAndStockAndDeletedAtIsNull(WatchlistGroup group, Stock stock);
-    Optional<WatchlistItem> findByGroupAndStockIsinCodeAndDeletedAtIsNull(WatchlistGroup group, String isinCode);
+    Optional<WatchlistItem> findByGroupAndStockTickerAndDeletedAtIsNull(WatchlistGroup group, String isinCode);
 }

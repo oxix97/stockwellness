@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.out.external.kis.config;
+package org.stockwellness.adapter.out.external.kis.adapter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
 
 import java.time.Duration;
 
