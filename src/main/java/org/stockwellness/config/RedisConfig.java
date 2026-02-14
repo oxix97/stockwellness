@@ -55,6 +55,8 @@ public class RedisConfig {
         configMap.put("ai_analysis", createCacheConfig(domainSerializer, Duration.ofHours(24)));
         // 주식 정보 (Mid Term)
         configMap.put("stock_info", createCacheConfig(domainSerializer, Duration.ofDays(7)));
+        // 시세 데이터 (Mid Term)
+        configMap.put("stock_prices", createCacheConfig(domainSerializer, Duration.ofDays(7)));
         // 인증 정보 (Short Term & Security Serializer)
         configMap.put("member", createCacheConfig(securitySerializer, Duration.ofMinutes(30)));
 
