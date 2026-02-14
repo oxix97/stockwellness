@@ -36,6 +36,6 @@
 - **Key Principles:**
     - **Issue-Driven:** All work starts with an issue and follows a hierarchy (Epic -> Task).
     - **Hierarchical Branching:** Use `feature/` for features and `task/` for sub-tasks.
-    - **Selective Merging:** Use **Merge** for sub-tasks to preserve history, and **Squash Merge** for features to maintain a clean main branch history.
+    - **Selective Merging:** Use **Merge** for sub-tasks to preserve stockPrice, and **Squash Merge** for features to maintain a clean main branch stockPrice.
     - **Pre-Commit Review:** NEVER commit automatically. Always present a summary of changes and the proposed commit message for user approval.
     - **Automation:** Mandatory CI verification (Tests, Coverage, Style) before any merge.

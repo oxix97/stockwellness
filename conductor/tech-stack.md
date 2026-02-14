@@ -12,7 +12,7 @@
 - **In-Memory Database:** H2 (for integration and repository testing)
 
 ## 3. Specialized Engines
-- **Batch Processing:** Spring Batch (daily data pipelines for KRX and market history)
+- **Batch Processing:** Spring Batch (daily data pipelines for KRX and market stockPrice)
 - **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
 - **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
 

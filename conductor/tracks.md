@@ -29,5 +29,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Stock Discovery & Basic Inquiry (Track A)**
+- [x] **Track: Stock Discovery & Basic Inquiry (Track A)**
 *Link: [./tracks/stock_discovery_20260214/](./tracks/stock_discovery_20260214/)*
