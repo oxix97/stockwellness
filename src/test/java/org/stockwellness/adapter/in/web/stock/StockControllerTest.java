@@ -1,0 +1,182 @@
+package org.stockwellness.adapter.in.web.stock;
+
+import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.stockwellness.application.port.in.stock.PopularSearchUseCase;
+import org.stockwellness.application.port.in.stock.SearchHistoryUseCase;
+import org.stockwellness.application.port.in.stock.StockUseCase;
+import org.stockwellness.application.port.in.stock.result.StockSearchResult;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.support.RestDocsSupport;
+
+import java.util.List;
+
+import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+class StockControllerTest extends RestDocsSupport {
+
+    @MockitoBean
+    private StockUseCase stockUseCase;
+
+    @MockitoBean
+    private SearchHistoryUseCase searchHistoryUseCase;
+
+    @MockitoBean
+    private PopularSearchUseCase popularSearchUseCase;
+
+    @Test
+    @DisplayName("종목 통합 검색 API")
+    void searchStocks() throws Exception {
+        // given
+        StockSearchResult result = new StockSearchResult("005930", "삼성전자", MarketType.KOSPI, "전기전자", StockStatus.ACTIVE);
+        given(stockUseCase.searchStocks(any())).willReturn(new SliceImpl<>(List.of(result)));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/search")
+                        .param("keyword", "삼성")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("stock-search",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("종목 통합 검색")
+                                .description("티커 또는 종목명으로 주식을 검색합니다.")
+                                .queryParameters(
+                                        parameterWithName("keyword").description("검색어 (티커 또는 종목명)"),
+                                        parameterWithName("marketType").description("마켓 타입 (KOSPI, KOSDAQ 등)").optional(),
+                                        parameterWithName("status").description("종목 상태 (ACTIVE, HALTED 등)").optional(),
+                                        parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
+                                        parameterWithName("size").description("페이지 사이즈").optional()
+                                )
+                                .responseFields(
+                                        fieldWithPath("content[].ticker").description("티커"),
+                                        fieldWithPath("content[].name").description("종목명"),
+                                        fieldWithPath("content[].marketType").description("마켓 타입"),
+                                        fieldWithPath("content[].sectorName").description("섹터명"),
+                                        fieldWithPath("content[].status").description("종목 상태"),
+                                        fieldWithPath("pageable").description("페이징 정보"),
+                                        fieldWithPath("last").description("마지막 페이지 여부"),
+                                        fieldWithPath("numberOfElements").description("현재 페이지 엘리먼트 수"),
+                                        fieldWithPath("first").description("첫 번째 페이지 여부"),
+                                        fieldWithPath("size").description("페이지 사이즈"),
+                                        fieldWithPath("number").description("현재 페이지 번호"),
+                                        fieldWithPath("sort.empty").description("정렬 정보 비어있음 여부"),
+                                        fieldWithPath("sort.sorted").description("정렬 여부"),
+                                        fieldWithPath("sort.unsorted").description("미정렬 여부"),
+                                        fieldWithPath("empty").description("결과 비어있음 여부")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("최근 검색어 조회 API")
+    void getRecentSearches() throws Exception {
+        // given
+        given(searchHistoryUseCase.getRecentSearches(any())).willReturn(List.of("삼성전자", "애플"));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/search/history"))
+                .andExpect(status().isOk())
+                .andDo(document("stock-search-history",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("최근 검색어 조회")
+                                .responseFields(
+                                        fieldWithPath("[]").description("최근 검색어 목록")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("인기 검색어 조회 API")
+    void getPopularSearches() throws Exception {
+        // given
+        given(popularSearchUseCase.getPopularSearches()).willReturn(List.of("삼성전자", "애플", "엔비디아"));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/popular"))
+                .andExpect(status().isOk())
+                .andDo(document("stock-popular-search",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("인기 검색어 조회")
+                                .responseFields(
+                                        fieldWithPath("[]").description("인기 검색어 목록")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("신규 상장 종목 조회 API")
+    void getNewListings() throws Exception {
+        // given
+        StockSearchResult result = new StockSearchResult("T1", "New Stock", MarketType.KOSPI, "기타", StockStatus.ACTIVE);
+        given(stockUseCase.getNewListings()).willReturn(List.of(result));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/new-listings"))
+                .andExpect(status().isOk())
+                .andDo(document("stock-new-listings",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("신규 상장 종목 조회")
+                                .responseFields(
+                                        fieldWithPath("[].ticker").description("티커"),
+                                        fieldWithPath("[].name").description("종목명"),
+                                        fieldWithPath("[].marketType").description("마켓 타입"),
+                                        fieldWithPath("[].sectorName").description("섹터명"),
+                                        fieldWithPath("[].status").description("종목 상태")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("최근 검색어 개별 삭제 API")
+    void removeSearchHistory() throws Exception {
+        // when & then
+        mockMvc.perform(delete("/api/v1/stocks/search/history?keyword={keyword}", "삼성전자"))
+                .andExpect(status().isNoContent())
+                .andDo(document("stock-search-history-delete",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("최근 검색어 개별 삭제")
+                                .queryParameters(
+                                        parameterWithName("keyword").description("삭제할 검색어")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("최근 검색어 전체 삭제 API")
+    void clearSearchHistory() throws Exception {
+        // when & then
+        mockMvc.perform(delete("/api/v1/stocks/search/history/all"))
+                .andExpect(status().isNoContent())
+                .andDo(document("stock-search-history-clear",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("최근 검색어 전체 삭제")
+                                .build())
+                ));
+    }
+}
