@@ -4,16 +4,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.application.port.in.stock.CalculateReturnUseCase;
-import org.stockwellness.application.port.in.stock.LoadChartDataUseCase;
+import org.stockwellness.application.port.in.stock.StockPriceUseCase;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.BenchmarkPoint;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.application.port.out.stock.LoadStockPricePort;
 import org.stockwellness.domain.stock.ChartPeriod;
+import org.stockwellness.domain.stock.exception.StockPriceException;
+import org.stockwellness.global.error.ErrorCode;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,18 +27,28 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class StockChartService implements LoadChartDataUseCase, CalculateReturnUseCase {
+public class StockChartService implements StockPriceUseCase {
 
     private final LoadStockPricePort loadStockPricePort;
     private final LoadBenchmarkPort loadBenchmarkPort;
+    private final LoadStockPort loadStockPort;
+
+    private static final String DEFAULT_BENCHMARK = "^KS11"; // KOSPI
+    private static final int CALC_SCALE = 8;
+    private static final int DISPLAY_SCALE = 4;
 
     @Override
     public ChartDataResponse loadChartData(ChartQuery query) {
+        validateStock(query.ticker());
+
         LocalDate end = LocalDate.now();
         LocalDate start = query.period().calculateStartDate(end);
 
         List<StockPriceResult> dailyPrices = loadStockPricePort.loadPricesByTicker(query.ticker(), start, end);
-        
+        if (dailyPrices.isEmpty()) {
+            throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
+        }
+
         List<ChartPoint> aggregatedPrices = switch (query.frequency()) {
             case WEEKLY -> PriceDataAggregator.aggregateToWeekly(dailyPrices);
             case MONTHLY -> PriceDataAggregator.aggregateToMonthly(dailyPrices);
@@ -45,9 +57,13 @@ public class StockChartService implements LoadChartDataUseCase, CalculateReturnU
 
         List<BenchmarkPoint> benchmarks = Collections.emptyList();
         if (query.includeBenchmark()) {
-            String benchmarkTicker = "^KS11";
-            List<StockPriceResult> benchmarkDaily = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
-            benchmarks = calculateBenchmarkReturns(benchmarkDaily);
+            String benchmarkTicker = resolveBenchmarkTicker(query.ticker());
+            try {
+                List<StockPriceResult> benchmarkDaily = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
+                benchmarks = calculateBenchmarkReturns(benchmarkDaily);
+            } catch (Exception e) {
+                log.warn("Failed to load benchmark data for {}", benchmarkTicker, e);
+            }
         }
 
         return new ChartDataResponse(query.ticker(), aggregatedPrices, benchmarks);
@@ -55,16 +71,34 @@ public class StockChartService implements LoadChartDataUseCase, CalculateReturnU
 
     @Override
     public ReturnRateResponse calculateReturn(String ticker, ChartPeriod period) {
+        validateStock(ticker);
+
         LocalDate end = LocalDate.now();
         LocalDate start = period.calculateStartDate(end);
 
         List<StockPriceResult> stockPrices = loadStockPricePort.loadPricesByTicker(ticker, start, end);
-        List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices("^KS11", start, end);
+        if (stockPrices.isEmpty()) {
+            throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
+        }
+
+        String benchmarkTicker = resolveBenchmarkTicker(ticker);
+        List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
 
         BigDecimal stockReturn = calculateTotalReturn(stockPrices);
         BigDecimal benchmarkReturn = calculateTotalReturn(benchmarkPrices);
 
         return new ReturnRateResponse(ticker, period.getLabel(), stockReturn, benchmarkReturn);
+    }
+
+    private void validateStock(String ticker) {
+        if (!loadStockPort.existsByTicker(ticker)) {
+            throw new StockPriceException(ErrorCode.STOCK_NOT_FOUND);
+        }
+    }
+
+    private String resolveBenchmarkTicker(String ticker) {
+        // TODO: MarketType에 따른 벤치마크 매핑 로직 추가 (예: 나스닥 종목 -> ^IXIC)
+        return DEFAULT_BENCHMARK;
     }
 
     private ChartPoint toChartPoint(StockPriceResult p) {
@@ -89,8 +123,9 @@ public class StockChartService implements LoadChartDataUseCase, CalculateReturnU
                 .map(p -> {
                     BigDecimal returnRate = p.adjClosePrice()
                             .subtract(firstPrice)
-                            .divide(firstPrice, 4, RoundingMode.HALF_UP)
-                            .multiply(BigDecimal.valueOf(100));
+                            .divide(firstPrice, CALC_SCALE, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
                     return new BenchmarkPoint(p.baseDate(), returnRate);
                 })
                 .toList();
@@ -105,7 +140,8 @@ public class StockChartService implements LoadChartDataUseCase, CalculateReturnU
         if (startPrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
 
         return endPrice.subtract(startPrice)
-                .divide(startPrice, 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100));
+                .divide(startPrice, CALC_SCALE, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
     }
 }

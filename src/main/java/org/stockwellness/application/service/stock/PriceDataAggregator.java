@@ -41,22 +41,19 @@ public class PriceDataAggregator {
     }
 
     private static ChartPoint aggregate(LocalDate date, List<StockPriceResult> prices) {
-        List<StockPriceResult> sorted = prices.stream()
-                .sorted((p1, p2) -> p1.baseDate().compareTo(p2.baseDate()))
-                .toList();
+        // dailyPrices가 이미 날짜순으로 정렬되어 넘어오므로 추가 정렬 생략
+        StockPriceResult first = prices.get(0);
+        StockPriceResult last = prices.get(prices.size() - 1);
 
-        StockPriceResult first = sorted.get(0);
-        StockPriceResult last = sorted.get(sorted.size() - 1);
-
-        java.math.BigDecimal high = sorted.stream()
+        java.math.BigDecimal high = prices.stream()
                 .map(StockPriceResult::highPrice)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::max);
 
-        java.math.BigDecimal low = sorted.stream()
+        java.math.BigDecimal low = prices.stream()
                 .map(StockPriceResult::lowPrice)
                 .reduce(first.lowPrice(), java.math.BigDecimal::min);
 
-        long totalVolume = sorted.stream()
+        long totalVolume = prices.stream()
                 .mapToLong(StockPriceResult::volume)
                 .sum();
 
