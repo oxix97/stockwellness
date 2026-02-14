@@ -1,12 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.stereotype.Component;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
@@ -24,17 +23,12 @@ public class StockAdapter implements LoadStockPort {
     private final StockRepository stockRepository;
 
     @Override
-    public Optional<Stock> loadStockByIsinCode(String isinCode) {
-        return stockRepository.findById(isinCode);
-    }
-
-    @Override
-    public List<Stock> loadStocksByIsinCodes(List<String> isinCodes) {
+    public List<Stock> loadStocksByTickers(List<String> isinCodes) {
         return stockRepository.findAllById(isinCodes);
     }
 
     @Override
-    public boolean existsByIsinCode(String isinCode) {
+    public boolean existsByTicker(String isinCode) {
         return stockRepository.existsById(isinCode);
     }
 
@@ -70,7 +64,7 @@ public class StockAdapter implements LoadStockPort {
 
 
     public List<Stock> findByIsinCodeIn(List<String> isinCodes) {
-        return stockRepository.findByIsinCodeIn(isinCodes);
+        return stockRepository.findByTickerIn(isinCodes);
     }
 
 
@@ -78,8 +72,7 @@ public class StockAdapter implements LoadStockPort {
         return stockRepository.searchByCondition(keyword, marketType, status, pageable);
     }
 
-
     public List<String> findAllStockCodes() {
-        return stockRepository.findAllByIsinCode();
+        return stockRepository.findAllByTicker();
     }
 }

@@ -14,7 +14,6 @@ import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameException;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
-import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 import org.stockwellness.fixture.PortfolioFixture;
 
@@ -55,7 +54,7 @@ class PortfolioCommandServiceTest {
             ));
 
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
-            given(loadStockPort.existsByIsinCode("AAPL")).willReturn(true);
+            given(loadStockPort.existsByTicker("AAPL")).willReturn(true);
             given(portfolioPort.savePortfolio(any(Portfolio.class)))
                     .willReturn(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID));
 
@@ -87,7 +86,7 @@ class PortfolioCommandServiceTest {
                     PortfolioFixture.createStockItem("INVALID_CODE", 1)
             ));
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
-            given(loadStockPort.existsByIsinCode("INVALID_CODE")).willReturn(false);
+            given(loadStockPort.existsByTicker("INVALID_CODE")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> portfolioCommandService.createPortfolio(command))
@@ -111,7 +110,7 @@ class PortfolioCommandServiceTest {
             given(portfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
                     .willReturn(Optional.of(portfolio));
             given(portfolioPort.existsPortfolioName(PortfolioFixture.MEMBER_ID, "수정된 이름")).willReturn(false);
-            given(loadStockPort.existsByIsinCode("TSLA")).willReturn(true);
+            given(loadStockPort.existsByTicker("TSLA")).willReturn(true);
 
             // when
             portfolioCommandService.updatePortfolio(command);

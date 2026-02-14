@@ -1,11 +1,8 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
 
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
@@ -38,8 +35,18 @@ public interface StockRepository extends JpaRepository<Stock, String>, StockCust
     /**
      * ISIN 코드 목록으로 여러 종목 한 번에 조회 (IN절)
      */
-    List<Stock> findByIsinCodeIn(List<String> isinCodes);
+    List<Stock> findByTickerIn(List<String> isinCodes);
 
-    @Query("SELECT s.isinCode FROM Stock s")
-    List<String> findAllByIsinCode();
+    /**
+     * 특정 섹터에 속한 모든 종목 조회
+     */
+    List<Stock> findBySectorCode(String sectorCode);
+
+    /**
+     * 신규 상장 종목 조회 (최근 등록 순 10개)
+     */
+    List<Stock> findTop10ByOrderByCreatedAtDesc();
+
+    @Query("SELECT s.standardCode FROM Stock s")
+    List<String> findAllByTicker();
 }

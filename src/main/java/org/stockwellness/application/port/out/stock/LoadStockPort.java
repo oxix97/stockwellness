@@ -8,9 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface LoadStockPort {
-    Optional<Stock> loadStockByIsinCode(String isinCode);
-    List<Stock> loadStocksByIsinCodes(List<String> isinCodes);
-    boolean existsByIsinCode(String isinCode);
-    Optional<Stock> loadStockByTicker(String ticker);
+    Optional<Stock> loadStockByTicker(String isinCode);
+    List<Stock> loadStocksByTickers(List<String> isinCodes);
+    boolean existsByTicker(String isinCode);
     Slice<Stock> searchStocks(SearchStockQuery query);
 }

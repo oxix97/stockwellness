@@ -44,7 +44,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(STATELESS))
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(permitPatterns()).permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
+//                        .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))

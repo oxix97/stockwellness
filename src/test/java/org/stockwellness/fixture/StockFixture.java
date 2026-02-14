@@ -1,101 +1,104 @@
 package org.stockwellness.fixture;
 
-import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
-import org.stockwellness.application.port.in.stock.result.StockDetailResult;
-import org.stockwellness.application.port.in.stock.result.StockSearchResult;
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockHistory;
-import org.stockwellness.domain.stock.StockStatus;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.SectorCode;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockStatus;
 
 public class StockFixture {
 
-    public static final String ISIN_CODE = "KR7005930003";
-    public static final String TICKER = "005930";
-    public static final String NAME = "삼성전자";
-
     /**
-     * 기본 Stock 엔티티 생성
+     * 삼성전자 (KOSPI, KRW, 일반주식)
      */
-    public static Stock createStock() {
-        return createStock(ISIN_CODE, TICKER, NAME);
-    }
-
-    public static Stock createStock(String isinCode, String ticker, String name) {
-        return Stock.create(
-                isinCode,
-                name,
-                ticker,
+    public static Stock createSamsung() {
+        return Stock.of(
+                "005930",
+                "KR7005930003",
+                "삼성전자",
                 MarketType.KOSPI,
-                5969782550L,
-                "123456789",
-                "삼성전자주식회사"
+                Currency.KRW,
+                "009",
+                "전기전자",
+                StockStatus.ACTIVE
         );
     }
 
     /**
-     * 기본 StockHistory 생성 (필수값만 입력, 나머지는 더미 데이터)
+     * 애플 (NASDAQ, USD, 해외주식)
      */
-    public static StockHistory createHistory(String isinCode, LocalDate baseDate, double closePrice) {
-        return StockHistory.create(
-                isinCode,
-                baseDate,
-                BigDecimal.valueOf(closePrice),
-                BigDecimal.valueOf(closePrice),
-                BigDecimal.valueOf(closePrice),
-                BigDecimal.valueOf(closePrice),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                100000L,
-                BigDecimal.valueOf(1000000000),
-                BigDecimal.valueOf(500000000000L)
+    public static Stock createApple() {
+        return Stock.of(
+                "AAPL",
+                "US0378331005",
+                "Apple Inc",
+                MarketType.NASDAQ,
+                Currency.USD,
+                "TEC",
+                "Technology",
+                StockStatus.ACTIVE
         );
     }
 
     /**
-     * 지표가 포함된 StockHistory 생성
+     * KODEX 200 (KOSPI, KRW, ETF)
      */
-    public static StockHistory createHistoryWithIndicators(
-            String isinCode, LocalDate baseDate, double closePrice,
-            double ma5, double ma20, double rsi, double macd) {
-        
-        StockHistory history = createHistory(isinCode, baseDate, closePrice);
-        
-        history.updateMa5(BigDecimal.valueOf(ma5));
-        history.updateMa20(BigDecimal.valueOf(ma20));
-        history.updateRsi14(BigDecimal.valueOf(rsi));
-        history.updateMacd(BigDecimal.valueOf(macd));
-        
-        return history;
+    public static Stock createKodex200() {
+        return Stock.of(
+                "069500",
+                "KR7069500007",
+                "KODEX 200",
+                MarketType.KOSPI,
+                Currency.KRW,
+                "ETF",
+                "상장지수펀드",
+                StockStatus.ACTIVE
+        );
     }
 
     /**
-     * 검색 쿼리 생성
+     * 상장 폐지된 종목 (테스트용)
      */
-    public static SearchStockQuery createSearchQuery(String keyword) {
-        return new SearchStockQuery(keyword, MarketType.KOSPI, StockStatus.ACTIVE, 1, 20);
+    public static Stock createDelisted(String ticker, String name) {
+        return Stock.of(
+                ticker,
+                "DELISTED_STD_" + ticker,
+                name,
+                MarketType.KOSPI,
+                Currency.KRW,
+                "999",
+                "미분류",
+                StockStatus.DELISTED
+        );
     }
 
     /**
-     * 검색 결과 생성
+     * 커스텀 종목 생성용 범용 메서드
      */
-    public static StockSearchResult createSearchResult(String isinCode, String name) {
-        return new StockSearchResult(isinCode, "TICKER", name, "KOSPI", 1000000L);
+    public static Stock create(String ticker, String name, MarketType marketType) {
+        return Stock.of(
+                ticker,
+                "STD_" + ticker,
+                name,
+                marketType,
+                Currency.KRW,
+                SectorCode.UNKNOWN.getCode(),
+                SectorCode.UNKNOWN.getLabel(),
+                StockStatus.ACTIVE
+        );
     }
 
-    /**
-     * 상세 결과 생성
-     */
-    public static StockDetailResult createDetailResult(String isinCode, String name) {
-        return new StockDetailResult(
-                isinCode, "TICKER", name, "KOSPI", 1000000L,
-                LocalDate.now(), BigDecimal.valueOf(50000), BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.valueOf(50000), BigDecimal.valueOf(51000), BigDecimal.valueOf(49000),
-                100000L, BigDecimal.valueOf(5000000000L), BigDecimal.valueOf(300000000000000L),
-                BigDecimal.valueOf(50), BigDecimal.valueOf(50000)
+    public static Stock createWithSector(String ticker, String name, MarketType marketType, SectorCode sector) {
+        return Stock.of(
+                ticker,
+                "STD_" + ticker,
+                name,
+                marketType,
+                Currency.KRW,
+                sector.getCode(),
+                sector.getLabel(),
+                StockStatus.ACTIVE
         );
     }
 }

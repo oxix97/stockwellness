@@ -16,7 +16,8 @@ Stockwellness is an asset allocation simulator and AI-powered prediction service
 - **Lack of Actionable Insights:** Provides accessible, AI-driven insights to predict stock performance and identify market conditions.
 
 ## 4. Key Features
-- **Automated Data Pipeline:** Daily stock price fetching and history management using Spring Batch (integrating with KRX and yfinance).
+- **Automated Data Pipeline:** Daily stock price fetching and stockPrice management using Spring Batch (integrating with KRX and yfinance).
+- **High-Performance Price Engine:** Optimized EOD price retrieval and return rate calculation using hierarchical Redis caching and in-memory aggregation.
 - **AI-Powered Analysis:** Generation of market reports and stock analysis based on pre-calculated technical indicators (RSI, MACD, etc.).
 - **Portfolio Simulation:** Robust portfolio creation and simulation tools with backtesting capabilities.
 
