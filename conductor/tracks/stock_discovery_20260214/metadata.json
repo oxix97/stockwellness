@@ -1,0 +1,8 @@
+{
+  "track_id": "stock_discovery_20260214",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-14T00:00:00Z",
+  "updated_at": "2026-02-14T00:00:00Z",
+  "description": "Stock Discovery & Basic Inquiry (Track A) implementation including search, history, and ranking."
+}
