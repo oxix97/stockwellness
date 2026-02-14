@@ -26,3 +26,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Stock Watchlist feature with Wellness indicators and AI insights**
 *Link: [./tracks/stock_watchlist_20260209/](./tracks/stock_watchlist_20260209/)*
+
+---
+
+- [x] **Track: Stock Discovery & Basic Inquiry (Track A)**
+*Link: [./tracks/stock_discovery_20260214/](./tracks/stock_discovery_20260214/)*

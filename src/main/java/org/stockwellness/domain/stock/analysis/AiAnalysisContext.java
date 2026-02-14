@@ -1,6 +1,6 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockPrice;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,14 +13,15 @@ public record AiAnalysisContext(
         PortfolioRisk riskInfo      // 리스크 정보 (변동성 등)
 ) {
 
-    public static AiAnalysisContext of(StockHistory today, MarketCondition condition) {
-        return new AiAnalysisContext(
-                today.getIsinCode(),
-                today.getBaseDate(),
-                PriceSummary.from(today),
-                TechnicalSignal.of(today, condition),
-                new PortfolioRisk(false, 0.0)
-        );
+    public static AiAnalysisContext of(StockPrice today, MarketCondition condition) {
+        return null;
+//        return new AiAnalysisContext(
+//                today.getIsinCode(),
+//                today.getBaseDate(),
+//                PriceSummary.from(today),
+//                TechnicalSignal.of(today, condition),
+//                new PortfolioRisk(false, 0.0)
+//        );
     }
 
     // 1. 가격 정보 그룹
@@ -29,12 +30,13 @@ public record AiAnalysisContext(
             BigDecimal fluctuationRate, // 등락률 (전일 대비)
             BigDecimal volume           // 거래량 (보조 지표용)
     ) {
-        public static PriceSummary from(StockHistory history) {
-            return new PriceSummary(
-                    history.getClosePrice(),
-                    history.getFluctuationRate(),
-                    new BigDecimal(history.getVolume())
-            );
+        public static PriceSummary from(StockPrice price) {
+            return null;
+//            return new PriceSummary(
+//                    price.getClosePrice(),
+//                    price.getFluctuationRate(),
+//                    new BigDecimal(price.getVolume())
+//            );
         }
     }
 
@@ -52,18 +54,19 @@ public record AiAnalysisContext(
             BigDecimal ma60,
             BigDecimal ma120
     ) {
-        public static TechnicalSignal of(StockHistory history, MarketCondition condition) {
-            return new TechnicalSignal(
-                    condition.trendStatus(),
-                    history.getRsi14(),
-                    TechnicalCalculator.analyzeRsiLevel(history.getRsi14()),
-                    history.getMacd(),
-                    condition.signal(),
-                    history.getMa5(),
-                    history.getMa20(),
-                    history.getMa60(),
-                    history.getMa120()
-            );
+        public static TechnicalSignal of(StockPrice price, MarketCondition condition) {
+            return null;
+//            return new TechnicalSignal(
+//                    condition.trendStatus(),
+//                    price.getRsi14(),
+//                    TechnicalCalculator.analyzeRsiLevel(price.getRsi14()),
+//                    price.getMacd(),
+//                    condition.signal(),
+//                    price.getMa5(),
+//                    price.getMa20(),
+//                    price.getMa60(),
+//                    price.getMa120()
+//            );
         }
     }
 

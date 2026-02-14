@@ -86,7 +86,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
     }
 
     private void validateStockCode(String stockCode, AssetType assetType) {
-        if (assetType == AssetType.STOCK && !loadStockPort.existsByIsinCode(stockCode)) {
+        if (assetType == AssetType.STOCK && !loadStockPort.existsByTicker(stockCode)) {
             throw new InvalidStockCodeException("Stock not found with code: " + stockCode);
         }
     }

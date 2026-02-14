@@ -1,24 +1,20 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.StockHistory;
+import org.stockwellness.domain.stock.StockPrice;
 
 import java.math.BigDecimal;
 
 public class TechnicalCalculator {
 
     /**
-     * StockHistory 엔티티를 직접 받아 분석하는 편의 메서드
+     * StockPrice 엔티티를 직접 받아 분석하는 편의 메서드
      */
-    public static MarketCondition analyze(StockHistory today, StockHistory yesterday) {
+    public static MarketCondition analyze(StockPrice today, StockPrice yesterday) {
         if (today == null) {
             return new MarketCondition(TrendStatus.NEUTRAL, CrossoverSignal.NONE, "데이터 없음");
         }
 
-        return analyze(
-                today.getMa5(), today.getMa20(), today.getMa60(), today.getMa120(),
-                yesterday != null ? yesterday.getMa5() : null,
-                yesterday != null ? yesterday.getMa20() : null
-        );
+        return null;
     }
 
     /**

@@ -5,11 +5,11 @@ Improve code maintainability, type safety, and query performance in the Stock do
 
 ## Context
 - `StockRepository` uses `@Query` for dynamic search, which is error-prone.
-- `StockHistoryRepository` has many hardcoded `findTopN` methods.
-- `StockHistory` uses a composite key (`StockHistoryId`).
+- `StockPriceRepository` has many hardcoded `findTopN` methods.
+- `StockPrice` uses a composite key (`StockPriceId`).
 
 ## Requirements
 - Migrate `StockRepository.searchByCondition` to QueryDSL.
 - Use `BooleanExpression` for reusable search conditions.
-- Create flexible history retrieval methods in `StockHistoryRepository` using `.limit()`.
+- Create flexible stockPrice retrieval methods in `StockPriceRepository` using `.limit()`.
 - Ensure integration with existing `StockAdapter`.
