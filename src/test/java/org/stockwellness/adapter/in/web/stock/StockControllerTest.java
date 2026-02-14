@@ -6,19 +6,24 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.stockwellness.application.port.in.stock.PopularSearchUseCase;
-import org.stockwellness.application.port.in.stock.SearchHistoryUseCase;
+import org.stockwellness.application.port.in.stock.StockPriceUseCase;
+import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.in.stock.StockUseCase;
+import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
+import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockSearchResult;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.support.RestDocsSupport;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
@@ -32,10 +37,10 @@ class StockControllerTest extends RestDocsSupport {
     private StockUseCase stockUseCase;
 
     @MockitoBean
-    private SearchHistoryUseCase searchHistoryUseCase;
+    private StockPriceUseCase stockPriceUseCase;
 
     @MockitoBean
-    private PopularSearchUseCase popularSearchUseCase;
+    private StockSearchUseCase stockSearchUseCase;
 
     @Test
     @DisplayName("종목 통합 검색 API")
@@ -88,7 +93,7 @@ class StockControllerTest extends RestDocsSupport {
     @DisplayName("최근 검색어 조회 API")
     void getRecentSearches() throws Exception {
         // given
-        given(searchHistoryUseCase.getRecentSearches(any())).willReturn(List.of("삼성전자", "애플"));
+        given(stockSearchUseCase.getRecentSearches(any())).willReturn(List.of("삼성전자", "애플"));
 
         // when & then
         mockMvc.perform(get("/api/v1/stocks/search/history"))
@@ -108,7 +113,7 @@ class StockControllerTest extends RestDocsSupport {
     @DisplayName("인기 검색어 조회 API")
     void getPopularSearches() throws Exception {
         // given
-        given(popularSearchUseCase.getPopularSearches()).willReturn(List.of("삼성전자", "애플", "엔비디아"));
+        given(stockSearchUseCase.getPopularSearches()).willReturn(List.of("삼성전자", "애플", "엔비디아"));
 
         // when & then
         mockMvc.perform(get("/api/v1/stocks/popular"))
@@ -153,7 +158,7 @@ class StockControllerTest extends RestDocsSupport {
     @DisplayName("최근 검색어 개별 삭제 API")
     void removeSearchHistory() throws Exception {
         // when & then
-        mockMvc.perform(delete("/api/v1/stocks/search/history?keyword={keyword}", "삼성전자"))
+        mockMvc.perform(delete("/api/v1/stocks/search/history?keyword=삼성전자"))
                 .andExpect(status().isNoContent())
                 .andDo(document("stock-search-history-delete",
                         resource(ResourceSnippetParameters.builder()
@@ -176,6 +181,78 @@ class StockControllerTest extends RestDocsSupport {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("최근 검색어 전체 삭제")
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("차트용 시세 데이터 조회 API")
+    void getPriceHistory() throws Exception {
+        // given
+        ChartDataResponse.ChartPoint price = new ChartDataResponse.ChartPoint(
+                LocalDate.of(2024, 1, 1),
+                BigDecimal.valueOf(100), BigDecimal.valueOf(110),
+                BigDecimal.valueOf(90), BigDecimal.valueOf(105),
+                BigDecimal.valueOf(105), 1000L
+        );
+        ChartDataResponse response = new ChartDataResponse("AAPL", List.of(price), List.of());
+        given(stockPriceUseCase.loadChartData(any())).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/{ticker}/prices/history", "AAPL")
+                        .param("period", "1Y")
+                        .param("frequency", "DAILY"))
+                .andExpect(status().isOk())
+                .andDo(document("stock-price-history",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Price")
+                                .summary("차트용 시세 데이터 조회")
+                                .pathParameters(parameterWithName("ticker").description("종목 티커"))
+                                .queryParameters(
+                                        parameterWithName("period").description("조회 기간 (1W, 1M, 1Y, ALL 등)").optional(),
+                                        parameterWithName("frequency").description("데이터 주기 (DAILY, WEEKLY, MONTHLY)").optional(),
+                                        parameterWithName("includeBenchmark").description("벤치마크 포함 여부").optional()
+                                )
+                                .responseFields(
+                                        fieldWithPath("ticker").description("티커"),
+                                        fieldWithPath("prices[].date").description("날짜"),
+                                        fieldWithPath("prices[].open").description("시가"),
+                                        fieldWithPath("prices[].high").description("고가"),
+                                        fieldWithPath("prices[].low").description("저가"),
+                                        fieldWithPath("prices[].close").description("종가"),
+                                        fieldWithPath("prices[].adjClose").description("수정종가"),
+                                        fieldWithPath("prices[].volume").description("거래량"),
+                                        fieldWithPath("benchmarks").description("벤치마크 데이터 목록")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("수익률 조회 API")
+    void getReturns() throws Exception {
+        // given
+        ReturnRateResponse response = new ReturnRateResponse("AAPL", "1Y", BigDecimal.valueOf(15.5), BigDecimal.valueOf(10.2));
+        given(stockPriceUseCase.calculateReturn(eq("AAPL"), any())).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/stocks/{ticker}/returns", "AAPL")
+                        .param("period", "1Y"))
+                .andExpect(status().isOk())
+                .andDo(document("stock-returns",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Price")
+                                .summary("종목 수익률 조회")
+                                .pathParameters(parameterWithName("ticker").description("종목 티커"))
+                                .queryParameters(
+                                        parameterWithName("period").description("조회 기간 (1W, 1M, 1Y 등)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("ticker").description("티커"),
+                                        fieldWithPath("period").description("조회 기간"),
+                                        fieldWithPath("stockReturnRate").description("종목 수익률 (%)"),
+                                        fieldWithPath("benchmarkReturnRate").description("벤치마크 수익률 (%)")
+                                )
                                 .build())
                 ));
     }

@@ -192,16 +192,16 @@ paths:
                         "status" : "ACTIVE"
                       } ],
                       "pageable" : "INSTANCE",
-                      "numberOfElements" : 1,
-                      "first" : true,
-                      "last" : true,
                       "size" : 1,
                       "number" : 0,
                       "sort" : {
+                        "empty" : true,
                         "sorted" : false,
-                        "unsorted" : true,
-                        "empty" : true
+                        "unsorted" : true
                       },
+                      "first" : true,
+                      "last" : true,
+                      "numberOfElements" : 1,
                       "empty" : false
                     }
   /api/v1/watchlist/groups:
@@ -282,7 +282,7 @@ paths:
                 $ref: "#/components/schemas/api-v1-stocks-search-history457412190"
               examples:
                 stock-search-history:
-                  value: "[ \"삼성전자\", \"애플\" ]"
+                  value: "[ ]"
     delete:
       tags:
       - Stock Discovery
@@ -307,6 +307,42 @@ paths:
       responses:
         "204":
           description: "204"
+  /api/v1/stocks/{ticker}/returns:
+    get:
+      tags:
+      - Stock Price
+      summary: 종목 수익률 조회
+      description: 종목 수익률 조회
+      operationId: stock-returns
+      parameters:
+      - name: ticker
+        in: path
+        description: 종목 티커
+        required: true
+        schema:
+          type: string
+      - name: period
+        in: query
+        description: "조회 기간 (1W, 1M, 1Y 등)"
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-stocks-ticker-returns1293285194"
+              examples:
+                stock-returns:
+                  value: |-
+                    {
+                      "ticker" : "AAPL",
+                      "period" : "1Y",
+                      "stockReturnRate" : 15.5,
+                      "benchmarkReturnRate" : 10.2
+                    }
   /api/v1/stocks/search/history/all:
     delete:
       tags:
@@ -317,6 +353,61 @@ paths:
       responses:
         "204":
           description: "204"
+  /api/v1/stocks/{ticker}/prices/history:
+    get:
+      tags:
+      - Stock Price
+      summary: 차트용 시세 데이터 조회
+      description: 차트용 시세 데이터 조회
+      operationId: stock-price-history
+      parameters:
+      - name: ticker
+        in: path
+        description: 종목 티커
+        required: true
+        schema:
+          type: string
+      - name: period
+        in: query
+        description: "조회 기간 (1W, 1M, 1Y, ALL 등)"
+        required: false
+        schema:
+          type: string
+      - name: frequency
+        in: query
+        description: "데이터 주기 (DAILY, WEEKLY, MONTHLY)"
+        required: false
+        schema:
+          type: string
+      - name: includeBenchmark
+        in: query
+        description: 벤치마크 포함 여부
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-stocks-ticker-prices-history-1525844804"
+              examples:
+                stock-price-history:
+                  value: |-
+                    {
+                      "ticker" : "AAPL",
+                      "prices" : [ {
+                        "date" : "2024-01-01",
+                        "open" : 100,
+                        "high" : 110,
+                        "low" : 90,
+                        "close" : 105,
+                        "adjClose" : 105,
+                        "volume" : 1000
+                      } ],
+                      "benchmarks" : [ ]
+                    }
   /api/v1/watchlist/groups/{groupId}/items:
     get:
       tags:
@@ -580,6 +671,58 @@ components:
               isinCode:
                 type: string
                 description: ISIN 코드
+    api-v1-stocks-ticker-prices-history-1525844804:
+      required:
+      - benchmarks
+      - ticker
+      type: object
+      properties:
+        ticker:
+          type: string
+          description: 티커
+        benchmarks:
+          type: array
+          description: 벤치마크 데이터 목록
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        prices:
+          type: array
+          items:
+            required:
+            - adjClose
+            - close
+            - date
+            - high
+            - low
+            - open
+            - volume
+            type: object
+            properties:
+              volume:
+                type: number
+                description: 거래량
+              date:
+                type: string
+                description: 날짜
+              high:
+                type: number
+                description: 고가
+              adjClose:
+                type: number
+                description: 수정종가
+              low:
+                type: number
+                description: 저가
+              close:
+                type: number
+                description: 종가
+              open:
+                type: number
+                description: 시가
     LoginResponse:
       title: LoginResponse
       required:
@@ -636,15 +779,6 @@ components:
         refreshToken:
           type: string
           description: 새로운 리프레시 토큰
-    ReissueRequest:
-      title: ReissueRequest
-      required:
-      - refreshToken
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          description: 리프레시 토큰
     api-v1-stocks-search-history457412190:
       type: array
       description: 최근 검색어 목록
@@ -654,5 +788,34 @@ components:
         - type: boolean
         - type: string
         - type: number
+    ReissueRequest:
+      title: ReissueRequest
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
+    api-v1-stocks-ticker-returns1293285194:
+      required:
+      - benchmarkReturnRate
+      - period
+      - stockReturnRate
+      - ticker
+      type: object
+      properties:
+        benchmarkReturnRate:
+          type: number
+          description: 벤치마크 수익률 (%)
+        period:
+          type: string
+          description: 조회 기간
+        ticker:
+          type: string
+          description: 티커
+        stockReturnRate:
+          type: number
+          description: 종목 수익률 (%)
     api-v1-stocks-search-history486549215:
       type: object
