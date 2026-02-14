@@ -28,7 +28,7 @@ Implement the logic to aggregate individual stock scores into a portfolio-wide d
     - [x] Write tests for weighting logic using `pieceCount` (total weight = 8).
     - [x] Implement weighted average calculation for each category.
     - [x] Implement Balance score logic (Stock count + Market dispersion).
-    - [x] Optimize data fetching: Implement batch fetching for `StockHistory` of all ISIN codes in the portfolio.
+    - [x] Optimize data fetching: Implement batch fetching for `StockPrice` of all ISIN codes in the portfolio.
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: AI Insight Integration
