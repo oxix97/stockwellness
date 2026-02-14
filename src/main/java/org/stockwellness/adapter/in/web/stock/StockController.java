@@ -20,6 +20,7 @@ import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.global.security.MemberPrincipal;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -30,6 +31,10 @@ public class StockController {
     private final StockUseCase stockUseCase;
     private final StockPriceUseCase stockPriceUseCase;
     private final StockSearchUseCase stockSearchUseCase;
+
+    // ==========================================
+    // Group A: 종목 탐색 및 기본 정보 (Discovery & Info)
+    // ==========================================
 
     /**
      * 통합 종목 검색
@@ -61,6 +66,9 @@ public class StockController {
     public ResponseEntity<List<String>> getRecentSearches(
             @AuthenticationPrincipal MemberPrincipal member
     ) {
+        if (member == null) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
         return ResponseEntity.ok(stockSearchUseCase.getRecentSearches(member.id()));
     }
 
@@ -72,7 +80,9 @@ public class StockController {
             @AuthenticationPrincipal MemberPrincipal member,
             @RequestParam String keyword
     ) {
-        stockSearchUseCase.removeSearchHistory(member.id(), keyword);
+        if (member != null) {
+            stockSearchUseCase.removeSearchHistory(member.id(), keyword);
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -83,7 +93,9 @@ public class StockController {
     public ResponseEntity<Void> clearSearchHistory(
             @AuthenticationPrincipal MemberPrincipal member
     ) {
-        stockSearchUseCase.clearSearchHistory(member.id());
+        if (member != null) {
+            stockSearchUseCase.clearSearchHistory(member.id());
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -113,6 +125,10 @@ public class StockController {
         var result = stockUseCase.getStockDetail(ticker);
         return ResponseEntity.ok(result);
     }
+
+    // ==========================================
+    // Group B: 시세 데이터 및 차트 (Price & Chart)
+    // ==========================================
 
     /**
      * 8, 14, 25. 차트용 과거 가격 데이터 조회 (기간별)

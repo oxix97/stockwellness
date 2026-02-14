@@ -1,8 +1,0 @@
-{
-  "track_id": "stock_price_engine_20260214",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-14T14:00:00Z",
-  "updated_at": "2026-02-14T14:00:00Z",
-  "description": "핵심 시세 및 차트 데이터 엔진 구축 (배치 전처리 및 계층적 캐싱 전략)"
-}
