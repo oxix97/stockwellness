@@ -192,16 +192,16 @@ paths:
                         "status" : "ACTIVE"
                       } ],
                       "pageable" : "INSTANCE",
+                      "numberOfElements" : 1,
+                      "first" : true,
+                      "last" : true,
                       "size" : 1,
                       "number" : 0,
                       "sort" : {
-                        "empty" : true,
                         "sorted" : false,
-                        "unsorted" : true
+                        "unsorted" : true,
+                        "empty" : true
                       },
-                      "first" : true,
-                      "last" : true,
-                      "numberOfElements" : 1,
                       "empty" : false
                     }
   /api/v1/watchlist/groups:

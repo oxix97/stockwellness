@@ -46,12 +46,12 @@ This plan follows an incremental approach to refactor the Stockwellness project 
     - [x] Run `./gradlew :stockwellness-batch:test` and ensure >80% coverage.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Batch Migration' (Protocol in workflow.md)
 
-## Phase 4: Final Integration & Cleanup
-- [ ] Task: Final Build & Artifact Verification
-    - [ ] Run `./gradlew clean build` from root.
-    - [ ] Verify `stockwellness-api.jar` and `stockwellness-batch.jar` are executable.
-    - [ ] Verify `stockwellness-core.jar` is a plain library JAR.
-- [ ] Task: Cleanup Orphaned Files
-    - [ ] Remove unused code and resources from the root `src` directory.
-    - [ ] Update `README.md` or `GUIDE.md` to reflect the new module structure.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Integration' (Protocol in workflow.md)
+## Phase 4: Final Integration & Cleanup [x]
+- [x] Task: Final Build & Artifact Verification
+    - [x] Run `./gradlew clean build` from root.
+    - [x] Verify `stockwellness-api.jar` and `stockwellness-batch.jar` are executable.
+    - [x] Verify `stockwellness-core.jar` is a plain library JAR.
+- [x] Task: Cleanup Orphaned Files
+    - [x] Remove unused code and resources from the root `src` directory.
+    - [x] Update `README.md` or `GUIDE.md` to reflect the new module structure.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Final Integration' (Protocol in workflow.md)
