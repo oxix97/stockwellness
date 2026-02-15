@@ -41,7 +41,11 @@ public enum ErrorCode {
         WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "관심 그룹은 최대 10개까지 생성할 수 있습니다."),
 
         WATCHLIST_ITEM_LIMIT_EXCEEDED(BAD_REQUEST, "관심 종목은 한 그룹당 최대 50개까지 추가할 수 있습니다."),
-    DUPLICATE_WATCHLIST_ITEM(CONFLICT, "이미 그룹에 등록된 종목입니다.");
+    DUPLICATE_WATCHLIST_ITEM(CONFLICT, "이미 그룹에 등록된 종목입니다."),
+
+    // 주식
+    STOCK_NOT_FOUND(NOT_FOUND, "종목을 찾을 수 없습니다."),
+    PRICE_DATA_NOT_FOUND(NOT_FOUND, "해당 기간의 시세 데이터를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -7,12 +7,13 @@
 
 ## 2. Data & Persistence
 - **Primary Database:** PostgreSQL
-- **Caching:** Redis (for session management and technical indicator caching)
+- **Caching:** Redis (for session management, technical indicators, and hierarchical price data caching)
 - **Query Engine:** QueryDSL (for type-safe dynamic queries)
 - **In-Memory Database:** H2 (for integration and repository testing)
 
 ## 3. Specialized Engines
-- **Batch Processing:** Spring Batch (daily data pipelines for KRX and market history)
+- **Batch Processing:** Spring Batch (daily data pipelines for KRX and market stockPrice)
+- **Price Aggregation:** Java 21 Stream API (for high-performance in-memory weekly/monthly aggregation)
 - **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
 - **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
 

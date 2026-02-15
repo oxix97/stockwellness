@@ -1,10 +1,13 @@
 package org.stockwellness.application.port.in.stock.result;
 
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.StockStatus;
+
 public record StockSearchResult(
-        String isinCode,
         String ticker,
         String name,
-        String marketType,
-        Long totalShares
+        MarketType marketType,
+        String sectorName,
+        StockStatus status
 ) {
 }

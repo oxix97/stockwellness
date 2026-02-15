@@ -6,7 +6,8 @@ spring:
     job:
       enabled: false
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
@@ -51,3 +52,8 @@ jwt:
 krx:
   service-key: "dummy-krx-service-key"
   base-url: "http://localhost:8080"
+
+kis:
+  base-url: https://openapi.koreainvestment.com:9443
+  app-key: "dummy-kis-service-key"
+  app-secret: "dummy-kis-secret-key"

@@ -35,7 +35,7 @@ This track implements a "Portfolio Health Diagnosis" system that evaluates a use
 - The "Total Score" is the simple average of the five category scores.
 
 ### 2.3 Data Handling
-- **Missing Data:** If `StockHistory` indicators are null (e.g., new listing), use a default score of 50 for that specific dimension.
+- **Missing Data:** If `StockPrice` indicators are null (e.g., new listing), use a default score of 50 for that specific dimension.
 - **Precision:** Handle `marketCap` (BigDecimal) and other numeric calculations with appropriate precision (scale: 2 or higher).
 
 ### 2.4 API Interface
@@ -50,10 +50,10 @@ This track implements a "Portfolio Health Diagnosis" system that evaluates a use
 ## 3. Technical Implementation Details
 - **Architecture:** Hexagonal Architecture (Domain-Centric).
 - **Service Layer:**
-    - `StockStatService`: Calculates dimensions for a single stock using `StockHistory`.
+    - `StockStatService`: Calculates dimensions for a single stock using `StockPrice`.
     - `PortfolioDiagnosisService`: Orchestrates the overall calculation using Batch Fetching for all stock histories in the portfolio.
 - **Infrastructure:**
-    - Ensure `StockHistory` is indexed on `isinCode` and `baseDate` for performance.
+    - Ensure `StockPrice` is indexed on `isinCode` and `baseDate` for performance.
 - **AI Integration:** Use Spring AI to generate `summary`, `insight`, and `nextSteps` based on the final calculated scores and weights.
 
 ## 4. Acceptance Criteria
@@ -61,4 +61,4 @@ This track implements a "Portfolio Health Diagnosis" system that evaluates a use
 - [ ] Scoring logic matches the thresholds defined in section 2.1.
 - [ ] Portfolio weights (pieceCount) are correctly applied (Total weight = 8).
 - [ ] AI-generated insights are relevant to the calculated scores and follow a "Beginner-friendly" tone.
-- [ ] Graceful handling of missing `StockHistory` data (defaulting to 50).
+- [ ] Graceful handling of missing `StockPrice` data (defaulting to 50).
