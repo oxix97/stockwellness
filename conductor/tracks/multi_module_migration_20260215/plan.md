@@ -3,22 +3,22 @@
 This plan follows an incremental approach to refactor the Stockwellness project into a multi-module Gradle structure (`core`, `api`, `batch`), ensuring each step is verified through tests.
 
 ## Phase 1: Foundation & Core Module Setup
-- [ ] Task: Refactor Gradle Root Configuration
-    - [ ] Update `settings.gradle.kts` to include `stockwellness-core`, `stockwellness-api`, and `stockwellness-batch`.
-    - [ ] Refactor root `build.gradle.kts` to use `subprojects` and `allprojects` blocks for shared plugins and dependencies.
-- [ ] Task: Create Module Directory Structure
-    - [ ] Create directories: `stockwellness-core`, `stockwellness-api`, `stockwellness-batch`.
-    - [ ] Initialize `build.gradle.kts` for each module.
-- [ ] Task: Migrate Domain, Application, and Infrastructure to `core`
-    - [ ] Move `org.stockwellness.domain`, `org.stockwellness.application`, and `org.stockwellness.adapter.out` (JPA/Redis) to `stockwellness-core`.
-    - [ ] Move common configs (JPA, Redis, QueryDSL) to `stockwellness-core`.
-    - [ ] Move `src/main/resources/application.yaml` to `stockwellness-core` as `application-core.yaml`.
-- [ ] Task: Setup Shared Test Fixtures
-    - [ ] Enable `java-test-fixtures` plugin in `stockwellness-core`.
-    - [ ] Move common test utilities and base classes (e.g., `RedisIntegrationTest`, `QueryDslTest`) to `src/testFixtures`.
-- [ ] Task: Verify Core Module
-    - [ ] Write/Fix unit tests for migrated domain logic in `core`.
-    - [ ] Run `./gradlew :stockwellness-core:test` and ensure >80% coverage.
+- [x] Task: Refactor Gradle Root Configuration
+    - [x] Update `settings.gradle.kts` to include `stockwellness-core`, `stockwellness-api`, and `stockwellness-batch`.
+    - [x] Refactor root `build.gradle.kts` to use `subprojects` and `allprojects` blocks for shared plugins and dependencies.
+- [x] Task: Create Module Directory Structure
+    - [x] Create directories: `stockwellness-core`, `stockwellness-api`, `stockwellness-batch`.
+    - [x] Initialize `build.gradle.kts` for each module.
+- [x] Task: Migrate Domain, Application, and Infrastructure to `core`
+    - [x] Move `org.stockwellness.domain`, `org.stockwellness.application`, and `org.stockwellness.adapter.out` (JPA/Redis) to `stockwellness-core`.
+    - [x] Move common configs (JPA, Redis, QueryDSL) to `stockwellness-core`.
+    - [x] Move `src/main/resources/application.yaml` to `stockwellness-core` as `application-core.yaml`.
+- [x] Task: Setup Shared Test Fixtures
+    - [x] Enable `java-test-fixtures` plugin in `stockwellness-core`.
+    - [x] Move common test utilities and base classes (e.g., `RedisIntegrationTest`, `QueryDslTest`) to `src/testFixtures`.
+- [x] Task: Verify Core Module
+    - [x] Write/Fix unit tests for migrated domain logic in `core`.
+    - [x] Run `./gradlew :stockwellness-core:test` and ensure >80% coverage.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: API Module Migration

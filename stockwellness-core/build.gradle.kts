@@ -1,6 +1,7 @@
 plugins {
     id("org.springframework.boot")
     id("io.spring.dependency-management")
+    `java-test-fixtures`
 }
 
 // core는 라이브러리 형태이므로 실행 가능한 jar를 만들지 않음
@@ -28,6 +29,15 @@ dependencies {
     // jpa
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // security (needed for principal and some shared logic)
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+
+    // jwt
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
     // validation
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
@@ -43,6 +53,14 @@ dependencies {
     annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
+}
+
+// === Test Fixtures Dependencies ===
+dependencies {
+    testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
+    testFixturesImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    testFixturesImplementation("org.springframework.security:spring-security-test")
+    testFixturesImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
 }
 
 // === QueryDSL 빌드 옵션 ===
