@@ -30,5 +30,5 @@ Stockwellness is an asset allocation simulator and AI-powered prediction service
     - Automates the collection and pre-calculation of key technical indicators (RSI, MACD) via Spring Batch.
     - AI leverages this refined data to provide objective insights, helping users avoid emotional "impulse trading."
 - **Engineering Excellence:**
-    - **Hexagonal Architecture:** Isolates business logic from technical details (DB, API) to maximize maintainability.
+    - **Multi-Module Hexagonal Architecture:** Enforces strict boundaries between core domain logic, web adapters (API), and batch processors via a multi-module Gradle structure to maximize maintainability and failure isolation.
     - **Scalability & Reliability:** Adopts an event-driven design using **Kafka** to ensure data consistency and leverages **Kubernetes (EKS)** for high availability, laying a solid foundation for future traffic spikes or MSA transition.
