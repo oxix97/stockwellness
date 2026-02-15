@@ -1,0 +1,16 @@
+spring:
+  profiles:
+    active: local
+  config:
+    import: "optional:classpath:application-core.yaml"
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+server:
+  port: 8080

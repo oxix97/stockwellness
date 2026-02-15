@@ -6,10 +6,14 @@ plugins {
 
 dependencies {
     implementation(project(":stockwellness-core"))
+    testImplementation(testFixtures(project(":stockwellness-core")))
 
     // web
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     testImplementation("org.springframework.security:spring-security-test")
+    testRuntimeOnly("com.h2database:h2")
 
     // security
     implementation("org.springframework.boot:spring-boot-starter-security")

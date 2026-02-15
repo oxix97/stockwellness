@@ -22,16 +22,16 @@ This plan follows an incremental approach to refactor the Stockwellness project 
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: API Module Migration
-- [ ] Task: Migrate Web Adapter Components
-    - [ ] Move `org.stockwellness.adapter.in.web` (Controllers, DTOs) to `stockwellness-api`.
-    - [ ] Move `org.stockwellness.global.security` and `org.stockwellness.config` (Web/Security related) to `stockwellness-api`.
-- [ ] Task: Configure API Properties
-    - [ ] Create `stockwellness-api/src/main/resources/application.yaml`.
-    - [ ] Implement `spring.config.import: optional:classpath:application-core.yaml`.
-    - [ ] Configure API-specific HikariCP settings (short timeouts, high concurrency).
-- [ ] Task: Verify API Module
-    - [ ] Write/Fix unit and integration tests for Controllers and Security.
-    - [ ] Run `./gradlew :stockwellness-api:test` and ensure >80% coverage.
+- [x] Task: Migrate Web Adapter Components
+    - [x] Move `org.stockwellness.adapter.in.web` (Controllers, DTOs) to `stockwellness-api`.
+    - [x] Move `org.stockwellness.global.security` and `org.stockwellness.config` (Web/Security related) to `stockwellness-api`.
+- [x] Task: Configure API Properties
+    - [x] Create `stockwellness-api/src/main/resources/application.yaml`.
+    - [x] Implement `spring.config.import: optional:classpath:application-core.yaml`.
+    - [x] Configure API-specific HikariCP settings (short timeouts, high concurrency).
+- [x] Task: Verify API Module
+    - [x] Write/Fix unit and integration tests for Controllers and Security.
+    - [x] Run `./gradlew :stockwellness-api:test` and ensure >80% coverage.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: API Migration' (Protocol in workflow.md)
 
 ## Phase 3: Batch Module Migration
