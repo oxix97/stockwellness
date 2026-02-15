@@ -39,5 +39,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Multi-Module Migration (Core, API, Batch)**
+- [x] **Track: Multi-Module Migration (Core, API, Batch)**
 *Link: [./tracks/multi_module_migration_20260215/](./tracks/multi_module_migration_20260215/)*
