@@ -36,3 +36,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: 핵심 시세 및 차트 데이터 엔진 구축 (배치 전처리 및 계층적 캐싱 전략)**
 *Link: [./tracks/stock_price_engine_20260214/](./tracks/stock_price_engine_20260214/)*
+
+---
+
+- [x] **Track: Core Security Cleanup**
+*Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*
