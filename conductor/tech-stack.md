@@ -3,7 +3,7 @@
 ## 1. Core Platform
 - **Language:** Java 21 (leveraging Virtual Threads for high-concurrency portfolio simulations)
 - **Framework:** Spring Boot 3.4.1
-- **Architecture:** Pragmatic Hexagonal Architecture (Domain/JPA Hybrid Model for efficiency)
+- **Architecture:** Multi-Module Gradle structure implementing Pragmatic Hexagonal Architecture (Core, API, Batch)
 
 ## 2. Data & Persistence
 - **Primary Database:** PostgreSQL
