@@ -35,15 +35,15 @@ This plan follows an incremental approach to refactor the Stockwellness project 
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: API Migration' (Protocol in workflow.md)
 
 ## Phase 3: Batch Module Migration
-- [ ] Task: Migrate Batch Adapter Components
-    - [ ] Move `org.stockwellness.batch` (Jobs, Steps, Admin Controllers) to `stockwellness-batch`.
-- [ ] Task: Configure Batch Properties
-    - [ ] Create `stockwellness-batch/src/main/resources/application.yaml`.
-    - [ ] Implement `spring.config.import: optional:classpath:application-core.yaml`.
-    - [ ] Configure Batch-specific HikariCP settings (long timeouts, optimized for throughput).
-- [ ] Task: Verify Batch Module
-    - [ ] Write/Fix unit and integration tests for Batch Jobs.
-    - [ ] Run `./gradlew :stockwellness-batch:test` and ensure >80% coverage.
+- [x] Task: Migrate Batch Adapter Components
+    - [x] Move `org.stockwellness.batch` (Jobs, Steps, Admin Controllers) to `stockwellness-batch`.
+- [x] Task: Configure Batch Properties
+    - [x] Create `stockwellness-batch/src/main/resources/application.yaml`.
+    - [x] Implement `spring.config.import: optional:classpath:application-core.yaml`.
+    - [x] Configure Batch-specific HikariCP settings (long timeouts, optimized for throughput).
+- [x] Task: Verify Batch Module
+    - [x] Write/Fix unit and integration tests for Batch Jobs.
+    - [x] Run `./gradlew :stockwellness-batch:test` and ensure >80% coverage.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Batch Migration' (Protocol in workflow.md)
 
 ## Phase 4: Final Integration & Cleanup
