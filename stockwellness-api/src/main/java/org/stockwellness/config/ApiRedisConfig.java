@@ -19,7 +19,7 @@ import java.util.Map;
 
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class ApiRedisConfig {
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {

@@ -51,23 +51,6 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: always
-    stock-price:
-      upsert-sql: |
-        INSERT INTO stock_price (
-            stock_id, base_date, open_price, high_price, low_price, close_price, 
-            adj_close_price, volume, transaction_amt,
-            ma5, ma20, ma60, ma120, rsi14, macd, macd_signal, created_at
-        ) VALUES (
-            ?, ?, ?, ?, ?, ?, 
-            ?, ?, ?, 
-            ?, ?, ?, ?, ?, ?, ?, ?
-        )
-        ON CONFLICT (base_date, stock_id) 
-        DO UPDATE SET 
-            close_price = EXCLUDED.close_price,
-            adj_close_price = EXCLUDED.adj_close_price,
-            volume = EXCLUDED.volume,
-            transaction_amt = EXCLUDED.transaction_amt
   # Spring AI 설정
   ai:
     openai:
@@ -91,10 +74,6 @@ jwt:
   secret-key: ${JWT_SECRET}
   access-token-expiry-ms: 3600000
   refresh-token-expiry-ms: 2592000000
-
-krx:
-  service-key: ${KRX_SECRET}
-  base-url: https://apis.data.go.kr/1160100/service
 
 kis:
   base-url: https://openapi.koreainvestment.com:9443

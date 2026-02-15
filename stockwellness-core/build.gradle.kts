@@ -29,15 +29,6 @@ dependencies {
     // jpa
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    // security (needed for principal and some shared logic)
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
-
-    // jwt
-    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
-
     // validation
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
@@ -59,8 +50,6 @@ dependencies {
 dependencies {
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    testFixturesImplementation("org.springframework.security:spring-security-test")
-    testFixturesImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
 }
 
 // === QueryDSL 빌드 옵션 ===

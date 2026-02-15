@@ -3,7 +3,7 @@ package org.stockwellness.adapter.out.persistence.redis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.RefreshTokenPort;
+import org.stockwellness.application.port.out.auth.RefreshTokenPort;
 import org.stockwellness.domain.auth.RefreshToken;
 
 import java.time.Duration;

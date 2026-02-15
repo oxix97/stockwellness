@@ -10,7 +10,7 @@ import org.stockwellness.application.port.in.member.command.UpdateMemberCommand;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.RiskLevel;
-import org.stockwellness.fixture.AuthFixture;
+import org.stockwellness.fixture.MemberFixture;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
 
@@ -34,7 +34,7 @@ class MemberServiceTest {
     void updateMember_fail_deactivated() {
         // given
         Long memberId = 1L;
-        Member member = AuthFixture.createMember();
+        Member member = MemberFixture.createMember();
         member.deactivate();
 
         given(loadMemberPort.loadMember(memberId)).willReturn(Optional.of(member));

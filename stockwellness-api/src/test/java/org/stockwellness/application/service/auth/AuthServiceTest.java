@@ -14,7 +14,7 @@ import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
-import org.stockwellness.application.port.out.RefreshTokenPort;
+import org.stockwellness.application.port.out.auth.RefreshTokenPort;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.member.SaveMemberPort;
 import org.stockwellness.domain.auth.RefreshToken;

@@ -1,4 +1,4 @@
-package org.stockwellness.application.port.out;
+package org.stockwellness.application.port.out.auth;
 
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
