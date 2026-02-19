@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.price;
 
 
 import jakarta.persistence.Column;

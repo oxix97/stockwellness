@@ -1,5 +1,6 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.price;
 
+import org.stockwellness.domain.stock.Stock;
 import com.querydsl.core.annotations.QueryTransient;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

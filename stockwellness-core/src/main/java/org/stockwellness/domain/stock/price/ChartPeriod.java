@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.price;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

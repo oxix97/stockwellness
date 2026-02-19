@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.price;
 
 /**
  * 차트 데이터 집계 주기 (일, 주, 월)

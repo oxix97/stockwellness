@@ -7,7 +7,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepo
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.LoadStockPricePort;
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

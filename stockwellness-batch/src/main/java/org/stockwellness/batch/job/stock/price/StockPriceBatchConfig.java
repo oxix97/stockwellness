@@ -20,7 +20,7 @@ import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;

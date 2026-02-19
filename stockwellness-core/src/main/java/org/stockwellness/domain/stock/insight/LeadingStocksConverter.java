@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.insight;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

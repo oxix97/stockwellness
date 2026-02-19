@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.stock.LoadStockPricePort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 
