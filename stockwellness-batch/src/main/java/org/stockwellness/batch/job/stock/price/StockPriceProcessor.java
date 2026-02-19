@@ -11,8 +11,8 @@ import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.batch.domain.service.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockPrice;
-import org.stockwellness.domain.stock.TechnicalIndicators;
+import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

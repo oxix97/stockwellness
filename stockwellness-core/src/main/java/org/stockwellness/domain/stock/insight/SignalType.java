@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.insight;
 
 public enum SignalType {
     VOLUME_SPIKE("거래량 폭증"),

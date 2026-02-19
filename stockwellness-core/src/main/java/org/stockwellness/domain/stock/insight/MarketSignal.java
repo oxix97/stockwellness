@@ -1,5 +1,6 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.insight;
 
+import org.stockwellness.domain.stock.Stock;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

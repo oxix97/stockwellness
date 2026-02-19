@@ -1,4 +1,4 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.insight;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;

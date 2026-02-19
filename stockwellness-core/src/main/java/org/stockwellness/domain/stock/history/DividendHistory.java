@@ -1,5 +1,7 @@
-package org.stockwellness.domain.stock;
+package org.stockwellness.domain.stock.history;
 
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.Currency;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

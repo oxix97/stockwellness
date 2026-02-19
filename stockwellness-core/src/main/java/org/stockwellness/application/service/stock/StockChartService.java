@@ -13,7 +13,7 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.LoadStockPort;
 import org.stockwellness.application.port.out.stock.LoadStockPricePort;
-import org.stockwellness.domain.stock.ChartPeriod;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
 
