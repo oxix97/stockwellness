@@ -1,17 +1,15 @@
 spring:
   application.name: stockwellness
   datasource:
-    url: jdbc:postgresql://localhost:5432/mydatabase
-#    url: jdbc:postgresql://192.168.55.170:5432/mydatabase
-    username: myuser
-    password: secret
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${DB_USERNAME:myuser}
+    password: ${DB_PASSWORD:secret}
     hikari:
       maximum-pool-size: 30
       minimum-idle: 10
   data:
     redis:
-      host: localhost
-#      host: 192.168.55.170
+      host: ${REDIS_HOST:localhost}
       port: 6379
   jpa:
     show-sql: false
