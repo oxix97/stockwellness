@@ -2,13 +2,18 @@ package org.stockwellness.adapter.out.persistence.stock.repository;
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Stock 엔티티(종목 마스터) 접근을 위한 Repository
@@ -38,15 +43,31 @@ public interface StockRepository extends JpaRepository<Stock, String>, StockCust
     List<Stock> findByTickerIn(List<String> isinCodes);
 
     /**
-     * 특정 섹터에 속한 모든 종목 조회
-     */
-    List<Stock> findBySectorCode(String sectorCode);
-
-    /**
      * 신규 상장 종목 조회 (최근 등록 순 10개)
      */
     List<Stock> findTop10ByOrderByCreatedAtDesc();
 
-    @Query("SELECT s.standardCode FROM Stock s")
+    @Query("SELECT s.ticker FROM Stock s")
     List<String> findAllByTicker();
+
+    /** 배치 upsert용 — ticker 목록으로 벌크 조회 후 Map 변환 */
+    default Map<String, Stock> findAsMapByTickers(Collection<String> tickers) {
+        return findAllByTickerIn(tickers).stream()
+                .collect(Collectors.toMap(Stock::getTicker, s -> s));
+    }
+
+    /** 단축코드 목록으로 벌크 조회 → Map<shortCode, entity> 변환에 활용 */
+    List<Stock> findAllByTickerIn(Collection<String> tickers);
+
+    /** 마스터 파일에서 사라진 국내 종목 상장폐지 처리 */
+    @Modifying
+    @Query("""
+        UPDATE Stock s
+        SET s.status = 'DELISTED', s.isPremiumTracking = false
+        WHERE s.marketType = :marketType
+          AND s.status != 'DELISTED'
+          AND s.ticker NOT IN :activeTickers
+        """)
+    int delistMissingStocks(@Param("marketType") MarketType marketType,
+                            @Param("activeTickers") Collection<String> activeTickers);
 }
