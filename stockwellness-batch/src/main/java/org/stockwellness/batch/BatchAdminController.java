@@ -1,4 +1,4 @@
-package org.stockwellness.batch.controller;
+package org.stockwellness.batch;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
