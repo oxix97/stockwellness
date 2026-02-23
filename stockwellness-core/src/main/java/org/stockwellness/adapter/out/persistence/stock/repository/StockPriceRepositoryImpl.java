@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.stockwellness.domain.stock.QStock.stock;
-import static org.stockwellness.domain.stock.QStockPrice.stockPrice;
+import static org.stockwellness.domain.stock.price.QStockPrice.stockPrice;
 
 @RequiredArgsConstructor
 public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {

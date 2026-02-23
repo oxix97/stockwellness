@@ -1,11 +1,12 @@
 package org.stockwellness.domain.stock.insight;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.shared.AbstractEntity;
 
 import java.math.BigDecimal;
@@ -31,12 +32,11 @@ public class SectorInsight extends AbstractEntity {
 
     private Long netInstBuy;
 
-    @Convert(converter = LeadingStocksConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "leading_stocks", columnDefinition = "jsonb")
     private List<LeadingStock> leadingStocks = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String aiMarketSummary;
-
 
 }
