@@ -5,9 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.stockwellness.adapter.in.web.sector.dto.SectorDiagnosisResponse;
-import org.stockwellness.adapter.in.web.sector.dto.SectorRankingResponse;
-import org.stockwellness.application.port.in.sector.GetSectorDashboardUseCase;
+import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
+import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
+import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
+import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,36 +19,44 @@ import java.util.List;
 @RequestMapping("/api/v1/sectors")
 public class SectorDashboardController {
 
-    private final GetSectorDashboardUseCase getSectorDashboardUseCase;
+    private final SectorInsightUseCase sectorInsightUseCase;
 
     /**
-     * [기능 26, 27] 오늘의 섹터 랭킹 및 수급 조회
+     * [기능 26] 등락률 상위 섹터 조회
      */
-    @GetMapping("/ranking")
-    public ResponseEntity<List<SectorRankingResponse>> getSectorRanking(
+    @GetMapping("/ranking/fluctuation")
+    public ResponseEntity<List<SectorRankingResult>> getTopSectorsByFluctuation(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "10") int limit) {
         
-        // 날짜가 없으면 오늘 날짜(또는 가장 최근 영업일) 기준
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
-        
-        List<SectorRankingResponse> response = getSectorDashboardUseCase.getTopSectorsByFluctuation(targetDate, limit);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, limit));
     }
 
     /**
-     * [기능 30] 특정 섹터 과열/침체 진단 (RSI 등)
+     * [기능 27] 수급 상위 섹터 조회
      */
-    @GetMapping("/{sectorCode}/diagnosis")
-    public ResponseEntity<SectorDiagnosisResponse> getSectorDiagnosis(
+    @GetMapping("/ranking/supply")
+    public ResponseEntity<List<SectorSupplyResult>> getTopSectorsBySupply(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "10") int limit) {
+        
+        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsBySupply(targetDate, limit));
+    }
+
+    /**
+     * [기능 30] 섹터 상세 및 진단 정보 조회
+     */
+    @GetMapping("/{sectorCode}")
+    public ResponseEntity<SectorDetailResult> getSectorDetail(
             @PathVariable String sectorCode,
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
-        
-        SectorDiagnosisResponse response = getSectorDashboardUseCase.getSectorDiagnosis(sectorCode, targetDate);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(sectorInsightUseCase.getSectorDetail(sectorCode, targetDate));
     }
 }
