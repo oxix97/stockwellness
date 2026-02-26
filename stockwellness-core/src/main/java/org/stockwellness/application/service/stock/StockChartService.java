@@ -11,8 +11,8 @@ import org.stockwellness.application.port.in.stock.result.ChartDataResponse.Char
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
-import org.stockwellness.application.port.out.stock.LoadStockPricePort;
+import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
@@ -29,9 +29,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class StockChartService implements StockPriceUseCase {
 
-    private final LoadStockPricePort loadStockPricePort;
+    private final StockPricePort stockPricePort;
     private final LoadBenchmarkPort loadBenchmarkPort;
-    private final LoadStockPort loadStockPort;
+    private final StockPort stockPort;
 
     private static final String DEFAULT_BENCHMARK = "^KS11"; // KOSPI
     private static final int CALC_SCALE = 8;
@@ -44,7 +44,7 @@ public class StockChartService implements StockPriceUseCase {
         LocalDate end = LocalDate.now();
         LocalDate start = query.period().calculateStartDate(end);
 
-        List<StockPriceResult> dailyPrices = loadStockPricePort.loadPricesByTicker(query.ticker(), start, end);
+        List<StockPriceResult> dailyPrices = stockPricePort.loadPricesByTicker(query.ticker(), start, end);
         if (dailyPrices.isEmpty()) {
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
@@ -76,7 +76,7 @@ public class StockChartService implements StockPriceUseCase {
         LocalDate end = LocalDate.now();
         LocalDate start = period.calculateStartDate(end);
 
-        List<StockPriceResult> stockPrices = loadStockPricePort.loadPricesByTicker(ticker, start, end);
+        List<StockPriceResult> stockPrices = stockPricePort.loadPricesByTicker(ticker, start, end);
         if (stockPrices.isEmpty()) {
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
@@ -91,7 +91,7 @@ public class StockChartService implements StockPriceUseCase {
     }
 
     private void validateStock(String ticker) {
-        if (!loadStockPort.existsByTicker(ticker)) {
+        if (!stockPort.existsByTicker(ticker)) {
             throw new StockPriceException(ErrorCode.STOCK_NOT_FOUND);
         }
     }

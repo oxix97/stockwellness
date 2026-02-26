@@ -8,7 +8,7 @@
 //import org.mockito.junit.jupiter.MockitoExtension;
 //import org.stockwellness.adapter.in.web.watchlist.dto.WatchlistGroupResponse;
 //import org.stockwellness.application.port.out.member.LoadMemberPort;
-//import org.stockwellness.application.port.out.stock.LoadStockPort;
+//import org.stockwellness.application.port.out.stock.StockPort;
 //import org.stockwellness.application.port.out.watchlist.StockDataPort;
 //import org.stockwellness.application.port.out.watchlist.WatchlistPort;
 //import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
@@ -38,7 +38,7 @@
 //    private LoadMemberPort loadMemberPort;
 //
 //    @Mock
-//    private LoadStockPort loadStockPort;
+//    private StockPort stockPort;
 //
 //    @Mock
 //    private StockDataPort stockDataPort;
@@ -119,7 +119,7 @@
 //        Stock stock = Stock.of(isinCode, "삼성", "005930", MarketType.KOSPI, 1L, "C", "CN");
 //
 //        given(watchlistPort.findGroupById(groupId)).willReturn(Optional.of(group));
-//        given(loadStockPort.loadStockByTicker(isinCode)).willReturn(Optional.of(stock));
+//        given(stockPort.loadStockByTicker(isinCode)).willReturn(Optional.of(stock));
 //
 //        // when
 //        watchlistService.addItem(memberId, groupId, isinCode);
