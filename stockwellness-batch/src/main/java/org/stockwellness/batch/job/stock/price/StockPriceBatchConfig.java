@@ -14,8 +14,10 @@ import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -37,6 +39,9 @@ public class StockPriceBatchConfig {
     private final DataSource dataSource;
     private final StockPriceProgressListener progressListener;
 
+    @Qualifier("batchExecutor")
+    private final TaskExecutor batchExecutor;
+
     @Bean
     public Job stockPriceBatchJob(StockPriceProcessor stockPriceProcessor) {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
@@ -47,44 +52,43 @@ public class StockPriceBatchConfig {
     @Bean
     public Step stockPriceStep(StockPriceProcessor stockPriceProcessor) {
         return new StepBuilder("stockPriceStep", jobRepository)
-                // [중요 1] Input: Stock, Output: List<StockPrice> 로 명시
-                .<Stock, List<StockPrice>>chunk(1, transactionManager) // [중요 2] 1개 종목(1,250행) 단위로 커밋
-                .reader(stockReader())
+                .<List<Stock>, List<StockPrice>>chunk(1, transactionManager) 
+                .reader(stockListReader())
                 .processor(stockPriceProcessor)
-                // [중요 3] 커스텀 ListWriter로 감싸서 등록
                 .writer(stockPriceListWriter())
+                .taskExecutor(batchExecutor) // 전역 공통 풀 사용
                 .listener(progressListener)
                 .faultTolerant()
-                // [수정] 일시적인 외부 API 장애나 DB 데드락 등에 대해서만 재시도
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
                 .build();
     }
 
-    // 1. Reader: 활성화된 종목만 읽어옴
+    // [최적화] 30개 종목씩 묶어서 반환하는 리더
+    @Bean
+    public StockListReader stockListReader() {
+        return new StockListReader(stockReader(), 30);
+    }
+
     @Bean
     public JpaPagingItemReader<Stock> stockReader() {
         return new JpaPagingItemReaderBuilder<Stock>()
                 .name("stockReader")
                 .entityManagerFactory(entityManagerFactory)
-                .queryString("SELECT s FROM Stock s WHERE s.status = 'ACTIVE'")
-                .pageSize(100)
+                .queryString("SELECT s FROM Stock s WHERE s.status = 'ACTIVE' ORDER BY s.id ASC")
+                .pageSize(300) // Chunk Size(30)보다 넉넉하게 설정
+                .saveState(false) // 상태 저장 안함
                 .build();
     }
 
     @Bean
     public ItemWriter<List<StockPrice>> stockPriceListWriter() {
         return chunk -> {
-            // 1. Chunk<List<StockPrice>>를 평탄화(Flatten) -> List<StockPrice>
             List<StockPrice> flatList = new ArrayList<>();
             for (List<StockPrice> list : chunk) {
-                if (list != null) {
-                    flatList.addAll(list);
-                }
+                if (list != null) flatList.addAll(list);
             }
-
-            // 2. 실제 DB 저장을 담당하는 JDBC Writer에게 낱개 리스트를 위임
             if (!flatList.isEmpty()) {
                 stockPriceJdbcWriter().write(new Chunk<>(flatList));
             }
@@ -119,11 +123,8 @@ public class StockPriceBatchConfig {
                         macd_signal = EXCLUDED.macd_signal
                     """)
                 .itemPreparedStatementSetter((item, ps) -> {
-                    // 1. ID & Date (복합키에서 추출)
                     ps.setLong(1, item.getId().getStockId());
                     ps.setDate(2, java.sql.Date.valueOf(item.getId().getBaseDate()));
-
-                    // 2. OHLCV Data
                     ps.setBigDecimal(3, item.getOpenPrice());
                     ps.setBigDecimal(4, item.getHighPrice());
                     ps.setBigDecimal(5, item.getLowPrice());
@@ -131,8 +132,6 @@ public class StockPriceBatchConfig {
                     ps.setBigDecimal(7, item.getAdjClosePrice());
                     ps.setLong(8, item.getVolume());
                     ps.setBigDecimal(9, item.getTransactionAmount());
-
-                    // 3. Technical Indicators (Null Safety 처리)
                     var indicators = item.getIndicators();
                     ps.setBigDecimal(10, indicators != null ? indicators.getMa5() : null);
                     ps.setBigDecimal(11, indicators != null ? indicators.getMa20() : null);
@@ -141,8 +140,6 @@ public class StockPriceBatchConfig {
                     ps.setBigDecimal(14, indicators != null ? indicators.getRsi14() : null);
                     ps.setBigDecimal(15, indicators != null ? indicators.getMacd() : null);
                     ps.setBigDecimal(16, indicators != null ? indicators.getMacdSignal() : null);
-
-                    // (created_at은 쿼리에서 NOW()로 처리하므로 파라미터 세팅 불필요)
                 })
                 .build();
     }
