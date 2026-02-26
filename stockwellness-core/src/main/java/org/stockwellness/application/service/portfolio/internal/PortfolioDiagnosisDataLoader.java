@@ -3,8 +3,8 @@ package org.stockwellness.application.service.portfolio.internal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
-import org.stockwellness.application.port.out.stock.LoadStockPricePort;
+import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
 public class PortfolioDiagnosisDataLoader {
 
     private final PortfolioPort portfolioPort;
-    private final LoadStockPort loadStockPort;
-    private final LoadStockPricePort loadStockPricePort;
+    private final StockPort stockPort;
+    private final StockPricePort stockPricePort;
 
     public DiagnosisContext load(Long portfolioId) {
         Portfolio portfolio = portfolioPort.findById(portfolioId)
@@ -33,10 +33,10 @@ public class PortfolioDiagnosisDataLoader {
                 .map(PortfolioItem::getIsinCode)
                 .toList();
 
-        Map<String, Stock> stockMap = loadStockPort.loadStocksByTickers(isinCodes).stream()
+        Map<String, Stock> stockMap = stockPort.loadStocksByTickers(isinCodes).stream()
                 .collect(Collectors.toMap(Stock::getStandardCode, stock -> stock));
 
-        Map<String, List<StockPrice>> stockPriceMap = loadStockPricePort.loadRecentHistoriesBatch(isinCodes, 5);
+        Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(isinCodes, 5);
 
         return new DiagnosisContext(portfolio, stockMap, stockPriceMap);
     }

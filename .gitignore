@@ -264,3 +264,5 @@ conductor/config/private.*
 # End of https://www.toptal.com/developers/gitignore/api/java,kotlin,gradle,macos,windows,intellij+all,git
 /.env
 /src/main/generated/
+/deploy.ps1
+/features.md
