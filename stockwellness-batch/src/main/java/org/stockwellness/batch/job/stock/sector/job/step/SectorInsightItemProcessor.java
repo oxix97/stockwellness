@@ -1,0 +1,93 @@
+package org.stockwellness.batch.job.stock.sector.job.step;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.application.port.out.stock.SectorInsightPort;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
+import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
+import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class SectorInsightItemProcessor implements ItemProcessor<SectorApiDto, SectorInsight> {
+
+    private final SectorInsightPort sectorInsightPort;
+
+    @Override
+    public SectorInsight process(SectorApiDto currentData) {
+        LocalDate today = currentData.baseDate();
+        String sectorCode = currentData.sectorCode();
+
+        // 1. 수급 지표 연산
+        SectorInsight yesterdayData = sectorInsightPort.findLatestBefore(sectorCode, today).orElse(null);
+
+        int foreignConsecutiveDays = calculateConsecutiveDays(
+                currentData.netForeignBuyAmount(),
+                yesterdayData != null ? yesterdayData.getForeignConsecutiveBuyDays() : 0
+        );
+        int instConsecutiveDays = calculateConsecutiveDays(
+                currentData.netInstBuyAmount(),
+                yesterdayData != null ? yesterdayData.getInstConsecutiveBuyDays() : 0
+        );
+
+        // 2. 기술적 지표 연산
+        List<BigDecimal> pastPrices = sectorInsightPort.findPastPrices(sectorCode, today, 119);
+        TechnicalIndicators calculated;
+        boolean isOverheated = false;
+
+        if (pastPrices == null || pastPrices.isEmpty()) {
+            log.warn("섹터 {}의 과거 시세 데이터가 없어 지표 계산을 건너뜁니다.", sectorCode);
+            calculated = TechnicalIndicators.empty();
+        } else {
+            List<BigDecimal> closingPricesForQuant = new ArrayList<>(pastPrices);
+            closingPricesForQuant.add(currentData.sectorIndexCurrentPrice());
+            calculated = TechnicalIndicatorCalculator.calculateLatest(closingPricesForQuant);
+            
+            isOverheated = TechnicalCalculator.isOverheated(
+                    currentData.sectorIndexCurrentPrice(),
+                    calculated.getMa20(),
+                    calculated.getRsi14()
+            );
+        }
+
+        // 3. 최종 Entity 생성
+        return SectorInsight.of(
+                currentData.sectorName(),
+                sectorCode,
+                resolveMarketType(sectorCode),
+                today,
+                currentData.sectorIndexCurrentPrice(),
+                currentData.avgFluctuationRate(),
+                currentData.netForeignBuyAmount(),
+                currentData.netInstBuyAmount(),
+                foreignConsecutiveDays,
+                instConsecutiveDays,
+                calculated,
+                isOverheated
+        );
+    }
+
+    private int calculateConsecutiveDays(Long todayNetBuyAmount, int yesterdayConsecutiveDays) {
+        if (todayNetBuyAmount != null && todayNetBuyAmount > 0) {
+            return yesterdayConsecutiveDays + 1;
+        }
+        return 0;
+    }
+
+    private MarketType resolveMarketType(String indexCode) {
+        if (indexCode != null && (indexCode.startsWith("0") || indexCode.startsWith("2"))) return MarketType.KOSPI;
+        if (indexCode != null && indexCode.startsWith("1")) return MarketType.KOSDAQ;
+        return MarketType.KOSPI;
+    }
+}
