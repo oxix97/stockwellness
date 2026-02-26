@@ -59,6 +59,8 @@ public class StockPrice {
     @Column(name = "transaction_amt", precision = 25, scale = 2)
     private BigDecimal transactionAmount; // 거래대금
 
+    // MEMO : 당일 등락률 changeRate, 당일 시가총액 marketCap 추가 예정
+
     // --- Embedded Value Object (기술적 지표) ---
     @Embedded
     @QueryTransient // QueryDSL 분석 대상에서 제외
@@ -68,6 +70,18 @@ public class StockPrice {
     @DateTimeFormat(iso = DATE_TIME)
     @Column(name = "created_at",updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * 시가 대비 종가 등락률을 계산합니다.
+     */
+    public BigDecimal getFluctuationRate() {
+        if (openPrice == null || closePrice == null || openPrice.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return closePrice.subtract(openPrice)
+                .divide(openPrice, 4, java.math.RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+    }
 
     public static StockPrice of(
             Stock stock,
