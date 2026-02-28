@@ -7,6 +7,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRep
 import org.stockwellness.adapter.out.persistence.stock.repository.SectorInsightRepository;
 import org.stockwellness.application.port.out.stock.MarketIndexPort;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 
@@ -25,13 +26,13 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     private final MarketIndexRepository marketIndexRepository;
 
     @Override
-    public List<SectorInsight> findTopSectorsByFluctuation(LocalDate date, int limit) {
-        return sectorInsightRepository.findTopByDate(date, PageRequest.of(0, limit));
+    public List<SectorInsight> findTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
+        return sectorInsightRepository.findTopByDate(date, marketType, PageRequest.of(0, limit));
     }
 
     @Override
-    public List<SectorInsight> findTopSectorsBySupply(LocalDate date, int limit) {
-        return sectorInsightRepository.findTopBySupply(date, PageRequest.of(0, limit));
+    public List<SectorInsight> findTopSectorsBySupply(LocalDate date, MarketType marketType, int limit) {
+        return sectorInsightRepository.findTopBySupply(date, marketType, PageRequest.of(0, limit));
     }
 
     @Override
@@ -42,6 +43,16 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     @Override
     public List<BigDecimal> findPastPrices(String sectorCode, LocalDate date, int limit) {
         return sectorInsightRepository.findPastPrices(sectorCode, date, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<SectorInsight> findByCodesAndDate(List<String> codes, LocalDate date) {
+        return sectorInsightRepository.findBySectorCodeInAndBaseDate(codes, date);
+    }
+
+    @Override
+    public List<SectorInsight> findHistoryByCode(String code, LocalDate endDate, int limit) {
+        return sectorInsightRepository.findBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(code, endDate, PageRequest.of(0, limit));
     }
 
     @Override
