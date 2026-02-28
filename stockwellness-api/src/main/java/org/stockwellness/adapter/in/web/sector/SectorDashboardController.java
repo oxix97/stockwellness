@@ -6,9 +6,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
+import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
+import org.stockwellness.domain.stock.MarketType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,10 +30,11 @@ public class SectorDashboardController {
     public ResponseEntity<List<SectorRankingResult>> getTopSectorsByFluctuation(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
-        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, limit));
+        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, marketType, limit));
     }
 
     /**
@@ -41,10 +44,24 @@ public class SectorDashboardController {
     public ResponseEntity<List<SectorSupplyResult>> getTopSectorsBySupply(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
-        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsBySupply(targetDate, limit));
+        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit));
+    }
+
+    /**
+     * [기능 31] 섹터 vs 시장 비교 분석 조회
+     */
+    @GetMapping("/{sectorCode}/comparison")
+    public ResponseEntity<SectorComparisonResult> compareWithMarket(
+            @PathVariable String sectorCode,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        
+        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        return ResponseEntity.ok(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate));
     }
 
     /**
