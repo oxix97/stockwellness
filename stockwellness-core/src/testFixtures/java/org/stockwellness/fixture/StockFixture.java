@@ -18,8 +18,9 @@ public class StockFixture {
                 "삼성전자",
                 MarketType.KOSPI,
                 Currency.KRW,
-                "009",
+                "제조업",
                 "전기전자",
+                "IT",
                 StockStatus.ACTIVE
         );
     }
@@ -34,8 +35,9 @@ public class StockFixture {
                 "Apple Inc",
                 MarketType.NASDAQ,
                 Currency.USD,
-                "TEC",
+                "Information Technology",
                 "Technology",
+                "Consumer Electronics",
                 StockStatus.ACTIVE
         );
     }
@@ -50,7 +52,8 @@ public class StockFixture {
                 "KODEX 200",
                 MarketType.KOSPI,
                 Currency.KRW,
-                "ETF",
+                "금융업",
+                "기타금융",
                 "상장지수펀드",
                 StockStatus.ACTIVE
         );
@@ -66,7 +69,8 @@ public class StockFixture {
                 name,
                 MarketType.KOSPI,
                 Currency.KRW,
-                "999",
+                "기타",
+                "기타",
                 "미분류",
                 StockStatus.DELISTED
         );
