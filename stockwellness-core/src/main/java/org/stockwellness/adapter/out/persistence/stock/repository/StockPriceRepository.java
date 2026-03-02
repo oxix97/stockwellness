@@ -18,4 +18,6 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
 
     @Query("SELECT MAX(s.id.baseDate) FROM StockPrice s WHERE s.stock = :stock")
     LocalDate findLatestBaseDate(@Param("stock") Stock stock);
+
+    List<StockPrice> findAllByIdBaseDate(LocalDate baseDate);
 }

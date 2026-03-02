@@ -51,7 +51,9 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
                 ? LocalDate.parse(endDateStr, DATE_FMT)
                 : LocalDate.now();
 
+        // [N+1 방지] 청크 내 모든 종목의 마지막 저장일 및 과거 시계열 데이터(지표 계산용)를 미리 로드
         Map<Long, LocalDate> latestDatesMap = stockPricePort.findLatestBaseDatesByStocks(stocks);
+        Map<Long, List<BigDecimal>> historicalPricesMap = stockPricePort.findRecentClosingPricesByStocks(stocks, endDate, INDICATOR_BUFFER_DAYS);
 
         List<Stock> todaySyncStocks = new ArrayList<>();
         List<Stock> gapSyncStocks = new ArrayList<>();
@@ -68,11 +70,11 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         List<StockPrice> resultEntities = new ArrayList<>();
 
         if (!todaySyncStocks.isEmpty()) {
-            resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate));
+            resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate, historicalPricesMap));
         }
 
         for (Stock stock : gapSyncStocks) {
-            resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), endDate));
+            resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), endDate, historicalPricesMap.getOrDefault(stock.getId(), Collections.emptyList())));
         }
 
         long duration = System.currentTimeMillis() - startTime;
@@ -82,35 +84,43 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         return resultEntities.isEmpty() ? null : resultEntities;
     }
 
-    private List<StockPrice> processMultiStockPrices(List<Stock> stocks, LocalDate today) {
+    private List<StockPrice> processMultiStockPrices(List<Stock> stocks, LocalDate today, Map<Long, List<BigDecimal>> historicalPricesMap) {
         List<String> tickers = stocks.stream().map(Stock::getTicker).toList();
         
-        // [성능 최적화] 30개 종목 시세를 API 1회로 가져옴
         List<KisMultiStockPriceDetail> apiResults = kisAdapter.fetchMultiStockPrices(tickers);
         if (apiResults.isEmpty()) return Collections.emptyList();
 
         Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
                 .collect(Collectors.toMap(KisMultiStockPriceDetail::ticker, d -> d));
 
-        // [N+1 해결 2] 모든 종목의 과거 시세를 한 번에 조회
-        Map<Long, List<BigDecimal>> historicalPricesMap = stockPricePort.findRecentClosingPricesByStocks(stocks, today, INDICATOR_BUFFER_DAYS);
-
         List<StockPrice> entities = new ArrayList<>();
         for (Stock stock : stocks) {
             KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
             if (todayPrice == null) continue;
 
-            // [정합성 검증] 0원 이하 혹은 데이터 오류 방어
             BigDecimal currentPrice = new BigDecimal(todayPrice.closePrice());
             if (currentPrice.compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Stock {} has invalid price: {}. Skipping.", stock.getTicker(), currentPrice);
                 continue;
             }
 
-            List<BigDecimal> prices = new ArrayList<>(historicalPricesMap.getOrDefault(stock.getId(), Collections.emptyList()));
-            prices.add(currentPrice);
+            List<BigDecimal> pastPrices = historicalPricesMap.getOrDefault(stock.getId(), Collections.emptyList());
+            
+            // [요구사항 반영] API 응답에 의존하지 않고 내부 DB 데이터만 활용
+            BigDecimal prevClose = BigDecimal.ZERO;
+            if (!pastPrices.isEmpty()) {
+                prevClose = pastPrices.get(pastPrices.size() - 1);
+            } else {
+                // 전일 종가가 없는데 신규 상장 종목이 아니면 예외 발생
+                if (isNotNewListing(stock, today)) {
+                    throw new IllegalStateException("전일 종가 데이터 누락 (신규 상장 아님): " + stock.getTicker());
+                }
+            }
 
-            TechnicalIndicators indicators = TechnicalIndicatorCalculator.calculateLatest(prices);
+            List<BigDecimal> pricesForIndicators = new ArrayList<>(pastPrices);
+            pricesForIndicators.add(currentPrice);
+
+            TechnicalIndicators indicators = TechnicalIndicatorCalculator.calculateLatest(pricesForIndicators);
 
             entities.add(StockPrice.of(
                     stock, today,
@@ -119,6 +129,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
                     new BigDecimal(todayPrice.lowPrice()),
                     currentPrice,
                     currentPrice,
+                    prevClose,
                     Long.parseLong(todayPrice.accumulatedVolume()),
                     new BigDecimal(todayPrice.accumulatedTradingValue()),
                     indicators
@@ -127,7 +138,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         return entities;
     }
 
-    private List<StockPrice> processIndividualGap(Stock stock, LocalDate latestBaseDate, LocalDate endDate) throws InterruptedException {
+    private List<StockPrice> processIndividualGap(Stock stock, LocalDate latestBaseDate, LocalDate endDate, List<BigDecimal> preFetchedPrices) throws InterruptedException {
         LocalDate requestStartDate = StringUtils.hasText(startDateStr) ? LocalDate.parse(startDateStr, DATE_FMT) : endDate;
         LocalDate fetchStartDate = (latestBaseDate != null) ? latestBaseDate.plusDays(1) : requestStartDate.minusDays(250);
 
@@ -136,7 +147,11 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         List<KisDailyPriceDetail> apiResults = fetchPricesFromKis(stock, fetchStartDate, endDate);
         if (apiResults.isEmpty()) return Collections.emptyList();
 
-        List<BigDecimal> historicalClosingPrices = stockPricePort.findRecentClosingPrices(stock, apiResults.get(0).baseDate(), INDICATOR_BUFFER_DAYS);
+        List<BigDecimal> historicalClosingPrices = preFetchedPrices;
+        if (!apiResults.isEmpty() && latestBaseDate != null && ChronoUnit.DAYS.between(latestBaseDate, apiResults.get(0).baseDate()) > 1) {
+             historicalClosingPrices = stockPricePort.findRecentClosingPrices(stock, apiResults.get(0).baseDate(), INDICATOR_BUFFER_DAYS);
+        }
+
         List<BigDecimal> fullClosingPrices = new ArrayList<>(historicalClosingPrices);
         apiResults.sort(Comparator.comparing(KisDailyPriceDetail::baseDate));
         fullClosingPrices.addAll(apiResults.stream().map(KisDailyPriceDetail::closePrice).toList());
@@ -148,13 +163,34 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         for (int i = 0; i < apiResults.size(); i++) {
             KisDailyPriceDetail dto = apiResults.get(i);
+            
+            // [요구사항 반영] 리스트 내 이전 데이터 혹은 DB 데이터 활용
+            BigDecimal prevClose = BigDecimal.ZERO;
+            if (i > 0) {
+                prevClose = apiResults.get(i - 1).closePrice();
+            } else if (!historicalClosingPrices.isEmpty()) {
+                prevClose = historicalClosingPrices.get(historicalClosingPrices.size() - 1);
+            } else {
+                // 신규 상장 체크
+                if (isNotNewListing(stock, dto.baseDate())) {
+                    throw new IllegalStateException("전일 종가 데이터 누락 (신규 상장 아님): " + stock.getTicker() + " on " + dto.baseDate());
+                }
+            }
+
             entities.add(StockPrice.of(
                     stock, dto.baseDate(), dto.openPrice(), dto.highPrice(), dto.lowPrice(),
-                    dto.closePrice(), dto.closePrice(), dto.volume(), dto.transactionAmt(),
+                    dto.closePrice(), dto.closePrice(), prevClose, dto.volume(), dto.transactionAmt(),
                     allIndicators.get(indicatorStartIndex + i)
             ));
         }
         return entities;
+    }
+
+    private boolean isNotNewListing(Stock stock, LocalDate baseDate) {
+        if (stock.getListingDate() == null) return true; // 상장일 정보 없으면 보수적으로 신규 상장 아님으로 판단
+        // 상장일이 분석 기준일(baseDate)과 같으면 신규 상장임. 상장일 이전이면 (데이터 오류지만) 신규 상장으로 간주 가능.
+        // 따라서 상장일보다 기준일이 이후면 신규 상장이 아님.
+        return baseDate.isAfter(stock.getListingDate());
     }
 
     private List<KisDailyPriceDetail> fetchPricesFromKis(Stock stock, LocalDate start, LocalDate end) throws InterruptedException {

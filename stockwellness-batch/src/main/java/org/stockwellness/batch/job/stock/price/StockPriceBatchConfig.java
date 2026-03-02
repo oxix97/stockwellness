@@ -55,7 +55,7 @@ public class StockPriceBatchConfig {
                 .<List<Stock>, List<StockPrice>>chunk(1, transactionManager) 
                 .reader(stockListReader())
                 .processor(stockPriceProcessor)
-                .writer(stockPriceListWriter())
+                .writer(stockPriceListWriter(stockPriceJdbcWriter()))
                 .taskExecutor(batchExecutor) // 전역 공통 풀 사용
                 .listener(progressListener)
                 .faultTolerant()
@@ -83,44 +83,50 @@ public class StockPriceBatchConfig {
     }
 
     @Bean
-    public ItemWriter<List<StockPrice>> stockPriceListWriter() {
+    public ItemWriter<List<StockPrice>> stockPriceListWriter(JdbcBatchItemWriter<StockPrice> jdbcWriter) {
         return chunk -> {
             List<StockPrice> flatList = new ArrayList<>();
             for (List<StockPrice> list : chunk) {
                 if (list != null) flatList.addAll(list);
             }
             if (!flatList.isEmpty()) {
-                stockPriceJdbcWriter().write(new Chunk<>(flatList));
+                jdbcWriter.write(new Chunk<>(flatList));
             }
         };
     }
 
-    private JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter() {
+    @Bean
+    public JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter() {
         return new JdbcBatchItemWriterBuilder<StockPrice>()
                 .dataSource(dataSource)
                 .sql("""
-                    INSERT INTO stock_price (
-                        stock_id, base_date, open_price, high_price, low_price, close_price, 
-                        adj_close_price, volume, transaction_amt,
-                        ma5, ma20, ma60, ma120, rsi14, macd, macd_signal, created_at
-                    ) VALUES (
-                        ?, ?, ?, ?, ?, ?, 
-                        ?, ?, ?, 
-                        ?, ?, ?, ?, ?, ?, ?, NOW()
-                    )
-                    ON CONFLICT (stock_id, base_date) 
-                    DO UPDATE SET 
-                        close_price = EXCLUDED.close_price,
-                        adj_close_price = EXCLUDED.adj_close_price,
-                        volume = EXCLUDED.volume,
-                        transaction_amt = EXCLUDED.transaction_amt,
-                        ma5 = EXCLUDED.ma5,
-                        ma20 = EXCLUDED.ma20,
-                        ma60 = EXCLUDED.ma60,
-                        ma120 = EXCLUDED.ma120,
-                        rsi14 = EXCLUDED.rsi14,
-                        macd = EXCLUDED.macd,
-                        macd_signal = EXCLUDED.macd_signal
+                    MERGE INTO stock_price AS t
+                    USING (VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) 
+                        AS s (stock_id, base_date, open_price, high_price, low_price, close_price, 
+                              adj_close_price, prev_close_price, volume, transaction_amt, 
+                              ma5, ma20, ma60, ma120, rsi14, macd, macd_signal)
+                    ON t.stock_id = s.stock_id AND t.base_date = s.base_date
+                    WHEN MATCHED THEN
+                        UPDATE SET 
+                            close_price = s.close_price,
+                            adj_close_price = s.adj_close_price,
+                            prev_close_price = s.prev_close_price,
+                            volume = s.volume,
+                            transaction_amt = s.transaction_amt,
+                            ma5 = s.ma5,
+                            ma20 = s.ma20,
+                            ma60 = s.ma60,
+                            ma120 = s.ma120,
+                            rsi14 = s.rsi14,
+                            macd = s.macd,
+                            macd_signal = s.macd_signal
+                    WHEN NOT MATCHED THEN
+                        INSERT (stock_id, base_date, open_price, high_price, low_price, close_price, 
+                                adj_close_price, prev_close_price, volume, transaction_amt, 
+                                ma5, ma20, ma60, ma120, rsi14, macd, macd_signal, created_at)
+                        VALUES (s.stock_id, s.base_date, s.open_price, s.high_price, s.low_price, s.close_price, 
+                                s.adj_close_price, s.prev_close_price, s.volume, s.transaction_amt, 
+                                s.ma5, s.ma20, s.ma60, s.ma120, s.rsi14, s.macd, s.macd_signal, CURRENT_TIMESTAMP)
                     """)
                 .itemPreparedStatementSetter((item, ps) -> {
                     ps.setLong(1, item.getId().getStockId());
@@ -130,17 +136,19 @@ public class StockPriceBatchConfig {
                     ps.setBigDecimal(5, item.getLowPrice());
                     ps.setBigDecimal(6, item.getClosePrice());
                     ps.setBigDecimal(7, item.getAdjClosePrice());
-                    ps.setLong(8, item.getVolume());
-                    ps.setBigDecimal(9, item.getTransactionAmount());
+                    ps.setBigDecimal(8, item.getPreviousClosePrice());
+                    ps.setLong(9, item.getVolume());
+                    ps.setBigDecimal(10, item.getTransactionAmount());
                     var indicators = item.getIndicators();
-                    ps.setBigDecimal(10, indicators != null ? indicators.getMa5() : null);
-                    ps.setBigDecimal(11, indicators != null ? indicators.getMa20() : null);
-                    ps.setBigDecimal(12, indicators != null ? indicators.getMa60() : null);
-                    ps.setBigDecimal(13, indicators != null ? indicators.getMa120() : null);
-                    ps.setBigDecimal(14, indicators != null ? indicators.getRsi14() : null);
-                    ps.setBigDecimal(15, indicators != null ? indicators.getMacd() : null);
-                    ps.setBigDecimal(16, indicators != null ? indicators.getMacdSignal() : null);
+                    ps.setBigDecimal(11, indicators != null ? indicators.getMa5() : null);
+                    ps.setBigDecimal(12, indicators != null ? indicators.getMa20() : null);
+                    ps.setBigDecimal(13, indicators != null ? indicators.getMa60() : null);
+                    ps.setBigDecimal(14, indicators != null ? indicators.getMa120() : null);
+                    ps.setBigDecimal(15, indicators != null ? indicators.getRsi14() : null);
+                    ps.setBigDecimal(16, indicators != null ? indicators.getMacd() : null);
+                    ps.setBigDecimal(17, indicators != null ? indicators.getMacdSignal() : null);
                 })
+                .assertUpdates(false) // ON CONFLICT DO UPDATE behavior varies between DBs
                 .build();
     }
 }

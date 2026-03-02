@@ -54,6 +54,9 @@ public class StockPrice {
     @Column(name = "adj_close_price", precision = 19, scale = 4)
     private BigDecimal adjClosePrice; // 수정종가
 
+    @Column(name = "prev_close_price", precision = 19, scale = 4)
+    private BigDecimal previousClosePrice; // 전일 종가
+
     private Long volume;
 
     @Column(name = "transaction_amt", precision = 25, scale = 2)
@@ -91,6 +94,7 @@ public class StockPrice {
             BigDecimal low,
             BigDecimal close,
             BigDecimal adjClose,
+            BigDecimal previousClose,
             Long volume,
             BigDecimal transactionAmount,
             TechnicalIndicators indicators
@@ -103,6 +107,7 @@ public class StockPrice {
         entity.lowPrice = low;
         entity.closePrice = close;
         entity.adjClosePrice = adjClose;
+        entity.previousClosePrice = previousClose;
         entity.volume = volume;
         entity.transactionAmount = transactionAmount;
         entity.indicators = indicators;
