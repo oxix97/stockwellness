@@ -38,6 +38,9 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
     @Query("SELECT s.sectorIndexCurrentPrice FROM SectorInsight s WHERE s.sectorCode = :sectorCode AND s.baseDate < :date ORDER BY s.baseDate DESC")
     List<BigDecimal> findPastPrices(String sectorCode, LocalDate date, Pageable pageable);
 
+    @Query("SELECT s FROM SectorInsight s WHERE s.sectorCode IN :codes AND s.baseDate < :date ORDER BY s.baseDate DESC")
+    List<SectorInsight> findRecentSectorsByCodes(@Param("codes") List<String> codes, @Param("date") LocalDate date);
+
     List<SectorInsight> findBySectorCodeInAndBaseDate(List<String> sectorCodes, LocalDate baseDate);
 
     List<SectorInsight> findBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(String sectorCode, LocalDate endDate, Pageable pageable);

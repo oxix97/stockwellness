@@ -8,9 +8,9 @@ Focus on moving business logic from the batch layer to the core domain services 
 - [x] Task: Relocate Sector Analysis Logic to Core Domain
     - [x] Write unit tests for `SectorAnalysisService` (covering indicator calculations and status logic)
     - [x] Implement `SectorAnalysisService` in the `stockwellness-core` module
-- [ ] Task: Refactor Ports and Persistence Adapters
-    - [ ] Update `SectorInsightPort` to include bulk data retrieval methods (N+1 prevention)
-    - [ ] Implement bulk fetching in `SectorPersistenceAdapter` using QueryDSL
+- [x] Task: Refactor Ports and Persistence Adapters
+    - [x] Update `SectorInsightPort` to include bulk data retrieval methods (N+1 prevention)
+    - [x] Implement bulk fetching in `SectorPersistenceAdapter` using QueryDSL
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Architectural Alignment & Domain Logic' (Protocol in workflow.md)
 
 ## Phase 2: Optimized Stock Price Sync (`fetch-prices`)

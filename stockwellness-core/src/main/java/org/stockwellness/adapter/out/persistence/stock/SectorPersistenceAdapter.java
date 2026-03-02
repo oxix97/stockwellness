@@ -13,6 +13,7 @@ import org.stockwellness.domain.stock.insight.SectorInsight;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,7 +43,42 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
 
     @Override
     public List<BigDecimal> findPastPrices(String sectorCode, LocalDate date, int limit) {
-        return sectorInsightRepository.findPastPrices(sectorCode, date, PageRequest.of(0, limit));
+        List<BigDecimal> prices = sectorInsightRepository.findPastPrices(sectorCode, date, PageRequest.of(0, limit));
+        Collections.reverse(prices);
+        return prices;
+    }
+
+    @Override
+    public Map<String, SectorInsight> findLatestBeforeByCodes(List<String> sectorCodes, LocalDate date) {
+        // [N+1 방지] 여러 섹터의 '가장 최근 데이터'를 가져와 Map으로 구성
+        // findRecentSectorsByCodes 는 baseDate DESC 로 정렬되어 있으므로, 
+        // toMap 에서 중복 키 발생 시 첫 번째(가장 최근) 데이터를 선택함.
+        return sectorInsightRepository.findRecentSectorsByCodes(sectorCodes, date).stream()
+                .collect(Collectors.toMap(
+                        SectorInsight::getSectorCode,
+                        s -> s,
+                        (s1, s2) -> s1 
+                ));
+    }
+
+    @Override
+    public Map<String, List<BigDecimal>> findPastPricesByCodes(List<String> sectorCodes, LocalDate date, int limit) {
+        // [N+1 방지] 여러 섹터의 과거 시계를 한 번에 로드
+        List<SectorInsight> allHistory = sectorInsightRepository.findRecentSectorsByCodes(sectorCodes, date);
+        
+        return allHistory.stream()
+                .collect(Collectors.groupingBy(
+                        SectorInsight::getSectorCode,
+                        Collectors.mapping(SectorInsight::getSectorIndexCurrentPrice, Collectors.toList())
+                )).entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> {
+                            List<BigDecimal> prices = e.getValue().stream().limit(limit).collect(Collectors.toList());
+                            Collections.reverse(prices);
+                            return prices;
+                        }
+                ));
     }
 
     @Override
@@ -52,7 +88,9 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
 
     @Override
     public List<SectorInsight> findHistoryByCode(String code, LocalDate endDate, int limit) {
-        return sectorInsightRepository.findBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(code, endDate, PageRequest.of(0, limit));
+        List<SectorInsight> history = sectorInsightRepository.findBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(code, endDate, PageRequest.of(0, limit));
+        Collections.reverse(history);
+        return history;
     }
 
     @Override

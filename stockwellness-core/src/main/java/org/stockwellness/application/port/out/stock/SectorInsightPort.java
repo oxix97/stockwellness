@@ -5,6 +5,7 @@ import org.stockwellness.domain.stock.insight.SectorInsight;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface SectorInsightPort {
@@ -12,6 +13,10 @@ public interface SectorInsightPort {
     void saveAll(List<SectorInsight> sectorInsights);
     Optional<SectorInsight> findLatestBefore(String sectorCode, LocalDate date);
     
+    // [벌크 조회 추가] N+1 방지용
+    Map<String, SectorInsight> findLatestBeforeByCodes(List<String> sectorCodes, LocalDate date);
+    Map<String, List<BigDecimal>> findPastPricesByCodes(List<String> sectorCodes, LocalDate date, int limit);
+
     List<SectorInsight> findTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit);
     List<SectorInsight> findTopSectorsBySupply(LocalDate date, MarketType marketType, int limit);
     Optional<SectorInsight> findBySectorCodeAndDate(String sectorCode, LocalDate date);
