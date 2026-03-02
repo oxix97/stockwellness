@@ -35,8 +35,8 @@ public class SectorEodJobListener implements JobExecutionListener {
             // 2. 캐시 프리워밍 (가장 많이 쓰이는 상위 10개 기준)
             LocalDate today = LocalDate.now();
             try {
-                sectorInsightUseCase.getTopSectorsByFluctuation(today, 10);
-                sectorInsightUseCase.getTopSectorsBySupply(today, 10);
+                sectorInsightUseCase.getTopSectorsByFluctuation(today, null, 10);
+                sectorInsightUseCase.getTopSectorsBySupply(today, null, 10);
                 log.info("섹터 캐시 프리워밍 완료.");
             } catch (Exception e) {
                 log.error("캐시 프리워밍 중 오류 발생: {}", e.getMessage());

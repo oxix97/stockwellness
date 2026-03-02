@@ -23,71 +23,26 @@ import java.util.List;
 public class SectorInsightItemProcessor implements ItemProcessor<SectorApiDto, SectorInsight> {
 
     private final SectorInsightPort sectorInsightPort;
+    private final SectorAnalysisService sectorAnalysisService;
 
     @Override
     public SectorInsight process(SectorApiDto currentData) {
         LocalDate today = currentData.baseDate();
         String sectorCode = currentData.sectorCode();
 
-        // 1. 수급 지표 연산
+        // 1. 도메인 메타데이터 로드
         SectorInsight yesterdayData = sectorInsightPort.findLatestBefore(sectorCode, today).orElse(null);
-
-        int foreignConsecutiveDays = calculateConsecutiveDays(
-                currentData.netForeignBuyAmount(),
-                yesterdayData != null ? yesterdayData.getForeignConsecutiveBuyDays() : 0
-        );
-        int instConsecutiveDays = calculateConsecutiveDays(
-                currentData.netInstBuyAmount(),
-                yesterdayData != null ? yesterdayData.getInstConsecutiveBuyDays() : 0
-        );
-
-        // 2. 기술적 지표 연산
         List<BigDecimal> pastPrices = sectorInsightPort.findPastPrices(sectorCode, today, 119);
-        TechnicalIndicators calculated;
-        boolean isOverheated = false;
 
-        if (pastPrices == null || pastPrices.isEmpty()) {
-            log.warn("섹터 {}의 과거 시세 데이터가 없어 지표 계산을 건너뜁니다.", sectorCode);
-            calculated = TechnicalIndicators.empty();
-        } else {
-            List<BigDecimal> closingPricesForQuant = new ArrayList<>(pastPrices);
-            closingPricesForQuant.add(currentData.sectorIndexCurrentPrice());
-            calculated = TechnicalIndicatorCalculator.calculateLatest(closingPricesForQuant);
-            
-            isOverheated = TechnicalCalculator.isOverheated(
-                    currentData.sectorIndexCurrentPrice(),
-                    calculated.getMa20(),
-                    calculated.getRsi14()
-            );
-        }
-
-        // 3. 최종 Entity 생성
-        return SectorInsight.of(
-                currentData.sectorName(),
-                sectorCode,
-                resolveMarketType(sectorCode),
-                today,
-                currentData.sectorIndexCurrentPrice(),
-                currentData.avgFluctuationRate(),
-                currentData.netForeignBuyAmount(),
-                currentData.netInstBuyAmount(),
-                foreignConsecutiveDays,
-                instConsecutiveDays,
-                calculated,
-                isOverheated
+        // 2. 도메인 서비스로 위임 (분석 로직)
+        // Note: MarketIndex index 가 현재 Processor 에는 없으므로, SectorApiDto 정보를 기반으로 임시 객체 생성 혹은 DTO 확장 필요.
+        // 여기서는 기존 로직 유지를 위해 필요한 정보만 전달하거나 analyze 시그니처 조정.
+        // 현재 analyze 는 MarketIndex 를 받으므로, SectorApiDto 에서 필요한 정보를 추출하여 MarketIndex.of 로 전달.
+        return sectorAnalysisService.analyze(
+                org.stockwellness.domain.stock.insight.MarketIndex.of(sectorCode, currentData.sectorName()),
+                currentData,
+                yesterdayData,
+                pastPrices
         );
-    }
-
-    private int calculateConsecutiveDays(Long todayNetBuyAmount, int yesterdayConsecutiveDays) {
-        if (todayNetBuyAmount != null && todayNetBuyAmount > 0) {
-            return yesterdayConsecutiveDays + 1;
-        }
-        return 0;
-    }
-
-    private MarketType resolveMarketType(String indexCode) {
-        if (indexCode != null && (indexCode.startsWith("0") || indexCode.startsWith("2"))) return MarketType.KOSPI;
-        if (indexCode != null && indexCode.startsWith("1")) return MarketType.KOSDAQ;
-        return MarketType.KOSPI;
     }
 }

@@ -1,4 +1,4 @@
-package org.stockwellness.batch.domain.service;
+package org.stockwellness.domain.stock.analysis;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,8 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("단위 테스트: 기술적 지표 계산기 정밀 검증")
 class TechnicalIndicatorCalculatorTest {
-
-    private final TechnicalIndicatorCalculator calculator = new TechnicalIndicatorCalculator();
 
     // --- Helper Method: 테스트용 더미 데이터 생성기 ---
     private List<BigDecimal> createPriceList(int size, double startPrice, double increment) {
@@ -38,21 +36,16 @@ class TechnicalIndicatorCalculatorTest {
         @DisplayName("데이터가 충분할 때 MA5, MA20이 정확히 계산된다")
         void calculateMA_standard() {
             // Given: 20일치 데이터 (100, 110, ..., 290)
-            // 선형 증가 데이터이므로 평균 계산이 쉽습니다.
-            // ex) 1일~5일(100,110,120,130,140)의 평균 = 120
             List<BigDecimal> prices = createPriceList(20, 100, 10);
 
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
-            // Index 4 (5일차): MA5 검증
             assertThat(results.get(4).getMa5())
                     .as("5일차의 MA5는 120이어야 함")
                     .isEqualByComparingTo(BigDecimal.valueOf(120));
 
-            // Index 19 (20일차): MA20 검증
-            // 100부터 290까지 20개 숫자의 평균 = (100+290)/2 = 195
             assertThat(results.get(19).getMa20())
                     .as("20일차의 MA20은 195이어야 함")
                     .isEqualByComparingTo(BigDecimal.valueOf(195));
@@ -65,7 +58,7 @@ class TechnicalIndicatorCalculatorTest {
             List<BigDecimal> prices = createPriceList(4, 100, 10);
 
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
             assertThat(results).hasSize(4);
@@ -86,11 +79,9 @@ class TechnicalIndicatorCalculatorTest {
             List<BigDecimal> prices = createPriceList(30, 100, 10);
 
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
-            // RSI 계산은 15일차(Index 14)부터 나옵니다.
-            // 지속 상승 시 손실(AvgLoss)이 0이므로 로직상 RSI는 100이 됩니다.
             assertThat(results.get(14).getRsi14())
                     .as("무조건 상승 시 RSI는 100이어야 함")
                     .isEqualByComparingTo(BigDecimal.valueOf(100));
@@ -103,10 +94,9 @@ class TechnicalIndicatorCalculatorTest {
             List<BigDecimal> prices = createPriceList(30, 100, 0);
 
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
-            // 구현 로직에 따라 다르지만, AvgLoss=0 이면 100으로 처리했음
             assertThat(results.get(29).getRsi14())
                     .isNotNull()
                     .isEqualByComparingTo(BigDecimal.valueOf(100));
@@ -124,10 +114,9 @@ class TechnicalIndicatorCalculatorTest {
             List<BigDecimal> prices = createPriceList(50, 100, 10);
 
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
-            // EMA26은 26번째 데이터(Index 25)부터 생성됨. 그 전은 null.
             assertThat(results.get(24).getMacd())
                     .as("25일차까지는 MACD 계산 불가 (EMA26 미달)")
                     .isNull();
@@ -149,22 +138,18 @@ class TechnicalIndicatorCalculatorTest {
             List<BigDecimal> prices = new ArrayList<>(Collections.nCopies(10, null));
             prices.set(0, BigDecimal.valueOf(100));
             prices.set(1, BigDecimal.valueOf(110));
-            prices.set(2, null); // [거래정지]
+            prices.set(2, null); 
             prices.set(3, BigDecimal.valueOf(120));
             prices.set(4, BigDecimal.valueOf(130));
 
-            // 5일 이동평균 계산 시도 (데이터 개수는 5개지만, 유효 데이터는 4개)
-
             // When
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             // Then
             assertThat(results).hasSize(10);
             assertThat(results.get(4).getMa5())
                     .as("유효 데이터가 부족하므로 null 반환 혹은 안전하게 처리되어야 함")
                     .isNull();
-
-            // 에러(NPE)가 발생하지 않고 결과 리스트가 반환된 것 자체가 성공
         }
 
         @ParameterizedTest
@@ -173,7 +158,7 @@ class TechnicalIndicatorCalculatorTest {
         void handle_small_size(int size) {
             List<BigDecimal> prices = createPriceList(size, 100, 10);
 
-            List<TechnicalIndicators> results = calculator.calculateSeries(prices);
+            List<TechnicalIndicators> results = TechnicalIndicatorCalculator.calculateSeries(prices);
 
             if (size == 0) {
                 assertThat(results).isEmpty();
