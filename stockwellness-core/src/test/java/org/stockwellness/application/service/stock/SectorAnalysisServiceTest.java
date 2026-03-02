@@ -63,31 +63,30 @@ class SectorAnalysisServiceTest {
     }
 
     @Test
-    @DisplayName("수급이 끊기면 연속 매수 일수가 0으로 초기화된다")
-    void analyze_consecutive_reset() {
+    @DisplayName("섹터 데이터 분석: 기술적 지표(MA)가 시간 순서(ASC)에 따라 정확하게 계산된다")
+    void analyze_technical_indicators_correctness() {
         // given
         MarketIndex index = MarketIndex.of("0001", "종합");
         LocalDate today = LocalDate.of(2026, 3, 2);
-        
+
         SectorApiDto currentData = new SectorApiDto(
                 "0001", "종합", today,
-                new BigDecimal("2500.00"), new BigDecimal("1.5"),
-                -100L, 500L // Foreign net buy is negative
+                new BigDecimal("110.00"), new BigDecimal("10.0"),
+                0L, 0L
         );
 
-        SectorInsight yesterday = SectorInsight.of(
-                "종합", "0001", MarketType.KOSPI, today.minusDays(1),
-                new BigDecimal("2450.00"), new BigDecimal("0.5"),
-                800L, 200L,
-                5, 5,
-                TechnicalIndicators.empty(), false
+        // 과거 가격: 100, 101, 102, 103 (4일치)
+        List<BigDecimal> pastPrices = List.of(
+                new BigDecimal("100.00"), new BigDecimal("101.00"), 
+                new BigDecimal("102.00"), new BigDecimal("103.00")
         );
 
         // when
-        SectorInsight result = sectorAnalysisService.analyze(index, currentData, yesterday, List.of());
+        SectorInsight result = sectorAnalysisService.analyze(index, currentData, null, pastPrices);
 
         // then
-        assertThat(result.getForeignConsecutiveBuyDays()).isZero();
-        assertThat(result.getInstConsecutiveBuyDays()).isEqualTo(6);
+        // 오늘의 종가(110)를 포함한 최근 5일 이동평균선(MA5) 계산: (100+101+102+103+110) / 5 = 103.2
+        assertThat(result.getTechnicalIndicators().getMa5())
+                .isEqualByComparingTo(new BigDecimal("103.2000"));
     }
 }
