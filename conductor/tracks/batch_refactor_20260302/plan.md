@@ -5,9 +5,9 @@ This plan aims to refactor the core batch synchronization jobs to improve perfor
 ## Phase 1: Architectural Alignment & Domain Logic
 Focus on moving business logic from the batch layer to the core domain services and ensuring ports support efficient operations.
 
-- [ ] Task: Relocate Sector Analysis Logic to Core Domain
-    - [ ] Write unit tests for `SectorAnalysisService` (covering indicator calculations and status logic)
-    - [ ] Implement `SectorAnalysisService` in the `stockwellness-core` module
+- [x] Task: Relocate Sector Analysis Logic to Core Domain
+    - [x] Write unit tests for `SectorAnalysisService` (covering indicator calculations and status logic)
+    - [x] Implement `SectorAnalysisService` in the `stockwellness-core` module
 - [ ] Task: Refactor Ports and Persistence Adapters
     - [ ] Update `SectorInsightPort` to include bulk data retrieval methods (N+1 prevention)
     - [ ] Implement bulk fetching in `SectorPersistenceAdapter` using QueryDSL
