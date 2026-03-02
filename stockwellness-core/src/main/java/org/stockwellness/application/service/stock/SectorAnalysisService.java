@@ -12,6 +12,7 @@ import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -39,7 +40,10 @@ public class SectorAnalysisService {
             log.warn("섹터 {}의 과거 시세 데이터가 없어 지표 계산을 건너뜁니다.", sectorCode);
             calculated = TechnicalIndicators.empty();
         } else {
+            // [중요] DB에서 가져온 데이터(DESC)를 ASC로 변환하여 계산기에 전달
             List<BigDecimal> closingPricesForQuant = new ArrayList<>(pastPrices);
+            Collections.reverse(closingPricesForQuant); 
+            
             closingPricesForQuant.add(currentData.sectorIndexCurrentPrice());
             calculated = TechnicalIndicatorCalculator.calculateLatest(closingPricesForQuant);
             

@@ -9,6 +9,7 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemStreamReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
@@ -23,6 +24,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.global.util.QueryTypeUtil;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
@@ -97,11 +99,9 @@ public class StockPriceBatchConfig {
 
     @Bean
     public JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter() {
-        return new JdbcBatchItemWriterBuilder<StockPrice>()
-                .dataSource(dataSource)
-                .sql("""
+        String sql = String.format("""
                     MERGE INTO stock_price AS t
-                    USING (VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) 
+                    USING (VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)) 
                         AS s (stock_id, base_date, open_price, high_price, low_price, close_price, 
                               adj_close_price, prev_close_price, volume, transaction_amt, 
                               ma5, ma20, ma60, ma120, rsi14, macd, macd_signal)
@@ -127,7 +127,29 @@ public class StockPriceBatchConfig {
                         VALUES (s.stock_id, s.base_date, s.open_price, s.high_price, s.low_price, s.close_price, 
                                 s.adj_close_price, s.prev_close_price, s.volume, s.transaction_amt, 
                                 s.ma5, s.ma20, s.ma60, s.ma120, s.rsi14, s.macd, s.macd_signal, CURRENT_TIMESTAMP)
-                    """)
+                    """, 
+                QueryTypeUtil.BIGINT,  // stock_id
+                QueryTypeUtil.DATE,    // base_date
+                QueryTypeUtil.NUMERIC, // open_price
+                QueryTypeUtil.NUMERIC, // high_price
+                QueryTypeUtil.NUMERIC, // low_price
+                QueryTypeUtil.NUMERIC, // close_price
+                QueryTypeUtil.NUMERIC, // adj_close_price
+                QueryTypeUtil.NUMERIC, // prev_close_price
+                QueryTypeUtil.BIGINT,  // volume
+                QueryTypeUtil.NUMERIC, // transaction_amt
+                QueryTypeUtil.NUMERIC, // ma5
+                QueryTypeUtil.NUMERIC, // ma20
+                QueryTypeUtil.NUMERIC, // ma60
+                QueryTypeUtil.NUMERIC, // ma120
+                QueryTypeUtil.NUMERIC, // rsi14
+                QueryTypeUtil.NUMERIC, // macd
+                QueryTypeUtil.NUMERIC  // macd_signal
+        );
+
+        return new JdbcBatchItemWriterBuilder<StockPrice>()
+                .dataSource(dataSource)
+                .sql(sql)
                 .itemPreparedStatementSetter((item, ps) -> {
                     ps.setLong(1, item.getId().getStockId());
                     ps.setDate(2, java.sql.Date.valueOf(item.getId().getBaseDate()));
