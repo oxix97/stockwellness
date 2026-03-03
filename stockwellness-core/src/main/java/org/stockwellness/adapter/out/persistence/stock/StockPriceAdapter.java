@@ -12,6 +12,7 @@ import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,6 +27,17 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
     private final BenchmarkRepository benchmarkRepository;
     private final StockPriceCacheAdapter stockPriceCacheAdapter;
     private final KisDailyPriceAdapter kisAdapter;
+
+    @Override
+    public List<StockPrice> findFilteredStocksByIndicators(
+            LocalDate baseDate,
+            AlignmentStatus alignment,
+            BigDecimal rsiLow,
+            BigDecimal rsiHigh,
+            Boolean isGoldenCross
+    ) {
+        return stockPriceRepository.findFilteredStocksByIndicators(baseDate, alignment, rsiLow, rsiHigh, isGoldenCross);
+    }
 
     @Override
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
@@ -53,7 +65,7 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
     public Map<Long, List<BigDecimal>> findRecentClosingPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
         // QueryDSL로 최적화된 벌크 조회 호출
         List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date);
-        
+
         return allPrices.stream()
                 .collect(Collectors.groupingBy(
                         p -> p.getStock().getId(),
@@ -63,6 +75,24 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
                         Map.Entry::getKey,
                         e -> {
                             List<BigDecimal> prices = e.getValue().stream().limit(limit).collect(Collectors.toList());
+                            Collections.reverse(prices);
+                            return prices;
+                        }
+                ));
+    }
+
+    @Override
+    public Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit) {
+        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date);
+
+        return allPrices.stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getStock().getId()
+                )).entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> {
+                            List<StockPrice> prices = e.getValue().stream().limit(limit).collect(Collectors.toList());
                             Collections.reverse(prices);
                             return prices;
                         }
