@@ -69,58 +69,58 @@ public class SectorInsight extends AbstractEntity {
 //    @JdbcTypeCode(SqlTypes.JSON)
 //    private AiSectorAnalysis aiAnalysis; // 상세 분석 데이터 (점수, 긍정/부정 요인 등 구조화된 데이터)
 
-        public static SectorInsight of(
-                String sectorName,
-                String sectorCode,
-                MarketType marketType,
-                LocalDate baseDate,
-                BigDecimal sectorIndexCurrentPrice,
-                BigDecimal avgFluctuationRate,
-                Long netForeignBuyAmount,
-                Long netInstBuyAmount,
-                Integer foreignConsecutiveBuyDays,
-                            Integer instConsecutiveBuyDays,
-                            TechnicalIndicators technicalIndicators,
-                            boolean isOverheated
-                    ) {
-                        var entity = new SectorInsight();
-                        entity.sectorName = sectorName;
-                        entity.sectorCode = sectorCode;
-                        entity.marketType = marketType;
-                        entity.baseDate = baseDate;
-                        entity.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
-                        entity.avgFluctuationRate = avgFluctuationRate;
-                        entity.netForeignBuyAmount = netForeignBuyAmount;
-                        entity.netInstBuyAmount = netInstBuyAmount;
-                        entity.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
-                        entity.instConsecutiveBuyDays = instConsecutiveBuyDays;
-                        entity.technicalIndicators = technicalIndicators;
-                        entity.isOverheated = isOverheated;
-                        return entity;
-                    }
-                
-                    public void updateLeadingStocks(List<LeadingStock> leadingStocks) {
-                        this.leadingStocks = new ArrayList<>(leadingStocks);
-                    }
-                
-                    public void update(
-                            BigDecimal sectorIndexCurrentPrice,
-                            BigDecimal avgFluctuationRate,
-                            Long netForeignBuyAmount,
-                            Long netInstBuyAmount,
-                            Integer foreignConsecutiveBuyDays,
-                            Integer instConsecutiveBuyDays,
-                            TechnicalIndicators technicalIndicators,
-                            boolean isOverheated
-                    ) {
-                        this.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
-                        this.avgFluctuationRate = avgFluctuationRate;
-                        this.netForeignBuyAmount = netForeignBuyAmount;
-                        this.netInstBuyAmount = netInstBuyAmount;
-                        this.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
-                        this.instConsecutiveBuyDays = instConsecutiveBuyDays;
-                        this.technicalIndicators = technicalIndicators;
-                        this.isOverheated = isOverheated;
-                    }
-                }
+    public static SectorInsight of(
+            String sectorName,
+            String sectorCode,
+            MarketType marketType,
+            LocalDate baseDate,
+            BigDecimal sectorIndexCurrentPrice,
+            BigDecimal avgFluctuationRate,
+            Long netForeignBuyAmount,
+            Long netInstBuyAmount,
+            Integer foreignConsecutiveBuyDays,
+            Integer instConsecutiveBuyDays,
+            TechnicalIndicators technicalIndicators,
+            boolean isOverheated
+    ) {
+        var entity = new SectorInsight();
+        entity.sectorName = sectorName;
+        entity.sectorCode = sectorCode;
+        entity.marketType = marketType;
+        entity.baseDate = baseDate;
+        entity.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
+        entity.avgFluctuationRate = avgFluctuationRate;
+        entity.netForeignBuyAmount = netForeignBuyAmount;
+        entity.netInstBuyAmount = netInstBuyAmount;
+        entity.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
+        entity.instConsecutiveBuyDays = instConsecutiveBuyDays;
+        entity.technicalIndicators = technicalIndicators;
+        entity.isOverheated = isOverheated;
+        return entity;
+    }
+
+    public void updateLeadingStocks(List<LeadingStock> leadingStocks) {
+        this.leadingStocks = new ArrayList<>(leadingStocks);
+    }
+
+    public void update(
+            BigDecimal sectorIndexCurrentPrice,
+            BigDecimal avgFluctuationRate,
+            Long netForeignBuyAmount,
+            Long netInstBuyAmount,
+            Integer foreignConsecutiveBuyDays,
+            Integer instConsecutiveBuyDays,
+            TechnicalIndicators technicalIndicators,
+            boolean isOverheated
+    ) {
+        this.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
+        this.avgFluctuationRate = avgFluctuationRate;
+        this.netForeignBuyAmount = netForeignBuyAmount;
+        this.netInstBuyAmount = netInstBuyAmount;
+        this.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
+        this.instConsecutiveBuyDays = instConsecutiveBuyDays;
+        this.technicalIndicators = technicalIndicators;
+        this.isOverheated = isOverheated;
+    }
+}
                 

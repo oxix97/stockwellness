@@ -6,20 +6,30 @@ import org.stockwellness.application.port.out.stock.SectorApiDto;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
+import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class SectorAnalysisService {
 
-    public SectorInsight analyze(MarketIndex index, SectorApiDto currentData, SectorInsight yesterdayData, List<BigDecimal> pastPrices) {
+    public SectorInsight analyze(
+            MarketIndex index, 
+            SectorApiDto currentData, 
+            SectorInsight yesterdayData, 
+            List<BigDecimal> pastPrices,
+            List<StockPrice> sectorStockPrices
+    ) {
         String sectorCode = index.getIndexCode();
         
         // 1. 수급 지표 연산 (연속 매수 일수)
@@ -40,7 +50,6 @@ public class SectorAnalysisService {
             log.warn("섹터 {}의 과거 시세 데이터가 없어 지표 계산을 건너뜁니다.", sectorCode);
             calculated = TechnicalIndicators.empty();
         } else {
-            // [중요] DB에서 가져온 데이터(DESC)를 ASC로 변환하여 계산기에 전달
             List<BigDecimal> closingPricesForQuant = new ArrayList<>(pastPrices);
             Collections.reverse(closingPricesForQuant); 
             
@@ -54,8 +63,11 @@ public class SectorAnalysisService {
             );
         }
 
-        // 3. 최종 Entity 생성
-        return SectorInsight.of(
+        // 3. 주도주 산출 (거래대금 상위 5개, 상승 종목 우선)
+        List<LeadingStock> leadingStocks = calculateLeadingStocks(sectorStockPrices);
+
+        // 4. 최종 Entity 생성
+        SectorInsight insight = SectorInsight.of(
                 currentData.sectorName(),
                 sectorCode,
                 resolveMarketType(sectorCode),
@@ -69,6 +81,39 @@ public class SectorAnalysisService {
                 calculated,
                 isOverheated
         );
+        insight.updateLeadingStocks(leadingStocks);
+        
+        return insight;
+    }
+
+    /**
+     * 섹터 주도주 산출 로직
+     */
+    private List<LeadingStock> calculateLeadingStocks(List<StockPrice> stockPrices) {
+        if (stockPrices == null || stockPrices.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. 상승 종목(등락률 > 0) 필터링
+        List<StockPrice> gainers = stockPrices.stream()
+                .filter(p -> p.getFluctuationRate().compareTo(BigDecimal.ZERO) > 0)
+                .sorted(Comparator.comparing(StockPrice::getTransactionAmt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .toList();
+
+        // 2. 만약 상승 종목이 없다면, 거래대금이 가장 큰 종목 5개 추출
+        List<StockPrice> finalSelection = gainers;
+        if (gainers.isEmpty()) {
+            finalSelection = stockPrices.stream()
+                    .sorted(Comparator.comparing(StockPrice::getTransactionAmt, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(5)
+                    .toList();
+        }
+
+        // 3. LeadingStock DTO로 변환
+        return finalSelection.stream()
+                .map(LeadingStock::from)
+                .collect(Collectors.toList());
     }
 
     private int calculateConsecutiveDays(Long todayNetBuyAmount, int yesterdayConsecutiveDays) {

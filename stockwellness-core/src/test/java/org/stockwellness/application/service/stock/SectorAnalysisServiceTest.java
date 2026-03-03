@@ -11,6 +11,7 @@ import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +52,7 @@ class SectorAnalysisServiceTest {
         );
 
         // when
-        SectorInsight result = sectorAnalysisService.analyze(index, currentData, yesterday, pastPrices);
+        SectorInsight result = sectorAnalysisService.analyze(index, currentData, yesterday, pastPrices, Collections.emptyList());
 
         // then
         assertThat(result.getSectorCode()).isEqualTo("0001");
@@ -82,7 +83,7 @@ class SectorAnalysisServiceTest {
         );
 
         // when
-        SectorInsight result = sectorAnalysisService.analyze(index, currentData, null, pastPrices);
+        SectorInsight result = sectorAnalysisService.analyze(index, currentData, null, pastPrices, Collections.emptyList());
 
         // then
         // 오늘의 종가(110)를 포함한 최근 5일 이동평균선(MA5) 계산: (100+101+102+103+110) / 5 = 103.2
