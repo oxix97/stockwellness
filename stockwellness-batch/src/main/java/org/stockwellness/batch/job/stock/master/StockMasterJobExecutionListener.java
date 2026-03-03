@@ -3,7 +3,8 @@ package org.stockwellness.batch.job.stock.master;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.*;
 
-import java.time.Duration;
+import org.stockwellness.global.util.DateUtil;
+
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -17,10 +18,10 @@ public class StockMasterJobExecutionListener implements JobExecutionListener {
 
     @Override
     public void afterJob(JobExecution jobExecution) {
-        long elapsedMs = Duration.between(
+        long elapsedMs = DateUtil.elapsedMillis(
                 jobExecution.getStartTime(),
-                jobExecution.getEndTime() != null ? jobExecution.getEndTime() : LocalDateTime.now()
-        ).toMillis();
+                jobExecution.getEndTime() != null ? jobExecution.getEndTime() : DateUtil.now()
+        );
 
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
             log.info("===== [StockMasterSyncJob] COMPLETED | elapsed={}ms =====", elapsedMs);
@@ -53,9 +54,9 @@ class StockMasterStepExecutionListener implements StepExecutionListener {
                 stepExecution.getReadCount(),
                 stepExecution.getWriteCount(),
                 stepExecution.getSkipCount(),
-                Duration.between(stepExecution.getStartTime(),
+                DateUtil.elapsedMillis(stepExecution.getStartTime(),
                         stepExecution.getEndTime() != null
-                                ? stepExecution.getEndTime() : LocalDateTime.now()).toMillis());
+                                ? stepExecution.getEndTime() : DateUtil.now()));
         return stepExecution.getExitStatus();
     }
 }

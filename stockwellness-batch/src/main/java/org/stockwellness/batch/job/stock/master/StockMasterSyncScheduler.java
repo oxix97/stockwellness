@@ -7,6 +7,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +27,7 @@ public class StockMasterSyncScheduler {
     public void schedule() {
         try {
             var params = new JobParametersBuilder()
-                    .addLocalDateTime("startedAt", LocalDateTime.now())
+                    .addLocalDateTime("startedAt", DateUtil.now())
                     .toJobParameters();
 
             log.info("[StockMasterSyncScheduler] Job 기동");
