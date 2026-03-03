@@ -4,11 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.external.kis.dto.InvestorTradingDaily;
 import org.stockwellness.application.port.out.stock.*;
 import org.stockwellness.application.service.stock.SectorAnalysisService;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -32,45 +30,69 @@ public class SectorInsightItemProcessor implements ItemProcessor<LocalDate, List
 
     @Override
     public List<SectorInsight> process(LocalDate targetDate) {
-        log.info("Analyzing Sector Insights for date: {}", targetDate);
+        log.info("Analyzing Sector Insights (DB-based) for date: {}", targetDate);
 
         // 1. 기초 데이터 확보
         List<MarketIndex> indices = marketIndexPort.findAll();
         List<String> sectorCodes = indices.stream().map(MarketIndex::getIndexCode).toList();
-        
-        // [Pre-fetching] 해당 날짜의 모든 종목 시세 로드 (N+1 방지)
-        List<StockPrice> allPrices = stockPricePort.findByStocksAndDate(Collections.emptyList(), targetDate);
+
+        // [Pre-fetching] 해당 날짜의 모든 종목 시세 로드
+        List<StockPrice> allPrices = stockPricePort.findAllByDate(targetDate);
         if (allPrices.isEmpty()) {
             log.warn("날짜 {}에 대한 종목 시세 데이터가 없어 섹터 분석을 건너뜁니다.", targetDate);
             return null;
         }
 
+        // 티커별 시세 맵
         Map<String, StockPrice> priceMap = allPrices.stream()
                 .collect(Collectors.toMap(p -> p.getStock().getTicker(), p -> p, (p1, p2) -> p1));
 
-        Map<String, List<Stock>> sectorToStocksMap = stockPort.findBySectorMediumName(null).stream()
-                .filter(s -> s.getSectorMediumName() != null)
-                .collect(Collectors.groupingBy(Stock::getSectorMediumName));
+        // [Mapping] 모든 종목 로드 및 섹터 코드별 매핑
+        List<Stock> allStocks = stockPort.findBysectorMediumCode(null);
+        Map<String, List<Stock>> sectorToStocksMap = new HashMap<>();
 
-        // 2. [Pre-fetching] 모든 섹터의 전일 데이터 및 과거 시계열 로드 (N+1 방지)
+        for (Stock stock : allStocks) {
+            String mappingCode = null;
+            String mediumCode = stock.getSectorMediumCode();
+            String largeCode = stock.getSectorLargeCode();
+
+            if (mediumCode != null && !mediumCode.equals("0000") && !mediumCode.isBlank()) {
+                mappingCode = mediumCode.trim();
+            } else if (largeCode != null && !largeCode.isBlank()) {
+                mappingCode = largeCode.trim();
+            }
+
+            if (mappingCode != null) {
+                sectorToStocksMap.computeIfAbsent(mappingCode, k -> new ArrayList<>()).add(stock);
+            }
+        }
+
+        log.info(">>> Sector Mapping Check: Found {} stocks in {} mapped groups", allStocks.size(), sectorToStocksMap.size());
+
+        // 2. [Pre-fetching] 모든 섹터의 전일 데이터 및 과거 시계열 로드
         Map<String, SectorInsight> yesterdayMap = sectorInsightPort.findLatestBeforeByCodes(sectorCodes, targetDate);
         Map<String, List<BigDecimal>> pastPricesMap = sectorInsightPort.findPastPricesByCodes(sectorCodes, targetDate, 119);
 
         List<SectorInsight> results = new ArrayList<>();
         for (MarketIndex index : indices) {
             try {
-                String code = index.getIndexCode();
-                SectorInsight insight = analyzeSingleSector(
-                        index, targetDate, priceMap, 
-                        sectorToStocksMap.get(code), 
-                        yesterdayMap.get(code), 
+                String code = index.getIndexCode().trim();
+                List<Stock> sectorStocks = sectorToStocksMap.get(code);
+
+                if (sectorStocks == null || sectorStocks.isEmpty()) {
+                    log.debug(">>> Sector {}({}): No matching stocks found in DB grouping", index.getIndexName(), code);
+                    continue;
+                }
+
+                SectorInsight insight = analyzeSingleSectorFromDb(
+                        index, targetDate, priceMap,
+                        sectorStocks,
+                        yesterdayMap.get(code),
                         pastPricesMap.getOrDefault(code, Collections.emptyList())
                 );
-                
+
                 if (insight != null) {
                     results.add(insight);
-                    // [안정성] API Rate Limit 대응
-                    Thread.sleep(70);
                 }
             } catch (Exception e) {
                 log.error("섹터 {} 분석 중 오류 발생: {}", index.getIndexCode(), e.getMessage());
@@ -79,53 +101,43 @@ public class SectorInsightItemProcessor implements ItemProcessor<LocalDate, List
         return results;
     }
 
-    private SectorInsight analyzeSingleSector(MarketIndex index, LocalDate date, Map<String, StockPrice> priceMap, 
-                                            List<Stock> stocks, SectorInsight yesterdayData, List<BigDecimal> pastPrices) {
-        if (stocks == null || stocks.isEmpty()) return null;
-
-        String sectorCode = index.getIndexCode();
+    /**
+     * 외부 API 호출 없이 DB 데이터(종목 시세)만으로 섹터 인사이트를 분석
+     */
+    private SectorInsight analyzeSingleSectorFromDb(MarketIndex index, LocalDate date, Map<String, StockPrice> priceMap,
+                                                    List<Stock> stocks, SectorInsight yesterdayData, List<BigDecimal> pastPrices) {
+        // 해당 섹터에 속한 종목들의 시세를 priceMap에서 추출
         List<StockPrice> sectorPrices = stocks.stream()
                 .map(s -> priceMap.get(s.getTicker()))
                 .filter(Objects::nonNull)
                 .toList();
 
-        if (sectorPrices.isEmpty()) return null;
-
-        // 1. 외부 데이터 확보 (API 호출 - Rate Limit 주의)
-        Long netForeign = 0L;
-        Long netInst = 0L;
-        BigDecimal currentSectorPrice = BigDecimal.ZERO;
-        try {
-            var detail = sectorDataPort.fetchDailySectorDetail(sectorCode, date);
-            currentSectorPrice = new BigDecimal(detail.sectorIndexPrice());
-            
-            List<InvestorTradingDaily> investorData = sectorDataPort.fetchInvestorTradingDaily(sectorCode, date, 1);
-            if (!investorData.isEmpty()) {
-                netForeign = parseLong(investorData.get(0).frgnNtbyTrPbmn());
-                netInst = parseLong(investorData.get(0).orgnNtbyTrPbmn());
-            }
-        } catch (Exception e) { 
-            log.debug("외부 API 데이터 누락 - 섹터 {}: {}", sectorCode, e.getMessage());
+        if (sectorPrices.isEmpty()) {
+            return null;
         }
 
-        // 2. 도메인 서비스로 분석 위임
+        // 지표 산출
+        BigDecimal avgFluctuation = calculateAvgFluctuation(sectorPrices);
+        
+        // 지수 가격: 현재 DB에 섹터지수 시세 테이블이 별도로 없으므로, 
+        // 전일 지수 가격에 평균 등락률을 곱해 추정하거나 0으로 세팅 (여기선 추정 방식 사용)
+        BigDecimal estimatedSectorPrice = BigDecimal.ZERO;
+        if (yesterdayData != null && yesterdayData.getSectorIndexCurrentPrice() != null) {
+            BigDecimal multiplier = BigDecimal.ONE.add(avgFluctuation.divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP));
+            estimatedSectorPrice = yesterdayData.getSectorIndexCurrentPrice().multiply(multiplier).setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+
+        // 수급 데이터: 현재 StockPrice에 투자자별 필드가 없으므로 0으로 세팅 (추후 확장 가능)
+        Long netForeign = 0L;
+        Long netInst = 0L;
+
+        // 도메인 서비스로 분석 위임
         SectorApiDto apiDto = new SectorApiDto(
-                sectorCode, index.getIndexName(), date, currentSectorPrice,
-                calculateAvgFluctuation(sectorPrices), netForeign, netInst
+                index.getIndexCode(), index.getIndexName(), date, estimatedSectorPrice,
+                avgFluctuation, netForeign, netInst
         );
 
-        SectorInsight insight = sectorAnalysisService.analyze(index, apiDto, yesterdayData, pastPrices);
-
-        // 3. 주도주 추출 (상승 종목 중 거래대금 상위 5개)
-        List<LeadingStock> leading = sectorPrices.stream()
-                .filter(p -> p.getFluctuationRate().compareTo(BigDecimal.ZERO) > 0)
-                .sorted(Comparator.comparing(StockPrice::getTransactionAmount).reversed())
-                .limit(5)
-                .map(LeadingStock::from)
-                .toList();
-        insight.updateLeadingStocks(leading);
-
-        return insight;
+        return sectorAnalysisService.analyze(index, apiDto, yesterdayData, pastPrices, sectorPrices);
     }
 
     private BigDecimal calculateAvgFluctuation(List<StockPrice> prices) {
