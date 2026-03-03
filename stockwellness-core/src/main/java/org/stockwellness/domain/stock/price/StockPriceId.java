@@ -16,9 +16,11 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class StockPriceId implements Serializable {
-    @Column(name = "stock_id")
-    private Long stockId;
-
+    
+    // DDL 순서에 맞춰 base_date 를 첫 번째로 배치
     @Column(name = "base_date")
     private LocalDate baseDate;
+
+    @Column(name = "stock_id")
+    private Long stockId;
 }

@@ -17,6 +17,11 @@ public interface StockPricePort {
      */
     List<StockPrice> findByStocksAndDate(List<Stock> stocks, LocalDate date);
 
+    /**
+     * 지정된 날짜의 모든 종목 시세 데이터를 조회합니다.
+     */
+    List<StockPrice> findAllByDate(LocalDate date);
+
     Optional<StockPrice> findLateststockPrice(String isinCode);
 
     List<StockPrice> loadRecentHistories(String isinCode, int limit);

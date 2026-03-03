@@ -33,9 +33,9 @@ import static lombok.AccessLevel.PROTECTED;
         name = "stock",
         indexes = {
                 @Index(name = "idx_stock_ticker", columnList = "ticker", unique = true),
-                @Index(name = "idx_stock_name", columnList = "name"),
+                @Index(name = "idx_stock_code", columnList = "name"),
                 @Index(name = "idx_stock_status", columnList = "status"),
-                @Index(name = "idx_stock_ticker_name", columnList = "ticker, name")
+                @Index(name = "idx_stock_ticker_code", columnList = "ticker, name")
         }
 )
 public class Stock extends AbstractEntity {
@@ -70,18 +70,18 @@ public class Stock extends AbstractEntity {
     @Column(nullable = false, length = 3)
     private Currency currency;
 
-    @Column(name = "sector_large_name", length = 100)
-    private String sectorLargeName;
+    @Column(name = "sector_large_code", length = 100)
+    private String sectorLargeCode;
 
-    @Column(name = "sector_medium_name", length = 100)
-    private String sectorMediumName;
+    @Column(name = "sector_medium_code", length = 100)
+    private String sectorMediumCode;
     /**
      * 업종명 (e.g. "제약", "반도체").
      * {@link MarketIndex#getIndexName()}에서 가져옵니다.
      * 해외 종목 또는 매핑 실패 시 {@code null}.
      */
-    @Column(name = "sector_small_name", length = 100)
-    private String sectorSmallName;
+    @Column(name = "sector_small_code", length = 100)
+    private String sectorSmallCode;
 
     // ── 공통 상태 ──────────────────────────────────────────────────────────────
 
@@ -164,9 +164,9 @@ public class Stock extends AbstractEntity {
             String name,
             MarketType marketType,
             Currency currency,
-            String sectorLargeName,
-            String sectorMediumName,
-            String sectorSmallName,
+            String sectorLargeCode,
+            String sectorMediumCode,
+            String sectorSmallCode,
             StockStatus status
     ) {
         Stock s = new Stock();
@@ -175,9 +175,9 @@ public class Stock extends AbstractEntity {
         s.name = name;
         s.marketType = marketType;
         s.currency = currency;
-        s.sectorLargeName = sectorLargeName;
-        s.sectorMediumName = sectorMediumName;
-        s.sectorSmallName = sectorSmallName;
+        s.sectorLargeCode = sectorLargeCode;
+        s.sectorMediumCode = sectorMediumCode;
+        s.sectorSmallCode = sectorSmallCode;
         s.status = status;
         s.isPremiumTracking = false;
         s.isPreferred = false;
@@ -190,18 +190,18 @@ public class Stock extends AbstractEntity {
     /**
      * 코스피 종목 생성 (KIS 마스터 데이터 포함)
      */
-    public static Stock ofKospi(KospiItem item, String sectorLargeName,
-                                String sectorMediumName,
-                                String sectorSmallName) {
+    public static Stock ofKospi(KospiItem item, String sectorLargeCode,
+                                String sectorMediumCode,
+                                String sectorSmallCode) {
         Stock s = new Stock();
         s.ticker = item.shortCode();
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSPI;
         s.currency = Currency.KRW;
-        s.sectorLargeName = sectorLargeName;
-        s.sectorMediumName = sectorMediumName;
-        s.sectorSmallName = sectorSmallName;
+        s.sectorLargeCode = sectorLargeCode;
+        s.sectorMediumCode = sectorMediumCode;
+        s.sectorSmallCode = sectorSmallCode;
         s.status = resolveStatus(item);
         s.isPremiumTracking = false;
         s.groupCode = item.groupCode();
@@ -219,18 +219,18 @@ public class Stock extends AbstractEntity {
     /**
      * 코스닥 종목 생성 (KIS 마스터 데이터 포함)
      */
-    public static Stock ofKosdaq(KosdaqItem item, String sectorLargeName,
-                                 String sectorMediumName,
-                                 String sectorSmallName) {
+    public static Stock ofKosdaq(KosdaqItem item, String sectorLargeCode,
+                                 String sectorMediumCode,
+                                 String sectorSmallCode) {
         Stock s = new Stock();
         s.ticker = item.shortCode();
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSDAQ;
         s.currency = Currency.KRW;
-        s.sectorLargeName = sectorLargeName;
-        s.sectorMediumName = sectorMediumName;
-        s.sectorSmallName = sectorSmallName;
+        s.sectorLargeCode = sectorLargeCode;
+        s.sectorMediumCode = sectorMediumCode;
+        s.sectorSmallCode = sectorSmallCode;
         s.status = resolveStatus(item);
         s.isPremiumTracking = false;
         s.groupCode = item.groupCode();
@@ -250,14 +250,14 @@ public class Stock extends AbstractEntity {
     /**
      * KIS 마스터 최신 데이터로 갱신 (ticker, marketType, listingDate 제외)
      */
-    public void updateFromKospi(KospiItem item, String sectorLargeName,
-                                String sectorMediumName,
-                                String sectorSmallName) {
+    public void updateFromKospi(KospiItem item, String sectorLargeCode,
+                                String sectorMediumCode,
+                                String sectorSmallCode) {
         this.standardCode = item.isinCode();
         this.name = item.koreanName();
-        this.sectorLargeName = sectorLargeName;
-        this.sectorMediumName = sectorMediumName;
-        this.sectorSmallName = sectorSmallName;
+        this.sectorLargeCode = sectorLargeCode;
+        this.sectorMediumCode = sectorMediumCode;
+        this.sectorSmallCode = sectorSmallCode;
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
@@ -269,14 +269,14 @@ public class Stock extends AbstractEntity {
         this.overheatStatus = StockOverheatStatus.ofKospi(item);
     }
 
-    public void updateFromKosdaq(KosdaqItem item, String sectorLargeName,
-                                 String sectorMediumName,
-                                 String sectorSmallName) {
+    public void updateFromKosdaq(KosdaqItem item, String sectorLargeCode,
+                                 String sectorMediumCode,
+                                 String sectorSmallCode) {
         this.standardCode = item.isinCode();
         this.name = item.koreanName();
-        this.sectorLargeName = sectorLargeName;
-        this.sectorMediumName = sectorMediumName;
-        this.sectorSmallName = sectorSmallName;
+        this.sectorLargeCode = sectorLargeCode;
+        this.sectorMediumCode = sectorMediumCode;
+        this.sectorSmallCode = sectorSmallCode;
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();

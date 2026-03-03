@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 import static lombok.AccessLevel.PROTECTED;
@@ -15,7 +16,7 @@ import static lombok.AccessLevel.PROTECTED;
 @Embeddable
 @NoArgsConstructor(access = PROTECTED) // JPA용 기본 생성자
 @AllArgsConstructor
-public class TechnicalIndicators {
+public class TechnicalIndicators implements Serializable {
     @Column(precision = 19, scale = 4)
     private BigDecimal ma5;
     

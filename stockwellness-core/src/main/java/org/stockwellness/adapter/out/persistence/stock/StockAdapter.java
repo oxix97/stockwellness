@@ -23,8 +23,11 @@ public class StockAdapter implements StockPort {
     private final StockRepository stockRepository;
 
     @Override
-    public List<Stock> findBySectorMediumName(String sectorMediumName) {
-        return stockRepository.findBySectorMediumNameAndStatus(sectorMediumName, StockStatus.ACTIVE);
+    public List<Stock> findBysectorMediumCode(String sectorMediumCode) {
+        if (sectorMediumCode == null) {
+            return stockRepository.findByStatus(StockStatus.ACTIVE);
+        }
+        return stockRepository.findBysectorMediumCodeAndStatus(sectorMediumCode, StockStatus.ACTIVE);
     }
 
     @Override

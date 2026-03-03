@@ -10,6 +10,7 @@ import org.stockwellness.domain.stock.price.StockPriceId;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface StockPriceRepository extends JpaRepository<StockPrice, StockPriceId>, StockPriceRepositoryCustom {
@@ -19,5 +20,11 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
     @Query("SELECT MAX(s.id.baseDate) FROM StockPrice s WHERE s.stock = :stock")
     LocalDate findLatestBaseDate(@Param("stock") Stock stock);
 
-    List<StockPrice> findAllByIdBaseDate(LocalDate baseDate);
+    @Query(value = "SELECT * FROM stock_price WHERE base_date = CAST(:baseDate AS date)", nativeQuery = true)
+    List<StockPrice> findAllByIdBaseDate(@Param("baseDate") LocalDate baseDate);
+
+    List<StockPrice> findByStockInAndIdBaseDate(Collection<Stock> stocks, LocalDate baseDate);
+
+    @Query("SELECT s FROM StockPrice s WHERE s.id.stockId = :stockId ORDER BY s.id.baseDate ASC")
+    List<StockPrice> findByStockIdOrderByBaseDateAsc(@Param("stockId") Long stockId);
 }
