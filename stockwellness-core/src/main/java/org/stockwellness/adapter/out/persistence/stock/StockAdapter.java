@@ -8,7 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
@@ -18,9 +18,17 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class StockAdapter implements LoadStockPort {
+public class StockAdapter implements StockPort {
 
     private final StockRepository stockRepository;
+
+    @Override
+    public List<Stock> findBysectorMediumCode(String sectorMediumCode) {
+        if (sectorMediumCode == null) {
+            return stockRepository.findByStatus(StockStatus.ACTIVE);
+        }
+        return stockRepository.findBysectorMediumCodeAndStatus(sectorMediumCode, StockStatus.ACTIVE);
+    }
 
     @Override
     public List<Stock> loadStocksByTickers(List<String> isinCodes) {

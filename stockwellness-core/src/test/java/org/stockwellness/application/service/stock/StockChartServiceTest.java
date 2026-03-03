@@ -12,10 +12,10 @@ import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
-import org.stockwellness.application.port.out.stock.LoadStockPricePort;
-import org.stockwellness.domain.stock.ChartFrequency;
-import org.stockwellness.domain.stock.ChartPeriod;
+import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.domain.stock.price.ChartFrequency;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -32,11 +32,11 @@ import static org.mockito.BDDMockito.given;
 class StockChartServiceTest {
 
     @Mock
-    private LoadStockPricePort loadStockPricePort;
+    private StockPricePort stockPricePort;
     @Mock
     private LoadBenchmarkPort loadBenchmarkPort;
     @Mock
-    private LoadStockPort loadStockPort;
+    private StockPort stockPort;
 
     @InjectMocks
     private StockChartService stockChartService;
@@ -52,13 +52,13 @@ class StockChartServiceTest {
         void success() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, true);
-            given(loadStockPort.existsByTicker(ticker)).willReturn(true);
+            given(stockPort.existsByTicker(ticker)).willReturn(true);
             
             List<StockPriceResult> mockPrices = List.of(
                     createPrice("2024-01-01", 100),
                     createPrice("2024-01-02", 110)
             );
-            given(loadStockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
+            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
             
             List<StockPriceResult> mockBenchmarks = List.of(
                     createPrice("2024-01-01", 2000),
@@ -81,7 +81,7 @@ class StockChartServiceTest {
         void failStockNotFound() {
             // given
             ChartQuery query = new ChartQuery("UNKNOWN", ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
-            given(loadStockPort.existsByTicker("UNKNOWN")).willReturn(false);
+            given(stockPort.existsByTicker("UNKNOWN")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> stockChartService.loadChartData(query))
@@ -94,8 +94,8 @@ class StockChartServiceTest {
         void failNoPriceData() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
-            given(loadStockPort.existsByTicker(ticker)).willReturn(true);
-            given(loadStockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(List.of());
+            given(stockPort.existsByTicker(ticker)).willReturn(true);
+            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(List.of());
 
             // when & then
             assertThatThrownBy(() -> stockChartService.loadChartData(query))
@@ -112,13 +112,13 @@ class StockChartServiceTest {
         @DisplayName("성공: 종목 및 벤치마크 수익률을 계산한다")
         void success() {
             // given
-            given(loadStockPort.existsByTicker(ticker)).willReturn(true);
+            given(stockPort.existsByTicker(ticker)).willReturn(true);
             
             List<StockPriceResult> mockPrices = List.of(
                     createPrice("2024-01-01", 100),
                     createPrice("2024-01-02", 150)
             );
-            given(loadStockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
+            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
 
             List<StockPriceResult> mockBenchmarks = List.of(
                     createPrice("2024-01-01", 2000),

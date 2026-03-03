@@ -94,6 +94,61 @@ paths:
                       "accessToken" : "new.access.token",
                       "refreshToken" : "new.refresh.token"
                     }
+  /api/v1/sectors/{sectorCode}:
+    get:
+      tags:
+      - Sector
+      summary: 섹터 상세 정보 조회
+      description: "특정 섹터의 상세 인사이트, 기술적 지표, 주도주 정보를 조회합니다."
+      operationId: sector-detail
+      parameters:
+      - name: sectorCode
+        in: path
+        description: 섹터 코드
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: 조회 날짜 (yyyy-MM-dd)
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorDetailResponse"
+              examples:
+                sector-detail:
+                  value: |-
+                    {
+                      "sectorCode" : "001",
+                      "sectorName" : "조선/해운",
+                      "baseDate" : "2026-02-26",
+                      "currentPrice" : 2500.5,
+                      "fluctuationRate" : 3.45,
+                      "technicalIndicators" : {
+                        "ma5" : 2400.0,
+                        "ma20" : 2350.0,
+                        "ma60" : null,
+                        "ma120" : null,
+                        "rsi14" : 65.5,
+                        "macd" : null,
+                        "macdSignal" : null
+                      },
+                      "isOverheated" : true,
+                      "diagnosisMessage" : "현재 섹터는 과열 구간에 진입했습니다. 과매수 상태입니다.",
+                      "leadingStocks" : [ {
+                        "name" : "삼성중공업",
+                        "ticker" : "010140",
+                        "fluctuationRate" : 5.2,
+                        "tradeVolume" : 1500000,
+                        "transactionAmt" : 12000000000
+                      } ]
+                    }
   /api/v1/stocks/new-listings:
     get:
       tags:
@@ -192,16 +247,16 @@ paths:
                         "status" : "ACTIVE"
                       } ],
                       "pageable" : "INSTANCE",
-                      "numberOfElements" : 1,
-                      "first" : true,
-                      "last" : true,
                       "size" : 1,
                       "number" : 0,
                       "sort" : {
-                        "sorted" : false,
+                        "empty" : true,
                         "unsorted" : true,
-                        "empty" : true
+                        "sorted" : false
                       },
+                      "numberOfElements" : 1,
+                      "first" : true,
+                      "last" : true,
                       "empty" : false
                     }
   /api/v1/watchlist/groups:
@@ -266,6 +321,106 @@ paths:
       responses:
         "201":
           description: "201"
+  /api/v1/sectors/ranking/fluctuation:
+    get:
+      tags:
+      - Sector
+      summary: 섹터 등락률 랭킹 조회
+      description: 지정된 날짜의 섹터별 등락률 순위를 조회합니다.
+      operationId: sector-ranking
+      parameters:
+      - name: date
+        in: query
+        description: 조회 날짜 (yyyy-MM-dd)
+        required: false
+        schema:
+          type: string
+      - name: marketType
+        in: query
+        description: "시장 구분 (KOSPI, KOSDAQ)"
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: 조회 개수
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorRankingResponse"
+              examples:
+                sector-ranking:
+                  value: |-
+                    [ {
+                      "sectorCode" : "001",
+                      "sectorName" : "종합",
+                      "currentPrice" : 2500.5,
+                      "fluctuationRate" : 3.45,
+                      "isOverheated" : false
+                    }, {
+                      "sectorCode" : "002",
+                      "sectorName" : "반도체",
+                      "currentPrice" : 1200.3,
+                      "fluctuationRate" : -1.2,
+                      "isOverheated" : true
+                    } ]
+  /api/v1/sectors/ranking/supply:
+    get:
+      tags:
+      - Sector
+      summary: 섹터 수급 랭킹 조회
+      description: 외국인/기관 순매수 금액 및 연속 매수 일수 기반의 섹터 순위를 조회합니다.
+      operationId: sector-supply
+      parameters:
+      - name: date
+        in: query
+        description: 조회 날짜 (yyyy-MM-dd)
+        required: false
+        schema:
+          type: string
+      - name: marketType
+        in: query
+        description: "시장 구분 (KOSPI, KOSDAQ)"
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: 조회 개수
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectorSupplyResponse"
+              examples:
+                sector-supply:
+                  value: |-
+                    [ {
+                      "sectorCode" : "001",
+                      "sectorName" : "종합",
+                      "netForeignBuyAmount" : 500000000,
+                      "netInstBuyAmount" : 1200000000,
+                      "foreignConsecutiveBuyDays" : 3,
+                      "instConsecutiveBuyDays" : 5
+                    }, {
+                      "sectorCode" : "002",
+                      "sectorName" : "반도체",
+                      "netForeignBuyAmount" : -100000000,
+                      "netInstBuyAmount" : 300000000,
+                      "foreignConsecutiveBuyDays" : 0,
+                      "instConsecutiveBuyDays" : 2
+                    } ]
   /api/v1/stocks/search/history:
     get:
       tags:
@@ -521,6 +676,35 @@ components:
         isinCode:
           type: string
           description: 종목 ISIN 코드
+    SectorRankingResponse:
+      title: SectorRankingResponse
+      type: array
+      description: 섹터 랭킹 리스트
+      items:
+        required:
+        - currentPrice
+        - fluctuationRate
+        - isOverheated
+        - sectorCode
+        - sectorName
+        type: object
+        properties:
+          sectorCode:
+            type: string
+            description: 섹터 코드
+          fluctuationRate:
+            type: number
+            description: 평균 등락률
+          currentPrice:
+            type: number
+            description: 현재 지수
+          sectorName:
+            type: string
+            description: 섹터명
+          isOverheated:
+            type: boolean
+            description: 과열 여부
+        description: 섹터 랭킹 리스트
     api-v1-watchlist-groups288370516:
       required:
       - name
@@ -748,6 +932,84 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
+    SectorDetailResponse:
+      title: SectorDetailResponse
+      required:
+      - baseDate
+      - currentPrice
+      - diagnosisMessage
+      - fluctuationRate
+      - isOverheated
+      - leadingStocks
+      - sectorCode
+      - sectorName
+      - technicalIndicators
+      type: object
+      properties:
+        leadingStocks:
+          type: array
+          description: 주도주 리스트
+          items:
+            required:
+            - fluctuationRate
+            - name
+            - ticker
+            - tradeVolume
+            - transactionAmt
+            type: object
+            properties:
+              tradeVolume:
+                type: number
+                description: 주도주 거래량
+              transactionAmt:
+                type: number
+                description: 주도주 거래대금
+              ticker:
+                type: string
+                description: 주도주 티커
+              fluctuationRate:
+                type: number
+                description: 주도주 등락률
+              name:
+                type: string
+                description: 주도주 명
+        baseDate:
+          type: string
+          description: 기준 날짜
+        diagnosisMessage:
+          type: string
+          description: 상세 진단 메시지
+        technicalIndicators:
+          type: object
+          properties:
+            ma20:
+              type: number
+              description: 20일 이동평균선
+              nullable: true
+            ma5:
+              type: number
+              description: 5일 이동평균선
+              nullable: true
+            rsi14:
+              type: number
+              description: RSI(14) 지표
+              nullable: true
+          description: 기술적 지표
+        sectorCode:
+          type: string
+          description: 섹터 코드
+        fluctuationRate:
+          type: number
+          description: 평균 등락률
+        currentPrice:
+          type: number
+          description: 현재 지수
+        sectorName:
+          type: string
+          description: 섹터명
+        isOverheated:
+          type: boolean
+          description: 과열 진단 여부
     api-v1-watchlist-groups1466762393:
       type: array
       items:
@@ -817,5 +1079,38 @@ components:
         stockReturnRate:
           type: number
           description: 종목 수익률 (%)
+    SectorSupplyResponse:
+      title: SectorSupplyResponse
+      type: array
+      description: 섹터 수급 리스트
+      items:
+        required:
+        - foreignConsecutiveBuyDays
+        - instConsecutiveBuyDays
+        - netForeignBuyAmount
+        - netInstBuyAmount
+        - sectorCode
+        - sectorName
+        type: object
+        properties:
+          instConsecutiveBuyDays:
+            type: number
+            description: 기관 연속 매수 일수
+          netForeignBuyAmount:
+            type: number
+            description: 외국인 순매수 금액
+          foreignConsecutiveBuyDays:
+            type: number
+            description: 외국인 연속 매수 일수
+          sectorCode:
+            type: string
+            description: 섹터 코드
+          netInstBuyAmount:
+            type: number
+            description: 기관 순매수 금액
+          sectorName:
+            type: string
+            description: 섹터명
+        description: 섹터 수급 리스트
     api-v1-stocks-search-history486549215:
       type: object
