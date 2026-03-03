@@ -8,37 +8,29 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import static jakarta.persistence.FetchType.LAZY;
-import static org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME;
-
-@Entity
-@Table(
-        name = "stock_price",
-        indexes = {
-                @Index(name = "idx_stock_price_lookup", columnList = "stock_id, base_date DESC"),
-                @Index(name = "idx_stock_price_date_amt", columnList = "base_date, transaction_amt DESC")
-        }
-)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "stock_price", indexes = {
+        @Index(name = "idx_stock_price_lookup", columnList = "stock_id, base_date DESC")
+})
 @EntityListeners(AuditingEntityListener.class)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StockPrice {
 
     @EmbeddedId
     private StockPriceId id;
 
-    @ManyToOne(fetch = LAZY)
     @MapsId("stockId")
-    @JoinColumn(name = "stock_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stock_id")
     private Stock stock;
 
-    // --- OHLCV Data (직접 필드) ---
     @Column(precision = 19, scale = 4)
     private BigDecimal openPrice;
 
@@ -51,56 +43,50 @@ public class StockPrice {
     @Column(precision = 19, scale = 4)
     private BigDecimal closePrice;
 
-    @Column(name = "adj_close_price", precision = 19, scale = 4)
-    private BigDecimal adjClosePrice; // 수정종가
+    @Column(precision = 19, scale = 4)
+    private BigDecimal adjClosePrice;
 
     @Column(name = "prev_close_price", precision = 19, scale = 4)
-    private BigDecimal previousClosePrice; // 전일 종가
+    private BigDecimal previousClosePrice;
 
+    @Column(name = "volume")
     private Long volume;
 
+    // [최종] DB 컬럼명과 Java 필드명을 완전히 일치시켜 QueryDSL/JPA 충돌 방지
     @Column(name = "transaction_amt", precision = 25, scale = 2)
-    private BigDecimal transactionAmount; // 거래대금
+    private BigDecimal transactionAmt;
 
-    // MEMO : 당일 등락률 changeRate, 당일 시가총액 marketCap 추가 예정
-
-    // --- Embedded Value Object (기술적 지표) ---
     @Embedded
-    @QueryTransient // QueryDSL 분석 대상에서 제외
     private TechnicalIndicators indicators;
 
     @CreatedDate
-    @DateTimeFormat(iso = DATE_TIME)
-    @Column(name = "created_at",updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     /**
-     * 시가 대비 종가 등락률을 계산합니다.
+     * 등락률 계산 (전일 종가 우선, 없으면 시가 대비)
      */
+    @QueryTransient
     public BigDecimal getFluctuationRate() {
-        if (openPrice == null || closePrice == null || openPrice.compareTo(BigDecimal.ZERO) == 0) {
+        BigDecimal base = (previousClosePrice != null && previousClosePrice.compareTo(BigDecimal.ZERO) > 0) 
+                ? previousClosePrice 
+                : openPrice;
+
+        if (base == null || base.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return closePrice.subtract(openPrice)
-                .divide(openPrice, 4, java.math.RoundingMode.HALF_UP)
+
+        return closePrice.subtract(base)
+                .divide(base, 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100));
     }
 
-    public static StockPrice of(
-            Stock stock,
-            LocalDate baseDate, // [추가] 날짜를 인자로 받아야 ID 생성 가능
-            BigDecimal open,
-            BigDecimal high,
-            BigDecimal low,
-            BigDecimal close,
-            BigDecimal adjClose,
-            BigDecimal previousClose,
-            Long volume,
-            BigDecimal transactionAmount,
-            TechnicalIndicators indicators
-    ) {
-        StockPrice entity = new StockPrice();
-        entity.id = new StockPriceId(stock.getId(), baseDate);
+    public static StockPrice of(Stock stock, LocalDate baseDate, BigDecimal open, BigDecimal high, BigDecimal low,
+                                BigDecimal close, BigDecimal adjClose, BigDecimal previousClose,
+                                Long volume, BigDecimal transactionAmt, TechnicalIndicators indicators) {
+        var entity = new StockPrice();
+        // [중요] StockPriceId 생성 시 baseDate 가 첫 번째 파라미터가 되도록 수정
+        entity.id = new StockPriceId(baseDate, stock.getId());
         entity.stock = stock;
         entity.openPrice = open;
         entity.highPrice = high;
@@ -109,9 +95,8 @@ public class StockPrice {
         entity.adjClosePrice = adjClose;
         entity.previousClosePrice = previousClose;
         entity.volume = volume;
-        entity.transactionAmount = transactionAmount;
+        entity.transactionAmt = transactionAmt;
         entity.indicators = indicators;
-
         return entity;
     }
 }

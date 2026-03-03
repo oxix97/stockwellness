@@ -86,6 +86,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
     }
 
     @Override
+    public List<StockPrice> findAllByDate(LocalDate date) {
+        return stockPriceRepository.findAllByIdBaseDate(date);
+    }
+
+    @Override
     public Optional<StockPrice> findLateststockPrice(String isinCode) {
         return Optional.empty();
     }
