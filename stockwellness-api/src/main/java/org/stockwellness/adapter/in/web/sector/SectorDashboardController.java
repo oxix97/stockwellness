@@ -12,6 +12,8 @@ import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.MarketType;
 
+import org.stockwellness.global.util.DateUtil;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -33,7 +35,7 @@ public class SectorDashboardController {
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, marketType, limit));
     }
 
@@ -47,7 +49,7 @@ public class SectorDashboardController {
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit));
     }
 
@@ -60,7 +62,7 @@ public class SectorDashboardController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ResponseEntity.ok(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate));
     }
 
@@ -73,7 +75,7 @@ public class SectorDashboardController {
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ResponseEntity.ok(sectorInsightUseCase.getSectorDetail(sectorCode, targetDate));
     }
 }
