@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.auth.RefreshTokenPort;
 import org.stockwellness.domain.auth.RefreshToken;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -24,7 +25,7 @@ public class RefreshTokenRedisAdapter implements RefreshTokenPort {
     public void save(RefreshToken refreshToken) {
         String key = getKey(refreshToken.memberId());
         String value = refreshToken.tokenValue() + "::" + refreshToken.expiredAt(); // 간단 직렬화
-        Duration ttl = Duration.between(LocalDateTime.now(), refreshToken.expiredAt());
+        Duration ttl = DateUtil.durationBetween(DateUtil.now(), refreshToken.expiredAt());
         redisTemplate.opsForValue().set(key, value, ttl);
     }
 

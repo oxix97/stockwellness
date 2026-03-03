@@ -2,7 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.util.List;
 import java.util.Map;

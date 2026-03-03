@@ -13,6 +13,9 @@ tasks.jar {
     enabled = true
 }
 
+// build/generated/querydsl 경로 설정
+val generatedDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
+
 dependencies {
     // Spring AI
     implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
@@ -25,6 +28,10 @@ dependencies {
 
     // redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
+    // resilience4j
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
 
     // jpa
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -51,26 +58,21 @@ dependencies {
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
 }
+// 3. JavaCompile 태스크 설정: Q클래스가 생성될 디렉토리 지정
+tasks.withType<JavaCompile>().configureEach {
+    options.generatedSourceOutputDirectory.set(generatedDir)
+}
 
-// === QueryDSL 빌드 옵션 ===
-val querydslDir = layout.buildDirectory.dir("generated/querydsl")
-
+// 4. 생성된 Q클래스를 IDE가 소스코드로 인식할 수 있도록 sourceSets 추가
 sourceSets {
     main {
-        java {
-            srcDir(querydslDir)
-        }
+        java.srcDirs(generatedDir)
     }
 }
 
-tasks.withType<JavaCompile> {
-    options.generatedSourceOutputDirectory.set(querydslDir)
-}
-
-tasks.named("clean") {
-    doLast {
-        delete(querydslDir)
-    }
+// 5. ./gradlew clean 실행 시 생성된 Q클래스 폴더도 함께 삭제
+tasks.named<Delete>("clean") {
+    delete(generatedDir)
 }
 
 // === JaCoCo 설정 ===
