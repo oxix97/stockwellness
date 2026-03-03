@@ -1,197 +1,173 @@
 package org.stockwellness.domain.stock.analysis;
 
 import lombok.extern.slf4j.Slf4j;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
+import org.stockwellness.global.util.QuantMapper;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.*;
+import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.num.Num;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.stockwellness.global.util.QuantMapper.toBigDecimal;
+
 /**
- * 기술적 지표 계산기 (이동평균, RSI, MACD 등)
- * 기존 batch 모듈의 로직을 도메인 레이어로 통합함.
+ * ta4j 라이브러리를 이용한 기술적 지표 계산기
  */
 @Slf4j
 public class TechnicalIndicatorCalculator {
 
-    private static final int SCALE = 4;
-    private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
-
     /**
-     * 가격 시리즈를 받아 전체 기술적 지표 시리즈를 계산합니다.
+     * 가상 날짜를 사용하여 종가 시리즈에 대한 지표 리스트를 계산합니다.
      */
     public static List<TechnicalIndicators> calculateSeries(List<BigDecimal> closingPrices) {
         if (closingPrices == null || closingPrices.isEmpty()) {
             return Collections.emptyList();
         }
-
-        int size = closingPrices.size();
-        List<BigDecimal> ma5 = calculateSMASeries(closingPrices, 5);
-        List<BigDecimal> ma20 = calculateSMASeries(closingPrices, 20);
-        List<BigDecimal> ma60 = calculateSMASeries(closingPrices, 60);
-        List<BigDecimal> ma120 = calculateSMASeries(closingPrices, 120);
-        List<BigDecimal> rsi14 = calculateRSISeries(closingPrices, 14);
-        List<MacdSeriesResult> macdResults = calculateMACDSeries(closingPrices);
-
-        List<TechnicalIndicators> results = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            results.add(new TechnicalIndicators(
-                    ma5.get(i), ma20.get(i), ma60.get(i), ma120.get(i),
-                    rsi14.get(i),
-                    macdResults.get(i).macdLine,
-                    macdResults.get(i).signalLine
-            ));
-        }
-        return results;
+        BarSeries series = QuantMapper.toBarSeries("QuantSeries", closingPrices, closingPrices, closingPrices);
+        return calculateFromSeries(series, closingPrices.size());
     }
 
     /**
-     * 가장 최근 날짜의 지표 하나만 계산합니다.
+     * 실제 날짜와 종가 시리즈를 받아 지표 리스트를 계산합니다.
+     */
+    public static List<TechnicalIndicators> calculateSeries(List<BigDecimal> closingPrices, List<LocalDate> dates) {
+        return calculateSeries(closingPrices, closingPrices, closingPrices, dates);
+    }
+
+    /**
+     * OHLC 데이터와 날짜 정보를 받아 정확한 지표 시리즈를 계산합니다.
+     */
+    public static List<TechnicalIndicators> calculateSeries(
+            List<BigDecimal> highPrices,
+            List<BigDecimal> lowPrices,
+            List<BigDecimal> closePrices,
+            List<LocalDate> dates
+    ) {
+        if (closePrices == null || closePrices.isEmpty()) {
+            return Collections.emptyList();
+        }
+        BarSeries series = QuantMapper.toBarSeries("QuantSeries", highPrices, lowPrices, closePrices, dates);
+        return calculateFromSeries(series, closePrices.size());
+    }
+
+    /**
+     * 가장 최근의 기술적 지표 하나만 계산합니다.
      */
     public static TechnicalIndicators calculateLatest(List<BigDecimal> closingPrices) {
         List<TechnicalIndicators> series = calculateSeries(closingPrices);
         return series.isEmpty() ? TechnicalIndicators.empty() : series.get(series.size() - 1);
     }
 
-    private static List<BigDecimal> calculateSMASeries(List<BigDecimal> prices, int period) {
-        int size = prices.size();
-        List<BigDecimal> smaSeries = new ArrayList<>(Collections.nCopies(size, null));
-        if (size < period) return smaSeries;
-
-        BigDecimal sum = BigDecimal.ZERO;
-        int count = 0;
-        for (int i = 0; i < size; i++) {
-            BigDecimal price = prices.get(i);
-            if (price != null) {
-                sum = sum.add(price);
-                count++;
-            }
-
-            if (i >= period) {
-                BigDecimal oldPrice = prices.get(i - period);
-                if (oldPrice != null) {
-                    sum = sum.subtract(oldPrice);
-                    count--;
-                }
-            }
-
-            if (count == period) {
-                smaSeries.set(i, sum.divide(BigDecimal.valueOf(period), SCALE, ROUNDING));
-            }
+    private static List<TechnicalIndicators> calculateFromSeries(BarSeries series, int originalSize) {
+        if (series.getBarCount() == 0) {
+            return new ArrayList<>(Collections.nCopies(originalSize, TechnicalIndicators.empty()));
         }
-        return smaSeries;
-    }
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
 
-    private static List<BigDecimal> calculateRSISeries(List<BigDecimal> prices, int period) {
-        int size = prices.size();
-        List<BigDecimal> rsiSeries = new ArrayList<>(Collections.nCopies(size, null));
-        if (size <= period) return rsiSeries;
+        // 1. 이동평균선 (SMA)
+        SMAIndicator ma5 = new SMAIndicator(closePriceIndicator, 5);
+        SMAIndicator ma20 = new SMAIndicator(closePriceIndicator, 20);
+        SMAIndicator ma60 = new SMAIndicator(closePriceIndicator, 60);
+        SMAIndicator ma120 = new SMAIndicator(closePriceIndicator, 120);
 
-        BigDecimal avgGain = BigDecimal.ZERO;
-        BigDecimal avgLoss = BigDecimal.ZERO;
+        // 2. RSI & MACD
+        RSIIndicator rsi14 = new RSIIndicator(closePriceIndicator, 14);
+        MACDIndicator macd = new MACDIndicator(closePriceIndicator, 12, 26);
+        SMAIndicator macdSignal = new SMAIndicator(macd, 9);
 
-        int validCount = 0;
-        for (int i = 1; i < size && validCount < period; i++) {
-            if (prices.get(i) != null && prices.get(i - 1) != null) {
-                BigDecimal diff = prices.get(i).subtract(prices.get(i - 1));
-                if (diff.compareTo(BigDecimal.ZERO) > 0) avgGain = avgGain.add(diff);
-                else avgLoss = avgLoss.add(diff.abs());
-                validCount++;
-                
-                if (validCount == period) {
-                    avgGain = avgGain.divide(BigDecimal.valueOf(period), MathContext.DECIMAL128);
-                    avgLoss = avgLoss.divide(BigDecimal.valueOf(period), MathContext.DECIMAL128);
-                    rsiSeries.set(i, calculateRsiValue(avgGain, avgLoss));
+        // 3. Bollinger Bands (20, 2)
+        StandardDeviationIndicator sd20 = new StandardDeviationIndicator(closePriceIndicator, 20);
+        BollingerBandsMiddleIndicator bbMid = new BollingerBandsMiddleIndicator(ma20);
+        BollingerBandsUpperIndicator bbUpper = new BollingerBandsUpperIndicator(bbMid, sd20, series.numOf(2));
+        BollingerBandsLowerIndicator bbLower = new BollingerBandsLowerIndicator(bbMid, sd20, series.numOf(2));
 
-                    BigDecimal p = BigDecimal.valueOf(period);
-                    BigDecimal pMinus1 = BigDecimal.valueOf(period - 1);
-                    for (int j = i + 1; j < size; j++) {
-                        if (prices.get(j) != null && prices.get(j - 1) != null) {
-                            BigDecimal d = prices.get(j).subtract(prices.get(j - 1));
-                            BigDecimal g = d.compareTo(BigDecimal.ZERO) > 0 ? d : BigDecimal.ZERO;
-                            BigDecimal l = d.compareTo(BigDecimal.ZERO) < 0 ? d.abs() : BigDecimal.ZERO;
-                            avgGain = avgGain.multiply(pMinus1).add(g).divide(p, MathContext.DECIMAL128);
-                            avgLoss = avgLoss.multiply(pMinus1).add(l).divide(p, MathContext.DECIMAL128);
-                            rsiSeries.set(j, calculateRsiValue(avgGain, avgLoss));
-                        } else {
-                            rsiSeries.set(j, rsiSeries.get(j - 1));
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        return rsiSeries;
-    }
+        // 4. ADX (14)
+        PlusDIIndicator plusDI = new PlusDIIndicator(series, 14);
+        MinusDIIndicator minusDI = new MinusDIIndicator(series, 14);
+        ADXIndicator adx = new ADXIndicator(series, 14);
 
-    private static BigDecimal calculateRsiValue(BigDecimal avgGain, BigDecimal avgLoss) {
-        if (avgLoss.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.valueOf(100);
-        BigDecimal rs = avgGain.divide(avgLoss, MathContext.DECIMAL128);
-        return BigDecimal.valueOf(100).subtract(BigDecimal.valueOf(100).divide(BigDecimal.ONE.add(rs), SCALE, ROUNDING));
-    }
+        List<TechnicalIndicators> results = new ArrayList<>();
+        for (int i = 0; i < series.getBarCount(); i++) {
+            BigDecimal m5 = getIndicatorValue(ma5, i, 5);
+            BigDecimal m20 = getIndicatorValue(ma20, i, 20);
+            BigDecimal m60 = getIndicatorValue(ma60, i, 60);
+            BigDecimal m120 = getIndicatorValue(ma120, i, 120);
 
-    private record MacdSeriesResult(BigDecimal macdLine, BigDecimal signalLine) {}
+            // [수정] 데이터가 부족하더라도 null이 아닌 MIXED를 기본으로 반환하도록 함
+            AlignmentStatus alignment = resolveAlignment(m5, m20, m60, m120);
+            
+            Boolean isGolden = (i > 0) ? isGoldenCross(ma5, ma20, i) : null;
+            Boolean isDead = (i > 0) ? isDeadCross(ma5, ma20, i) : null;
 
-    private static List<MacdSeriesResult> calculateMACDSeries(List<BigDecimal> prices) {
-        int size = prices.size();
-        List<BigDecimal> ema12 = calculateEMASeries(prices, 12);
-        List<BigDecimal> ema26 = calculateEMASeries(prices, 26);
-        List<BigDecimal> macdLines = new ArrayList<>(Collections.nCopies(size, null));
-
-        for (int i = 0; i < size; i++) {
-            if (ema12.get(i) != null && ema26.get(i) != null) {
-                macdLines.set(i, ema12.get(i).subtract(ema26.get(i)));
-            }
-        }
-
-        List<BigDecimal> signalLines = calculateEMASeries(macdLines, 9);
-        List<MacdSeriesResult> results = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            results.add(new MacdSeriesResult(
-                macdLines.get(i) != null ? macdLines.get(i).setScale(SCALE, ROUNDING) : null,
-                signalLines.get(i) != null ? signalLines.get(i).setScale(SCALE, ROUNDING) : null
+            results.add(new TechnicalIndicators(
+                    m5, m20, m60, m120,
+                    getIndicatorValue(rsi14, i, 14),
+                    getIndicatorValue(macd, i, 26),
+                    getIndicatorValue(macdSignal, i, 35),
+                    toBigDecimal(bbUpper.getValue(i)),
+                    toBigDecimal(bbMid.getValue(i)),
+                    toBigDecimal(bbLower.getValue(i)),
+                    toBigDecimal(adx.getValue(i)),
+                    toBigDecimal(plusDI.getValue(i)),
+                    toBigDecimal(minusDI.getValue(i)),
+                    alignment, // 이 값이 null이 되지 않도록 보장
+                    isGolden,
+                    isDead,
+                    isMacdCross(macd, macdSignal, i)
             ));
         }
+
+        // 입력 사이즈와 맞추기 위해 앞에 null 패딩 (데이터가 부족하거나 null인 경우)
+        if (results.size() < originalSize) {
+            List<TechnicalIndicators> paddedResults = new ArrayList<>(Collections.nCopies(originalSize - results.size(), TechnicalIndicators.empty()));
+            paddedResults.addAll(results);
+            return paddedResults;
+        }
+
         return results;
     }
 
-    private static List<BigDecimal> calculateEMASeries(List<BigDecimal> prices, int period) {
-        int size = prices.size();
-        List<BigDecimal> ema = new ArrayList<>(Collections.nCopies(size, null));
-        
-        BigDecimal multiplier = BigDecimal.valueOf(2).divide(BigDecimal.valueOf(period + 1), MathContext.DECIMAL128);
-        BigDecimal sum = BigDecimal.ZERO;
-        int validCount = 0;
-        int startIdx = -1;
-
-        for (int i = 0; i < size; i++) {
-            if (prices.get(i) != null) {
-                sum = sum.add(prices.get(i));
-                validCount++;
-                if (validCount == period) {
-                    ema.set(i, sum.divide(BigDecimal.valueOf(period), SCALE, ROUNDING));
-                    startIdx = i;
-                    break;
-                }
-            }
+    private static BigDecimal getIndicatorValue(Indicator<Num> indicator, int index, int requiredBarCount) {
+        if (index < requiredBarCount - 1) {
+            return null;
         }
+        return toBigDecimal(indicator.getValue(index));
+    }
 
-        if (startIdx == -1) return ema;
+    private static AlignmentStatus resolveAlignment(BigDecimal m5, BigDecimal m20, BigDecimal m60, BigDecimal m120) {
+        if (m5 == null || m20 == null || m60 == null || m120 == null) return AlignmentStatus.MIXED;
+        if (m5.compareTo(m20) > 0 && m20.compareTo(m60) > 0 && m60.compareTo(m120) > 0) return AlignmentStatus.PERFECT;
+        if (m5.compareTo(m20) < 0 && m20.compareTo(m60) < 0 && m60.compareTo(m120) < 0) return AlignmentStatus.REVERSE;
+        return AlignmentStatus.MIXED;
+    }
 
-        for (int i = startIdx + 1; i < size; i++) {
-            BigDecimal currentPrice = prices.get(i);
-            BigDecimal prevEma = ema.get(i - 1);
-            
-            if (currentPrice != null && prevEma != null) {
-                BigDecimal currentEma = currentPrice.subtract(prevEma).multiply(multiplier).add(prevEma);
-                ema.set(i, currentEma);
-            } else {
-                ema.set(i, prevEma);
-            }
-        }
-        return ema;
+    private static boolean isGoldenCross(Indicator<Num> fast, Indicator<Num> slow, int index) {
+        return fast.getValue(index).isGreaterThan(slow.getValue(index)) &&
+               fast.getValue(index - 1).isLessThanOrEqual(slow.getValue(index - 1));
+    }
+
+    private static boolean isDeadCross(Indicator<Num> fast, Indicator<Num> slow, int index) {
+        return fast.getValue(index).isLessThan(slow.getValue(index)) &&
+               fast.getValue(index - 1).isGreaterThanOrEqual(slow.getValue(index - 1));
+    }
+
+    private static Boolean isMacdCross(MACDIndicator macd, SMAIndicator signal, int index) {
+        if (index <= 0) return false;
+        return isGoldenCross(macd, signal, index);
     }
 }
