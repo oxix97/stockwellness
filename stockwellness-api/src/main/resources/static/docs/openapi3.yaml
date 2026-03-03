@@ -137,7 +137,17 @@ paths:
                         "ma120" : null,
                         "rsi14" : 65.5,
                         "macd" : null,
-                        "macdSignal" : null
+                        "macdSignal" : null,
+                        "bollingerUpper" : null,
+                        "bollingerMid" : null,
+                        "bollingerLower" : null,
+                        "adx" : null,
+                        "plusDi" : null,
+                        "minusDi" : null,
+                        "alignmentStatus" : null,
+                        "isGoldenCross" : null,
+                        "isDeadCross" : null,
+                        "isMacdCross" : null
                       },
                       "isOverheated" : true,
                       "diagnosisMessage" : "현재 섹터는 과열 구간에 진입했습니다. 과매수 상태입니다.",
@@ -247,16 +257,16 @@ paths:
                         "status" : "ACTIVE"
                       } ],
                       "pageable" : "INSTANCE",
+                      "first" : true,
+                      "last" : true,
+                      "numberOfElements" : 1,
                       "size" : 1,
                       "number" : 0,
                       "sort" : {
-                        "empty" : true,
+                        "sorted" : false,
                         "unsorted" : true,
-                        "sorted" : false
+                        "empty" : true
                       },
-                      "numberOfElements" : 1,
-                      "first" : true,
-                      "last" : true,
                       "empty" : false
                     }
   /api/v1/watchlist/groups:
@@ -713,6 +723,83 @@ components:
         name:
           type: string
           description: 그룹 이름
+    SectorDetailResponse:
+      title: SectorDetailResponse
+      required:
+      - baseDate
+      - currentPrice
+      - diagnosisMessage
+      - fluctuationRate
+      - isOverheated
+      - leadingStocks
+      - sectorCode
+      - sectorName
+      type: object
+      properties:
+        leadingStocks:
+          type: array
+          description: 주도주 리스트
+          items:
+            required:
+            - fluctuationRate
+            - name
+            - ticker
+            - tradeVolume
+            - transactionAmt
+            type: object
+            properties:
+              tradeVolume:
+                type: number
+                description: 주도주 거래량
+              transactionAmt:
+                type: number
+                description: 주도주 거래대금
+              ticker:
+                type: string
+                description: 주도주 티커
+              fluctuationRate:
+                type: number
+                description: 주도주 등락률
+              name:
+                type: string
+                description: 주도주 명
+        baseDate:
+          type: string
+          description: 기준 날짜
+        diagnosisMessage:
+          type: string
+          description: 상세 진단 메시지
+        technicalIndicators:
+          type: object
+          properties:
+            ma20:
+              type: number
+              description: 20일 이동평균선
+              nullable: true
+            ma5:
+              type: number
+              description: 5일 이동평균선
+              nullable: true
+            rsi14:
+              type: number
+              description: RSI(14) 지표
+              nullable: true
+          description: 기술적 지표
+        sectorCode:
+          type: string
+          description: 섹터 코드
+        fluctuationRate:
+          type: number
+          description: 평균 등락률
+        currentPrice:
+          type: number
+          description: 현재 지수
+        sectorName:
+          type: string
+          description: 섹터명
+        isOverheated:
+          type: boolean
+          description: 과열 진단 여부
     api-v1-stocks-search412068969:
       required:
       - empty
@@ -932,84 +1019,6 @@ components:
         refreshToken:
           type: string
           description: 리프레시 토큰
-    SectorDetailResponse:
-      title: SectorDetailResponse
-      required:
-      - baseDate
-      - currentPrice
-      - diagnosisMessage
-      - fluctuationRate
-      - isOverheated
-      - leadingStocks
-      - sectorCode
-      - sectorName
-      - technicalIndicators
-      type: object
-      properties:
-        leadingStocks:
-          type: array
-          description: 주도주 리스트
-          items:
-            required:
-            - fluctuationRate
-            - name
-            - ticker
-            - tradeVolume
-            - transactionAmt
-            type: object
-            properties:
-              tradeVolume:
-                type: number
-                description: 주도주 거래량
-              transactionAmt:
-                type: number
-                description: 주도주 거래대금
-              ticker:
-                type: string
-                description: 주도주 티커
-              fluctuationRate:
-                type: number
-                description: 주도주 등락률
-              name:
-                type: string
-                description: 주도주 명
-        baseDate:
-          type: string
-          description: 기준 날짜
-        diagnosisMessage:
-          type: string
-          description: 상세 진단 메시지
-        technicalIndicators:
-          type: object
-          properties:
-            ma20:
-              type: number
-              description: 20일 이동평균선
-              nullable: true
-            ma5:
-              type: number
-              description: 5일 이동평균선
-              nullable: true
-            rsi14:
-              type: number
-              description: RSI(14) 지표
-              nullable: true
-          description: 기술적 지표
-        sectorCode:
-          type: string
-          description: 섹터 코드
-        fluctuationRate:
-          type: number
-          description: 평균 등락률
-        currentPrice:
-          type: number
-          description: 현재 지수
-        sectorName:
-          type: string
-          description: 섹터명
-        isOverheated:
-          type: boolean
-          description: 과열 진단 여부
     api-v1-watchlist-groups1466762393:
       type: array
       items:
