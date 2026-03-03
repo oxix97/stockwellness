@@ -2,15 +2,14 @@ package org.stockwellness.batch;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.*;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.batch.job.stock.price.StockPriceProcessor;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -25,13 +24,13 @@ public class BatchAdminController {
     private final JobLauncher jobLauncher;
     private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
-    
+
     private final Job stockMasterSyncJob;
     private final Job stockPriceBatchJob;
     private final Job sectorEodJob;
+    private final Job stockPricePrevCloseSyncJob;
 
     private final StockPort stockPort;
-    private final StockPriceProcessor stockPriceProcessor;
 
     /**
      * 특정 Job의 최근 실행 상태 조회
@@ -53,10 +52,16 @@ public class BatchAdminController {
      * 섹터 인사이트 배치 실행
      */
     @PostMapping("/sync-sector")
-    public String runSectorSync() {
-        return launchJobAsync(sectorEodJob, new JobParametersBuilder()
+    public String runSectorSync(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
-                .toJobParameters());
+                .addString("startDate", startDate)
+                .addString("endDate", endDate)
+                .toJobParameters();
+        return launchJobAsync(sectorEodJob, params);
     }
 
     /**
@@ -76,25 +81,44 @@ public class BatchAdminController {
     }
 
     /**
-     * 특정 종목 단건 즉시 동기화 (배치 로직 재사용)
+     * 전일 종가 데이터 소급 보정 실행
+     */
+    @PostMapping("/sync-prev-close")
+    public String runPrevCloseSync(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+//            @RequestParam(required = false) String targetTicker
+    ) {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .addString("startDate", startDate)
+                .addString("endDate", endDate)
+//                .addString("targetTicker", targetTicker)
+                .toJobParameters();
+        return launchJobAsync(stockPricePrevCloseSyncJob, params);
+    }
+
+    /**
+     * 특정 종목 단건 즉시 동기화 (보정 배치 활용)
      */
     @PostMapping("/sync-stock/{ticker}")
-    public String syncSingleStock(@PathVariable String ticker) {
-        Stock stock = stockPort.loadStockByTicker(ticker)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 종목입니다: " + ticker));
+    public String syncSingleStock(
+            @PathVariable String ticker,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        if (!stockPort.existsByTicker(ticker)) {
+            throw new IllegalArgumentException("존재하지 않는 종목입니다: " + ticker);
+        }
 
-        CompletableFuture.runAsync(() -> {
-            try {
-                log.info("종목 {} 단건 동기화 시작", ticker);
-                List<StockPrice> result = stockPriceProcessor.process(List.of(stock));
-                // Note: Writer를 직접 호출하거나 별도 저장 로직이 필요할 수 있으나, 
-                // 여기서는 Processor 로직 검증 및 결과 로깅 위주로 먼저 구현.
-                log.info("종목 {} 동기화 완료: {}건 처리됨", ticker, (result != null ? result.size() : 0));
-            } catch (Exception e) {
-                log.error("Single stock sync failed for {}", ticker, e);
-            }
-        });
-        return ticker + " 종목 동기화 요청 접수";
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .addString("targetTicker", ticker)
+                .addString("startDate", startDate)
+                .addString("endDate", endDate)
+                .toJobParameters();
+
+        return launchJobAsync(stockPricePrevCloseSyncJob, params);
     }
 
     /**
