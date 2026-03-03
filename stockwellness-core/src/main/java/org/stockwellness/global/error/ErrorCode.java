@@ -13,7 +13,7 @@ public enum ErrorCode {
     // 공통
     INVALID_INPUT_VALUE(BAD_REQUEST, "잘못된 입력값입니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
-    RESOURCE_NOT_FOUND(NOT_FOUND,"요청한 리소스를 찾을 수 없습니다."),
+    RESOURCE_NOT_FOUND(NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
 
     // 인증/인가
@@ -36,16 +36,21 @@ public enum ErrorCode {
     DUPLICATE_PORTFOLIO_NAME(CONFLICT, "이미 사용 중인 포트폴리오 이름입니다."),
     PORTFOLIO_NOT_FOUND(NOT_FOUND, "포트폴리오를 찾을 수 없습니다."),
 
-        // 관심 종목 (Watchlist)
+    // 관심 종목 (Watchlist)
+    WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "관심 그룹은 최대 10개까지 생성할 수 있습니다."),
 
-        WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "관심 그룹은 최대 10개까지 생성할 수 있습니다."),
-
-        WATCHLIST_ITEM_LIMIT_EXCEEDED(BAD_REQUEST, "관심 종목은 한 그룹당 최대 50개까지 추가할 수 있습니다."),
+    WATCHLIST_ITEM_LIMIT_EXCEEDED(BAD_REQUEST, "관심 종목은 한 그룹당 최대 50개까지 추가할 수 있습니다."),
     DUPLICATE_WATCHLIST_ITEM(CONFLICT, "이미 그룹에 등록된 종목입니다."),
 
     // 주식
     STOCK_NOT_FOUND(NOT_FOUND, "종목을 찾을 수 없습니다."),
-    PRICE_DATA_NOT_FOUND(NOT_FOUND, "해당 기간의 시세 데이터를 찾을 수 없습니다.");
+    PRICE_DATA_NOT_FOUND(NOT_FOUND, "해당 기간의 시세 데이터를 찾을 수 없습니다."),
+
+    // 섹터 (Sector)
+    SECTOR_NOT_FOUND(NOT_FOUND, "섹터를 찾을 수 없습니다."),
+    SECTOR_DATA_NOT_FOUND(NOT_FOUND, "섹터 상세 정보를 찾을 수 없습니다."),
+    SECTOR_HISTORY_NOT_FOUND(NOT_FOUND, "섹터 이력 데이터를 찾을 수 없습니다."),
+    SECTOR_SYNC_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "섹터 데이터 동기화 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String message;

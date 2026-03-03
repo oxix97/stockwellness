@@ -2,8 +2,8 @@ package org.stockwellness.application.port.in.stock;
 
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
-import org.stockwellness.domain.stock.ChartFrequency;
-import org.stockwellness.domain.stock.ChartPeriod;
+import org.stockwellness.domain.stock.price.ChartFrequency;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 
 /**
  * 주식 가격 조회 및 수익률 계산을 담당하는 통합 유스케이스

@@ -7,7 +7,7 @@ import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -24,7 +24,7 @@ import java.util.List;
 public class PortfolioCommandService implements ManagePortfolioUseCase {
 
     private final PortfolioPort portfolioPort;
-    private final LoadStockPort loadStockPort;
+    private final StockPort stockPort;
 
     @Override
     public Long createPortfolio(CreatePortfolioCommand command) {
@@ -86,7 +86,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
     }
 
     private void validateStockCode(String stockCode, AssetType assetType) {
-        if (assetType == AssetType.STOCK && !loadStockPort.existsByTicker(stockCode)) {
+        if (assetType == AssetType.STOCK && !stockPort.existsByTicker(stockCode)) {
             throw new InvalidStockCodeException("Stock not found with code: " + stockCode);
         }
     }

@@ -3,10 +3,10 @@ package org.stockwellness.adapter.out.persistence.stock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.stock.LoadStockPricePort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 
@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StockDataAdapter implements StockDataPort {
 
-    private final LoadStockPricePort loadStockPricePort;
+    private final StockPricePort stockPricePort;
     private final LoadTechnicalDataPort loadTechnicalDataPort;
 
     @Override
     public Map<String, StockWellnessDetail> getStockDetails(List<String> isinCodes) {
-        Map<String, List<StockPrice>> latestHistories = loadStockPricePort.loadRecentHistoriesBatch(isinCodes, 1);
+        Map<String, List<StockPrice>> latestHistories = stockPricePort.loadRecentHistoriesBatch(isinCodes, 1);
         Map<String, AiAnalysisContext> technicalContexts = loadTechnicalDataPort.loadTechnicalContexts(isinCodes);
 
         return isinCodes.stream()
@@ -39,7 +39,7 @@ public class StockDataAdapter implements StockDataPort {
 
     @Cacheable(value = "stock_info", key = "#isinCode", unless = "#result == null")
     public StockWellnessDetail getSingleStockDetail(String isinCode) {
-        return loadStockPricePort.findLateststockPrice(isinCode)
+        return stockPricePort.findLateststockPrice(isinCode)
                 .map(stockPrice -> convertToDetail(stockPrice, loadTechnicalDataPort.loadTechnicalContext(isinCode)))
                 .orElse(null);
     }

@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameException;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
@@ -38,7 +38,7 @@ class PortfolioCommandServiceTest {
     private PortfolioPort portfolioPort;
 
     @Mock
-    private LoadStockPort loadStockPort;
+    private StockPort stockPort;
 
     @Nested
     @DisplayName("포트폴리오 생성 (Create)")
@@ -54,7 +54,7 @@ class PortfolioCommandServiceTest {
             ));
 
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
-            given(loadStockPort.existsByTicker("AAPL")).willReturn(true);
+            given(stockPort.existsByTicker("AAPL")).willReturn(true);
             given(portfolioPort.savePortfolio(any(Portfolio.class)))
                     .willReturn(PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID));
 
@@ -86,7 +86,7 @@ class PortfolioCommandServiceTest {
                     PortfolioFixture.createStockItem("INVALID_CODE", 1)
             ));
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
-            given(loadStockPort.existsByTicker("INVALID_CODE")).willReturn(false);
+            given(stockPort.existsByTicker("INVALID_CODE")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> portfolioCommandService.createPortfolio(command))
@@ -110,7 +110,7 @@ class PortfolioCommandServiceTest {
             given(portfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
                     .willReturn(Optional.of(portfolio));
             given(portfolioPort.existsPortfolioName(PortfolioFixture.MEMBER_ID, "수정된 이름")).willReturn(false);
-            given(loadStockPort.existsByTicker("TSLA")).willReturn(true);
+            given(stockPort.existsByTicker("TSLA")).willReturn(true);
 
             // when
             portfolioCommandService.updatePortfolio(command);

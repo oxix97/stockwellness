@@ -13,10 +13,10 @@ public class BatchAsyncConfig {
     @Bean(name = "batchExecutor")
     public TaskExecutor batchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);      // 기본 스레드 수
-        executor.setMaxPoolSize(10);      // 최대 스레드 수
-        executor.setQueueCapacity(100);   // 대기 큐 크기
-        executor.setThreadNamePrefix("Batch-Async-");
+        executor.setCorePoolSize(10);      // 기본 10개 스레드 유지
+        executor.setMaxPoolSize(20);      // 최대 20개까지 확장
+        executor.setQueueCapacity(200);   // 대기 큐 확장
+        executor.setThreadNamePrefix("Batch-Common-");
         executor.initialize();
         return executor;
     }

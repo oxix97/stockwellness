@@ -1,6 +1,6 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
 
@@ -68,6 +68,25 @@ public class TechnicalCalculator {
     }
 
     // --- Helper Methods (가독성 향상) ---
+
+    /**
+     * 과열 상태를 진단합니다.
+     * 기준: RSI > 70 이거나 20일 이격도가 110% 이상인 경우
+     */
+    public static boolean isOverheated(BigDecimal currentPrice, BigDecimal ma20, BigDecimal rsi) {
+        if (currentPrice == null || ma20 == null || ma20.compareTo(BigDecimal.ZERO) == 0) {
+            return false;
+        }
+
+        // 1. RSI 기준 (70 초과)
+        if (rsi != null && rsi.compareTo(new BigDecimal("70")) > 0) {
+            return true;
+        }
+
+        // 2. 이격도 기준 (현재가 / MA20 >= 1.1)
+        BigDecimal disparity = currentPrice.divide(ma20, 4, java.math.RoundingMode.HALF_UP);
+        return disparity.compareTo(new BigDecimal("1.1")) >= 0;
+    }
 
     /**
      * RSI 수준 분석 로직
