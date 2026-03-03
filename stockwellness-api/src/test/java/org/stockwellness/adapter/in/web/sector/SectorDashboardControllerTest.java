@@ -9,7 +9,6 @@ import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
-import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.support.RestDocsSupport;
@@ -34,13 +33,16 @@ class SectorDashboardControllerTest extends RestDocsSupport {
     private SectorInsightUseCase sectorInsightUseCase;
 
     @Test
-    @DisplayName("등락률 상위 섹터 조회 API 명세 생성")
-    void getTopSectorsByFluctuation_docs() throws Exception {
+    @DisplayName("섹터 수익률 랭킹 조회 API 명세 생성")
+    void getSectorRanking_docs() throws Exception {
         // given
+        List<SectorRankingResult> result = List.of(
+                new SectorRankingResult("001", "종합", new BigDecimal("2500.50"), new BigDecimal("3.45"), false),
+                new SectorRankingResult("002", "반도체", new BigDecimal("1200.30"), new BigDecimal("-1.20"), true)
+        );
+
         given(sectorInsightUseCase.getTopSectorsByFluctuation(any(), any(), anyInt()))
-                .willReturn(List.of(
-                        new SectorRankingResult("001", "조선/해운", new BigDecimal("2500.50"), new BigDecimal("3.45"), false)
-                ));
+                .willReturn(result);
 
         // when & then
         mockMvc.perform(get("/api/v1/sectors/ranking/fluctuation")
@@ -48,18 +50,19 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                         .param("marketType", "KOSPI")
                         .param("limit", "10"))
                 .andExpect(status().isOk())
-                .andDo(document("sector-ranking-fluctuation",
+                .andDo(document("sector-ranking",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Sector")
-                                .summary("등락률 상위 섹터 조회")
-                                .description("지정한 날짜와 시장의 등락률 상위 섹터 목록을 조회합니다.")
+                                .summary("섹터 등락률 랭킹 조회")
+                                .description("지정된 날짜의 섹터별 등락률 순위를 조회합니다.")
                                 .queryParameters(
                                         parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional(),
                                         parameterWithName("marketType").description("시장 구분 (KOSPI, KOSDAQ)").optional(),
-                                        parameterWithName("limit").description("조회 개수 (기본 10)").optional()
+                                        parameterWithName("limit").description("조회 개수").optional()
                                 )
                                 .responseSchema(Schema.schema("SectorRankingResponse"))
                                 .responseFields(
+                                        fieldWithPath("[]").description("섹터 랭킹 리스트"),
                                         fieldWithPath("[].sectorCode").description("섹터 코드"),
                                         fieldWithPath("[].sectorName").description("섹터명"),
                                         fieldWithPath("[].currentPrice").description("현재 지수"),
@@ -71,13 +74,16 @@ class SectorDashboardControllerTest extends RestDocsSupport {
     }
 
     @Test
-    @DisplayName("수급 상위 섹터 조회 API 명세 생성")
-    void getTopSectorsBySupply_docs() throws Exception {
+    @DisplayName("섹터 수급 랭킹 조회 API 명세 생성")
+    void getSectorSupplyRanking_docs() throws Exception {
         // given
+        List<SectorSupplyResult> result = List.of(
+                new SectorSupplyResult("001", "종합", 500000000L, 1200000000L, 3, 5),
+                new SectorSupplyResult("002", "반도체", -100000000L, 300000000L, 0, 2)
+        );
+
         given(sectorInsightUseCase.getTopSectorsBySupply(any(), any(), anyInt()))
-                .willReturn(List.of(
-                        new SectorSupplyResult("002", "반도체", 150000000L, 80000000L, 3, 1)
-                ));
+                .willReturn(result);
 
         // when & then
         mockMvc.perform(get("/api/v1/sectors/ranking/supply")
@@ -85,24 +91,25 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                         .param("marketType", "KOSPI")
                         .param("limit", "10"))
                 .andExpect(status().isOk())
-                .andDo(document("sector-ranking-supply",
+                .andDo(document("sector-supply",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Sector")
-                                .summary("수급 상위 섹터 조회")
-                                .description("지정한 날짜와 시장의 외인/기관 수급 상위 섹터 목록을 조회합니다.")
+                                .summary("섹터 수급 랭킹 조회")
+                                .description("외국인/기관 순매수 금액 및 연속 매수 일수 기반의 섹터 순위를 조회합니다.")
                                 .queryParameters(
                                         parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional(),
                                         parameterWithName("marketType").description("시장 구분 (KOSPI, KOSDAQ)").optional(),
-                                        parameterWithName("limit").description("조회 개수 (기본 10)").optional()
+                                        parameterWithName("limit").description("조회 개수").optional()
                                 )
                                 .responseSchema(Schema.schema("SectorSupplyResponse"))
                                 .responseFields(
+                                        fieldWithPath("[]").description("섹터 수급 리스트"),
                                         fieldWithPath("[].sectorCode").description("섹터 코드"),
                                         fieldWithPath("[].sectorName").description("섹터명"),
-                                        fieldWithPath("[].netForeignBuyAmount").description("외인 순매수액").optional(),
-                                        fieldWithPath("[].netInstBuyAmount").description("기관 순매수액").optional(),
-                                        fieldWithPath("[].foreignConsecutiveBuyDays").description("외인 연속 매수일").optional(),
-                                        fieldWithPath("[].instConsecutiveBuyDays").description("기관 연속 매수일").optional()
+                                        fieldWithPath("[].netForeignBuyAmount").description("외국인 순매수 금액"),
+                                        fieldWithPath("[].netInstBuyAmount").description("기관 순매수 금액"),
+                                        fieldWithPath("[].foreignConsecutiveBuyDays").description("외국인 연속 매수 일수"),
+                                        fieldWithPath("[].instConsecutiveBuyDays").description("기관 연속 매수 일수")
                                 )
                                 .build())
                 ));
@@ -117,7 +124,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                 new BigDecimal("2500.50"), new BigDecimal("3.45"),
                 new TechnicalIndicators(new BigDecimal("2400.00"), new BigDecimal("2350.00"), null, null, new BigDecimal("65.5"), null, null),
                 true, "현재 섹터는 과열 구간에 진입했습니다. 과매수 상태입니다.",
-                List.of(new LeadingStock("010140", "삼성중공업", new BigDecimal("5.2"), 1500000L, new BigDecimal("12000000000")))
+                List.of(new LeadingStock("삼성중공업", "010140", new BigDecimal("5.2"), 1500000L, new BigDecimal("12000000000")))
         );
 
         given(sectorInsightUseCase.getSectorDetail(anyString(), any()))
@@ -160,7 +167,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                         fieldWithPath("leadingStocks[].name").description("주도주 명"),
                                         fieldWithPath("leadingStocks[].fluctuationRate").description("주도주 등락률"),
                                         fieldWithPath("leadingStocks[].tradeVolume").description("주도주 거래량"),
-                                        fieldWithPath("leadingStocks[].tradeAmount").description("주도주 거래대금")
+                                        fieldWithPath("leadingStocks[].transactionAmt").description("주도주 거래대금")
                                 )
                                 .build())
                 ));
