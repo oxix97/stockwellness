@@ -16,10 +16,10 @@ import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
+import org.stockwellness.global.util.DateUtil;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,7 +39,6 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
     private String endDateStr;
 
     private static final int CHUNK_DAYS = 100;
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final int INDICATOR_BUFFER_DAYS = 120;
 
     @Override
@@ -48,8 +47,8 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         long startTime = System.currentTimeMillis();
 
         LocalDate endDate = StringUtils.hasText(endDateStr)
-                ? LocalDate.parse(endDateStr, DATE_FMT)
-                : LocalDate.now();
+                ? DateUtil.parse(endDateStr)
+                : DateUtil.today();
 
         // [N+1 방지] 청크 내 모든 종목의 마지막 저장일 및 과거 시계열 데이터(지표 계산용)를 미리 로드
         Map<Long, LocalDate> latestDatesMap = stockPricePort.findLatestBaseDatesByStocks(stocks);
@@ -60,7 +59,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         for (Stock stock : stocks) {
             LocalDate lastDate = latestDatesMap.get(stock.getId());
-            if (lastDate != null && ChronoUnit.DAYS.between(lastDate, endDate) == 1) {
+            if (lastDate != null && DateUtil.daysBetween(lastDate, endDate) == 1) {
                 todaySyncStocks.add(stock);
             } else {
                 gapSyncStocks.add(stock);
@@ -139,7 +138,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
     }
 
     private List<StockPrice> processIndividualGap(Stock stock, LocalDate latestBaseDate, LocalDate endDate, List<BigDecimal> preFetchedPrices) throws InterruptedException {
-        LocalDate requestStartDate = StringUtils.hasText(startDateStr) ? LocalDate.parse(startDateStr, DATE_FMT) : endDate;
+        LocalDate requestStartDate = StringUtils.hasText(startDateStr) ? DateUtil.parse(startDateStr) : endDate;
         LocalDate fetchStartDate = (latestBaseDate != null) ? latestBaseDate.plusDays(1) : requestStartDate.minusDays(250);
 
         if (fetchStartDate.isAfter(endDate)) return Collections.emptyList();
@@ -148,7 +147,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         if (apiResults.isEmpty()) return Collections.emptyList();
 
         List<BigDecimal> historicalClosingPrices = preFetchedPrices;
-        if (!apiResults.isEmpty() && latestBaseDate != null && ChronoUnit.DAYS.between(latestBaseDate, apiResults.get(0).baseDate()) > 1) {
+        if (!apiResults.isEmpty() && latestBaseDate != null && DateUtil.daysBetween(latestBaseDate, apiResults.get(0).baseDate()) > 1) {
              historicalClosingPrices = stockPricePort.findRecentClosingPrices(stock, apiResults.get(0).baseDate(), INDICATOR_BUFFER_DAYS);
         }
 

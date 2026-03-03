@@ -7,8 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import org.stockwellness.global.util.DateUtil;
+
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -18,15 +19,14 @@ import java.util.List;
 @StepScope
 public class DateRangeItemReader implements ItemReader<LocalDate> {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private Iterator<LocalDate> dateIterator;
 
     public DateRangeItemReader(
             @Value("#{jobParameters['startDate']}") String startDateStr,
             @Value("#{jobParameters['endDate']}") String endDateStr
     ) {
-        LocalDate start = StringUtils.hasText(startDateStr) ? LocalDate.parse(startDateStr, FMT) : LocalDate.now();
-        LocalDate end = StringUtils.hasText(endDateStr) ? LocalDate.parse(endDateStr, FMT) : start;
+        LocalDate start = StringUtils.hasText(startDateStr) ? DateUtil.parse(startDateStr) : DateUtil.today();
+        LocalDate end = StringUtils.hasText(endDateStr) ? DateUtil.parse(endDateStr) : start;
 
         List<LocalDate> dates = new ArrayList<>();
         LocalDate current = start;
