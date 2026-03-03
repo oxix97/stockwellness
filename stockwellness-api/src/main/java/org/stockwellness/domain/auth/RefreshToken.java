@@ -1,5 +1,7 @@
 package org.stockwellness.domain.auth;
 
+import org.stockwellness.global.util.DateUtil;
+
 import java.time.LocalDateTime;
 
 public record RefreshToken(
@@ -9,10 +11,10 @@ public record RefreshToken(
         LocalDateTime expiredAt
 ) {
     public static RefreshToken create(Long memberId, String tokenValue, LocalDateTime expiredAt) {
-        return new RefreshToken(memberId, tokenValue, LocalDateTime.now(), expiredAt);
+        return new RefreshToken(memberId, tokenValue, DateUtil.now(), expiredAt);
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiredAt);
+        return DateUtil.isExpired(expiredAt);
     }
 }

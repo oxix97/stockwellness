@@ -1,6 +1,6 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.StockPrice;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

@@ -22,9 +22,11 @@ import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -59,8 +61,7 @@ public class AuthService implements AuthUseCase {
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
 
-        Duration expiryDuration = Duration.ofMillis(jwtProperties.refreshTokenExpiryMs());
-        LocalDateTime expiredAt = LocalDateTime.now().plus(expiryDuration);
+        LocalDateTime expiredAt = DateUtil.plus(DateUtil.now(), jwtProperties.refreshTokenExpiryMs(), ChronoUnit.MILLIS);
         RefreshToken rt = RefreshToken.create(member.getId(), refreshToken, expiredAt);
         refreshTokenPort.save(rt);
 
@@ -94,7 +95,7 @@ public class AuthService implements AuthUseCase {
 
         String newAccessToken = jwtProvider.generateAccessToken(member);
         String newRefreshToken = jwtProvider.generateRefreshToken(member);
-        LocalDateTime newExpiredAt = LocalDateTime.now().plusDays(30);
+        LocalDateTime newExpiredAt = DateUtil.plus(DateUtil.now(), 30, ChronoUnit.DAYS);
 
         refreshTokenPort.save(RefreshToken.create(memberId, newRefreshToken, newExpiredAt));
 

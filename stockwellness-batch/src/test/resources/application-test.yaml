@@ -1,66 +1,19 @@
 spring:
-  config:
-    activate:
-      on-profile: test
-  batch:
-    job:
-      enabled: false
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    open-in-view: false
-    show-sql: false
-  h2:
-    console:
-      enabled: true
-  ai:
-    openai:
-      api-key: "dummy-key"
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            client-id: dummy-kakao-client-id
-            client-secret: dummy-kakao-client-secret
-            client-authentication-method: client_secret_post
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
-            scope: profile_nickname, account_email
-            client-name: Kakao
-          google:
-            client-id: dummy-google-client-id
-            client-secret: dummy-google-client-secret
-            scope:
-              - email
-              - profile
-        provider:
-          kakao:
-            authorization-uri: https://kauth.kakao.com/oauth/authorize
-            token-uri: https://kauth.kakao.com/oauth/token
-            user-info-uri: https://kapi.kakao.com/v2/user/me
-            user-name-attribute: id
-
-decorator:
-  datasource:
-    p6spy:
-      enable-logging: false
-
-jwt:
-  secret-key: "dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl"
-  access-token-expiry-ms: 3600000
-  refresh-token-expiry-ms: 86400000
-
-krx:
-  service-key: "dummy-krx-service-key"
-  base-url: "http://localhost:8080"
-
-kis:
-  base-url: https://openapi.koreainvestment.com:9443
-  app-key: "dummy-kis-service-key"
-  app-secret: "dummy-kis-secret-key"
+      ddl-auto: create-drop # 테스트마다 스키마 새로 생성
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false

@@ -3,7 +3,6 @@ package org.stockwellness.fixture;
 
 import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.SectorCode;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 
@@ -19,8 +18,9 @@ public class StockFixture {
                 "삼성전자",
                 MarketType.KOSPI,
                 Currency.KRW,
-                "009",
+                "제조업",
                 "전기전자",
+                "IT",
                 StockStatus.ACTIVE
         );
     }
@@ -35,8 +35,9 @@ public class StockFixture {
                 "Apple Inc",
                 MarketType.NASDAQ,
                 Currency.USD,
-                "TEC",
+                "Information Technology",
                 "Technology",
+                "Consumer Electronics",
                 StockStatus.ACTIVE
         );
     }
@@ -51,7 +52,8 @@ public class StockFixture {
                 "KODEX 200",
                 MarketType.KOSPI,
                 Currency.KRW,
-                "ETF",
+                "금융업",
+                "기타금융",
                 "상장지수펀드",
                 StockStatus.ACTIVE
         );
@@ -67,38 +69,10 @@ public class StockFixture {
                 name,
                 MarketType.KOSPI,
                 Currency.KRW,
-                "999",
+                "기타",
+                "기타",
                 "미분류",
                 StockStatus.DELISTED
-        );
-    }
-
-    /**
-     * 커스텀 종목 생성용 범용 메서드
-     */
-    public static Stock create(String ticker, String name, MarketType marketType) {
-        return Stock.of(
-                ticker,
-                "STD_" + ticker,
-                name,
-                marketType,
-                Currency.KRW,
-                SectorCode.UNKNOWN.getCode(),
-                SectorCode.UNKNOWN.getLabel(),
-                StockStatus.ACTIVE
-        );
-    }
-
-    public static Stock createWithSector(String ticker, String name, MarketType marketType, SectorCode sector) {
-        return Stock.of(
-                ticker,
-                "STD_" + ticker,
-                name,
-                marketType,
-                Currency.KRW,
-                sector.getCode(),
-                sector.getLabel(),
-                StockStatus.ACTIVE
         );
     }
 }

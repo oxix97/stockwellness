@@ -8,7 +8,7 @@ import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResp
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse.WatchlistItemDetail;
 import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
-import org.stockwellness.application.port.out.stock.LoadStockPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
 import org.stockwellness.application.port.out.watchlist.WatchlistPort;
 import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
@@ -29,7 +29,7 @@ public class WatchlistService implements WatchlistUseCase {
 
     private final WatchlistPort watchlistPort;
     private final LoadMemberPort loadMemberPort;
-    private final LoadStockPort loadStockPort;
+    private final StockPort stockPort;
     private final StockDataPort stockDataPort;
 
     @Override
@@ -77,7 +77,7 @@ public class WatchlistService implements WatchlistUseCase {
     @Override
     public void addItem(Long memberId, Long groupId, String isinCode) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        Stock stock = loadStockPort.loadStockByTicker(isinCode)
+        Stock stock = stockPort.loadStockByTicker(isinCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
         group.addItem(stock);

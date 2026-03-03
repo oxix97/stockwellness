@@ -10,9 +10,10 @@
 - **Caching:** Redis (for session management, technical indicators, and hierarchical price data caching)
 - **Query Engine:** QueryDSL (for type-safe dynamic queries)
 - **In-Memory Database:** H2 (for integration and repository testing)
+- **Data Utilities:** QueryTypeUtil (custom utility for explicit SQL type casting to ensure PostgreSQL/H2 compatibility)
 
 ## 3. Specialized Engines
-- **Batch Processing:** Spring Batch (daily data pipelines for KRX and market stockPrice)
+- **Batch Processing:** Spring Batch (leveraging JdbcBatchItemWriter for high-performance bulk data ingestion)
 - **Price Aggregation:** Java 21 Stream API (for high-performance in-memory weekly/monthly aggregation)
 - **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
 - **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
