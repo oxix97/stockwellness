@@ -21,6 +21,7 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
@@ -29,6 +30,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.util.StringUtils;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
@@ -38,7 +40,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Configuration
@@ -83,7 +87,7 @@ public class StockPriceBatchConfig {
                 .reader(stockListReader)
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
-                .taskExecutor(batchExecutor) // 병렬 처리 활성화
+                .taskExecutor(batchExecutor) // 공용 배치 실행기 사용
                 .listener(progressListener)
                 .faultTolerant()
                 .retryLimit(3)
@@ -100,11 +104,24 @@ public class StockPriceBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> stockReader() {
+    public JpaPagingItemReader<Stock> stockReader(
+            @Value("#{jobParameters['targetTicker']}") String targetTicker
+    ) {
+        String query = "SELECT s FROM Stock s WHERE s.status = 'ACTIVE'";
+        Map<String, Object> parameters = new HashMap<>();
+
+        if (StringUtils.hasText(targetTicker)) {
+            query += " AND s.ticker = :targetTicker";
+            parameters.put("targetTicker", targetTicker);
+        }
+
+        query += " ORDER BY s.id ASC";
+
         return new JpaPagingItemReaderBuilder<Stock>()
                 .name("stockReader")
                 .entityManagerFactory(entityManagerFactory)
-                .queryString("SELECT s FROM Stock s WHERE s.status = 'ACTIVE' ORDER BY s.id ASC")
+                .queryString(query)
+                .parameterValues(parameters)
                 .pageSize(300)
                 .saveState(false)
                 .build();
@@ -118,7 +135,6 @@ public class StockPriceBatchConfig {
                 if (list != null) flatList.addAll(list);
             }
             if (!flatList.isEmpty()) {
-                // [수정] Batch Delete로 성능 최적화 및 표준 CAST 구문 적용
                 jdbcTemplate.batchUpdate(
                         "DELETE FROM stock_price WHERE base_date = CAST(? AS date) AND stock_id = CAST(? AS bigint)",
                         new BatchPreparedStatementSetter() {
@@ -142,7 +158,6 @@ public class StockPriceBatchConfig {
 
     @Bean
     public JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter() {
-        // [수정] PostgreSQL 타입 캐스팅을 표준 CAST(? AS type) 구문으로 변경 (Spring JDBC 충돌 방지)
         String sql = """
                 INSERT INTO stock_price (
                     base_date, stock_id, open_price, high_price, low_price, close_price, adj_close_price, prev_close_price, volume, transaction_amt,
@@ -164,7 +179,6 @@ public class StockPriceBatchConfig {
                 .sql(sql)
                 .itemPreparedStatementSetter((item, ps) -> {
                     int idx = 1;
-                    // 기본 가격 정보 (10개)
                     ps.setDate(idx++, DateUtil.toSqlDate(item.getId().getBaseDate()));
                     ps.setLong(idx++, item.getId().getStockId());
                     ps.setBigDecimal(idx++, item.getOpenPrice());
@@ -176,7 +190,6 @@ public class StockPriceBatchConfig {
                     ps.setLong(idx++, item.getVolume());
                     ps.setBigDecimal(idx++, item.getTransactionAmt());
 
-                    // 기술적 지표 정보 (17개)
                     var indicators = item.getIndicators();
                     if (indicators != null) {
                         ps.setBigDecimal(idx++, indicators.getMa5());
@@ -197,7 +210,6 @@ public class StockPriceBatchConfig {
                         ps.setObject(idx++, indicators.getIsDeadCross());
                         ps.setObject(idx++, indicators.getIsMacdCross());
                     } else {
-                        // indicators가 null일 경우 정확히 17개의 null을 세팅하여 SQL 파라미터 개수를 맞춤
                         for (int i = 0; i < 17; i++) {
                             ps.setNull(idx++, java.sql.Types.NULL);
                         }
