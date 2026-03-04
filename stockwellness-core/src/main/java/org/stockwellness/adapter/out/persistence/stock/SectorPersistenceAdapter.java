@@ -42,12 +42,7 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
             if (existingOpt.isPresent()) {
                 SectorInsight existing = existingOpt.get();
                 existing.update(
-                        insight.getSectorIndexCurrentPrice(),
-                        insight.getAvgFluctuationRate(),
-                        insight.getNetForeignBuyAmount(),
-                        insight.getNetInstBuyAmount(),
-                        insight.getForeignConsecutiveBuyDays(),
-                        insight.getInstConsecutiveBuyDays(),
+                        insight.getIndicators(),
                         insight.getTechnicalIndicators(),
                         insight.isOverheated() 
                 );

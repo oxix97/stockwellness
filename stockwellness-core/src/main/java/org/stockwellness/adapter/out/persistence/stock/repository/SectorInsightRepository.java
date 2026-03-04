@@ -21,7 +21,7 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
         SELECT s FROM SectorInsight s 
         WHERE s.baseDate = :date 
           AND (:marketType IS NULL OR s.marketType = :marketType)
-        ORDER BY s.avgFluctuationRate DESC
+        ORDER BY s.indicators.avgFluctuationRate DESC
     """)
     List<SectorInsight> findTopByDate(@Param("date") LocalDate date, @Param("marketType") MarketType marketType, Pageable pageable);
 
@@ -29,13 +29,13 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
         SELECT s FROM SectorInsight s 
         WHERE s.baseDate = :date 
           AND (:marketType IS NULL OR s.marketType = :marketType)
-        ORDER BY s.netForeignBuyAmount DESC, s.foreignConsecutiveBuyDays DESC, s.netInstBuyAmount DESC
+        ORDER BY s.indicators.netForeignBuyAmount DESC, s.indicators.foreignConsecutiveBuyDays DESC, s.indicators.netInstBuyAmount DESC
     """)
     List<SectorInsight> findTopBySupply(@Param("date") LocalDate date, @Param("marketType") MarketType marketType, Pageable pageable);
 
     List<SectorInsight> findAllByBaseDate(LocalDate date);
 
-    @Query("SELECT s.sectorIndexCurrentPrice FROM SectorInsight s WHERE s.sectorCode = :sectorCode AND s.baseDate < :date ORDER BY s.baseDate DESC")
+    @Query("SELECT s.indicators.sectorIndexCurrentPrice FROM SectorInsight s WHERE s.sectorCode = :sectorCode AND s.baseDate < :date ORDER BY s.baseDate DESC")
     List<BigDecimal> findPastPrices(String sectorCode, LocalDate date, Pageable pageable);
 
     @Query("SELECT s FROM SectorInsight s WHERE s.sectorCode IN :codes AND s.baseDate < :date ORDER BY s.baseDate DESC")
