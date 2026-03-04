@@ -42,6 +42,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
     private static final int CHUNK_DAYS = 100;
     private static final int INDICATOR_BUFFER_DAYS = 120;
+    private static final LocalDate EARLIEST_BASE_DATE = LocalDate.of(2022, 1, 1);
 
     @Override
     public List<StockPrice> process(List<Stock> stocks) throws Exception {
@@ -52,13 +53,21 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
                 ? DateUtil.parse(endDateStr)
                 : DateUtil.today();
 
+        // [추가] 데이터 저장 하한선 (2022-01-01) 준수
+        LocalDate paramStartDate = StringUtils.hasText(startDateStr) ? DateUtil.parse(startDateStr) : null;
+        LocalDate effectiveStartDate = (paramStartDate != null && paramStartDate.isBefore(EARLIEST_BASE_DATE)) 
+                ? EARLIEST_BASE_DATE : paramStartDate;
+
         // 파라미터가 명시적으로 있으면 '소급(Backfill) 모드'로 간주
-        boolean isExplicitRange = StringUtils.hasText(startDateStr);
+        boolean isExplicitRange = (effectiveStartDate != null);
 
         Map<Long, LocalDate> latestDatesMap = stockPricePort.findLatestBaseDatesByStocks(stocks);
-        // 지표 계산을 위한 과거 데이터는 공통적으로 로드 (최적화 - 엔티티로 로드하여 날짜 정보 포함)
+        
+        // 지표 계산을 위한 과거 데이터 로드 (고/저가 포함 엔티티 리스트)
+        // [수정] effectiveStartDate를 기준으로 버퍼 로드
+        LocalDate lookbackBaseDate = isExplicitRange ? effectiveStartDate : endDate;
         Map<Long, List<StockPrice>> historicalEntitiesMap = stockPricePort.findRecentPricesWithDateByStocks(stocks, 
-                isExplicitRange ? DateUtil.parse(startDateStr) : endDate, INDICATOR_BUFFER_DAYS);
+                lookbackBaseDate, INDICATOR_BUFFER_DAYS);
 
         List<Stock> todaySyncStocks = new ArrayList<>();
         List<Stock> gapSyncStocks = new ArrayList<>();
@@ -78,11 +87,19 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         List<StockPrice> resultEntities = new ArrayList<>();
 
         if (!todaySyncStocks.isEmpty()) {
-            resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate, historicalEntitiesMap));
+            try {
+                resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate, historicalEntitiesMap));
+            } catch (Exception e) {
+                log.error("Failed to process multi stock prices for {} stocks: {}", todaySyncStocks.size(), e.getMessage());
+            }
         }
 
         for (Stock stock : gapSyncStocks) {
-            resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), endDate, historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList())));
+            try {
+                resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), effectiveStartDate, endDate, historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList())));
+            } catch (Exception e) {
+                log.error("Critical error processing individual gap for stock {}: {}", stock.getTicker(), e.getMessage(), e);
+            }
         }
 
         long duration = System.currentTimeMillis() - startTime;
@@ -93,11 +110,19 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
     }
 
     private List<StockPrice> processMultiStockPrices(List<Stock> stocks, LocalDate today, Map<Long, List<StockPrice>> historicalEntitiesMap) {
+        // [중요] 2022-01-01 이전이면 무시
+        if (today.isBefore(EARLIEST_BASE_DATE)) return Collections.emptyList();
+
         List<String> tickers = stocks.stream().map(Stock::getTicker).toList();
         
         // RateLimiter 적용
-        List<KisMultiStockPriceDetail> apiResults = kisRateLimiter.executeSupplier(() -> 
-                kisAdapter.fetchMultiStockPrices(tickers));
+        List<KisMultiStockPriceDetail> apiResults;
+        try {
+            apiResults = kisRateLimiter.executeSupplier(() -> kisAdapter.fetchMultiStockPrices(tickers));
+        } catch (Exception e) {
+            log.error("API fetch failed for multi stock prices: {}", e.getMessage());
+            return Collections.emptyList();
+        }
         
         if (apiResults.isEmpty()) return Collections.emptyList();
 
@@ -106,105 +131,108 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         List<StockPrice> entities = new ArrayList<>();
         for (Stock stock : stocks) {
-            KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
-            if (todayPrice == null) continue;
+            try {
+                KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
+                if (todayPrice == null) continue;
 
-            BigDecimal currentPrice = new BigDecimal(todayPrice.closePrice());
-            if (currentPrice.compareTo(BigDecimal.ZERO) <= 0) continue;
+                BigDecimal currentPrice = new BigDecimal(todayPrice.closePrice());
+                if (currentPrice.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-            List<StockPrice> pastEntities = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
-            BigDecimal lastPastClose = pastEntities.isEmpty() ? BigDecimal.ZERO : pastEntities.get(pastEntities.size() - 1).getClosePrice();
-            BigDecimal prevClose = (lastPastClose != null) ? lastPastClose : BigDecimal.ZERO;
+                List<StockPrice> pastEntities = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
+                BigDecimal lastPastClose = pastEntities.isEmpty() ? BigDecimal.ZERO : pastEntities.get(pastEntities.size() - 1).getClosePrice();
+                BigDecimal prevClose = (lastPastClose != null) ? lastPastClose : BigDecimal.ZERO;
 
-            List<BigDecimal> highPrices = new ArrayList<>(pastEntities.stream().map(p -> p.getHighPrice() != null ? p.getHighPrice() : p.getClosePrice()).toList());
-            List<BigDecimal> lowPrices = new ArrayList<>(pastEntities.stream().map(p -> p.getLowPrice() != null ? p.getLowPrice() : p.getClosePrice()).toList());
-            List<BigDecimal> closePrices = new ArrayList<>(pastEntities.stream().map(p -> p.getClosePrice() != null ? p.getClosePrice() : BigDecimal.ZERO).toList());
+                List<BigDecimal> highPrices = new ArrayList<>(pastEntities.stream().map(p -> p.getHighPrice() != null ? p.getHighPrice() : p.getClosePrice()).toList());
+                List<BigDecimal> lowPrices = new ArrayList<>(pastEntities.stream().map(p -> p.getLowPrice() != null ? p.getLowPrice() : p.getClosePrice()).toList());
+                List<BigDecimal> closePrices = new ArrayList<>(pastEntities.stream().map(p -> p.getClosePrice() != null ? p.getClosePrice() : BigDecimal.ZERO).toList());
+                List<LocalDate> dates = new ArrayList<>(pastEntities.stream().map(p -> p.getId().getBaseDate()).toList());
 
-            highPrices.add(new BigDecimal(todayPrice.highPrice()));
-            lowPrices.add(new BigDecimal(todayPrice.lowPrice()));
-            closePrices.add(currentPrice);
+                highPrices.add(new BigDecimal(todayPrice.highPrice()));
+                lowPrices.add(new BigDecimal(todayPrice.lowPrice()));
+                closePrices.add(currentPrice);
+                dates.add(today);
 
-            // OHLC 데이터를 사용하여 최신 지표 계산
-            List<TechnicalIndicators> indicatorSeries = TechnicalIndicatorCalculator.calculateSeries(highPrices, lowPrices, closePrices, null);
-            TechnicalIndicators indicators = indicatorSeries.isEmpty() ? TechnicalIndicators.empty() : indicatorSeries.get(indicatorSeries.size() - 1);
+                // OHLC 데이터와 날짜를 사용하여 최신 지표 계산
+                List<TechnicalIndicators> indicatorSeries = TechnicalIndicatorCalculator.calculateSeries(highPrices, lowPrices, closePrices, dates);
+                TechnicalIndicators indicators = indicatorSeries.isEmpty() ? TechnicalIndicators.empty() : indicatorSeries.get(indicatorSeries.size() - 1);
 
-            entities.add(StockPrice.of(
-                    stock, today,
-                    new BigDecimal(todayPrice.openPrice()),
-                    new BigDecimal(todayPrice.highPrice()),
-                    new BigDecimal(todayPrice.lowPrice()),
-                    currentPrice, currentPrice, prevClose,
-                    Long.parseLong(todayPrice.accumulatedVolume()),
-                    new BigDecimal(todayPrice.accumulatedTradingValue()),
-                    indicators
-            ));
+                entities.add(StockPrice.of(
+                        stock, today,
+                        new BigDecimal(todayPrice.openPrice()),
+                        new BigDecimal(todayPrice.highPrice()),
+                        new BigDecimal(todayPrice.lowPrice()),
+                        currentPrice, currentPrice, prevClose,
+                        Long.parseLong(todayPrice.accumulatedVolume()),
+                        new BigDecimal(todayPrice.accumulatedTradingValue()),
+                        indicators
+                ));
+            } catch (Exception e) {
+                log.error("Failed to process multi-price for stock {}: {}", stock.getTicker(), e.getMessage());
+            }
         }
         return entities;
     }
 
-    private List<StockPrice> processIndividualGap(Stock stock, LocalDate latestBaseDate, LocalDate endDate, List<StockPrice> historicalEntities) throws InterruptedException {
-        // [수정] 시작일 결정 전략
-        LocalDate fetchStartDate;
-        if (StringUtils.hasText(startDateStr)) {
-            // 1. 파라미터가 명시되면 해당 날짜부터 (Backfill 모드)
-            fetchStartDate = DateUtil.parse(startDateStr);
+    private List<StockPrice> processIndividualGap(Stock stock, LocalDate latestBaseDate, LocalDate effectiveStartDate, LocalDate endDate, List<StockPrice> historicalEntities) throws InterruptedException {
+        // 1. 데이터 저장 시작일 결정
+        LocalDate storeStartDate;
+        if (effectiveStartDate != null) {
+            storeStartDate = effectiveStartDate;
         } else {
-            // 2. 파라미터가 없으면 마지막 저장일 다음날부터 (증분 업데이트 모드)
-            fetchStartDate = (latestBaseDate != null) ? latestBaseDate.plusDays(1) : endDate.minusDays(250);
+            storeStartDate = (latestBaseDate != null) ? latestBaseDate.plusDays(1) : EARLIEST_BASE_DATE;
         }
 
-        if (fetchStartDate.isAfter(endDate)) return Collections.emptyList();
+        if (storeStartDate.isAfter(endDate)) return Collections.emptyList();
 
+        // 2. [핵심] 지표 계산의 정확도를 위해 API 조회 시작일(fetchStartDate)은 storeStartDate보다 180일 앞당김
+        LocalDate fetchStartDate = storeStartDate.minusDays(180);
+        
+        // 3. API 호출
         List<KisDailyPriceDetail> apiResults = fetchPricesFromKis(stock, fetchStartDate, endDate);
         if (apiResults.isEmpty()) return Collections.emptyList();
 
-        // 지표 계산용 버퍼 로드 (실제 날짜 사용)
-        List<BigDecimal> historicalHighPrices = new ArrayList<>(historicalEntities.stream().map(p -> p.getHighPrice() != null ? p.getHighPrice() : p.getClosePrice()).toList());
-        List<BigDecimal> historicalLowPrices = new ArrayList<>(historicalEntities.stream().map(p -> p.getLowPrice() != null ? p.getLowPrice() : p.getClosePrice()).toList());
-        List<BigDecimal> historicalClosingPrices = new ArrayList<>(historicalEntities.stream().map(StockPrice::getClosePrice).toList());
-        List<LocalDate> historicalDates = new ArrayList<>(historicalEntities.stream().map(p -> p.getId().getBaseDate()).toList());
+        // 4. [개선] TreeMap을 사용하여 날짜 중복 제거 및 정렬 보장
+        Map<LocalDate, OHLCRecord> mergedData = new TreeMap<>();
         
-        // 만약 historicalEntities가 비어있는데 DB에 데이터가 있다면 추가 조회
-        if (historicalEntities.isEmpty() && latestBaseDate != null) {
-            historicalClosingPrices = stockPricePort.findRecentClosingPrices(stock, fetchStartDate, INDICATOR_BUFFER_DAYS);
-            historicalHighPrices = new ArrayList<>(historicalClosingPrices);
-            historicalLowPrices = new ArrayList<>(historicalClosingPrices);
+        // DB 데이터 먼저 채우기
+        for (StockPrice p : historicalEntities) {
+            mergedData.put(p.getId().getBaseDate(), new OHLCRecord(
+                    p.getOpenPrice(), p.getHighPrice(), p.getLowPrice(), p.getClosePrice(), p.getVolume(), p.getTransactionAmt()));
+        }
+        
+        // API 데이터로 덮어쓰기 (최신 정보 우선)
+        for (KisDailyPriceDetail dto : apiResults) {
+            mergedData.put(dto.baseDate(), new OHLCRecord(
+                    dto.openPrice(), dto.highPrice(), dto.lowPrice(), dto.closePrice(), dto.volume(), dto.transactionAmt()));
         }
 
-        apiResults.sort(Comparator.comparing(KisDailyPriceDetail::baseDate));
+        List<LocalDate> fullDates = new ArrayList<>(mergedData.keySet());
+        List<BigDecimal> fullHighPrices = fullDates.stream().map(d -> mergedData.get(d).high()).toList();
+        List<BigDecimal> fullLowPrices = fullDates.stream().map(d -> mergedData.get(d).low()).toList();
+        List<BigDecimal> fullClosingPrices = fullDates.stream().map(d -> mergedData.get(d).close()).toList();
 
-        List<BigDecimal> fullHighPrices = new ArrayList<>(historicalHighPrices);
-        fullHighPrices.addAll(apiResults.stream().map(KisDailyPriceDetail::highPrice).toList());
-
-        List<BigDecimal> fullLowPrices = new ArrayList<>(historicalLowPrices);
-        fullLowPrices.addAll(apiResults.stream().map(KisDailyPriceDetail::lowPrice).toList());
-
-        List<BigDecimal> fullClosingPrices = new ArrayList<>(historicalClosingPrices);
-        fullClosingPrices.addAll(apiResults.stream().map(KisDailyPriceDetail::closePrice).toList());
-
-        List<LocalDate> fullDates = new ArrayList<>(historicalDates);
-        fullDates.addAll(apiResults.stream().map(KisDailyPriceDetail::baseDate).toList());
-
+        // 5. 전체 기간 지표 계산
         List<TechnicalIndicators> allIndicators = TechnicalIndicatorCalculator.calculateSeries(fullHighPrices, fullLowPrices, fullClosingPrices, fullDates);
         
+        // 6. 저장용 엔티티 필터링 (storeStartDate 이후 데이터만)
         List<StockPrice> entities = new ArrayList<>();
-        int indicatorStartIndex = historicalClosingPrices.size();
+        for (int i = 0; i < fullDates.size(); i++) {
+            LocalDate date = fullDates.get(i);
+            if (date.isBefore(storeStartDate)) continue; 
 
-        for (int i = 0; i < apiResults.size(); i++) {
-            KisDailyPriceDetail dto = apiResults.get(i);
-            BigDecimal prevClosePriceInLoop = (i > 0) ? apiResults.get(i - 1).closePrice() : 
-                                  (historicalClosingPrices.isEmpty() ? BigDecimal.ZERO : historicalClosingPrices.get(historicalClosingPrices.size() - 1));
-            
-            BigDecimal prevClose = (prevClosePriceInLoop != null) ? prevClosePriceInLoop : BigDecimal.ZERO;
+            BigDecimal prevClose = (i > 0) ? fullClosingPrices.get(i - 1) : BigDecimal.ZERO;
+            OHLCRecord data = mergedData.get(date);
 
             entities.add(StockPrice.of(
-                    stock, dto.baseDate(), dto.openPrice(), dto.highPrice(), dto.lowPrice(),
-                    dto.closePrice(), dto.closePrice(), prevClose, dto.volume(), dto.transactionAmt(),
-                    allIndicators.get(indicatorStartIndex + i)
+                    stock, date, data.open(), data.high(), data.low(),
+                    data.close(), data.close(), prevClose, data.volume(), data.transactionAmt(),
+                    allIndicators.get(i)
             ));
         }
         return entities;
     }
+
+    private record OHLCRecord(BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Long volume, BigDecimal transactionAmt) {}
 
     private List<KisDailyPriceDetail> fetchPricesFromKis(Stock stock, LocalDate start, LocalDate end) throws InterruptedException {
         List<KisDailyPriceDetail> allDetails = new ArrayList<>();
