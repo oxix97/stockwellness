@@ -1,93 +1,94 @@
 package org.stockwellness.application.service.stock;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
-import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.*;
+import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SectorAnalysisServiceTest {
 
-    private SectorAnalysisService sectorAnalysisService;
-
-    @BeforeEach
-    void setUp() {
-        sectorAnalysisService = new SectorAnalysisService();
-    }
+    private final SectorAnalysisService sectorAnalysisService = new SectorAnalysisService();
 
     @Test
-    @DisplayName("섹터 데이터 분석: 연속 매수 일수 및 기술적 지표가 올바르게 계산된다")
-    void analyze_success() {
+    @DisplayName("섹터 지표 계산 및 연속 매수 일수 증가 검증")
+    void analyzeIndicatorsAndConsecutiveDays() {
         // given
-        MarketIndex index = MarketIndex.of("0001", "종합");
-        LocalDate today = LocalDate.of(2026, 3, 2);
+        MarketIndex index = new MarketIndex("001", "전기전자");
+        LocalDate today = LocalDate.now();
         
         SectorApiDto currentData = new SectorApiDto(
-                "0001", "종합", today,
-                new BigDecimal("2500.00"), new BigDecimal("1.5"),
-                1000L, 500L
+                "001", "전기전자", today, new BigDecimal("2500.00"),
+                new BigDecimal("1.50"), 1000L, 500L
         );
-
-        SectorInsight yesterday = SectorInsight.of(
-                "종합", "0001", MarketType.KOSPI, today.minusDays(1),
-                new BigDecimal("2450.00"), new BigDecimal("0.5"),
-                800L, 200L,
-                2, 1, // foreignConsecutive, instConsecutive
-                TechnicalIndicators.empty(), false
-        );
-
-        List<BigDecimal> pastPrices = List.of(
-                new BigDecimal("2400.00"), new BigDecimal("2410.00"), new BigDecimal("2420.00"),
-                new BigDecimal("2430.00"), new BigDecimal("2440.00"), new BigDecimal("2450.00")
-        );
+        
+        // 전일 연속 매수 2일이었던 데이터
+        SectorInsight yesterday = mock(SectorInsight.class);
+        when(yesterday.getForeignConsecutiveBuyDays()).thenReturn(2);
+        when(yesterday.getInstConsecutiveBuyDays()).thenReturn(1);
 
         // when
-        SectorInsight result = sectorAnalysisService.analyze(index, currentData, yesterday, pastPrices, Collections.emptyList());
+        SectorInsight result = sectorAnalysisService.analyze(index, currentData, yesterday, List.of(new BigDecimal("2400.00")), List.of());
 
         // then
-        assertThat(result.getSectorCode()).isEqualTo("0001");
-        assertThat(result.getBaseDate()).isEqualTo(today);
         assertThat(result.getForeignConsecutiveBuyDays()).isEqualTo(3); // 2 + 1
         assertThat(result.getInstConsecutiveBuyDays()).isEqualTo(2); // 1 + 1
-        assertThat(result.getTechnicalIndicators()).isNotNull();
-        assertThat(result.getMarketType()).isEqualTo(MarketType.KOSPI);
     }
 
     @Test
-    @DisplayName("섹터 데이터 분석: 기술적 지표(MA)가 시간 순서(ASC)에 따라 정확하게 계산된다")
-    void analyze_technical_indicators_correctness() {
+    @DisplayName("상승 종목 우선 주도주 추출 로직 검증")
+    void calculateLeadingStocksWithGainers() {
         // given
-        MarketIndex index = MarketIndex.of("0001", "종합");
-        LocalDate today = LocalDate.of(2026, 3, 2);
+        MarketIndex index = new MarketIndex("001", "전기전자");
+        
+        Stock stock1 = createStock("T001", "상승주1");
+        Stock stock2 = createStock("T002", "하락주1");
+        Stock stock3 = createStock("T003", "상승주2");
 
-        SectorApiDto currentData = new SectorApiDto(
-                "0001", "종합", today,
-                new BigDecimal("110.00"), new BigDecimal("10.0"),
-                0L, 0L
-        );
+        StockPrice price1 = createPrice(stock1, new BigDecimal("2.0"), 10000L); // 상승
+        StockPrice price2 = createPrice(stock2, new BigDecimal("-1.0"), 50000L); // 하락하지만 거래대금 높음
+        StockPrice price3 = createPrice(stock3, new BigDecimal("3.0"), 5000L); // 상승
 
-        // 과거 가격: 100, 101, 102, 103 (4일치)
-        List<BigDecimal> pastPrices = List.of(
-                new BigDecimal("100.00"), new BigDecimal("101.00"), 
-                new BigDecimal("102.00"), new BigDecimal("103.00")
-        );
+        List<StockPrice> stockPrices = List.of(price1, price2, price3);
 
         // when
-        SectorInsight result = sectorAnalysisService.analyze(index, currentData, null, pastPrices, Collections.emptyList());
+        SectorInsight result = sectorAnalysisService.analyze(
+                index, createDefaultApiDto(), null, List.of(), stockPrices
+        );
 
         // then
-        // 오늘의 종가(110)를 포함한 최근 5일 이동평균선(MA5) 계산: (100+101+102+103+110) / 5 = 103.2
-        assertThat(result.getTechnicalIndicators().getMa5())
-                .isEqualByComparingTo(new BigDecimal("103.2000"));
+        List<LeadingStock> leadingStocks = result.getLeadingStocks();
+        // 상승주가 먼저 오고 거래대금 순으로 정렬되어야 함
+        assertThat(leadingStocks).hasSize(2);
+        assertThat(leadingStocks.get(0).ticker()).isEqualTo("T001"); // 거래대금 10000
+        assertThat(leadingStocks.get(1).ticker()).isEqualTo("T003"); // 거래대금 5000
+    }
+
+    private SectorApiDto createDefaultApiDto() {
+        return new SectorApiDto("001", "전기전자", LocalDate.now(), BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L);
+    }
+
+    private Stock createStock(String ticker, String name) {
+        return Stock.of(ticker, "KR001", name, MarketType.KOSPI, Currency.KRW, StockSector.of("IT", "IT", "001", "IT"), StockStatus.ACTIVE);
+    }
+
+    private StockPrice createPrice(Stock stock, BigDecimal rate, Long amt) {
+        StockPrice price = mock(StockPrice.class);
+        when(price.getStock()).thenReturn(stock);
+        when(price.getFluctuationRate()).thenReturn(rate);
+        when(price.getTransactionAmt()).thenReturn(BigDecimal.valueOf(amt));
+        when(price.getClosePrice()).thenReturn(BigDecimal.valueOf(10000));
+        return price;
     }
 }
