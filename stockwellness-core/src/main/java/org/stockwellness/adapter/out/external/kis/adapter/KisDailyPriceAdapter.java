@@ -46,7 +46,8 @@ public class KisDailyPriceAdapter {
                     .header("tr_id", "FHKST11300006")
                     .header("custtype", "P")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>() {});
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
             if (response == null || response.output2() == null) {
                 return Collections.emptyList();
@@ -60,13 +61,16 @@ public class KisDailyPriceAdapter {
         }
     }
 
+    /**
+     * 주식 기간별 시세(일/주/월/년)
+     */
     @Retry(name = "kisRetry")
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
         try {
             KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
-                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "UN")
                             .queryParam("FID_INPUT_ISCD", stock.getTicker())
                             .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
@@ -75,7 +79,8 @@ public class KisDailyPriceAdapter {
                             .build())
                     .header("tr_id", "FHKST03010100")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>() {});
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
             if (response == null || response.output2() == null) {
                 return Collections.emptyList();
