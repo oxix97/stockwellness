@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
-import org.stockwellness.domain.stock.insight.MarketIndex;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -17,14 +16,6 @@ import static lombok.AccessLevel.PROTECTED;
  *
  * <p>국내(KOSPI/KOSDAQ) 종목은 KIS 마스터 파일 동기화 Job을 통해 자동 등록/갱신됩니다.
  * 해외(NASDAQ/NYSE/AMEX) 종목은 별도 수집 경로를 통해 등록됩니다.
- *
- * <p>KIS 마스터 데이터(국내 전용)는 임베디드 타입으로 분리되어 있습니다.
- * <ul>
- *   <li>{@link StockTradingStatus}  — 거래 상태 (거래정지 / 정리매매 / 관리종목)
- *   <li>{@link StockWarningStatus}  — 시장 경보 (시장경고 단계 / 불성실공시 / 우회상장 등)
- *   <li>{@link StockOverheatStatus} — 과열/급등 감시 (단기과열 / 공매도 과열 / 이상급등 등)
- * </ul>
- * 해외 종목의 경우 위 임베디드 필드는 모두 기본값(false / null)으로 유지됩니다.
  */
 @Getter
 @NoArgsConstructor(access = PROTECTED)
@@ -33,9 +24,9 @@ import static lombok.AccessLevel.PROTECTED;
         name = "stock",
         indexes = {
                 @Index(name = "idx_stock_ticker", columnList = "ticker", unique = true),
-                @Index(name = "idx_stock_code", columnList = "name"),
+                @Index(name = "idx_stock_name", columnList = "name"),
                 @Index(name = "idx_stock_status", columnList = "status"),
-                @Index(name = "idx_stock_ticker_code", columnList = "ticker, name")
+                @Index(name = "idx_stock_ticker_name", columnList = "ticker, name")
         }
 )
 public class Stock extends AbstractEntity {
@@ -70,18 +61,11 @@ public class Stock extends AbstractEntity {
     @Column(nullable = false, length = 3)
     private Currency currency;
 
-    @Column(name = "sector_large_code", length = 100)
-    private String sectorLargeCode;
-
-    @Column(name = "sector_medium_code", length = 100)
-    private String sectorMediumCode;
     /**
-     * 업종명 (e.g. "제약", "반도체").
-     * {@link MarketIndex#getIndexName()}에서 가져옵니다.
-     * 해외 종목 또는 매핑 실패 시 {@code null}.
+     * 업종 정보 (대/중/소분류 코드 및 매핑된 업종명)
      */
-    @Column(name = "sector_small_code", length = 100)
-    private String sectorSmallCode;
+    @Embedded
+    private StockSector sector;
 
     // ── 공통 상태 ──────────────────────────────────────────────────────────────
 
@@ -135,28 +119,19 @@ public class Stock extends AbstractEntity {
 
     // ── 국내 전용: 투자위험/주의 (KIS 마스터, 임베디드) ──────────────────────
 
-    /**
-     * 거래 상태 (거래정지 / 정리매매 / 관리종목). 해외 종목은 기본값.
-     */
     @Embedded
     private StockTradingStatus tradingStatus;
 
-    /**
-     * 시장 경보 (시장경고 단계 / 경고예고 / 불성실공시 / 우회상장). 해외 종목은 기본값.
-     */
     @Embedded
     private StockWarningStatus warningStatus;
 
-    /**
-     * 과열/급등 감시 (단기과열 / 공매도과열 / 이상급등 / 투자주의환기). 해외 종목은 기본값.
-     */
     @Embedded
     private StockOverheatStatus overheatStatus;
 
     // ── 팩토리 메서드 ──────────────────────────────────────────────────────────
 
     /**
-     * 해외 종목 생성 (KIS 마스터 데이터 없음)
+     * 해외 종목 생성
      */
     public static Stock of(
             String ticker,
@@ -164,9 +139,7 @@ public class Stock extends AbstractEntity {
             String name,
             MarketType marketType,
             Currency currency,
-            String sectorLargeCode,
-            String sectorMediumCode,
-            String sectorSmallCode,
+            StockSector sector,
             StockStatus status
     ) {
         Stock s = new Stock();
@@ -175,9 +148,7 @@ public class Stock extends AbstractEntity {
         s.name = name;
         s.marketType = marketType;
         s.currency = currency;
-        s.sectorLargeCode = sectorLargeCode;
-        s.sectorMediumCode = sectorMediumCode;
-        s.sectorSmallCode = sectorSmallCode;
+        s.sector = (sector != null) ? sector : StockSector.empty();
         s.status = status;
         s.isPremiumTracking = false;
         s.isPreferred = false;
@@ -188,20 +159,16 @@ public class Stock extends AbstractEntity {
     }
 
     /**
-     * 코스피 종목 생성 (KIS 마스터 데이터 포함)
+     * 코스피 종목 생성
      */
-    public static Stock ofKospi(KospiItem item, String sectorLargeCode,
-                                String sectorMediumCode,
-                                String sectorSmallCode) {
+    public static Stock ofKospi(KospiItem item, StockSector sector) {
         Stock s = new Stock();
         s.ticker = item.shortCode();
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSPI;
         s.currency = Currency.KRW;
-        s.sectorLargeCode = sectorLargeCode;
-        s.sectorMediumCode = sectorMediumCode;
-        s.sectorSmallCode = sectorSmallCode;
+        s.sector = sector;
         s.status = resolveStatus(item);
         s.isPremiumTracking = false;
         s.groupCode = item.groupCode();
@@ -217,20 +184,16 @@ public class Stock extends AbstractEntity {
     }
 
     /**
-     * 코스닥 종목 생성 (KIS 마스터 데이터 포함)
+     * 코스닥 종목 생성
      */
-    public static Stock ofKosdaq(KosdaqItem item, String sectorLargeCode,
-                                 String sectorMediumCode,
-                                 String sectorSmallCode) {
+    public static Stock ofKosdaq(KosdaqItem item, StockSector sector) {
         Stock s = new Stock();
         s.ticker = item.shortCode();
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSDAQ;
         s.currency = Currency.KRW;
-        s.sectorLargeCode = sectorLargeCode;
-        s.sectorMediumCode = sectorMediumCode;
-        s.sectorSmallCode = sectorSmallCode;
+        s.sector = sector;
         s.status = resolveStatus(item);
         s.isPremiumTracking = false;
         s.groupCode = item.groupCode();
@@ -247,17 +210,10 @@ public class Stock extends AbstractEntity {
 
     // ── 변경 메서드 ────────────────────────────────────────────────────────────
 
-    /**
-     * KIS 마스터 최신 데이터로 갱신 (ticker, marketType, listingDate 제외)
-     */
-    public void updateFromKospi(KospiItem item, String sectorLargeCode,
-                                String sectorMediumCode,
-                                String sectorSmallCode) {
+    public void updateFromKospi(KospiItem item, StockSector sector) {
         this.standardCode = item.isinCode();
         this.name = item.koreanName();
-        this.sectorLargeCode = sectorLargeCode;
-        this.sectorMediumCode = sectorMediumCode;
-        this.sectorSmallCode = sectorSmallCode;
+        this.sector = sector;
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
@@ -269,14 +225,10 @@ public class Stock extends AbstractEntity {
         this.overheatStatus = StockOverheatStatus.ofKospi(item);
     }
 
-    public void updateFromKosdaq(KosdaqItem item, String sectorLargeCode,
-                                 String sectorMediumCode,
-                                 String sectorSmallCode) {
+    public void updateFromKosdaq(KosdaqItem item, StockSector sector) {
         this.standardCode = item.isinCode();
         this.name = item.koreanName();
-        this.sectorLargeCode = sectorLargeCode;
-        this.sectorMediumCode = sectorMediumCode;
-        this.sectorSmallCode = sectorSmallCode;
+        this.sector = sector;
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
@@ -302,10 +254,6 @@ public class Stock extends AbstractEntity {
         this.status = StockStatus.ACTIVE;
     }
 
-    public void designateAsAdministrative() {
-        this.status = StockStatus.ADMINISTRATIVE;
-    }
-
     public void delist() {
         this.status = StockStatus.DELISTED;
         this.isPremiumTracking = false;
@@ -313,16 +261,6 @@ public class Stock extends AbstractEntity {
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
-    /**
-     * KIS 마스터 필드 조합으로 {@link StockStatus}를 결정합니다.
-     *
-     * <pre>
-     * 정리매매 → DELISTED      (상장폐지 확정, 정리매매 단계)
-     * 거래정지  → HALTED
-     * 관리종목  → ADMINISTRATIVE
-     * 그 외    → ACTIVE
-     * </pre>
-     */
     private static StockStatus resolveStatus(KospiItem item) {
         if ("Y".equals(item.clearingTrade())) return StockStatus.DELISTED;
         if ("Y".equals(item.tradingHalt())) return StockStatus.HALTED;

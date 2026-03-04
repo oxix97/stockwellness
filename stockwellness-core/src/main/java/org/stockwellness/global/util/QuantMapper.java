@@ -20,19 +20,33 @@ public class QuantMapper {
 
     /**
      * OHLC 데이터와 실제 날짜 리스트를 ta4j BarSeries로 변환합니다.
+     * dates가 null이거나 데이터 개수와 맞지 않으면 가상 날짜를 생성합니다.
      */
     public static BarSeries toBarSeries(String name, List<BigDecimal> highs, List<BigDecimal> lows, List<BigDecimal> closes, List<LocalDate> dates) {
         BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
         ZoneId zone = ZoneId.systemDefault();
+        ZonedDateTime virtualCursor = ZonedDateTime.now().minusDays(closes.size() + 1);
 
         for (int i = 0; i < closes.size(); i++) {
             if (closes.get(i) == null || highs.get(i) == null || lows.get(i) == null) continue;
-            // 실제 날짜를 ZonedDateTime으로 변환하여 추가 (2월 30일 등 유효하지 않은 날짜 오류 방지)
-            ZonedDateTime zdt = dates.get(i).atStartOfDay(zone);
-            series.addBar(
-                    zdt,
-                    closes.get(i), highs.get(i), lows.get(i), closes.get(i), BigDecimal.ONE
-            );
+            
+            ZonedDateTime zdt;
+            if (dates != null && i < dates.size() && dates.get(i) != null) {
+                zdt = dates.get(i).atStartOfDay(zone);
+            } else {
+                virtualCursor = virtualCursor.plusDays(1);
+                zdt = virtualCursor;
+            }
+
+            try {
+                series.addBar(
+                        zdt,
+                        closes.get(i), highs.get(i), lows.get(i), closes.get(i), BigDecimal.ONE
+                );
+            } catch (IllegalArgumentException e) {
+                // 중복 날짜 또는 잘못된 시간 순서의 경우 로깅 후 스킵 (ta4j 제약 사항)
+                System.err.printf("[QuantMapper] 스킵된 바 (날짜 중복/역전): %s - %s%n", zdt, e.getMessage());
+            }
         }
         return series;
     }
