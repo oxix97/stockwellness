@@ -40,10 +40,13 @@ public class StockPriceUpdateConsumer {
         int currentYear = LocalDate.now().getYear();
         
         // 종목 시세 캐시 무효화 (기존 시세 정보가 캐시되어 있으면 갱신 필요)
+        // [성능 최적화 제언] 수천 개의 종목 처리 시 루프 내 evict 호출 대신 Redis Pipelining이나 
+        // 키 패턴 삭제(DEL by pattern) 방식 도입을 검토하십시오.
         Optional.ofNullable(cacheManager.getCache("stock_prices")).ifPresent(cache -> {
             for (String symbol : event.symbols()) {
                 cache.evict(symbol + ":" + currentYear);
                 cache.evict(symbol + ":" + (currentYear - 1));
+                log.debug("Evicted stock_prices cache for: {}", symbol);
             }
             log.info("Invalidated stock_prices cache for {} symbols", event.symbols().size());
         });
