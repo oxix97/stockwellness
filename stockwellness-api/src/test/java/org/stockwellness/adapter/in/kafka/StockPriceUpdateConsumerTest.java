@@ -3,7 +3,7 @@ package org.stockwellness.adapter.in.kafka;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -37,7 +37,7 @@ class StockPriceUpdateConsumerTest {
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
 
-    @MockBean
+    @MockitoBean
     private CacheManager cacheManager;
 
     @Test

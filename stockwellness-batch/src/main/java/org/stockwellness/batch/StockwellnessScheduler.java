@@ -10,6 +10,8 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.stockwellness.batch.exception.BatchException;
+import org.stockwellness.global.error.ErrorCode;
 
 @Slf4j
 @Component
@@ -61,13 +63,13 @@ public class StockwellnessScheduler {
             log.info(">>> Daily Full Sync Batch Completed Successfully.");
         } catch (Exception e) {
             log.error(">>> Critical error occurred during Daily Full Sync Batch: {}", e.getMessage(), e);
+            throw new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED);
         }
     }
 
     private void validateStatus(JobExecution jobExecution) {
         if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
-            throw new RuntimeException(String.format("Job [%s] failed with status: %s", 
-                    jobExecution.getJobInstance().getJobName(), jobExecution.getStatus()));
+            throw new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED);
         }
     }
 }
