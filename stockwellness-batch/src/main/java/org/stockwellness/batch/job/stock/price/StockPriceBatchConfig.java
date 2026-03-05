@@ -54,6 +54,7 @@ public class StockPriceBatchConfig {
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
     private final StockPriceProgressListener progressListener;
+    private final StockPriceSyncEventListener eventListener;
     private final JdbcTemplate jdbcTemplate;
     private final TaskExecutor kisBatchExecutor;
 
@@ -71,6 +72,7 @@ public class StockPriceBatchConfig {
     public Job stockPriceBatchJob(Step stockPriceStep) {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
                 .start(stockPriceStep)
+                .listener(eventListener)
                 .build();
     }
 
@@ -87,6 +89,7 @@ public class StockPriceBatchConfig {
                 .writer(stockPriceListWriter)
                 .taskExecutor(kisBatchExecutor) // 공용 배치 실행기 사용
                 .listener(progressListener)
+                .listener(eventListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
