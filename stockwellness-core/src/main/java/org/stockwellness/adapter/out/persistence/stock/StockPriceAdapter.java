@@ -63,8 +63,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
 
     @Override
     public Map<Long, List<BigDecimal>> findRecentClosingPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
-        // QueryDSL로 최적화된 벌크 조회 호출
-        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date);
+        // [수정] limit 파라미터 전달 보강
+        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date, limit);
 
         return allPrices.stream()
                 .collect(Collectors.groupingBy(
@@ -83,7 +83,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
 
     @Override
     public Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit) {
-        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date);
+        // [수정] limit 파라미터 전달 보강
+        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date, limit);
 
         return allPrices.stream()
                 .collect(Collectors.groupingBy(
