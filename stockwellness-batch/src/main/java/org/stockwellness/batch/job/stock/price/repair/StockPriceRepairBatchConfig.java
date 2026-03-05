@@ -1,5 +1,6 @@
 package org.stockwellness.batch.job.stock.price.repair;
 
+import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -20,11 +21,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.global.util.QueryTypeUtil;
 import org.stockwellness.global.util.DateUtil;
+import org.stockwellness.global.util.QueryTypeUtil;
 
-import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,9 +34,8 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class StockPriceRepairBatchConfig {
-import org.stockwellness.batch.common.BatchMdcListener;
-import org.stockwellness.domain.stock.Stock;
-...
+
+    private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;

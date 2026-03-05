@@ -19,5 +19,6 @@
     </root>
 
     <!-- 필요한 경우 특정 패키지 로그 레벨 조정 -->
-    <logger name="org.stockwellness" level="DEBUG" />
+    <logger name="org.stockwellness" level="INFO" />
+    <logger name="org.stockwellness.batch" level="DEBUG" />
 </configuration>
