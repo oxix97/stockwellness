@@ -9,14 +9,17 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.dto.BatchExecutionResponse;
+import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
+import org.stockwellness.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
 @RestController
 public class BatchAdminController {
 
+    @Qualifier("asyncJobLauncher")
     private final JobLauncher asyncJobLauncher;
     private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
@@ -44,13 +48,13 @@ public class BatchAdminController {
      * 업종/지수 마스터(idxcode.mst) 동기화
      */
     @PostMapping("/sync-indices")
-    public String runIndicesSync() {
+    public ResponseEntity<BatchExecutionResponse> runIndicesSync() {
         try {
             marketIndexSyncService.syncIndices("idxcode.mst");
-            return "업종 마스터 동기화 성공 (로그 확인 필요)";
+            return ResponseEntity.ok(new BatchExecutionResponse(0L, "MarketIndexSync", null, "업종 마스터 동기화 성공"));
         } catch (Exception e) {
             log.error("업종 마스터 동기화 실패", e);
-            return "동기화 실패: " + e.getMessage();
+            throw new BatchException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
     }
 
@@ -210,11 +214,11 @@ public class BatchAdminController {
         try {
             // asyncJobLauncher를 사용하므로 즉시 JobExecution이 반환됨 (배치는 백그라운드 실행)
             JobExecution execution = asyncJobLauncher.run(job, params);
-            String statusUrl = "/api/v1/admin/batch/status/" + job.getName();
+            String statusUrl = String.format("/api/v1/admin/batch/status/%s", job.getName());
             return BatchExecutionResponse.of(execution.getId(), job.getName(), statusUrl);
         } catch (Exception e) {
             log.error("잡 실행 실패: {}", job.getName(), e);
-            throw new RuntimeException("배치 잡 실행 중 오류가 발생했습니다: " + e.getMessage());
+            throw new BatchException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
     }
 }
