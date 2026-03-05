@@ -15,6 +15,6 @@
 - [x] Task: Refactor existing listeners (`StockPriceProgressListener`, etc.) to use the standardized template.
 
 ## Phase 4: Verification
-- [ ] Task: Verify log traceability by running multiple jobs concurrently.
-- [ ] Task: Verify API response format using `curl` or Postman.
-- [ ] Task: Conductor - User Manual Verification 'Batch Observability'
+- [x] Task: Verify log traceability by running multiple jobs concurrently.
+- [x] Task: Verify API response format using `curl` or Postman.
+- [x] Task: Conductor - User Manual Verification 'Batch Observability'
