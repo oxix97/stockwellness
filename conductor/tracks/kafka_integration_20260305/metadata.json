@@ -1,8 +1,0 @@
-{
-  "track_id": "kafka_integration_20260305",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-03-05T10:00:00Z",
-  "updated_at": "2026-03-05T10:00:00Z",
-  "description": "kafka 도입 및 적용 계획 1.데이터 파이프라인 연동 2.AI 인사이트 및 리포트 생성 3.포트폴리오 리밸런싱 알림"
-}
