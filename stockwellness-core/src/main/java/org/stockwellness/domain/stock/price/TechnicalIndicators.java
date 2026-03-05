@@ -3,6 +3,8 @@ package org.stockwellness.domain.stock.price;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,7 +40,42 @@ public class TechnicalIndicators implements Serializable {
     @Column(precision = 19, scale = 4)
     private BigDecimal macdSignal;
 
+    // -- Bollinger Bands --
+    @Column(name = "bollinger_upper", precision = 19, scale = 4)
+    private BigDecimal bollingerUpper;
+
+    @Column(name = "bollinger_mid", precision = 19, scale = 4)
+    private BigDecimal bollingerMid; // Normally same as ma20
+
+    @Column(name = "bollinger_lower", precision = 19, scale = 4)
+    private BigDecimal bollingerLower;
+
+    // -- ADX (Trend Strength) --
+    @Column(name = "adx", precision = 19, scale = 4)
+    private BigDecimal adx;
+
+    @Column(name = "plus_di", precision = 19, scale = 4)
+    private BigDecimal plusDi;
+
+    @Column(name = "minus_di", precision = 19, scale = 4)
+    private BigDecimal minusDi;
+
+    // -- Status / Flags --
+    @Enumerated(EnumType.STRING)
+    @Column(name = "alignment_status", length = 20)
+    private AlignmentStatus alignmentStatus;
+
+    @Column(name = "is_golden_cross")
+    private Boolean isGoldenCross;
+
+    @Column(name = "is_dead_cross")
+    private Boolean isDeadCross;
+
+    @Column(name = "is_macd_cross")
+    private Boolean isMacdCross;
+
     public static TechnicalIndicators empty() {
-        return new TechnicalIndicators(null, null, null, null, null, null, null);
+        return new TechnicalIndicators(null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null);
     }
 }

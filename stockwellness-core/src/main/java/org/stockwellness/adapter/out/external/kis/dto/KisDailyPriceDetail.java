@@ -6,51 +6,64 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * 주식 일별 시세 상세 (output2)
+ */
 public record KisDailyPriceDetail(
-        // 1. 날짜 자동 파싱 (yyyyMMdd -> LocalDate)
+        /** 주식 영업 일자 (yyyyMMdd -> LocalDate 변환) */
         @JsonProperty("stck_bsop_date")
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyyMMdd")
+        @JsonFormat(pattern = "yyyyMMdd")
         LocalDate baseDate,
 
-        // 2. 숫자 자동 파싱 (String "1000" -> BigDecimal 1000)
-        // KIS는 모든 숫자 필드를 String으로 내려주므로 Jackson이 알아서 변환합니다.
-        @JsonProperty("stck_oprc") BigDecimal openPrice,
-        @JsonProperty("stck_hgpr") BigDecimal highPrice,
-        @JsonProperty("stck_lwpr") BigDecimal lowPrice,
-        @JsonProperty("stck_clpr") BigDecimal closePrice,
+        /** 주식 시가2 */
+        @JsonProperty("stck_oprc")
+        BigDecimal openPrice,
 
-        @JsonProperty("acml_vol") Long volume,
-        @JsonProperty("acml_tr_pbmn") BigDecimal transactionAmt,
+        /** 주식 최고가 */
+        @JsonProperty("stck_hgpr")
+        BigDecimal highPrice,
 
-        @JsonProperty("prdy_vrss") BigDecimal changeAmount,
-        @JsonProperty("prdy_vrss_sign") String changeSign, // 1:상한, 2:상승, 3:보합, 4:하한, 5:하락
+        /** 주식 최저가 */
+        @JsonProperty("stck_lwpr")
+        BigDecimal lowPrice,
 
-        @JsonProperty("flng_cls_code") String flngClsCode,
-        @JsonProperty("mod_yn") String modYn
-) {
-    /**
-     * [Quant Logic] 상한가 도달 여부 확인
-     */
-    public boolean isUpperLimit() {
-        return "1".equals(this.changeSign);
-    }
+        /** 주식 종가 */
+        @JsonProperty("stck_clpr")
+        BigDecimal closePrice,
 
-    /**
-     * [Quant Logic] 하한가 도달 여부 확인
-     */
-    public boolean isLowerLimit() {
-        return "4".equals(this.changeSign);
-    }
+        /** 누적 거래량 */
+        @JsonProperty("acml_vol")
+        Long volume,
 
-    /**
-     * [Data Quality] 거래 정지 여부 추정 (거래량이 0이고 시고저종이 모두 같음)
-     */
-    public boolean isSuspended() {
-        return (volume == null || volume == 0) &&
-                (openPrice != null && openPrice.compareTo(BigDecimal.ZERO) > 0) &&
-                openPrice.compareTo(closePrice) == 0 &&
-                highPrice.compareTo(lowPrice) == 0;
-    }
-}
+        /** 누적 거래 대금 */
+        @JsonProperty("acml_tr_pbmn")
+        BigDecimal transactionAmt,
 
-        
+        /** * 락 구분 코드
+         * 01:권리락, 02:배당락, 03:분배락, 04:권배락, 05:중간(분기)배당락, 06:권리중간배당락, 07:권리분기배당락
+         */
+        @JsonProperty("flng_cls_code")
+        String flngClsCode,
+
+        /** 분할 비율 (기준가/전일 종가) */
+        @JsonProperty("prtt_rate")
+        String prttRate,
+
+        /** 변경 여부 (현재 영업일에 체결이 발생하지 않아 시가가 없을경우 Y 로 표시) */
+        @JsonProperty("mod_yn")
+        String modYn,
+
+        /** 전일 대비 부호 */
+        @JsonProperty("prdy_vrss_sign")
+        String prdyVrssSign,
+
+        /** 전일 대비 */
+        @JsonProperty("prdy_vrss")
+        BigDecimal prdyVrss,
+
+        /** * 재평가사유코드
+         * 00:해당없음, 01:회사분할, 02:자본감소, 03:장기간정지, 04:초과분배, 05:대규모배당, 06:회사분할합병, 07:ETN증권병합/분할, 08:신종증권기세조정, 99:기타
+         */
+        @JsonProperty("revl_issu_reas")
+        String revlIssuReas
+) {}

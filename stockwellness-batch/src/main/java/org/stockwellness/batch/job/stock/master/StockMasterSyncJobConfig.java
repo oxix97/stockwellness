@@ -9,7 +9,6 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.support.ListItemReader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -25,19 +24,6 @@ import java.util.List;
 
 /**
  * 종목 마스터 동기화 Spring Batch Job 설정
- *
- * <pre>
- * Job: stockMasterSyncJob
- *  ├── Step 1. kospiUpsertStep    — 코스피 Stock 신규/갱신
- *  ├── Step 2. kospiDelistStep    — 코스피 상장폐지 처리
- *  ├── Step 3. kosdaqUpsertStep   — 코스닥 Stock 신규/갱신
- *  └── Step 4. kosdaqDelistStep   — 코스닥 상장폐지 처리
- * </pre>
- *
- * <p><b>MarketIndex 로딩 전략</b><br>
- * Job 시작 시 {@link MarketIndexRepository#findActiveIndexMap()}을 한 번만 호출하여
- * {@code Map<indexCode, MarketIndex>}를 생성합니다.
- * 이 Map은 코스피/코스닥 Processor에 공유되어 업종 매핑에 사용됩니다.
  */
 @Slf4j
 @Configuration
@@ -51,8 +37,6 @@ public class StockMasterSyncJobConfig {
     private final MarketIndexRepository marketIndexRepository;
 
     private static final int CHUNK_SIZE = 500;
-
-    // ── Job ──────────────────────────────────────────────────────────────────
 
     @Bean
     public Job stockMasterSyncJob() {
@@ -117,7 +101,7 @@ public class StockMasterSyncJobConfig {
 
     @Bean
     @StepScope
-    public ListItemReader<KospiItem> kospiItemReader() {
+    public KospiMasterItemReader kospiItemReader() {
         log.info("[KOSPI] 마스터 파일 다운로드 시작");
         List<String> rawLines = kisMasterClient.downloadKospiMaster();
         List<KospiItem> items = KospiMstParser.parseLines(rawLines);
@@ -127,7 +111,7 @@ public class StockMasterSyncJobConfig {
 
     @Bean
     @StepScope
-    public ListItemReader<KosdaqItem> kosdaqItemReader() {
+    public KosdaqMasterItemReader kosdaqItemReader() {
         log.info("[KOSDAQ] 마스터 파일 다운로드 시작");
         List<String> rawLines = kisMasterClient.downloadKosdaqMaster();
         List<KosdaqItem> items = KosdaqMstParser.parseLines(rawLines);
@@ -140,13 +124,19 @@ public class StockMasterSyncJobConfig {
     @Bean
     @StepScope
     public StockItemProcessor.Kospi kospiItemProcessor() {
-        return new StockItemProcessor.Kospi(stockRepository);
+        return new StockItemProcessor.Kospi(
+                stockRepository,
+                marketIndexRepository.findActiveIndexMap()
+        );
     }
 
     @Bean
     @StepScope
     public StockItemProcessor.Kosdaq kosdaqItemProcessor() {
-        return new StockItemProcessor.Kosdaq(stockRepository);
+        return new StockItemProcessor.Kosdaq(
+                stockRepository,
+                marketIndexRepository.findActiveIndexMap()
+        );
     }
 
     // ── Writer ────────────────────────────────────────────────────────────────

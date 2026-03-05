@@ -8,8 +8,11 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
+import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +34,21 @@ public class BatchAdminController {
     private final Job stockPricePrevCloseSyncJob;
 
     private final StockPort stockPort;
+    private final MarketIndexSyncService marketIndexSyncService;
+
+    /**
+     * 업종/지수 마스터(idxcode.mst) 동기화
+     */
+    @PostMapping("/sync-indices")
+    public String runIndicesSync() {
+        try {
+            marketIndexSyncService.syncIndices("idxcode.mst");
+            return "업종 마스터 동기화 성공 (로그 확인 필요)";
+        } catch (Exception e) {
+            log.error("업종 마스터 동기화 실패", e);
+            return "동기화 실패: " + e.getMessage();
+        }
+    }
 
     /**
      * 특정 Job의 최근 실행 상태 조회
@@ -46,6 +64,17 @@ public class BatchAdminController {
                         execution.getStartTime(),
                         execution.getEndTime()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 종목 마스터(KOSPI/KOSDAQ) 동기화 배치 실행
+     */
+    @PostMapping("/sync-master")
+    public String runMasterSync() {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .toJobParameters();
+        return launchJobAsync(stockMasterSyncJob, params);
     }
 
     /**
@@ -68,14 +97,47 @@ public class BatchAdminController {
      * 시세 수집 배치 실행 (전체 종목)
      */
     @PostMapping("/fetch-prices")
-    public String runPriceFetch(
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
-    ) {
+    public String runPriceFetch(@RequestBody(required = false) StockPriceSyncRequest request) {
+        String startDate = null;
+        String endDate = null;
+
+        if (request != null) {
+            startDate = request.getStartDate();
+            endDate = request.getEndDate();
+
+            if (startDate != null && startDate.compareTo("20220101") < 0) {
+                log.info("Requested startDate {} is before 20220101. Adjusted to 20220101.", startDate);
+                startDate = "20220101";
+            }
+        }
+
         JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
+                .toJobParameters();
+        return launchJobAsync(stockPriceBatchJob, params);
+    }
+
+    /**
+     * 시세 수집 배치 실행 (단건 종목)
+     */
+    @PostMapping("/fetch-prices/single")
+    public String runSinglePriceFetch(@RequestBody StockPriceSyncRequest request) {
+        if (request == null || !StringUtils.hasText(request.getTargetTicker())) {
+            throw new IllegalArgumentException("targetTicker는 필수입니다.");
+        }
+
+        String startDate = request.getStartDate();
+        if (startDate != null && startDate.compareTo("20220101") < 0) {
+            startDate = "20220101";
+        }
+
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .addString("targetTicker", request.getTargetTicker())
+                .addString("startDate", startDate)
+                .addString("endDate", request.getEndDate())
                 .toJobParameters();
         return launchJobAsync(stockPriceBatchJob, params);
     }
@@ -87,13 +149,11 @@ public class BatchAdminController {
     public String runPrevCloseSync(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
-//            @RequestParam(required = false) String targetTicker
     ) {
         JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
-//                .addString("targetTicker", targetTicker)
                 .toJobParameters();
         return launchJobAsync(stockPricePrevCloseSyncJob, params);
     }

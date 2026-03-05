@@ -13,10 +13,23 @@ public class BatchAsyncConfig {
     @Bean(name = "batchExecutor")
     public TaskExecutor batchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);      // 기본 10개 스레드 유지
-        executor.setMaxPoolSize(20);      // 최대 20개까지 확장
-        executor.setQueueCapacity(200);   // 대기 큐 확장
-        executor.setThreadNamePrefix("Batch-Common-");
+        executor.setCorePoolSize(10);      // 일반 작업용은 넉넉하게 유지
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("Batch-Gen-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "kisBatchExecutor")
+    public TaskExecutor kisBatchExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);      // 3 -> 10으로 상향 (19 TPS 달성용)
+        executor.setMaxPoolSize(15);
+        executor.setQueueCapacity(1000);   // 대기 큐 확장
+        executor.setThreadNamePrefix("Batch-KIS-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }

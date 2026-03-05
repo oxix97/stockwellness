@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Table(name = "stock_price", indexes = {
-        @Index(name = "idx_stock_price_lookup", columnList = "stock_id, base_date DESC")
+        @Index(name = "idx_stock_price_lookup", columnList = "stock_id, base_date DESC"),
+        @Index(name = "idx_stock_price_indicators", columnList = "base_date, alignment_status, rsi14")
 })
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

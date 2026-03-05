@@ -1,5 +1,8 @@
 package org.stockwellness.batch.job.stock.price;
 
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterConfig;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,21 +21,28 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.dao.TransientDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.util.StringUtils;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.global.util.QueryTypeUtil;
 import org.stockwellness.global.util.DateUtil;
 
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Configuration
@@ -45,9 +55,17 @@ public class StockPriceBatchConfig {
     private final DataSource dataSource;
     private final StockPriceProgressListener progressListener;
     private final JdbcTemplate jdbcTemplate;
+    private final TaskExecutor kisBatchExecutor;
 
-    @Qualifier("batchExecutor")
-    private final TaskExecutor batchExecutor;
+    @Bean
+    public RateLimiter kisRateLimiter() {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .limitForPeriod(19) // 10 -> 19로 상향 (최대 성능 모드)
+                .timeoutDuration(Duration.ofSeconds(20))
+                .build();
+        return RateLimiterRegistry.of(config).rateLimiter("kisRateLimiter");
+    }
 
     @Bean
     public Job stockPriceBatchJob(Step stockPriceStep) {
@@ -63,32 +81,52 @@ public class StockPriceBatchConfig {
             ItemWriter<List<StockPrice>> stockPriceListWriter
     ) {
         return new StepBuilder("stockPriceStep", jobRepository)
-                .<List<Stock>, List<StockPrice>>chunk(1, transactionManager) 
+                .<List<Stock>, List<StockPrice>>chunk(1, transactionManager)
                 .reader(stockListReader)
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
-                .taskExecutor(batchExecutor)
+                .taskExecutor(kisBatchExecutor) // 공용 배치 실행기 사용
                 .listener(progressListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
+                .retry(org.springframework.web.client.RestClientException.class) // API 에러 리트라이 추가
                 .build();
     }
 
     @Bean
     @StepScope
     public StockListReader stockListReader(JpaPagingItemReader<Stock> stockReader) {
-        return new StockListReader(stockReader, 30);
+        return new StockListReader(stockReader, 5);
     }
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> stockReader() {
+    public JpaPagingItemReader<Stock> stockReader(
+            @Value("#{jobParameters['targetTicker']}") String targetTicker
+    ) {
+        // [개선] 6자리 숫자 티커만 필터링하기 위해 BETWEEN '000000' AND '999999' 사용
+        // 알파벳이 포함된 특수 종목(0002C0 등)을 효율적으로 제외하고 가독성 확보
+        String query = "SELECT s FROM Stock s " +
+                "WHERE s.status = 'ACTIVE' " +
+                "AND s.marketType IN ('KOSPI', 'KOSDAQ') " +
+                "AND s.groupCode IN ('ST', 'EF', 'EN') " +
+                "AND s.ticker BETWEEN '000000' AND '999999'";
+
+        Map<String, Object> parameters = new HashMap<>();
+        if (StringUtils.hasText(targetTicker)) {
+            query += " AND s.ticker = :targetTicker";
+            parameters.put("targetTicker", targetTicker);
+        }
+
+        query += " ORDER BY s.id ASC";
+
         return new JpaPagingItemReaderBuilder<Stock>()
                 .name("stockReader")
                 .entityManagerFactory(entityManagerFactory)
-                .queryString("SELECT s FROM Stock s WHERE s.status = 'ACTIVE' ORDER BY s.id ASC")
+                .queryString(query)
+                .parameterValues(parameters)
                 .pageSize(300)
                 .saveState(false)
                 .build();
@@ -102,11 +140,22 @@ public class StockPriceBatchConfig {
                 if (list != null) flatList.addAll(list);
             }
             if (!flatList.isEmpty()) {
-                // [변경] 중복 데이터 삭제 후 삽입 (표준 SQL 방식)
-                for (StockPrice sp : flatList) {
-                    jdbcTemplate.update("DELETE FROM stock_price WHERE base_date = ? AND stock_id = ?",
-                            DateUtil.toSqlDate(sp.getId().getBaseDate()), sp.getId().getStockId());
-                }
+                jdbcTemplate.batchUpdate(
+                        "DELETE FROM stock_price WHERE base_date = CAST(? AS date) AND stock_id = CAST(? AS bigint)",
+                        new BatchPreparedStatementSetter() {
+                            @Override
+                            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                                StockPrice sp = flatList.get(i);
+                                ps.setDate(1, DateUtil.toSqlDate(sp.getId().getBaseDate()));
+                                ps.setLong(2, sp.getId().getStockId());
+                            }
+
+                            @Override
+                            public int getBatchSize() {
+                                return flatList.size();
+                            }
+                        }
+                );
                 stockPriceJdbcWriter.write(new Chunk<>(flatList));
             }
         };
@@ -115,52 +164,61 @@ public class StockPriceBatchConfig {
     @Bean
     public JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter() {
         String sql = """
-            INSERT INTO stock_price (
-                base_date,
-                stock_id,
-                open_price,
-                high_price,
-                low_price,
-                close_price,
-                adj_close_price,
-                prev_close_price,
-                volume,
-                transaction_amt,
-                ma5,
-                ma20,
-                ma60,
-                ma120,
-                rsi14,
-                macd,
-                macd_signal,
-                created_at
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
-            )
-            """;
+                INSERT INTO stock_price (
+                    base_date, stock_id, open_price, high_price, low_price, close_price, adj_close_price, prev_close_price, volume, transaction_amt,
+                    ma5, ma20, ma60, ma120, rsi14, macd, macd_signal,
+                    bollinger_upper, bollinger_mid, bollinger_lower, adx, plus_di, minus_di,
+                    alignment_status, is_golden_cross, is_dead_cross, is_macd_cross,
+                    created_at
+                ) VALUES (
+                    CAST(? AS date), CAST(? AS bigint), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS bigint), CAST(? AS numeric), 
+                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
+                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
+                    CAST(? AS varchar), CAST(? AS boolean), CAST(? AS boolean), CAST(? AS boolean), 
+                    CURRENT_TIMESTAMP
+                )
+                """;
 
         return new JdbcBatchItemWriterBuilder<StockPrice>()
                 .dataSource(dataSource)
                 .sql(sql)
                 .itemPreparedStatementSetter((item, ps) -> {
-                    ps.setDate(1, DateUtil.toSqlDate(item.getId().getBaseDate()));
-                    ps.setLong(2, item.getId().getStockId());
-                    ps.setBigDecimal(3, item.getOpenPrice());
-                    ps.setBigDecimal(4, item.getHighPrice());
-                    ps.setBigDecimal(5, item.getLowPrice());
-                    ps.setBigDecimal(6, item.getClosePrice());
-                    ps.setBigDecimal(7, item.getAdjClosePrice());
-                    ps.setBigDecimal(8, item.getPreviousClosePrice());
-                    ps.setLong(9, item.getVolume());
-                    ps.setBigDecimal(10, item.getTransactionAmt());
+                    int idx = 1;
+                    ps.setDate(idx++, DateUtil.toSqlDate(item.getId().getBaseDate()));
+                    ps.setLong(idx++, item.getId().getStockId());
+                    ps.setBigDecimal(idx++, item.getOpenPrice());
+                    ps.setBigDecimal(idx++, item.getHighPrice());
+                    ps.setBigDecimal(idx++, item.getLowPrice());
+                    ps.setBigDecimal(idx++, item.getClosePrice());
+                    ps.setBigDecimal(idx++, item.getAdjClosePrice());
+                    ps.setBigDecimal(idx++, item.getPreviousClosePrice());
+                    ps.setLong(idx++, item.getVolume());
+                    ps.setBigDecimal(idx++, item.getTransactionAmt());
+
                     var indicators = item.getIndicators();
-                    ps.setBigDecimal(11, indicators != null ? indicators.getMa5() : null);
-                    ps.setBigDecimal(12, indicators != null ? indicators.getMa20() : null);
-                    ps.setBigDecimal(13, indicators != null ? indicators.getMa60() : null);
-                    ps.setBigDecimal(14, indicators != null ? indicators.getMa120() : null);
-                    ps.setBigDecimal(15, indicators != null ? indicators.getRsi14() : null);
-                    ps.setBigDecimal(16, indicators != null ? indicators.getMacd() : null);
-                    ps.setBigDecimal(17, indicators != null ? indicators.getMacdSignal() : null);
+                    if (indicators != null) {
+                        ps.setBigDecimal(idx++, indicators.getMa5());
+                        ps.setBigDecimal(idx++, indicators.getMa20());
+                        ps.setBigDecimal(idx++, indicators.getMa60());
+                        ps.setBigDecimal(idx++, indicators.getMa120());
+                        ps.setBigDecimal(idx++, indicators.getRsi14());
+                        ps.setBigDecimal(idx++, indicators.getMacd());
+                        ps.setBigDecimal(idx++, indicators.getMacdSignal());
+                        ps.setBigDecimal(idx++, indicators.getBollingerUpper());
+                        ps.setBigDecimal(idx++, indicators.getBollingerMid());
+                        ps.setBigDecimal(idx++, indicators.getBollingerLower());
+                        ps.setBigDecimal(idx++, indicators.getAdx());
+                        ps.setBigDecimal(idx++, indicators.getPlusDi());
+                        ps.setBigDecimal(idx++, indicators.getMinusDi());
+                        ps.setString(idx++, indicators.getAlignmentStatus() != null ? indicators.getAlignmentStatus().name() : null);
+                        ps.setObject(idx++, indicators.getIsGoldenCross());
+                        ps.setObject(idx++, indicators.getIsDeadCross());
+                        ps.setObject(idx++, indicators.getIsMacdCross());
+                    } else {
+                        for (int i = 0; i < 17; i++) {
+                            ps.setNull(idx++, java.sql.Types.NULL);
+                        }
+                    }
                 })
                 .assertUpdates(false)
                 .build();

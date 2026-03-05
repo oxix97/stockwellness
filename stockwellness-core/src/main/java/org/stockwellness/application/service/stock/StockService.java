@@ -47,7 +47,7 @@ public class StockService implements StockUseCase {
                 s.getTicker(),
                 s.getName(),
                 s.getMarketType(),
-                s.getSectorLargeCode(),
+                s.getSector().getSectorName(),
                 s.getStatus()
         ));
     }
@@ -65,7 +65,7 @@ public class StockService implements StockUseCase {
                         s.getTicker(),
                         s.getName(),
                         s.getMarketType(),
-                        s.getSectorLargeCode(),
+                        s.getSector().getSectorName(),
                         s.getStatus()
                 ))
                 .collect(Collectors.toList());

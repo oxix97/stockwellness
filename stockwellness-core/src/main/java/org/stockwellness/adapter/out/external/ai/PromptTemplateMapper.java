@@ -1,15 +1,14 @@
 package org.stockwellness.adapter.out.external.ai;
 
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
+import org.stockwellness.application.port.out.sector.SectorAiContext;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
+import org.stockwellness.global.util.FinanceFormatUtil;
 
-import java.math.BigDecimal;
-import java.text.DecimalFormat;
 import java.util.stream.Collectors;
 
 @Component
@@ -35,6 +34,37 @@ public class PromptTemplateMapper {
         
         위 데이터를 바탕으로 매수/매도 심리를 분석하고 향후 방향성을 예측해줘.
         """;
+
+    private static final String SECTOR_PROMPT_TEMPLATE = """
+        [분석 대상 섹터 데이터]
+        - 섹터명: %s (%s, %s 시장)
+        - 기준일자: %s
+        - 현재 지수: %s (평균 등락률: %s%%)
+        
+        [수급 및 추세 상황]
+        - 외국인 순매수액: %s (연속 %d일 매수)
+        - 기관 순매수액: %s (연속 %d일 매수)
+        - 추세 상태: %s
+        - 섹터 RSI: %s (%s)
+        
+        [섹터 내 핵심 주도주 흐름]
+        %s
+        
+        위 섹터의 현재 체력과 수급 상황을 분석하여, 투자 전략(매수/매도/관망)과 그 근거를 제시해줘.
+        """;
+
+    private static final String SECTOR_SYSTEM_INSTRUCTION = """
+            당신은 "여의도 1타 애널리스트" 스타일의 시장 분석 전문가입니다. 
+            주어진 섹터의 지수 흐름, 수급 상황, 주도주들의 움직임을 종합하여 명쾌한 투자 의견을 제시합니다.
+            
+            [분석 가이드]
+            1. decision: 해당 섹터에 대한 최종 판단 (BUY, SELL, HOLD)
+            2. title: 시장의 눈길을 끄는 강렬한 섹터 헤드라인 (15자 이내)
+            3. keyReasons: 분석 결과 도출된 핵심 근거 3가지 (각 항목은 20자 이내)
+            4. detailedAnalysis: 수급(외인/기관), 추세(이평선), 주도주 상황을 구체적으로 설명하는 분석문
+            
+            전문적이면서도 투자자가 실질적인 행동 지침을 얻을 수 있도록 단호하게 조언하세요.
+            """;
 
     private static final String PORTFOLIO_PROMPT_TEMPLATE = """
         [포트폴리오 건강 진단 데이터]
@@ -66,6 +96,10 @@ public class PromptTemplateMapper {
         return PORTFOLIO_SYSTEM_INSTRUCTION;
     }
 
+    public String getSectorSystemInstruction() {
+        return SECTOR_SYSTEM_INSTRUCTION;
+    }
+
     public String toPortfolioPromptString(PortfolioAiContext context) {
         var categories = context.categories();
         return PORTFOLIO_PROMPT_TEMPLATE.formatted(
@@ -78,6 +112,31 @@ public class PromptTemplateMapper {
         );
     }
 
+    public String toSectorPromptString(SectorAiContext context) {
+        String leadingStocksInfo = context.leadingStocks().stream()
+                .map(s -> String.format("   - %s (%s%%, 수급: %s)", s.name(), 
+                        FinanceFormatUtil.formatRate(s.fluctuationRate()), 
+                        FinanceFormatUtil.formatAmount(s.transactionAmt())))
+                .collect(Collectors.joining("\n"));
+
+        return SECTOR_PROMPT_TEMPLATE.formatted(
+                context.sectorName(),
+                context.sectorCode(),
+                context.marketType().getDescription(),
+                context.baseDate(),
+                FinanceFormatUtil.formatDecimal(context.indexPrice()),
+                FinanceFormatUtil.formatRate(context.fluctuationRate()),
+                FinanceFormatUtil.formatAmount(context.netForeignBuy()),
+                context.foreignDays(),
+                FinanceFormatUtil.formatAmount(context.netInstBuy()),
+                context.instDays(),
+                translateTrend(context.trendStatus()),
+                FinanceFormatUtil.formatDecimal(context.rsi()),
+                context.isOverheated() ? "과열" : "정상",
+                leadingStocksInfo
+        );
+    }
+
     public String toPromptString(AiAnalysisContext context) {
         var priceInfo = context.priceInfo();
         var techInfo = context.technicalSignal();
@@ -86,25 +145,25 @@ public class PromptTemplateMapper {
                 // 1. 기본 정보
                 context.isinCode(),
                 context.baseDate(),
-                formatPrice(priceInfo.closePrice()),
-                formatRate(priceInfo.fluctuationRate()),
+                FinanceFormatUtil.formatPrice(priceInfo.closePrice()),
+                FinanceFormatUtil.formatRate(priceInfo.fluctuationRate()),
 
                 // 2. 추세 및 이평선 (Enum -> Korean)
                 translateTrend(techInfo.trendStatus()),
-                formatPrice(techInfo.ma5()),
-                formatPrice(techInfo.ma20()),
-                formatPrice(techInfo.ma60()),
-                formatPrice(techInfo.ma120()),
+                FinanceFormatUtil.formatPrice(techInfo.ma5()),
+                FinanceFormatUtil.formatPrice(techInfo.ma20()),
+                FinanceFormatUtil.formatPrice(techInfo.ma60()),
+                FinanceFormatUtil.formatPrice(techInfo.ma120()),
 
                 // 3. 모멘텀
-                formatDecimal(techInfo.rsi()), // RSI 수치
+                FinanceFormatUtil.formatDecimal(techInfo.rsi()), // RSI 수치
                 techInfo.rsiStatus(),          // "과매수" 등 텍스트
                 translateSignal(techInfo.signal()), // 골든크로스 여부
-                formatDecimal(techInfo.macd())
+                FinanceFormatUtil.formatDecimal(techInfo.macd())
         );
     }
 
-    // --- Helper Methods (Formatting & Translation) ---
+    // --- Helper Methods (Translation) ---
 
     private String translateTrend(TrendStatus status) {
         if (status == null) return "판단 불가";
@@ -123,27 +182,5 @@ public class PromptTemplateMapper {
             case DEAD_CROSS -> "⚠️ 데드크로스 발생 (단기 매도 신호)";
             case NONE -> "크로스 신호 없음";
         };
-    }
-
-    // 통화 포맷 (천단위 콤마)
-    private String formatPrice(BigDecimal price) {
-        if (price == null) return "0";
-        // 1000원 미만(동전주)이거나 달러일 경우 소수점 표시, 그 외는 정수
-        if (price.compareTo(new BigDecimal("1000")) < 0) {
-            return new DecimalFormat("#,##0.00").format(price);
-        }
-        return new DecimalFormat("#,###").format(price);
-    }
-
-    // 등락률, RSI 등 소수점 포맷
-    private String formatRate(BigDecimal rate) {
-        if (rate == null) return "0.00";
-        return new DecimalFormat("+#,##0.00;-#").format(rate); // 양수엔 + 붙임
-    }
-
-    // 일반 지표 포맷
-    private String formatDecimal(BigDecimal value) {
-        if (value == null) return "0.00";
-        return new DecimalFormat("#,##0.00").format(value);
     }
 }
