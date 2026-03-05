@@ -23,5 +23,6 @@ dependencies {
     implementation("org.springframework.batch:spring-batch-integration")
     implementation("io.github.resilience4j:resilience4j-ratelimiter:2.2.0")
     testImplementation("org.springframework.batch:spring-batch-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
     testRuntimeOnly("com.h2database:h2")
 }
