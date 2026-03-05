@@ -27,5 +27,5 @@
 - **Containerization:** Docker & Docker Compose (local development environment)
 - **CI/CD:** GitHub Actions (Automated build, test, and containerization)
 - **Registry:** GitHub Container Registry (GHCR)
-- **Messaging:** Kafka (event-driven architecture for data consistency)
+- **Messaging:** Apache Kafka & Spring Kafka (Event-driven architecture for decoupling Batch and API, ensuring data consistency via cache invalidation events)
 - **Deployment Target:** Kubernetes (AWS EKS) for high availability and scalability

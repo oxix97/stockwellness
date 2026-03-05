@@ -3,16 +3,23 @@ package org.stockwellness.batch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.batch.dto.BatchExecutionResponse;
+import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
+import org.stockwellness.global.error.ErrorCode;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -24,7 +31,8 @@ import java.util.stream.Collectors;
 @RestController
 public class BatchAdminController {
 
-    private final JobLauncher jobLauncher;
+    @Qualifier("asyncJobLauncher")
+    private final JobLauncher asyncJobLauncher;
     private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
 
@@ -40,13 +48,13 @@ public class BatchAdminController {
      * 업종/지수 마스터(idxcode.mst) 동기화
      */
     @PostMapping("/sync-indices")
-    public String runIndicesSync() {
+    public ResponseEntity<BatchExecutionResponse> runIndicesSync() {
         try {
             marketIndexSyncService.syncIndices("idxcode.mst");
-            return "업종 마스터 동기화 성공 (로그 확인 필요)";
+            return ResponseEntity.ok(new BatchExecutionResponse(0L, "MarketIndexSync", null, "업종 마스터 동기화 성공"));
         } catch (Exception e) {
             log.error("업종 마스터 동기화 실패", e);
-            return "동기화 실패: " + e.getMessage();
+            throw new BatchException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
     }
 
@@ -70,18 +78,18 @@ public class BatchAdminController {
      * 종목 마스터(KOSPI/KOSDAQ) 동기화 배치 실행
      */
     @PostMapping("/sync-master")
-    public String runMasterSync() {
+    public ResponseEntity<BatchExecutionResponse> runMasterSync() {
         JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
                 .toJobParameters();
-        return launchJobAsync(stockMasterSyncJob, params);
+        return ResponseEntity.ok(launchJobAsync(stockMasterSyncJob, params));
     }
 
     /**
      * 섹터 인사이트 배치 실행
      */
     @PostMapping("/sync-sector")
-    public String runSectorSync(
+    public ResponseEntity<BatchExecutionResponse> runSectorSync(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -90,14 +98,17 @@ public class BatchAdminController {
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
                 .toJobParameters();
-        return launchJobAsync(sectorEodJob, params);
+        return ResponseEntity.ok(launchJobAsync(sectorEodJob, params));
     }
 
     /**
      * 시세 수집 배치 실행 (전체 종목)
      */
     @PostMapping("/fetch-prices")
-    public String runPriceFetch(@RequestBody(required = false) StockPriceSyncRequest request) {
+    public ResponseEntity<BatchExecutionResponse> runPriceFetch(
+            @RequestBody(required = false) StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
         String startDate = null;
         String endDate = null;
 
@@ -115,15 +126,19 @@ public class BatchAdminController {
                 .addLong("time", System.currentTimeMillis())
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
+                .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
-        return launchJobAsync(stockPriceBatchJob, params);
+        return ResponseEntity.ok(launchJobAsync(stockPriceBatchJob, params));
     }
 
     /**
      * 시세 수집 배치 실행 (단건 종목)
      */
     @PostMapping("/fetch-prices/single")
-    public String runSinglePriceFetch(@RequestBody StockPriceSyncRequest request) {
+    public ResponseEntity<BatchExecutionResponse> runSinglePriceFetch(
+            @RequestBody StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
         if (request == null || !StringUtils.hasText(request.getTargetTicker())) {
             throw new IllegalArgumentException("targetTicker는 필수입니다.");
         }
@@ -138,15 +153,16 @@ public class BatchAdminController {
                 .addString("targetTicker", request.getTargetTicker())
                 .addString("startDate", startDate)
                 .addString("endDate", request.getEndDate())
+                .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
-        return launchJobAsync(stockPriceBatchJob, params);
+        return ResponseEntity.ok(launchJobAsync(stockPriceBatchJob, params));
     }
 
     /**
      * 전일 종가 데이터 소급 보정 실행
      */
     @PostMapping("/sync-prev-close")
-    public String runPrevCloseSync(
+    public ResponseEntity<BatchExecutionResponse> runPrevCloseSync(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -155,14 +171,14 @@ public class BatchAdminController {
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
                 .toJobParameters();
-        return launchJobAsync(stockPricePrevCloseSyncJob, params);
+        return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
     }
 
     /**
      * 특정 종목 단건 즉시 동기화 (보정 배치 활용)
      */
     @PostMapping("/sync-stock/{ticker}")
-    public String syncSingleStock(
+    public ResponseEntity<BatchExecutionResponse> syncSingleStock(
             @PathVariable String ticker,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
@@ -178,7 +194,7 @@ public class BatchAdminController {
                 .addString("endDate", endDate)
                 .toJobParameters();
 
-        return launchJobAsync(stockPricePrevCloseSyncJob, params);
+        return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
     }
 
     /**
@@ -194,14 +210,15 @@ public class BatchAdminController {
         }
     }
 
-    private String launchJobAsync(Job job, JobParameters params) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                jobLauncher.run(job, params);
-            } catch (Exception e) {
-                log.error("Job {} failed", job.getName(), e);
-            }
-        });
-        return job.getName() + " 시작됨 (ExecutionId는 로그 확인 필요)";
+    private BatchExecutionResponse launchJobAsync(Job job, JobParameters params) {
+        try {
+            // asyncJobLauncher를 사용하므로 즉시 JobExecution이 반환됨 (배치는 백그라운드 실행)
+            JobExecution execution = asyncJobLauncher.run(job, params);
+            String statusUrl = String.format("/api/v1/admin/batch/status/%s", job.getName());
+            return BatchExecutionResponse.of(execution.getId(), job.getName(), statusUrl);
+        } catch (Exception e) {
+            log.error("잡 실행 실패: {}", job.getName(), e);
+            throw new BatchException(ErrorCode.BATCH_EXECUTION_FAILED);
+        }
     }
 }

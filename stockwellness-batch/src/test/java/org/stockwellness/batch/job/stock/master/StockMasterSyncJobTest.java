@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
+import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
@@ -37,6 +38,12 @@ class StockMasterSyncJobTest {
     private JobLauncherTestUtils jobLauncherTestUtils;
 
     @Autowired
+    @Qualifier("jobLauncher")
+    public void setJobLauncher(org.springframework.batch.core.launch.JobLauncher jobLauncher) {
+        this.jobLauncherTestUtils.setJobLauncher(jobLauncher);
+    }
+
+    @Autowired
     @Qualifier("stockMasterSyncJob")
     public void setJob(Job job) {
         this.jobLauncherTestUtils.setJob(job);
@@ -44,6 +51,9 @@ class StockMasterSyncJobTest {
 
     @MockitoBean
     private KisMasterClient kisMasterClient;
+
+    @MockitoBean
+    private BatchMdcListener mdcListener;
 
     @Autowired
     private MarketIndexRepository marketIndexRepository;

@@ -54,7 +54,9 @@ public enum ErrorCode {
 
     // 배치 (Batch)
     BATCH_STEP_INTERRUPTED(HttpStatus.INTERNAL_SERVER_ERROR, "배치 작업이 중단되었습니다."),
-    RATE_LIMIT_WAIT_CANCELLED(HttpStatus.INTERNAL_SERVER_ERROR, "RateLimiter 대기 중 취소되었습니다.");
+    RATE_LIMIT_WAIT_CANCELLED(HttpStatus.INTERNAL_SERVER_ERROR, "RateLimiter 대기 중 취소되었습니다."),
+    BATCH_EXECUTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "배치 실행 중 오류가 발생했습니다."),
+    BATCH_ORCHESTRATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "배치 오케스트레이션 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String message;
