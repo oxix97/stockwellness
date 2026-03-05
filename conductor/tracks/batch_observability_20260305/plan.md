@@ -6,9 +6,9 @@
 - [x] Task: Update `logback-spring.xml` to include MDC variables in the log pattern.
 
 ## Phase 2: API Enhancement
-- [ ] Task: Create `BatchExecutionResponse` DTO for standardized API feedback.
-- [ ] Task: Refactor `BatchAdminController` to return `ResponseEntity<BatchExecutionResponse>`.
-- [ ] Task: Implement URL generation logic for status tracking.
+- [x] Task: Create `BatchExecutionResponse` DTO for standardized API feedback.
+- [x] Task: Refactor `BatchAdminController` to return `ResponseEntity<BatchExecutionResponse>`.
+- [x] Task: Implement URL generation logic for status tracking.
 
 ## Phase 3: Message Standardization
 - [ ] Task: Define a common log message template for batch events.
