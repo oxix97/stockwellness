@@ -12,6 +12,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+    // kafka
+    implementation("org.springframework.kafka:spring-kafka")
+
     // jpa (for EntityManagerFactory in Batch Configs)
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
