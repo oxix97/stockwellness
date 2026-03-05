@@ -51,8 +51,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
 *Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
-
----
-
-- [ ] **Track: Kafka Event-Driven Architecture Foundation**
-*Link: [./tracks/kafka_integration_20260305/](./tracks/kafka_integration_20260305/)*
