@@ -97,7 +97,10 @@ public class BatchAdminController {
      * 시세 수집 배치 실행 (전체 종목)
      */
     @PostMapping("/fetch-prices")
-    public String runPriceFetch(@RequestBody(required = false) StockPriceSyncRequest request) {
+    public String runPriceFetch(
+            @RequestBody(required = false) StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
         String startDate = null;
         String endDate = null;
 
@@ -115,6 +118,7 @@ public class BatchAdminController {
                 .addLong("time", System.currentTimeMillis())
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
+                .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
         return launchJobAsync(stockPriceBatchJob, params);
     }
@@ -123,7 +127,10 @@ public class BatchAdminController {
      * 시세 수집 배치 실행 (단건 종목)
      */
     @PostMapping("/fetch-prices/single")
-    public String runSinglePriceFetch(@RequestBody StockPriceSyncRequest request) {
+    public String runSinglePriceFetch(
+            @RequestBody StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
         if (request == null || !StringUtils.hasText(request.getTargetTicker())) {
             throw new IllegalArgumentException("targetTicker는 필수입니다.");
         }
@@ -138,6 +145,7 @@ public class BatchAdminController {
                 .addString("targetTicker", request.getTargetTicker())
                 .addString("startDate", startDate)
                 .addString("endDate", request.getEndDate())
+                .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
         return launchJobAsync(stockPriceBatchJob, params);
     }
@@ -201,7 +209,7 @@ public class BatchAdminController {
             } catch (Exception e) {
                 log.error("Job {} failed", job.getName(), e);
             }
-        });
+        }, kisBatchExecutor);
         return job.getName() + " 시작됨 (ExecutionId는 로그 확인 필요)";
     }
 }
