@@ -12,11 +12,13 @@ import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
+import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
@@ -55,18 +57,18 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         // [추가] 데이터 저장 하한선 (2022-01-01) 준수
         LocalDate paramStartDate = StringUtils.hasText(startDateStr) ? DateUtil.parse(startDateStr) : null;
-        LocalDate effectiveStartDate = (paramStartDate != null && paramStartDate.isBefore(EARLIEST_BASE_DATE)) 
+        LocalDate effectiveStartDate = (paramStartDate != null && paramStartDate.isBefore(EARLIEST_BASE_DATE))
                 ? EARLIEST_BASE_DATE : paramStartDate;
 
         // 파라미터가 명시적으로 있으면 '소급(Backfill) 모드'로 간주
         boolean isExplicitRange = (effectiveStartDate != null);
 
         Map<Long, LocalDate> latestDatesMap = stockPricePort.findLatestBaseDatesByStocks(stocks);
-        
+
         // 지표 계산을 위한 과거 데이터 로드 (고/저가 포함 엔티티 리스트)
         // [수정] effectiveStartDate를 기준으로 버퍼 로드
         LocalDate lookbackBaseDate = isExplicitRange ? effectiveStartDate : endDate;
-        Map<Long, List<StockPrice>> historicalEntitiesMap = stockPricePort.findRecentPricesWithDateByStocks(stocks, 
+        Map<Long, List<StockPrice>> historicalEntitiesMap = stockPricePort.findRecentPricesWithDateByStocks(stocks,
                 lookbackBaseDate, INDICATOR_BUFFER_DAYS);
 
         List<Stock> todaySyncStocks = new ArrayList<>();
@@ -74,7 +76,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         for (Stock stock : stocks) {
             LocalDate lastDate = latestDatesMap.get(stock.getId());
-            
+
             // 파라미터가 없고 어제까지 데이터가 있다면 '당일 단순 업데이트'
             if (!isExplicitRange && lastDate != null && DateUtil.daysBetween(lastDate, endDate) == 1) {
                 todaySyncStocks.add(stock);
@@ -97,13 +99,22 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         for (Stock stock : gapSyncStocks) {
             try {
                 resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), effectiveStartDate, endDate, historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList())));
+            } catch (io.github.resilience4j.ratelimiter.RequestNotPermitted e) {
+                log.warn("Rate limit exceeded for stock {}", stock.getTicker());
+            } catch (io.github.resilience4j.core.exception.AcquirePermissionCancelledException e) {
+                log.info("Batch process interrupted during shutdown for stock {}. Stopping current task.", stock.getTicker());
+                throw new BatchException(ErrorCode.RATE_LIMIT_WAIT_CANCELLED);
             } catch (Exception e) {
+                if (Thread.currentThread().isInterrupted()) {
+                    log.info("Thread interrupted during processing stock {}. Stopping.", stock.getTicker());
+                    throw new BatchException(ErrorCode.BATCH_STEP_INTERRUPTED);
+                }
                 log.error("Critical error processing individual gap for stock {}: {}", stock.getTicker(), e.getMessage(), e);
             }
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        log.info("Batch Processed ({}ms): [Total: {}] TodaySync: {}, RangeSync: {}, Created Entities: {}", 
+        log.info("Batch Processed ({}ms): [Total: {}] TodaySync: {}, RangeSync: {}, Created Entities: {}",
                 duration, stocks.size(), todaySyncStocks.size(), gapSyncStocks.size(), resultEntities.size());
 
         return resultEntities.isEmpty() ? null : resultEntities;
@@ -114,7 +125,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         if (today.isBefore(EARLIEST_BASE_DATE)) return Collections.emptyList();
 
         List<String> tickers = stocks.stream().map(Stock::getTicker).toList();
-        
+
         // RateLimiter 적용
         List<KisMultiStockPriceDetail> apiResults;
         try {
@@ -123,7 +134,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
             log.error("API fetch failed for multi stock prices: {}", e.getMessage());
             return Collections.emptyList();
         }
-        
+
         if (apiResults.isEmpty()) return Collections.emptyList();
 
         Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
@@ -184,22 +195,22 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         if (storeStartDate.isAfter(endDate)) return Collections.emptyList();
 
-        // 2. [핵심] 지표 계산의 정확도를 위해 API 조회 시작일(fetchStartDate)은 storeStartDate보다 180일 앞당김
-        LocalDate fetchStartDate = storeStartDate.minusDays(180);
-        
+        // 2. [핵심] 지표 계산의 정확도를 위해 API 조회 시작일(fetchStartDate)은 storeStartDate보다 200일 앞당김
+        LocalDate fetchStartDate = storeStartDate.minusDays(200);
+
         // 3. API 호출
         List<KisDailyPriceDetail> apiResults = fetchPricesFromKis(stock, fetchStartDate, endDate);
         if (apiResults.isEmpty()) return Collections.emptyList();
 
         // 4. [개선] TreeMap을 사용하여 날짜 중복 제거 및 정렬 보장
         Map<LocalDate, OHLCRecord> mergedData = new TreeMap<>();
-        
+
         // DB 데이터 먼저 채우기
         for (StockPrice p : historicalEntities) {
             mergedData.put(p.getId().getBaseDate(), new OHLCRecord(
                     p.getOpenPrice(), p.getHighPrice(), p.getLowPrice(), p.getClosePrice(), p.getVolume(), p.getTransactionAmt()));
         }
-        
+
         // API 데이터로 덮어쓰기 (최신 정보 우선)
         for (KisDailyPriceDetail dto : apiResults) {
             mergedData.put(dto.baseDate(), new OHLCRecord(
@@ -213,12 +224,12 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
         // 5. 전체 기간 지표 계산
         List<TechnicalIndicators> allIndicators = TechnicalIndicatorCalculator.calculateSeries(fullHighPrices, fullLowPrices, fullClosingPrices, fullDates);
-        
+
         // 6. 저장용 엔티티 필터링 (storeStartDate 이후 데이터만)
         List<StockPrice> entities = new ArrayList<>();
         for (int i = 0; i < fullDates.size(); i++) {
             LocalDate date = fullDates.get(i);
-            if (date.isBefore(storeStartDate)) continue; 
+            if (date.isBefore(storeStartDate)) continue;
 
             BigDecimal prevClose = (i > 0) ? fullClosingPrices.get(i - 1) : BigDecimal.ZERO;
             OHLCRecord data = mergedData.get(date);
@@ -232,9 +243,10 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         return entities;
     }
 
-    private record OHLCRecord(BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Long volume, BigDecimal transactionAmt) {}
-
-    private List<KisDailyPriceDetail> fetchPricesFromKis(Stock stock, LocalDate start, LocalDate end) throws InterruptedException {
+    private List<KisDailyPriceDetail> fetchPricesFromKis(Stock stock, LocalDate start, LocalDate end) {
+        if (!stock.getTicker().matches("^[0-9]+$")) {
+            return Collections.emptyList();
+        }
         List<KisDailyPriceDetail> allDetails = new ArrayList<>();
         LocalDate cursorDate = end;
         while (!cursorDate.isBefore(start)) {
@@ -244,15 +256,37 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
             // RateLimiter 적용
             final LocalDate finalChunkStartDate = chunkStartDate;
             final LocalDate finalCursorDate = cursorDate;
-            List<KisDailyPriceDetail> response = kisRateLimiter.executeSupplier(() -> 
+            List<KisDailyPriceDetail> response = kisRateLimiter.executeSupplier(() ->
                     kisAdapter.fetchDailyPrices(stock, finalChunkStartDate, finalCursorDate));
-            
-            if (response == null || response.isEmpty()) break;
+
+            if (response.isEmpty()) {
+                log.warn("Empty response for {} between {} and {}. Continuing to older dates...",
+                        stock.getTicker(), chunkStartDate, cursorDate);
+                cursorDate = chunkStartDate.minusDays(1);
+                continue;
+            }
+
             allDetails.addAll(response);
             LocalDate oldestDateInResponse = response.get(response.size() - 1).baseDate();
-            if (oldestDateInResponse.isBefore(cursorDate)) cursorDate = oldestDateInResponse.minusDays(1);
-            else break;
+
+            // 응답받은 데이터 중 가장 오래된 날짜의 이전 날짜로 커서 이동
+            if (oldestDateInResponse.isBefore(cursorDate)) {
+                cursorDate = oldestDateInResponse.minusDays(1);
+            } else {
+                // 더 이상 가져올 데이터가 없으면 종료 (중복 방지)
+                cursorDate = chunkStartDate.minusDays(1);
+            }
         }
         return allDetails;
+    }
+
+    private record OHLCRecord(
+            BigDecimal open,
+            BigDecimal high,
+            BigDecimal low,
+            BigDecimal close,
+            Long volume,
+            BigDecimal transactionAmt
+    ) {
     }
 }
