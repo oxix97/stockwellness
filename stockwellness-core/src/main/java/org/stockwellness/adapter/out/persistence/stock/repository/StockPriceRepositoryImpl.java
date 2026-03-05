@@ -81,7 +81,12 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     }
 
     @Override
-    public List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date) {
+    public List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
+        // [수정] 30개 종목에 대해 각각 최근 limit(120일)치를 충분히 가져오도록 개선
+        // 특정 종목의 데이터가 적을 수 있으므로 전체 조회 시 넉넉하게 limit * 1.5배를 가져오도록 함
+        long totalLimit = (long) stocks.size() * limit;
+        long safetyBuffer = (long) (totalLimit * 1.5);
+
         return queryFactory
                 .selectFrom(stockPrice)
                 .join(stockPrice.stock, stock).fetchJoin()
@@ -90,7 +95,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stockPrice.id.baseDate.lt(date)
                 )
                 .orderBy(stockPrice.id.baseDate.desc())
-                .limit(stocks.size() * 130L)
+                .limit(safetyBuffer)
                 .fetch();
     }
 

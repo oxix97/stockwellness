@@ -46,5 +46,5 @@ public interface StockPriceRepositoryCustom {
     /**
      * 여러 종목의 최근 가격 데이터를 한 번에 조회합니다. (QueryDSL)
      */
-    List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date);
+    List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date, int limit);
 }

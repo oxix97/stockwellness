@@ -55,16 +55,14 @@ public class StockPriceBatchConfig {
     private final DataSource dataSource;
     private final StockPriceProgressListener progressListener;
     private final JdbcTemplate jdbcTemplate;
-
-    @Qualifier("batchExecutor")
-    private final TaskExecutor batchExecutor;
+    private final TaskExecutor kisBatchExecutor;
 
     @Bean
     public RateLimiter kisRateLimiter() {
         RateLimiterConfig config = RateLimiterConfig.custom()
                 .limitRefreshPeriod(Duration.ofSeconds(1))
-                .limitForPeriod(18)
-                .timeoutDuration(Duration.ofSeconds(10))
+                .limitForPeriod(19) // 10 -> 19로 상향 (최대 성능 모드)
+                .timeoutDuration(Duration.ofSeconds(20))
                 .build();
         return RateLimiterRegistry.of(config).rateLimiter("kisRateLimiter");
     }
@@ -87,19 +85,20 @@ public class StockPriceBatchConfig {
                 .reader(stockListReader)
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
-                .taskExecutor(batchExecutor) // 공용 배치 실행기 사용
+                .taskExecutor(kisBatchExecutor) // 공용 배치 실행기 사용
                 .listener(progressListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
+                .retry(org.springframework.web.client.RestClientException.class) // API 에러 리트라이 추가
                 .build();
     }
 
     @Bean
     @StepScope
     public StockListReader stockListReader(JpaPagingItemReader<Stock> stockReader) {
-        return new StockListReader(stockReader, 30);
+        return new StockListReader(stockReader, 5);
     }
 
     @Bean
@@ -107,9 +106,15 @@ public class StockPriceBatchConfig {
     public JpaPagingItemReader<Stock> stockReader(
             @Value("#{jobParameters['targetTicker']}") String targetTicker
     ) {
-        String query = "SELECT s FROM Stock s WHERE s.status = 'ACTIVE'";
-        Map<String, Object> parameters = new HashMap<>();
+        // [개선] 6자리 숫자 티커만 필터링하기 위해 BETWEEN '000000' AND '999999' 사용
+        // 알파벳이 포함된 특수 종목(0002C0 등)을 효율적으로 제외하고 가독성 확보
+        String query = "SELECT s FROM Stock s " +
+                "WHERE s.status = 'ACTIVE' " +
+                "AND s.marketType IN ('KOSPI', 'KOSDAQ') " +
+                "AND s.groupCode IN ('ST', 'EF', 'EN') " +
+                "AND s.ticker BETWEEN '000000' AND '999999'";
 
+        Map<String, Object> parameters = new HashMap<>();
         if (StringUtils.hasText(targetTicker)) {
             query += " AND s.ticker = :targetTicker";
             parameters.put("targetTicker", targetTicker);
