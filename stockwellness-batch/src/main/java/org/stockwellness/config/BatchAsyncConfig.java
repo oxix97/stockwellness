@@ -1,5 +1,6 @@
 package org.stockwellness.config;
 
+import org.stockwellness.batch.common.MdcTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
@@ -17,6 +18,7 @@ public class BatchAsyncConfig {
         executor.setMaxPoolSize(20);
         executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("Batch-Gen-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -30,6 +32,7 @@ public class BatchAsyncConfig {
         executor.setThreadNamePrefix("Batch-KIS-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.initialize();
         return executor;
     }

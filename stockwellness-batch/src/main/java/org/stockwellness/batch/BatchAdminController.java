@@ -8,6 +8,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.out.stock.StockPort;
@@ -35,6 +36,7 @@ public class BatchAdminController {
 
     private final StockPort stockPort;
     private final MarketIndexSyncService marketIndexSyncService;
+    private final TaskExecutor kisBatchExecutor;
 
     /**
      * 업종/지수 마스터(idxcode.mst) 동기화

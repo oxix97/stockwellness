@@ -1,7 +1,7 @@
 # Implementation Plan: Batch Observability & API Feedback Enhancement
 
 ## Phase 1: Logging Infrastructure (MDC)
-- [ ] Task: Implement `BatchMdcListener` to manage MDC context (JobName, ExecutionId).
+- [x] Task: Implement `BatchMdcListener` to manage MDC context (JobName, ExecutionId).
 - [ ] Task: Register `BatchMdcListener` to all Batch Jobs in `StockMasterSyncJobConfig`, `StockPriceBatchConfig`, etc.
 - [ ] Task: Update `logback-spring.xml` to include MDC variables in the log pattern.
 

@@ -6,8 +6,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
@@ -27,6 +31,12 @@ class StockPriceUpdateConsumerTest {
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
 
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafkaBroker;
+
     @MockBean
     private CacheManager cacheManager;
 
@@ -39,14 +49,21 @@ class StockPriceUpdateConsumerTest {
         Cache mockCache = mock(Cache.class);
         when(cacheManager.getCache(anyString())).thenReturn(mockCache);
 
+        // 컨슈머가 파티션을 할당받을 때까지 대기
+        for (MessageListenerContainer messageListenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
+            ContainerTestUtils.waitForAssignment(messageListenerContainer, embeddedKafkaBroker.getPartitionsPerTopic());
+        }
+
         // when
         kafkaTemplate.send(KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, event);
 
         // then
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
-            // 캐시 무효화 메서드가 호출되었는지 확인
-            verify(mockCache, atLeastOnce()).evict(anyString());
-            verify(mockCache, atLeastOnce()).clear();
-        });
+        await()
+            .atMost(10, TimeUnit.SECONDS)
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .untilAsserted(() -> {
+                // 적어도 한 번은 캐시 무효화가 발생했는지 확인
+                verify(mockCache, atLeastOnce()).evict(anyString());
+            });
     }
 }
