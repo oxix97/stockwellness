@@ -2,7 +2,7 @@ package org.stockwellness.batch.job.stock.master;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.*;
-
+import org.stockwellness.batch.common.BatchLogTemplate;
 import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDateTime;
@@ -12,8 +12,7 @@ public class StockMasterJobExecutionListener implements JobExecutionListener {
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
-        log.info("===== [StockMasterSyncJob] START | runId={} =====",
-                jobExecution.getJobParameters().getLong("run.id"));
+        log.info(BatchLogTemplate.jobStarted(jobExecution.getJobInstance().getJobName()));
     }
 
     @Override
@@ -23,11 +22,16 @@ public class StockMasterJobExecutionListener implements JobExecutionListener {
                 jobExecution.getEndTime() != null ? jobExecution.getEndTime() : DateUtil.now()
         );
 
+        String message = BatchLogTemplate.jobFinished(
+                jobExecution.getJobInstance().getJobName(),
+                jobExecution.getStatus(),
+                elapsedMs
+        );
+
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-            log.info("===== [StockMasterSyncJob] COMPLETED | elapsed={}ms =====", elapsedMs);
+            log.info(message);
         } else {
-            log.error("===== [StockMasterSyncJob] {} | elapsed={}ms | failures={} =====",
-                    jobExecution.getStatus(), elapsedMs, jobExecution.getAllFailureExceptions());
+            log.error(message + " | failures={}", jobExecution.getAllFailureExceptions());
         }
     }
 }
@@ -43,20 +47,21 @@ class StockMasterStepExecutionListener implements StepExecutionListener {
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
-        log.info("[{}] Step START", label);
+        log.info(BatchLogTemplate.stepStarted(label));
     }
 
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("[{}] Step {} | read={} write={} skip={} | elapsed={}ms",
-                label,
-                stepExecution.getStatus(),
-                stepExecution.getReadCount(),
-                stepExecution.getWriteCount(),
-                stepExecution.getSkipCount(),
-                DateUtil.elapsedMillis(stepExecution.getStartTime(),
-                        stepExecution.getEndTime() != null
-                                ? stepExecution.getEndTime() : DateUtil.now()));
+        long elapsedMs = DateUtil.elapsedMillis(
+                stepExecution.getStartTime(),
+                stepExecution.getEndTime() != null ? stepExecution.getEndTime() : DateUtil.now()
+        );
+
+        String message = BatchLogTemplate.stepFinished(label, stepExecution.getStatus(), elapsedMs);
+        String counts = String.format("read=%d, write=%d, skip=%d", 
+                stepExecution.getReadCount(), stepExecution.getWriteCount(), stepExecution.getSkipCount());
+
+        log.info("{} | {}", message, counts);
         return stepExecution.getExitStatus();
     }
 }

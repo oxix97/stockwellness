@@ -9,6 +9,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
+import org.stockwellness.batch.common.BatchLogTemplate;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -36,7 +37,7 @@ public class SectorEodJobListener implements JobExecutionListener {
                 sectorInsightUseCase.getTopSectorsBySupply(today, null, 10);
                 log.info("섹터 캐시 프리워밍 완료.");
             } catch (Exception e) {
-                log.error("캐시 프리워밍 중 오류 발생: {}", e.getMessage());
+                log.error(BatchLogTemplate.error("캐시 프리워밍 중 오류 발생"), e);
             }
         }
     }

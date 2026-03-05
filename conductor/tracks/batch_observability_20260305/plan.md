@@ -11,8 +11,8 @@
 - [x] Task: Implement URL generation logic for status tracking.
 
 ## Phase 3: Message Standardization
-- [ ] Task: Define a common log message template for batch events.
-- [ ] Task: Refactor existing listeners (`StockPriceProgressListener`, etc.) to use the standardized template.
+- [x] Task: Define a common log message template for batch events.
+- [x] Task: Refactor existing listeners (`StockPriceProgressListener`, etc.) to use the standardized template.
 
 ## Phase 4: Verification
 - [ ] Task: Verify log traceability by running multiple jobs concurrently.
