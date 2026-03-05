@@ -33,16 +33,19 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class StockPriceRepairBatchConfig {
-
-    private final JobRepository jobRepository;
+import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.domain.stock.Stock;
+...
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
+    private final BatchMdcListener mdcListener;
 
     @Bean
     public Job stockPricePrevCloseSyncJob(Step stockPricePrevCloseStep) {
         return new JobBuilder("stockPricePrevCloseSyncJob", jobRepository)
                 .start(stockPricePrevCloseStep)
+                .listener(mdcListener)
                 .build();
     }
 
@@ -57,6 +60,7 @@ public class StockPriceRepairBatchConfig {
                 .reader(stockRepairReader)
                 .processor(stockPricePrevCloseProcessor)
                 .writer(stockPriceSimpleRepairWriter)
+                .listener(mdcListener)
                 .build();
     }
 

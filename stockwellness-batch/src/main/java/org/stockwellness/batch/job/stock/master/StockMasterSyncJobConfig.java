@@ -15,6 +15,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.MarketType;
@@ -35,12 +36,14 @@ public class StockMasterSyncJobConfig {
     private final KisMasterClient kisMasterClient;
     private final StockRepository stockRepository;
     private final MarketIndexRepository marketIndexRepository;
+    private final BatchMdcListener mdcListener;
 
     private static final int CHUNK_SIZE = 500;
 
     @Bean
     public Job stockMasterSyncJob() {
         return new JobBuilder("stockMasterSyncJob", jobRepository)
+                .listener(mdcListener)
                 .listener(new StockMasterJobExecutionListener())
                 .start(kospiUpsertStep())
                 .next(kospiDelistStep())
@@ -58,6 +61,7 @@ public class StockMasterSyncJobConfig {
                 .reader(kospiItemReader())
                 .processor(kospiItemProcessor())
                 .writer(stockItemWriter())
+                .listener(mdcListener)
                 .listener(new StockMasterStepExecutionListener("KOSPI-Upsert"))
                 .faultTolerant()
                 .skip(Exception.class)
@@ -69,6 +73,7 @@ public class StockMasterSyncJobConfig {
     public Step kospiDelistStep() {
         return new StepBuilder("kospiDelistStep", jobRepository)
                 .tasklet(new StockDelistTasklet(stockRepository, MarketType.KOSPI), txManager)
+                .listener(mdcListener)
                 .listener(new StockMasterStepExecutionListener("KOSPI-Delist"))
                 .build();
     }
@@ -82,6 +87,7 @@ public class StockMasterSyncJobConfig {
                 .reader(kosdaqItemReader())
                 .processor(kosdaqItemProcessor())
                 .writer(stockItemWriter())
+                .listener(mdcListener)
                 .listener(new StockMasterStepExecutionListener("KOSDAQ-Upsert"))
                 .faultTolerant()
                 .skip(Exception.class)
@@ -93,6 +99,7 @@ public class StockMasterSyncJobConfig {
     public Step kosdaqDelistStep() {
         return new StepBuilder("kosdaqDelistStep", jobRepository)
                 .tasklet(new StockDelistTasklet(stockRepository, MarketType.KOSDAQ), txManager)
+                .listener(mdcListener)
                 .listener(new StockMasterStepExecutionListener("KOSDAQ-Delist"))
                 .build();
     }
