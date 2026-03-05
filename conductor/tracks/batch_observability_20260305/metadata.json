@@ -1,0 +1,8 @@
+{
+  "track_id": "batch_observability_20260305",
+  "type": "improvement",
+  "status": "new",
+  "created_at": "2026-03-05T17:00:00Z",
+  "updated_at": "2026-03-05T17:00:00Z",
+  "description": "Spring Batch 운영 가시성 강화 및 관리자 API 피드백 개선 (MDC, Response DTO)"
+}
