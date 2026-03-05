@@ -21,6 +21,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.batch.job.stock.sector.job.listener.SectorEodJobListener;
 import org.stockwellness.batch.job.stock.sector.job.step.*;
 import org.stockwellness.domain.stock.insight.SectorInsight;
@@ -37,6 +38,7 @@ public class SectorEodBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final SectorEodJobListener jobListener;
+    private final BatchMdcListener mdcListener;
     private final EntityManagerFactory entityManagerFactory;
 
     @Bean
@@ -44,6 +46,7 @@ public class SectorEodBatchConfig {
         return new JobBuilder("sectorEodJob", jobRepository)
                 .start(syncSectorInsightStep)
                 .next(sectorAiAnalysisStep)
+                .listener(mdcListener)
                 .listener(jobListener)
                 .build();
     }
@@ -62,6 +65,7 @@ public class SectorEodBatchConfig {
                 .reader(reader)
                 .processor(processor)
                 .writer(writer)
+                .listener(mdcListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(Exception.class)
@@ -82,6 +86,7 @@ public class SectorEodBatchConfig {
                 .reader(sectorReader)
                 .processor(asyncProcessor)
                 .writer(asyncWriter)
+                .listener(mdcListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(Exception.class)

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.ItemWriteListener;
 import org.springframework.batch.item.Chunk;
 import org.springframework.stereotype.Component;
+import org.stockwellness.batch.common.BatchLogTemplate;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,12 +22,12 @@ public class StockPriceProgressListener implements ItemWriteListener<List<StockP
         int currentCount = count.incrementAndGet();
         // 10개 종목마다 로그 출력
         if (currentCount % 10 == 0) {
-            log.info(">>> [Batch Progress] {} stocks processed successfully.", currentCount);
+            log.info(BatchLogTemplate.progress(currentCount, "stocks"));
         }
     }
 
     @Override
     public void onWriteError(Exception exception, Chunk<? extends List<StockPrice>> items) {
-        log.error(">>> [Batch Error] Error occurred while writing stock prices", exception);
+        log.error(BatchLogTemplate.error("Error occurred while writing stock prices"), exception);
     }
 }

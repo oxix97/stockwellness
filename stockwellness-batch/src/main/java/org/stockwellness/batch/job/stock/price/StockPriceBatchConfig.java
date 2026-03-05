@@ -31,6 +31,7 @@ import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.StringUtils;
+import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
@@ -54,6 +55,8 @@ public class StockPriceBatchConfig {
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
     private final StockPriceProgressListener progressListener;
+    private final StockPriceSyncEventListener eventListener;
+    private final BatchMdcListener mdcListener;
     private final JdbcTemplate jdbcTemplate;
     private final TaskExecutor kisBatchExecutor;
 
@@ -71,6 +74,8 @@ public class StockPriceBatchConfig {
     public Job stockPriceBatchJob(Step stockPriceStep) {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
                 .start(stockPriceStep)
+                .listener(mdcListener)
+                .listener(eventListener)
                 .build();
     }
 
@@ -86,7 +91,9 @@ public class StockPriceBatchConfig {
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
                 .taskExecutor(kisBatchExecutor) // 공용 배치 실행기 사용
+                .listener(mdcListener)
                 .listener(progressListener)
+                .listener(eventListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
