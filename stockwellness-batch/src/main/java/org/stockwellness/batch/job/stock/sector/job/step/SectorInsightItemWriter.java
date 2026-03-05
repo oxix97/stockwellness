@@ -8,28 +8,21 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class SectorInsightItemWriter implements ItemWriter<List<SectorInsight>> {
+public class SectorInsightItemWriter implements ItemWriter<SectorInsight> {
 
     private final SectorInsightPort sectorInsightPort;
 
     @Override
-    public void write(Chunk<? extends List<SectorInsight>> chunk) {
-        List<SectorInsight> allInsights = new ArrayList<>();
-        for (List<SectorInsight> insights : chunk) {
-            if (insights != null) {
-                allInsights.addAll(insights);
-            }
-        }
-
-        if (!allInsights.isEmpty()) {
-            sectorInsightPort.saveAll(allInsights);
-            log.info("Successfully saved {} sector insights.", allInsights.size());
+    public void write(Chunk<? extends SectorInsight> chunk) {
+        List<? extends SectorInsight> items = chunk.getItems();
+        if (!items.isEmpty()) {
+            sectorInsightPort.saveAll((List<SectorInsight>) items);
+            log.info("Successfully saved {} sector insights.", items.size());
         }
     }
 }

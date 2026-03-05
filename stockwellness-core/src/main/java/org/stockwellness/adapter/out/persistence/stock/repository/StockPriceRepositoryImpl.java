@@ -2,12 +2,15 @@ package org.stockwellness.adapter.out.persistence.stock.repository;
 
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,46 @@ import static org.stockwellness.domain.stock.price.QStockPrice.stockPrice;
 public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
+
+    @Override
+    public List<StockPrice> findFilteredStocksByIndicators(
+            LocalDate baseDate,
+            AlignmentStatus alignment,
+            BigDecimal rsiLow,
+            BigDecimal rsiHigh,
+            Boolean isGoldenCross
+    ) {
+        return queryFactory
+                .selectFrom(stockPrice)
+                .join(stockPrice.stock, stock).fetchJoin()
+                .where(
+                        stockPrice.id.baseDate.eq(baseDate),
+                        eqAlignment(alignment),
+                        betweenRsi(rsiLow, rsiHigh),
+                        eqGoldenCross(isGoldenCross)
+                )
+                .limit(100)
+                .fetch();
+    }
+
+    private BooleanExpression eqAlignment(AlignmentStatus alignment) {
+        return alignment != null ? stockPrice.indicators.alignmentStatus.eq(alignment) : null;
+    }
+
+    private BooleanExpression betweenRsi(BigDecimal rsiLow, BigDecimal rsiHigh) {
+        if (rsiLow != null && rsiHigh != null) {
+            return stockPrice.indicators.rsi14.between(rsiLow, rsiHigh);
+        } else if (rsiLow != null) {
+            return stockPrice.indicators.rsi14.goe(rsiLow);
+        } else if (rsiHigh != null) {
+            return stockPrice.indicators.rsi14.loe(rsiHigh);
+        }
+        return null;
+    }
+
+    private BooleanExpression eqGoldenCross(Boolean isGoldenCross) {
+        return isGoldenCross != null ? stockPrice.indicators.isGoldenCross.eq(isGoldenCross) : null;
+    }
 
     @Override
     public Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks) {
@@ -38,7 +81,12 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     }
 
     @Override
-    public List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date) {
+    public List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
+        // [수정] 30개 종목에 대해 각각 최근 limit(120일)치를 충분히 가져오도록 개선
+        // 특정 종목의 데이터가 적을 수 있으므로 전체 조회 시 넉넉하게 limit * 1.5배를 가져오도록 함
+        long totalLimit = (long) stocks.size() * limit;
+        long safetyBuffer = (long) (totalLimit * 1.5);
+
         return queryFactory
                 .selectFrom(stockPrice)
                 .join(stockPrice.stock, stock).fetchJoin()
@@ -47,7 +95,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stockPrice.id.baseDate.lt(date)
                 )
                 .orderBy(stockPrice.id.baseDate.desc())
-                .limit(stocks.size() * 130L)
+                .limit(safetyBuffer)
                 .fetch();
     }
 

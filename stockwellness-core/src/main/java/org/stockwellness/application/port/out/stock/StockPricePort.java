@@ -4,6 +4,7 @@ import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,6 +13,17 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface StockPricePort {
+    /**
+     * 기술적 지표를 기반으로 종목을 필터링하여 조회합니다.
+     */
+    List<StockPrice> findFilteredStocksByIndicators(
+            LocalDate baseDate,
+            AlignmentStatus alignment,
+            BigDecimal rsiLow,
+            BigDecimal rsiHigh,
+            Boolean isGoldenCross
+    );
+
     /**
      * 특정 종목들의 지정된 날짜 시세 데이터를 조회합니다.
      */
@@ -57,6 +69,11 @@ public interface StockPricePort {
      * 여러 종목의 과거 종가 리스트를 한 번에 조회합니다.
      */
     Map<Long, List<BigDecimal>> findRecentClosingPricesByStocks(List<Stock> stocks, LocalDate date, int limit);
+
+    /**
+     * 여러 종목의 과거 시세 엔티티 리스트를 한 번에 조회합니다. (지표 계산용 날짜 포함)
+     */
+    Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit);
 
     /**
      * 외부 API를 통해 멀티 종목 시세를 조회합니다. (당일용)

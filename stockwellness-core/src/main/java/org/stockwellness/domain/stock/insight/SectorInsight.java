@@ -10,7 +10,6 @@ import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,18 +37,8 @@ public class SectorInsight extends AbstractEntity {
     @Column(nullable = false)
     private LocalDate baseDate;
 
-    // [시세 지표]
-    @Column(precision = 10, scale = 2)
-    private BigDecimal sectorIndexCurrentPrice;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal avgFluctuationRate;
-
-    // [수급 지표] 연속 매수 일수 포함
-    private Long netForeignBuyAmount;
-    private Long netInstBuyAmount;
-    private Integer foreignConsecutiveBuyDays = 0;
-    private Integer instConsecutiveBuyDays = 0;
+    @Embedded
+    private SectorIndicators indicators;
 
     @Embedded
     private TechnicalIndicators technicalIndicators;
@@ -61,25 +50,15 @@ public class SectorInsight extends AbstractEntity {
     @Column(columnDefinition = "jsonb")
     private List<LeadingStock> leadingStocks = new ArrayList<>();
 
-    // MEMO : 추후 AI 기능 구현시 추가 될 내용들.
-//    @Column(columnDefinition = "text")
-//    private String aiSummary; // AI가 요약한 1~2줄 브리핑 (예: "외국인 수급이 5일째 유입되며 과열 양상이나, 반도체 주도주 중심으로 상승 여력 존재")
-
-//    @Column(columnDefinition = "jsonb")
-//    @JdbcTypeCode(SqlTypes.JSON)
-//    private AiSectorAnalysis aiAnalysis; // 상세 분석 데이터 (점수, 긍정/부정 요인 등 구조화된 데이터)
+    @Embedded
+    private SectorAiOpinion aiOpinion;
 
     public static SectorInsight of(
             String sectorName,
             String sectorCode,
             MarketType marketType,
             LocalDate baseDate,
-            BigDecimal sectorIndexCurrentPrice,
-            BigDecimal avgFluctuationRate,
-            Long netForeignBuyAmount,
-            Long netInstBuyAmount,
-            Integer foreignConsecutiveBuyDays,
-            Integer instConsecutiveBuyDays,
+            SectorIndicators indicators,
             TechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
@@ -88,12 +67,7 @@ public class SectorInsight extends AbstractEntity {
         entity.sectorCode = sectorCode;
         entity.marketType = marketType;
         entity.baseDate = baseDate;
-        entity.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
-        entity.avgFluctuationRate = avgFluctuationRate;
-        entity.netForeignBuyAmount = netForeignBuyAmount;
-        entity.netInstBuyAmount = netInstBuyAmount;
-        entity.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
-        entity.instConsecutiveBuyDays = instConsecutiveBuyDays;
+        entity.indicators = indicators;
         entity.technicalIndicators = technicalIndicators;
         entity.isOverheated = isOverheated;
         return entity;
@@ -103,24 +77,42 @@ public class SectorInsight extends AbstractEntity {
         this.leadingStocks = new ArrayList<>(leadingStocks);
     }
 
+    public void updateAiOpinion(SectorAiOpinion aiOpinion) {
+        this.aiOpinion = aiOpinion;
+    }
+
     public void update(
-            BigDecimal sectorIndexCurrentPrice,
-            BigDecimal avgFluctuationRate,
-            Long netForeignBuyAmount,
-            Long netInstBuyAmount,
-            Integer foreignConsecutiveBuyDays,
-            Integer instConsecutiveBuyDays,
+            SectorIndicators indicators,
             TechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
-        this.sectorIndexCurrentPrice = sectorIndexCurrentPrice;
-        this.avgFluctuationRate = avgFluctuationRate;
-        this.netForeignBuyAmount = netForeignBuyAmount;
-        this.netInstBuyAmount = netInstBuyAmount;
-        this.foreignConsecutiveBuyDays = foreignConsecutiveBuyDays;
-        this.instConsecutiveBuyDays = instConsecutiveBuyDays;
+        this.indicators = indicators;
         this.technicalIndicators = technicalIndicators;
         this.isOverheated = isOverheated;
     }
+
+    // Delegation methods for backward compatibility/convenience
+    public java.math.BigDecimal getSectorIndexCurrentPrice() {
+        return indicators != null ? indicators.getSectorIndexCurrentPrice() : null;
+    }
+
+    public java.math.BigDecimal getAvgFluctuationRate() {
+        return indicators != null ? indicators.getAvgFluctuationRate() : null;
+    }
+
+    public Long getNetForeignBuyAmount() {
+        return indicators != null ? indicators.getNetForeignBuyAmount() : 0L;
+    }
+
+    public Long getNetInstBuyAmount() {
+        return indicators != null ? indicators.getNetInstBuyAmount() : 0L;
+    }
+
+    public Integer getForeignConsecutiveBuyDays() {
+        return indicators != null ? indicators.getForeignConsecutiveBuyDays() : 0;
+    }
+
+    public Integer getInstConsecutiveBuyDays() {
+        return indicators != null ? indicators.getInstConsecutiveBuyDays() : 0;
+    }
 }
-                

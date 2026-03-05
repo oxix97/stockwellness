@@ -8,6 +8,7 @@ import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
@@ -66,18 +67,23 @@ public class SectorAnalysisService {
         // 3. 주도주 산출 (거래대금 상위 5개, 상승 종목 우선)
         List<LeadingStock> leadingStocks = calculateLeadingStocks(sectorStockPrices);
 
-        // 4. 최종 Entity 생성
-        SectorInsight insight = SectorInsight.of(
-                currentData.sectorName(),
-                sectorCode,
-                resolveMarketType(sectorCode),
-                currentData.baseDate(),
+        // 4. SectorIndicators 생성
+        SectorIndicators indicators = SectorIndicators.of(
                 currentData.sectorIndexCurrentPrice(),
                 currentData.avgFluctuationRate(),
                 currentData.netForeignBuyAmount(),
                 currentData.netInstBuyAmount(),
                 foreignConsecutiveDays,
-                instConsecutiveDays,
+                instConsecutiveDays
+        );
+
+        // 5. 최종 Entity 생성
+        SectorInsight insight = SectorInsight.of(
+                currentData.sectorName(),
+                sectorCode,
+                resolveMarketType(sectorCode),
+                currentData.baseDate(),
+                indicators,
                 calculated,
                 isOverheated
         );

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
+import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
+import org.stockwellness.application.port.out.sector.SectorAiContext;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.AiReport;
@@ -17,7 +19,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 @Component
-public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort {
+public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort {
 
     private final ChatClient chatClient;
     private final PromptTemplateMapper promptTemplateMapper;
@@ -25,6 +27,25 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort {
     public OpenAiAdapter(ChatClient.Builder builder, PromptTemplateMapper promptTemplateMapper) {
         this.chatClient = builder.build();
         this.promptTemplateMapper = promptTemplateMapper;
+    }
+
+    @Override
+    @Retryable(
+            retryFor = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000)
+    )
+    public AiReport generateSectorOpinion(SectorAiContext context) {
+        String systemInstruction = promptTemplateMapper.getSectorSystemInstruction();
+        String userContext = promptTemplateMapper.toSectorPromptString(context);
+
+        return executeAiCall(
+                systemInstruction,
+                userContext,
+                AiReport.class,
+                AiReport::fallback,
+                "Sector AI Analysis"
+        );
     }
 
     @Override

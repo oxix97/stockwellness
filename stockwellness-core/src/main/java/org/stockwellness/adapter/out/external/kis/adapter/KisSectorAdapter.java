@@ -33,7 +33,7 @@ public class KisSectorAdapter implements SectorDataPort {
     @Retry(name = "kisRetry")
     public KisDailySectorDetail fetchDailySectorDetail(String indexCode, LocalDate date) {
         log.debug("Fetching sector detail for {} on {}", indexCode, date);
-        
+
         KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/quotations/inquire-index-daily-price")
@@ -43,18 +43,22 @@ public class KisSectorAdapter implements SectorDataPort {
                         .build())
                 .header("tr_id", "FHPUP02120000")
                 .retrieve()
-                .body(new ParameterizedTypeReference<KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>>>() {});
+                .body(new ParameterizedTypeReference<KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>>>() {
+                });
 
         if (response == null || response.output1() == null) {
             throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
         }
 
         // Note: DTO에 날짜 필드가 없는 경우 최신 데이터를 반환하도록 함
-        return (response.output2() != null && !response.output2().isEmpty()) 
-                ? response.output2().get(0) 
+        return (response.output2() != null && !response.output2().isEmpty())
+                ? response.output2().get(0)
                 : response.output1();
     }
 
+    /**
+     * 시장별 투자자매매동향(일별)
+     */
     @Override
     @Retry(name = "kisRetry")
     public List<InvestorTradingDaily> fetchInvestorTradingDaily(
@@ -62,8 +66,8 @@ public class KisSectorAdapter implements SectorDataPort {
             LocalDate date,
             int days
     ) {
-        String endDate = date.format(DATE_FMT);
         String startDate = date.minusMonths(1).format(DATE_FMT);
+        String endDate = date.format(DATE_FMT);
 
         KisResponse<List<InvestorTradingDaily>> response = kisApiClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -72,24 +76,25 @@ public class KisSectorAdapter implements SectorDataPort {
                         .queryParam("FID_INPUT_DATE_1", startDate)
                         .queryParam("FID_INPUT_DATE_2", endDate)
                         .queryParam("FID_INPUT_ISCD", indexCode)
-                        .queryParam("FID_INPUT_ISCD_1", indexCode)
-                        .queryParam("FID_INPUT_ISCD_2", indexCode)
+                        .queryParam("FID_INPUT_ISCD_1", "KSP")
+                        .queryParam("FID_INPUT_ISCD_2", "0001")
                         .build())
                 .header("tr_id", "FHPTJ04040000")
                 .retrieve()
-                .body(new ParameterizedTypeReference<KisResponse<List<InvestorTradingDaily>>>() {});
-        
+                .body(new ParameterizedTypeReference<KisResponse<List<InvestorTradingDaily>>>() {
+                });
+
         if (response == null || !"0".equals(response.rtCd()) || response.output() == null) {
             return Collections.emptyList();
         }
-        
+
         return response.output().stream().limit(days).toList();
     }
 
     @Override
     @Retry(name = "kisRetry")
     public List<BigDecimal> fetchHistoricalIndexPrices(String indexCode, LocalDate endDate, int days) {
-         KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
+        KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/quotations/inquire-index-daily-price")
                         .queryParam("FID_COND_MRKT_DIV_CODE", "U")
@@ -98,7 +103,8 @@ public class KisSectorAdapter implements SectorDataPort {
                         .build())
                 .header("tr_id", "FHPUP02120000")
                 .retrieve()
-                .body(new ParameterizedTypeReference<KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>>>() {});
+                .body(new ParameterizedTypeReference<KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>>>() {
+                });
 
         if (response == null || !"0".equals(response.rtCd()) || response.output2() == null) {
             return Collections.emptyList();
@@ -109,8 +115,8 @@ public class KisSectorAdapter implements SectorDataPort {
                 .map(d -> d.sectorIndexPrice() != null ? new BigDecimal(d.sectorIndexPrice()) : BigDecimal.ZERO)
                 .limit(days)
                 .collect(Collectors.toList());
-        
-        Collections.reverse(prices); 
+
+        Collections.reverse(prices);
         return prices;
     }
 
@@ -155,6 +161,7 @@ public class KisSectorAdapter implements SectorDataPort {
                         .build())
                 .header("tr_id", "FHPUP02140000")
                 .retrieve()
-                .body(new ParameterizedTypeReference<KisPriceResponse<KisSectorPriceDetail, List<KisSectorPriceSummary>>>() {});
+                .body(new ParameterizedTypeReference<KisPriceResponse<KisSectorPriceDetail, List<KisSectorPriceSummary>>>() {
+                });
     }
 }
