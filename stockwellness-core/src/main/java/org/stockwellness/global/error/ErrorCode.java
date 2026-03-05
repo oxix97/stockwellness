@@ -50,7 +50,11 @@ public enum ErrorCode {
     SECTOR_NOT_FOUND(NOT_FOUND, "섹터를 찾을 수 없습니다."),
     SECTOR_DATA_NOT_FOUND(NOT_FOUND, "섹터 상세 정보를 찾을 수 없습니다."),
     SECTOR_HISTORY_NOT_FOUND(NOT_FOUND, "섹터 이력 데이터를 찾을 수 없습니다."),
-    SECTOR_SYNC_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "섹터 데이터 동기화 중 오류가 발생했습니다.");
+    SECTOR_SYNC_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "섹터 데이터 동기화 중 오류가 발생했습니다."),
+
+    // 배치 (Batch)
+    BATCH_STEP_INTERRUPTED(HttpStatus.INTERNAL_SERVER_ERROR, "배치 작업이 중단되었습니다."),
+    RATE_LIMIT_WAIT_CANCELLED(HttpStatus.INTERNAL_SERVER_ERROR, "RateLimiter 대기 중 취소되었습니다.");
 
     private final HttpStatus status;
     private final String message;
