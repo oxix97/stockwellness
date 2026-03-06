@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate   # ⚠️ prod에서는 update 금지 → 스키마는 Flyway/Liquibase 또는 수동 관리
+    properties:
+      hibernate:
+        format_sql: false
+  batch:
+    jdbc:
+      initialize-schema: never   # prod에서는 배치 스키마 자동 초기화 금지

@@ -1,0 +1,41 @@
+# ── Stage 1: Build ────────────────────────────
+FROM gradle:8-jdk21-alpine AS builder
+WORKDIR /app
+
+# 의존성 캐시 최적화 (소스 변경 전 레이어 고정)
+COPY settings.gradle.kts build.gradle.kts ./
+COPY gradle ./gradle
+COPY stockwellness-core/build.gradle.kts ./stockwellness-core/
+COPY stockwellness-api/build.gradle.kts  ./stockwellness-api/
+COPY stockwellness-batch/build.gradle.kts ./stockwellness-batch/
+RUN gradle :stockwellness-api:dependencies --no-daemon || true
+
+# 소스 복사 (core도 함께 빌드 필요)
+COPY stockwellness-core/src ./stockwellness-core/src
+COPY stockwellness-api/src  ./stockwellness-api/src
+
+# api 모듈만 bootJar 빌드
+RUN gradle :stockwellness-api:bootJar --no-daemon -x test
+
+# ── Stage 2: Runtime ──────────────────────────
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# 보안: non-root 유저로 실행
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# api 모듈 JAR만 복사
+COPY --from=builder /app/stockwellness-api/build/libs/stockwellness-api-*.jar app.jar
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=30s \
+    CMD wget -qO- http://localhost:8080/actuator/health | grep -q '"status":"UP"' || exit 1
+
+ENTRYPOINT ["java", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-Dspring.profiles.active=prod", \
+    "-jar", "app.jar"]
