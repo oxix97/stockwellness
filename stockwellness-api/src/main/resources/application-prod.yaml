@@ -1,0 +1,39 @@
+spring:
+  config:
+    import:
+      - "optional:classpath:application-core.yaml"
+      - "optional:classpath:application-core-prod.yaml"   # prod 전용 core 오버라이드
+
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful   # 진행 중인 요청 처리 후 종료
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
+
+# prod에서는 p6spy SQL 로깅 비활성화
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+
+logging:
+  level:
+    root: WARN
+    org.stockwellness: INFO
+    org.springframework.web.client.RestClient: WARN
+    org.springframework.ai: WARN
+    org.apache.hc.client5.http: WARN
+    p6spy: OFF
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql.BasicBinder: OFF
+    org.springframework.batch: INFO
+    org.springframework.transaction: WARN
