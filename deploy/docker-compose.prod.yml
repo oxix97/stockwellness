@@ -1,0 +1,172 @@
+# ================================================================
+# StockWellness Production Stack
+# 경로: /Volumes/Ubuntu-Home/project/deploy/docker-compose.prod.yml
+#
+# 실행:  docker compose -f docker-compose.prod.yml up -d
+# ================================================================
+
+networks:
+  stockwellness-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+
+services:
+
+  # ── PostgreSQL (공유 DB — Blue/Green 공용) ──────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 외부 포트 노출 안 함 — 내부 네트워크 전용
+
+  # ── Redis (공유 캐시 — Blue/Green 공용) ─────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API Blue 슬롯 (포트 8080) ────────────────────────────────────
+  stockwellness-api-blue:
+    image: ${IMAGE_API}:${API_TAG_BLUE:-latest}
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST:     redis
+      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ── API Green 슬롯 (포트 8082) ───────────────────────────────────
+  stockwellness-api-green:
+    image: ${IMAGE_API}:${API_TAG_GREEN:-latest}
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST:     redis
+      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    profiles: [ green ]   # 기본 비활성 — 배포 시에만 시작
+
+  # ── Batch (단순 재시작 방식 — Blue-Green 불필요) ──────────────────
+  stockwellness-batch:
+    image: ${IMAGE_BATCH}:${BATCH_TAG:-latest}
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST:     redis
+      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+
+  # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro       # SSL 인증서 마운트
+    depends_on:
+      - stockwellness-api-blue
+    healthcheck:
+      test: [ "CMD", "nginx", "-t" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── n8n (Blue-Green 배포 오케스트레이터) ─────────────────────────
+  # 역할: GitHub Actions 웹훅 수신 → Blue-Green 배포 실행 → 알림
+  # 접근: Tailscale IP:5678 (외부 인터넷 노출 없음)
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    ports:
+      - "127.0.0.1:5678:5678"   # 루프백 바인딩 → Tailscale 경유로만 접근
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./scripts:/scripts                        # 배포 스크립트 접근
+      - ./nginx/conf.d:/nginx-conf                # nginx upstream 파일 수정용
+      - /var/run/docker.sock:/var/run/docker.sock # Docker 직접 제어
+    environment:
+      N8N_HOST:               ${N8N_HOST:-localhost}
+      N8N_PORT:               5678
+      N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
+      N8N_BASIC_AUTH_ACTIVE:  true
+      N8N_BASIC_AUTH_USER:    ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
+      # 배포 스크립트에서 참조할 환경변수
+      DEPLOY_DIR:             /Volumes/Ubuntu-Home/project/deploy
+      # n8n → PostgreSQL 연동 (워크플로우 데이터 영속화)
+      DB_TYPE:                postgresdb
+      DB_POSTGRESDB_HOST:     postgres
+      DB_POSTGRESDB_PORT:     5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER:     ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      postgres: { condition: service_healthy }
