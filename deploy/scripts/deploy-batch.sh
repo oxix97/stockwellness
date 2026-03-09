@@ -19,7 +19,6 @@ COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
 
 HEALTH_RETRIES=12
 HEALTH_INTERVAL=10
-BATCH_PORT=8081
 
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 ok()   { echo "[$(date '+%H:%M:%S')] ✅ $*"; }
@@ -41,11 +40,10 @@ docker compose --env-file .env.prod -f "${COMPOSE_FILE}" \
 
 # Health Check
 log "Health Check 대기 (최대 $((HEALTH_RETRIES * HEALTH_INTERVAL))초)..."
-HEALTH_URL="http://localhost:${BATCH_PORT}/actuator/health"
 
 for ((i=1; i<=HEALTH_RETRIES; i++)); do
-    STATUS=$(curl -sf "${HEALTH_URL}" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
-    if [[ "${STATUS}" == "UP" ]]; then
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' stockwellness-batch 2>/dev/null || echo "")
+    if [[ "${STATUS}" == "healthy" ]]; then
         ok "Health Check 통과 (${i}/${HEALTH_RETRIES}회)"
         break
     fi

@@ -269,3 +269,4 @@ conductor/config/private.*
 
 # Claude
 .claude/
+/deploy/.env.prod

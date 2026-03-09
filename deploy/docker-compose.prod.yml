@@ -11,14 +11,17 @@ networks:
 
 volumes:
   postgres_data:
+    external: true
+    name: postgresql_data   # 기존 운영 중인 PostgreSQL 볼륨
   redis_data:
+  kafka_data:
   n8n_data:
 
 services:
 
   # ── PostgreSQL (공유 DB — Blue/Green 공용) ──────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -48,6 +51,34 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Zookeeper (Kafka용) ────────────────────────────────────────
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  # ── Kafka (메시지 브로커) ───────────────────────────────────────
+  kafka:
+    image: bitnami/kafka:3.7
+    restart: unless-stopped
+    networks: [ stockwellness-net ]
+    volumes:
+      - kafka_data:/bitnami/kafka
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
   # ── API Blue 슬롯 (포트 8080) ────────────────────────────────────
   stockwellness-api-blue:
     image: ${IMAGE_API}:${API_TAG_BLUE:-latest}
@@ -63,10 +94,12 @@ services:
       SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+      kafka:    { condition: service_healthy }
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
       interval: 10s
@@ -89,10 +122,12 @@ services:
       SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+      kafka:    { condition: service_healthy }
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
       interval: 10s
@@ -114,9 +149,11 @@ services:
       SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+      kafka:    { condition: service_healthy }
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
   nginx:
@@ -147,7 +184,7 @@ services:
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
-      - "127.0.0.1:5678:5678"   # 루프백 바인딩 → Tailscale 경유로만 접근
+      - "5678:5678"   # ufw로 외부 차단 — Tailscale IP만 허용
     volumes:
       - n8n_data:/home/node/.n8n
       - .:/deploy                                 # 배포 디렉토리 전체 마운트 (스크립트 + compose + nginx conf)
@@ -156,7 +193,9 @@ services:
       N8N_HOST:               ${N8N_HOST:-localhost}
       N8N_PORT:               5678
       N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
+      N8N_SECURE_COOKIE:      "false"
       N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
+      NODES_EXCLUDE:          "[]"   # Execute Command 노드 활성화 (v2.0+ 기본 비활성)
       # 배포 스크립트에서 참조할 환경변수
       DEPLOY_DIR:             /deploy
       REGISTRY:               ghcr.io

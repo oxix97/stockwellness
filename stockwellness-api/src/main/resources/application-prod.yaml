@@ -37,3 +37,21 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: OFF
     org.springframework.batch: INFO
     org.springframework.transaction: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    kafka:
+      enabled: true
