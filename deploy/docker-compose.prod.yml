@@ -1,8 +1,8 @@
 # ================================================================
 # StockWellness Production Stack
-# 경로: /Volumes/Ubuntu-Home/project/deploy/docker-compose.prod.yml
+# 경로: /home/chan/stockwellness/deploy/docker-compose.prod.yml
 #
-# 실행:  docker compose -f docker-compose.prod.yml up -d
+# 실행:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 # ================================================================
 
 networks:

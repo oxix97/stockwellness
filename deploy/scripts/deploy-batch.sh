@@ -4,7 +4,7 @@
 # (Batch는 Blue-Green 불필요 — 단순 이미지 교체 후 재시작)
 #
 # n8n Execute Command 노드에서 호출:
-#   /deploy/scripts/deploy-batch.sh {{ $json.tag }}
+#   /deploy/scripts/deploy-batch.sh {{ $json.body.tag }}
 # ================================================================
 
 set -euo pipefail
