@@ -89,11 +89,10 @@ docker compose --env-file .env.prod -f "${COMPOSE_FILE}" \
 
 # ── STEP 3: Health Check ────────────────────────────────────────
 log "[3/5] Health Check 대기 (최대 $((HEALTH_RETRIES * HEALTH_INTERVAL))초)..."
-HEALTH_URL="http://localhost:${NEXT_PORT}/actuator/health"
 
 for ((i=1; i<=HEALTH_RETRIES; i++)); do
-    STATUS=$(curl -sf "${HEALTH_URL}" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
-    if [[ "${STATUS}" == "UP" ]]; then
+    STATUS=$(docker inspect --format='{{.State.Health.Status}}' "${NEXT_SERVICE}" 2>/dev/null || echo "")
+    if [[ "${STATUS}" == "healthy" ]]; then
         ok "Health Check 통과 (${i}/${HEALTH_RETRIES}회)"
         break
     fi
