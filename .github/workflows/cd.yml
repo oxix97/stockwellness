@@ -8,7 +8,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_API:   ghcr.io/${{ github.repository_owner }}/stockwellness-api
   IMAGE_BATCH: ghcr.io/${{ github.repository_owner }}/stockwellness-batch
-  # DEPLOY_DIR 제거 — n8n이 서버 내에서 직접 경로 관리
 
 jobs:
   # ── 1. API 이미지 빌드 & Push ─────────────────────────────────
@@ -91,68 +90,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── 3. n8n 웹훅 트리거 — API Blue-Green 배포 ─────────────────
-  # GitHub Actions runner가 Tailscale에 합류 → 내부망 n8n 웹훅 호출
-  # n8n(ubuntu-home)이 웹훅 수신 후 Blue-Green 배포 실행
+  # ── 3. n8n Webhook 트리거 (API Blue-Green 배포) ───────────────
   deploy-api:
-    name: Trigger API Blue-Green (n8n via Tailscale)
+    name: Trigger API Deployment (Blue-Green)
     runs-on: ubuntu-latest
     needs: build-api
 
     steps:
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v2
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          tags:            tag:github-actions
-
-      - name: Trigger n8n webhook (API)
+      - name: Trigger n8n webhook
         run: |
           curl -f -X POST \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Token: ${{ secrets.N8N_DEPLOY_TOKEN }}" \
             -d '{
-              "service":  "api",
-              "image":    "${{ env.IMAGE_API }}",
-              "tag":      "${{ needs.build-api.outputs.image_tag }}",
-              "commit":   "${{ github.sha }}",
-              "message":  "${{ github.event.head_commit.message }}",
-              "author":   "${{ github.event.head_commit.author.name }}"
+              "image": "${{ env.IMAGE_API }}",
+              "tag": "${{ needs.build-api.outputs.image_tag }}",
+              "commit": "${{ github.sha }}",
+              "message": "${{ github.event.head_commit.message }}",
+              "author": "${{ github.event.head_commit.author.name }}"
             }' \
-            "${{ secrets.N8N_WEBHOOK_URL }}"
+            ${{ secrets.N8N_WEBHOOK_URL }}
 
       - name: Done
-        run: echo "✅ n8n API 배포 트리거 완료 → ${{ env.IMAGE_API }}:${{ needs.build-api.outputs.image_tag }}"
-
-  # ── 4. n8n 웹훅 트리거 — Batch 배포 ─────────────────────────
-  deploy-batch:
-    name: Trigger Batch Deploy (n8n via Tailscale)
-    runs-on: ubuntu-latest
-    needs: [ build-batch, deploy-api ]   # API 배포 완료 후 순차 실행
-
-    steps:
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v2
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          tags:            tag:github-actions
-
-      - name: Trigger n8n webhook (Batch)
-        run: |
-          curl -f -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Deploy-Token: ${{ secrets.N8N_DEPLOY_TOKEN }}" \
-            -d '{
-              "service":  "batch",
-              "image":    "${{ env.IMAGE_BATCH }}",
-              "tag":      "${{ needs.build-batch.outputs.image_tag }}",
-              "commit":   "${{ github.sha }}",
-              "message":  "${{ github.event.head_commit.message }}",
-              "author":   "${{ github.event.head_commit.author.name }}"
-            }' \
-            "${{ secrets.N8N_WEBHOOK_URL }}"
-
-      - name: Done
-        run: echo "✅ n8n Batch 배포 트리거 완료 → ${{ env.IMAGE_BATCH }}:${{ needs.build-batch.outputs.image_tag }}"
+        run: echo "✅ API 배포 트리거 완료 → ${{ env.IMAGE_API }}:${{ needs.build-api.outputs.image_tag }}"
