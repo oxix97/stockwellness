@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ================================================================
 # StockWellness API — Blue-Green 무중단 배포 스크립트
-# 경로: /Volumes/Ubuntu-Home/project/deploy/scripts/deploy-api.sh
+# 경로: /home/chan/stockwellness/deploy/scripts/deploy-api.sh
 #
 # 사용법:
 #   ./deploy-api.sh <IMAGE_TAG>
 #   예) ./deploy-api.sh abc1234
 #
 # n8n Execute Command 노드에서 호출:
-#   /scripts/deploy-api.sh {{ $json.tag }}
+#   /deploy/scripts/deploy-api.sh {{ $json.body.tag }}
 # ================================================================
 
 set -euo pipefail
@@ -19,7 +19,7 @@ REGISTRY="${REGISTRY:-ghcr.io}"
 REPO_OWNER="${REPO_OWNER:?환경변수 REPO_OWNER 설정 필요}"
 IMAGE_API="${REGISTRY}/${REPO_OWNER}/stockwellness-api"
 
-PROJECT_DIR="/Volumes/Ubuntu-Home/project/deploy"
+PROJECT_DIR="${DEPLOY_DIR:-/deploy}"
 COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
 NGINX_CONF="${PROJECT_DIR}/nginx/conf.d/app.conf"
 SLOT_FILE="${PROJECT_DIR}/.active_slot"
