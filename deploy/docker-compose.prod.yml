@@ -141,26 +141,26 @@ services:
   # 역할: GitHub Actions 웹훅 수신 → Blue-Green 배포 실행 → 알림
   # 접근: Tailscale IP:5678 (외부 인터넷 노출 없음)
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.n8n       # docker-cli + curl 포함 커스텀 이미지
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "127.0.0.1:5678:5678"   # 루프백 바인딩 → Tailscale 경유로만 접근
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./scripts:/scripts                        # 배포 스크립트 접근
-      - ./nginx/conf.d:/nginx-conf                # nginx upstream 파일 수정용
+      - .:/deploy                                 # 배포 디렉토리 전체 마운트 (스크립트 + compose + nginx conf)
       - /var/run/docker.sock:/var/run/docker.sock # Docker 직접 제어
     environment:
       N8N_HOST:               ${N8N_HOST:-localhost}
       N8N_PORT:               5678
       N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
-      N8N_BASIC_AUTH_ACTIVE:  true
-      N8N_BASIC_AUTH_USER:    ${N8N_USER}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
       N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
       # 배포 스크립트에서 참조할 환경변수
-      DEPLOY_DIR:             /Volumes/Ubuntu-Home/project/deploy
+      DEPLOY_DIR:             /deploy
+      REGISTRY:               ghcr.io
+      REPO_OWNER:             ${REPO_OWNER}
       # n8n → PostgreSQL 연동 (워크플로우 데이터 영속화)
       DB_TYPE:                postgresdb
       DB_POSTGRESDB_HOST:     postgres

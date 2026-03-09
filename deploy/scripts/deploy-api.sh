@@ -19,7 +19,7 @@ REGISTRY="${REGISTRY:-ghcr.io}"
 REPO_OWNER="${REPO_OWNER:?환경변수 REPO_OWNER 설정 필요}"
 IMAGE_API="${REGISTRY}/${REPO_OWNER}/stockwellness-api"
 
-PROJECT_DIR="/Volumes/Ubuntu-Home/project/deploy"
+PROJECT_DIR="${DEPLOY_DIR:-/deploy}"
 COMPOSE_FILE="${PROJECT_DIR}/docker-compose.prod.yml"
 NGINX_CONF="${PROJECT_DIR}/nginx/conf.d/app.conf"
 SLOT_FILE="${PROJECT_DIR}/.active_slot"
