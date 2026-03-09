@@ -266,4 +266,6 @@ conductor/config/private.*
 /src/main/generated/
 /deploy.ps1
 /features.md
+
+# Claude
 .claude/
