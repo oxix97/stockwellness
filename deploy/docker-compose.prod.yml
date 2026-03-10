@@ -32,8 +32,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro  # n8n 전용 DB 초기화
     environment:
-      POSTGRES_DB:       ${POSTGRES_DB}
-      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
@@ -92,7 +92,7 @@ services:
     depends_on:
       zookeeper: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list" ]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -109,18 +109,18 @@ services:
     env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
@@ -139,18 +139,18 @@ services:
     env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
@@ -165,20 +165,22 @@ services:
     container_name: stockwellness-batch
     restart: unless-stopped
     networks: [ stockwellness-net ]
+    ports:
+      - "8081:8081"
     env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     # [수정] Batch는 HTTP 서버가 없으므로 헬스체크 제거
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
@@ -222,22 +224,24 @@ services:
       - .:/deploy                                 # 배포 디렉토리 전체 마운트 (스크립트 + compose + nginx conf)
       - /var/run/docker.sock:/var/run/docker.sock # Docker 직접 제어
     environment:
-      N8N_HOST:               ${N8N_HOST:-localhost}
-      N8N_PORT:               5678
-      N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
-      N8N_SECURE_COOKIE:      "false"
-      N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
-      NODES_EXCLUDE:          "[]"
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_SECURE_COOKIE: "false"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      NODES_EXCLUDE: "[]"
+
       # 배포 스크립트에서 참조할 환경변수
-      DEPLOY_DIR:             /deploy
-      REGISTRY:               ghcr.io
-      REPO_OWNER:             ${REPO_OWNER}
-      # [수정] n8n 전용 DB 분리 — 앱 DB와 충돌 방지
-      DB_TYPE:                postgresdb
-      DB_POSTGRESDB_HOST:     postgres
-      DB_POSTGRESDB_PORT:     5432
+      DEPLOY_DIR: /deploy
+      REGISTRY: ghcr.io
+      REPO_OWNER: ${REPO_OWNER}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
       DB_POSTGRESDB_DATABASE: ${N8N_DB:-n8n}
-      DB_POSTGRESDB_USER:     ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
       DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+
     depends_on:
       postgres: { condition: service_healthy }
