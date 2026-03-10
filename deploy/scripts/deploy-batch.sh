@@ -9,6 +9,17 @@
 
 set -euo pipefail
 
+# ── 환경 변수 로드 ──────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env.prod"
+
+if [[ -f "${ENV_FILE}" ]]; then
+    echo "[$(date '+%H:%M:%S')] .env.prod 파일에서 환경 변수를 로드합니다."
+    set -a
+    source "${ENV_FILE}"
+    set +a
+fi
+
 IMAGE_TAG="${1:?이미지 태그 인자가 필요합니다}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 REPO_OWNER="${REPO_OWNER:?REPO_OWNER 환경 변수가 필요합니다}"

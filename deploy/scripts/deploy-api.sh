@@ -13,6 +13,19 @@
 
 set -euo pipefail
 
+# ── 환경 변수 로드 ──────────────────────────────────────────
+# .env.prod 파일이 있으면 로드 (n8n 등 환경변수가 없는 곳에서 실행 대비)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/../.env.prod"
+
+if [[ -f "${ENV_FILE}" ]]; then
+    echo "[$(date '+%H:%M:%S')] .env.prod 파일에서 환경 변수를 로드합니다."
+    # 주석 제외하고 변수 추출하여 export
+    set -a
+    source "${ENV_FILE}"
+    set +a
+fi
+
 # ── 인자 처리 ────────────────────────────────────────────
 IMAGE_TAG="${1:?이미지 태그 인자가 필요합니다. 예: ./deploy-api.sh abc1234}"
 REGISTRY="${REGISTRY:-ghcr.io}"
