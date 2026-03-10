@@ -45,8 +45,10 @@ public class PortfolioController {
             request.description(),
             request.items().stream()
                 .map(item -> new CreatePortfolioCommand.PortfolioItemCommand(
-                    item.stockCode(),
-                    item.pieceCount(),
+                    item.symbol(),
+                    item.quantity(),
+                    item.purchasePrice(),
+                    item.currency(),
                     item.assetType()
                 ))
                 .toList()
@@ -103,8 +105,10 @@ public class PortfolioController {
             request.description(),
             request.items().stream()
                 .map(item -> new UpdatePortfolioCommand.PortfolioItemCommand(
-                    item.stockCode(),
-                    item.pieceCount(),
+                    item.symbol(),
+                    item.quantity(),
+                    item.purchasePrice(),
+                    item.currency(),
                     item.assetType()
                 ))
                 .toList()

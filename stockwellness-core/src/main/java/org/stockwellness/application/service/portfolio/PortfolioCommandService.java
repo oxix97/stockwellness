@@ -33,14 +33,11 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
         }
 
         Portfolio portfolio = Portfolio.create(command.memberId(), command.name(), command.description());
-        
+
         List<PortfolioItem> items = command.items().stream()
-                .map(item -> {
-                    validateStockCode(item.stockCode(), item.assetType());
-                    return mapToEntity(item.stockCode(), item.pieceCount(), item.assetType());
-                })
+                .map(this::mapToEntity)
                 .toList();
-        
+
         portfolio.updateItems(items);
 
         return portfolioPort.savePortfolio(portfolio).getId();
@@ -60,10 +57,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
 
         // 2. 구성 종목 수정
         List<PortfolioItem> newItems = command.items().stream()
-                .map(item -> {
-                    validateStockCode(item.stockCode(), item.assetType());
-                    return mapToEntity(item.stockCode(), item.pieceCount(), item.assetType());
-                })
+                .map(this::mapToEntity)
                 .toList();
 
         portfolio.updateItems(newItems);
@@ -85,17 +79,25 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
                 });
     }
 
-    private void validateStockCode(String stockCode, AssetType assetType) {
-        if (assetType == AssetType.STOCK && !stockPort.existsByTicker(stockCode)) {
-            throw new InvalidStockCodeException("Stock not found with code: " + stockCode);
+    private PortfolioItem mapToEntity(CreatePortfolioCommand.PortfolioItemCommand item) {
+        if (item.assetType() == AssetType.STOCK) {
+            if (!stockPort.existsByTicker(item.symbol())) {
+                throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
+            }
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency());
+        } else {
+            return PortfolioItem.createCash(item.quantity(), item.currency());
         }
     }
 
-    private PortfolioItem mapToEntity(String stockCode, int pieceCount, AssetType assetType) {
-        if (assetType == AssetType.CASH) {
-            return PortfolioItem.createCash(pieceCount);
+    private PortfolioItem mapToEntity(UpdatePortfolioCommand.PortfolioItemCommand item) {
+        if (item.assetType() == AssetType.STOCK) {
+            if (!stockPort.existsByTicker(item.symbol())) {
+                throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
+            }
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency());
         } else {
-            return PortfolioItem.createStock(stockCode, pieceCount);
+            return PortfolioItem.createCash(item.quantity(), item.currency());
         }
     }
 }
