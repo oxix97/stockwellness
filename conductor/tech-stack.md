@@ -24,8 +24,9 @@
 - **Observability:** P6Spy (SQL query monitoring)
 
 ## 5. Infrastructure & Devops
-- **Containerization:** Docker & Docker Compose (local development environment)
+- **Containerization:** Docker & Docker Compose (local development environment), n8n 커스텀 이미지(배포 오케스트레이터)
 - **CI/CD:** GitHub Actions (Automated build, test, and containerization)
 - **Registry:** GitHub Container Registry (GHCR)
 - **Messaging:** Apache Kafka & Spring Kafka (Event-driven architecture for decoupling Batch and API, ensuring data consistency via cache invalidation events)
+- **Deployment Visibility:** Slack 실시간 상세 진단 리포팅 및 배포 이력 기록 로직 도입
 - **Deployment Target:** Kubernetes (AWS EKS) for high availability and scalability
