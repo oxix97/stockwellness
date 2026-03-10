@@ -25,14 +25,14 @@ Implement dynamic calculation of P/L and diversification metrics.
     - [x] Implement a service to fetch the latest EOD prices from Redis/DB.
     - [x] Create a calculation utility for real-time portfolio valuation and P/L.
     - [x] Optimize performance using Redis-cached price data. (Handled via StockPricePort/Adapter)
-- [ ] **Task: Diversification Metrics**
-    - [ ] Implement sector weight calculation logic.
-    - [ ] Implement country weight (KR/US) calculation logic.
-    - [ ] Implement cash vs. asset ratio calculation.
-- [ ] **Task: API Integration for Analysis**
-    - [ ] Create API endpoints to return portfolio summary and diversification data.
-    - [ ] Ensure responses are compatible with chart requirements (Pie chart, Bar chart).
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)**
+- [x] **Task: Diversification Metrics**
+    - [x] Implement sector weight calculation logic.
+    - [x] Implement country weight (KR/US) calculation logic.
+    - [x] Implement cash vs. asset ratio calculation.
+- [x] **Task: API Integration for Analysis**
+    - [x] Create API endpoints to return portfolio summary and diversification data.
+    - [x] Ensure responses are compatible with chart requirements (Pie chart, Bar chart).
+- [x] **Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)**
 
 ## Phase 3: Administrative Monitoring & Health Check
 Implement tools for system observability and batch management.
