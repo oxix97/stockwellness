@@ -92,16 +92,18 @@ services:
   # ── API Blue 슬롯 (포트 8080) ────────────────────────────────────
   stockwellness-api-blue:
     image: ${IMAGE_API}:${API_TAG_BLUE:-latest}
+    container_name: stockwellness-api-blue
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "8080:8080"
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -120,16 +122,18 @@ services:
   # ── API Green 슬롯 (포트 8082) ───────────────────────────────────
   stockwellness-api-green:
     image: ${IMAGE_API}:${API_TAG_GREEN:-latest}
+    container_name: stockwellness-api-green
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "8082:8080"
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -149,14 +153,16 @@ services:
   # ── Batch (단순 재시작 방식 — Blue-Green 불필요) ──────────────────
   stockwellness-batch:
     image: ${IMAGE_BATCH}:${BATCH_TAG:-latest}
+    container_name: stockwellness-batch
     restart: unless-stopped
     networks: [ stockwellness-net ]
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_HOST:     redis
       SPRING_DATA_REDIS_PORT:     6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -164,6 +170,12 @@ services:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
   nginx:
@@ -190,7 +202,7 @@ services:
   n8n:
     build:
       context: .
-      dockerfile: Dockerfile.n8n       # docker-cli + curl 포함 커스텀 이미지
+      dockerfile: Dockerfile.n8n       # docker-cli 포함 커스텀 이미지
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:

@@ -115,10 +115,10 @@ sed -i \
     "${NGINX_CONF}"
 
 # nginx 설정 검증 후 무중단 리로드
-docker compose -f "${COMPOSE_FILE}" exec -T nginx nginx -t \
+docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -t \
     || fail "nginx 설정 검증 실패 — upstream 전환 취소"
 
-docker compose -f "${COMPOSE_FILE}" exec -T nginx nginx -s reload
+docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -s reload
 ok "nginx upstream 전환 완료"
 
 # ── STEP 5: 구 슬롯 종료 ────────────────────────────────────────
@@ -126,6 +126,7 @@ log "[5/5] 구 슬롯(${CURRENT_SLOT}) ${GRACE_PERIOD}초 후 종료..."
 sleep "${GRACE_PERIOD}"
 
 docker compose --env-file .env.prod -f "${COMPOSE_FILE}" \
+    --profile "${CURRENT_SLOT}" \
     stop "${CURRENT_SERVICE}"
 
 # 활성 슬롯 파일 갱신
