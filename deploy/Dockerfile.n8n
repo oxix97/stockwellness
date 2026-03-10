@@ -1,14 +1,23 @@
 # ================================================================
-# n8n 커스텀 이미지 — docker-cli + curl 포함
+# n8n 커스텀 이미지 — docker-cli 포함
 #
 # n8n Execute Command 노드에서 deploy 스크립트를 실행하려면
-# n8n 컨테이너 내부에 docker CLI가 있어야 합니다.
+# n8n 컨테이너 내부에 docker CLI + compose 플러그인이 있어야 합니다.
 # ================================================================
-# docker CLI 정적 바이너리를 공식 이미지에서 복사
 FROM docker:cli AS docker-cli
 
 FROM n8nio/n8n:latest
 
 USER root
+# 배포 스크립트 실행 및 Git Pull을 위한 bash, git, ssh-client 설치 (Debian 기반)
+RUN apt-get update && apt-get install -y \
+    bash \
+    git \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+# docker CLI 바이너리 복사
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+# docker compose v2 플러그인 복사 (docker compose 명령 사용을 위해 필수)
+COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose \
+     /usr/local/lib/docker/cli-plugins/docker-compose
 USER node

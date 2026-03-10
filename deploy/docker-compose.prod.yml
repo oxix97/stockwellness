@@ -5,6 +5,8 @@
 # 실행:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 # ================================================================
 
+name: stockwellness
+
 networks:
   stockwellness-net:
     driver: bridge
@@ -14,6 +16,7 @@ volumes:
     external: true
     name: postgresql_data   # 기존 운영 중인 PostgreSQL 볼륨
   redis_data:
+  zookeeper_data:
   kafka_data:
   n8n_data:
 
@@ -22,24 +25,28 @@ services:
   # ── PostgreSQL (공유 DB — Blue/Green 공용) ──────────────────────
   postgres:
     image: postgres:15-alpine
+    container_name: stockwellness-postgres
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro  # n8n 전용 DB 초기화
     environment:
-      POSTGRES_DB:       ${POSTGRES_DB}
-      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
       timeout: 5s
       retries: 5
-    # 외부 포트 노출 안 함 — 내부 네트워크 전용
+    ports:
+      - "5432:5432"
 
   # ── Redis (공유 캐시 — Blue/Green 공용) ─────────────────────────
   redis:
     image: redis:7-alpine
+    container_name: stockwellness-redis
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -50,18 +57,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+    ports:
+      - "6379:6379"
   # ── Zookeeper (Kafka용) ────────────────────────────────────────
   zookeeper:
     image: bitnami/zookeeper:3.9
+    container_name: stockwellness-zookeeper
     restart: unless-stopped
     networks: [ stockwellness-net ]
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+    healthcheck:
+      test: [ "CMD-SHELL", "zkServer.sh status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # ── Kafka (메시지 브로커) ───────────────────────────────────────
   kafka:
     image: bitnami/kafka:3.7
+    container_name: stockwellness-kafka
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -72,36 +90,39 @@ services:
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
     depends_on:
-      - zookeeper
+      zookeeper: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list" ]
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 30s
 
   # ── API Blue 슬롯 (포트 8080) ────────────────────────────────────
   stockwellness-api-blue:
     image: ${IMAGE_API}:${API_TAG_BLUE:-latest}
+    container_name: stockwellness-api-blue
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "8080:8080"
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -110,54 +131,62 @@ services:
   # ── API Green 슬롯 (포트 8082) ───────────────────────────────────
   stockwellness-api-green:
     image: ${IMAGE_API}:${API_TAG_GREEN:-latest}
+    container_name: stockwellness-api-green
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "8082:8080"
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 40s
-    profiles: [ green ]   # 기본 비활성 — 배포 시에만 시작
+    profiles: [ green ]   # 기본적으로 비활성 — 배포 중에만 시작됨
 
   # ── Batch (단순 재시작 방식 — Blue-Green 불필요) ──────────────────
   stockwellness-batch:
     image: ${IMAGE_BATCH}:${BATCH_TAG:-latest}
+    container_name: stockwellness-batch
     restart: unless-stopped
     networks: [ stockwellness-net ]
+    ports:
+      - "8081:8081"
+    env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL:  jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_DATA_REDIS_HOST:     redis
-      SPRING_DATA_REDIS_PORT:     6379
+      SPRING_DATA_REDIS_HOST: stockwellness-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
-      kafka:    { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    # [수정] Batch는 HTTP 서버가 없으므로 헬스체크 제거
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
   nginx:
     image: nginx:1.27-alpine
+    container_name: stockwellness-nginx
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
@@ -180,32 +209,39 @@ services:
   n8n:
     build:
       context: .
-      dockerfile: Dockerfile.n8n       # docker-cli + curl 포함 커스텀 이미지
+      dockerfile: Dockerfile.n8n       # docker-cli 포함 커스텀 이미지
+    container_name: stockwellness-n8n
+    user: "1000:1000"                  # 호스트 사용자와 권한 일치 (Permission Denied 방지)
+    group_add:
+      - "988"                          # 호스트의 docker 그룹 GID (docker.sock 접근 권한)
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
       - "5678:5678"   # ufw로 외부 차단 — Tailscale IP만 허용
     volumes:
       - n8n_data:/home/node/.n8n
+      - ..:/app_root                               # 프로젝트 루트 마운트 (Git Pull용)
       - .:/deploy                                 # 배포 디렉토리 전체 마운트 (스크립트 + compose + nginx conf)
       - /var/run/docker.sock:/var/run/docker.sock # Docker 직접 제어
     environment:
-      N8N_HOST:               ${N8N_HOST:-localhost}
-      N8N_PORT:               5678
-      N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
-      N8N_SECURE_COOKIE:      "false"
-      N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
-      NODES_EXCLUDE:          "[]"   # Execute Command 노드 활성화 (v2.0+ 기본 비활성)
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_SECURE_COOKIE: "false"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      NODES_EXCLUDE: "[]"
+
       # 배포 스크립트에서 참조할 환경변수
-      DEPLOY_DIR:             /deploy
-      REGISTRY:               ghcr.io
-      REPO_OWNER:             ${REPO_OWNER}
-      # n8n → PostgreSQL 연동 (워크플로우 데이터 영속화)
-      DB_TYPE:                postgresdb
-      DB_POSTGRESDB_HOST:     postgres
-      DB_POSTGRESDB_PORT:     5432
-      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
-      DB_POSTGRESDB_USER:     ${POSTGRES_USER}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DEPLOY_DIR: /deploy
+      REGISTRY: ghcr.io
+      REPO_OWNER: ${REPO_OWNER}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_DB:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+
     depends_on:
       postgres: { condition: service_healthy }

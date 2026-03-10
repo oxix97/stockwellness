@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
 import org.stockwellness.domain.stock.exception.StockDomainException;
@@ -46,6 +47,11 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleJwtException(JwtException e) {
         // 서명 오류, malformed 등은 모두 INVALID_JWT
         return createProblemDetail(INVALID_JWT);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException e) {
+        return createProblemDetail(RESOURCE_NOT_FOUND);
     }
 
     @ExceptionHandler(Exception.class)
