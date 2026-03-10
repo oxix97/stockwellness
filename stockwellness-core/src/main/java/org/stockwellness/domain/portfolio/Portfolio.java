@@ -6,9 +6,9 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,8 +21,6 @@ import static lombok.AccessLevel.PROTECTED;
 @ToString
 @NoArgsConstructor(access = PROTECTED)
 public class Portfolio extends AbstractEntity {
-
-    public static final int MAX_PIECES = 8;
 
     @Column(nullable = false)
     private Long memberId;
@@ -50,22 +48,19 @@ public class Portfolio extends AbstractEntity {
     }
 
     public void updateItems(List<PortfolioItem> newItems) {
-        validateTotalPieces(newItems);
+        // Validation logic can be added here if needed (e.g., max items)
         this.items.clear();
         this.items.addAll(newItems);
         newItems.forEach(item -> item.assignPortfolio(this));
     }
 
-    private void validateTotalPieces(List<PortfolioItem> items) {
-        int sum = items.stream()
-                .mapToInt(PortfolioItem::getPieceCount)
-                .sum();
-
-        if (sum < 1 || sum > MAX_PIECES) {
-            throw new InvalidPortfolioException();
-        }
+    public BigDecimal calculateTotalPurchaseAmount() {
+        return items.stream()
+                .map(PortfolioItem::calculatePurchaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    @Deprecated
     public int getTotalPieces() {
         return items.stream().mapToInt(PortfolioItem::getPieceCount).sum();
     }
