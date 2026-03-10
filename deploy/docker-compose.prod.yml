@@ -213,6 +213,7 @@ services:
       - "5678:5678"   # ufw로 외부 차단 — Tailscale IP만 허용
     volumes:
       - n8n_data:/home/node/.n8n
+      - ..:/app_root                               # 프로젝트 루트 마운트 (Git Pull용)
       - .:/deploy                                 # 배포 디렉토리 전체 마운트 (스크립트 + compose + nginx conf)
       - /var/run/docker.sock:/var/run/docker.sock # Docker 직접 제어
     environment:
