@@ -5,6 +5,8 @@
 # 실행:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 # ================================================================
 
+name: stockwellness
+
 networks:
   stockwellness-net:
     driver: bridge
@@ -23,10 +25,12 @@ services:
   # ── PostgreSQL (공유 DB — Blue/Green 공용) ──────────────────────
   postgres:
     image: postgres:15-alpine
+    container_name: stockwellness-postgres
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro  # n8n 전용 DB 초기화
     environment:
       POSTGRES_DB:       ${POSTGRES_DB}
       POSTGRES_USER:     ${POSTGRES_USER}
@@ -36,11 +40,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # 외부 포트 노출 안 함 — 내부 네트워크 전용
+    ports:
+      - "5432:5432"
 
   # ── Redis (공유 캐시 — Blue/Green 공용) ─────────────────────────
   redis:
     image: redis:7-alpine
+    container_name: stockwellness-redis
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -51,10 +57,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+    ports:
+      - "6379:6379"
   # ── Zookeeper (Kafka용) ────────────────────────────────────────
   zookeeper:
     image: bitnami/zookeeper:3.9
+    container_name: stockwellness-zookeeper
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -62,7 +70,6 @@ services:
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     healthcheck:
-      # nc(netcat)이 없을 경우를 대비해 zkServer.sh status로 체크
       test: [ "CMD-SHELL", "zkServer.sh status" ]
       interval: 10s
       timeout: 5s
@@ -72,6 +79,7 @@ services:
   # ── Kafka (메시지 브로커) ───────────────────────────────────────
   kafka:
     image: bitnami/kafka:3.7
+    container_name: stockwellness-kafka
     restart: unless-stopped
     networks: [ stockwellness-net ]
     volumes:
@@ -114,7 +122,6 @@ services:
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
     healthcheck:
-      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
       test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
@@ -145,7 +152,6 @@ services:
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
     healthcheck:
-      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
       test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
@@ -173,17 +179,12 @@ services:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
-    healthcheck:
-      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
-      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+    # [수정] Batch는 HTTP 서버가 없으므로 헬스체크 제거
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
   nginx:
     image: nginx:1.27-alpine
+    container_name: stockwellness-nginx
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
@@ -207,6 +208,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.n8n       # docker-cli 포함 커스텀 이미지
+    container_name: stockwellness-n8n
     user: "1000:1000"                  # 호스트 사용자와 권한 일치 (Permission Denied 방지)
     group_add:
       - "988"                          # 호스트의 docker 그룹 GID (docker.sock 접근 권한)
@@ -225,17 +227,17 @@ services:
       N8N_PROTOCOL:           ${N8N_PROTOCOL:-http}
       N8N_SECURE_COOKIE:      "false"
       N8N_ENCRYPTION_KEY:     ${N8N_ENCRYPTION_KEY}
-      NODES_EXCLUDE:          "[]"   # Execute Command 노드 활성화 (v2.0+ 기본 비활성)
+      NODES_EXCLUDE:          "[]"
       # 배포 스크립트에서 참조할 환경변수
       DEPLOY_DIR:             /deploy
       REGISTRY:               ghcr.io
       REPO_OWNER:             ${REPO_OWNER}
-      # n8n → PostgreSQL 연동 (워크플로우 데이터 영속화)
+      # [수정] n8n 전용 DB 분리 — 앱 DB와 충돌 방지
       DB_TYPE:                postgresdb
       DB_POSTGRESDB_HOST:     postgres
       DB_POSTGRESDB_PORT:     5432
-      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
-      DB_POSTGRESDB_USER:     ${POSTGRES_USER}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_DATABASE: ${N8N_DB:-n8n}
+      DB_POSTGRESDB_USER:     ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
     depends_on:
       postgres: { condition: service_healthy }
