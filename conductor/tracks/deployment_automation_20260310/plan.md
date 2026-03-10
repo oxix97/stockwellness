@@ -20,7 +20,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3 Completion' (Protocol in workflow.md)
 
 ## Phase 4: 최종 테스트 및 최적화
-- [ ] Task: 시나리오 테스트 1 - 정상 배포 성공 시 Slack 알림 및 슬롯 전환 확인
-- [ ] Task: 시나리오 테스트 2 - 의도적 배포 실패 유도 후 자동 롤백 및 Slack 상세 오류 리포트 확인
-- [ ] Task: 배포 이력 파일(`.deploy_history`) 기록 상태 최종 점검
-- [ ] Task: Conductor - User Manual Verification 'Phase 4 Completion' (Protocol in workflow.md)
+- [x] Task: 시나리오 테스트 1 - 정상 배포 성공 시 Slack 알림 및 슬롯 전환 확인
+- [x] Task: 시나리오 테스트 2 - 의도적 배포 실패 유도 후 자동 롤백 및 Slack 상세 오류 리포트 확인
+- [x] Task: 배포 이력 파일(`.deploy_history`) 기록 상태 최종 점검
+- [x] Task: Conductor - User Manual Verification 'Phase 4 Completion' (Protocol in workflow.md)

@@ -51,3 +51,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
 *Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
+\n---\n\n- [x] **Track: n8n 기반 안정적인 배포 자동화 및 Slack 상세 알림 시스템 구축**\n*Link: [./tracks/deployment_automation_20260310/](./tracks/deployment_automation_20260310/)*

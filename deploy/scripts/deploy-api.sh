@@ -48,7 +48,7 @@ collect_diagnostics() {
     
     echo -e "\n[Spring Boot Actuator 헬스 상태]" >&2
     # 컨테이너 내부에서 localhost로 접근 시도
-    docker exec "${service_name}" wget -qO- http://localhost:8080/actuator/health 2>/dev/null >&2 || echo "Actuator 헬스 정보를 가져올 수 없습니다." >&2
+    docker exec "${service_name}" wget -qO- http://localhost:8080/actuator/health 2>/dev/null >&2 || echo "Actuator 헬스 정보를 가져올 수 없습니다. (포트: 8080)" >&2
     
     echo -e "\n[Nginx 에러 로그 - 최근 10줄]" >&2
     if [[ -f "${PROJECT_DIR}/nginx/logs/error.log" ]]; then

@@ -30,7 +30,7 @@ collect_diagnostics() {
     echo "[Docker 로그 - 최근 20줄]" >&2
     docker logs --tail 20 "${service_name}" >&2 || echo "Docker 로그를 가져올 수 없습니다." >&2
     echo -e "\n[Spring Boot Actuator 헬스 상태]" >&2
-    docker exec "${service_name}" wget -qO- http://localhost:8080/actuator/health 2>/dev/null >&2 || echo "Actuator 헬스 정보를 가져올 수 없습니다." >&2
+    docker exec "${service_name}" wget -qO- http://localhost:8080/actuator/health 2>/dev/null >&2 || echo "Actuator 헬스 정보를 가져올 수 없습니다. (포트: 8080)" >&2
     echo "---------------------------------------" >&2
 }
 
