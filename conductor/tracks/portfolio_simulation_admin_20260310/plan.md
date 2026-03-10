@@ -5,20 +5,20 @@ This plan outlines the major refactoring of the Portfolio domain and the impleme
 ## Phase 1: Portfolio Domain Refactoring & Core CRUD
 Focus on restructuring the domain model to support better extensibility and implementing basic management features.
 
-- [ ] **Task: Domain Model Refactoring**
-    - [ ] Refactor `Portfolio` and `PortfolioItem` to support flexible asset types (Stock, Cash).
-    - [ ] Update `Portfolio` to include metadata for diversification analysis.
-    - [ ] Implement domain-level validation for portfolio constraints (e.g., duplicate names).
-- [ ] **Task: Portfolio CRUD Implementation**
-    - [ ] Implement `PortfolioService` with create, read, update, and delete logic.
-    - [ ] Implement `PortfolioRepository` (Spring Data JPA) with necessary query methods.
-    - [ ] Create REST API endpoints for portfolio management in `stockwellness-api`.
-- [ ] **Task: Asset Management Logic**
-    - [ ] Implement logic to add/remove `PortfolioItem` (Stock) with purchase price and quantity.
-    - [ ] Implement logic to manage `Cash` balance within a portfolio.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)**
+- [x] **Task: Domain Model Refactoring**
+    - [x] Refactor `Portfolio` and `PortfolioItem` to support flexible asset types (Stock, Cash).
+    - [x] Update `Portfolio` to include metadata for diversification analysis.
+    - [x] Implement domain-level validation for portfolio constraints (e.g., duplicate names).
+- [x] **Task: Portfolio CRUD Implementation**
+    - [x] Implement `PortfolioService` with create, read, update, and delete logic.
+    - [x] Implement `PortfolioRepository` (Spring Data JPA) with necessary query methods.
+    - [x] Create REST API endpoints for portfolio management in `stockwellness-api`.
+- [x] **Task: Asset Management Logic**
+    - [x] Implement logic to add/remove `PortfolioItem` (Stock) with purchase price and quantity.
+    - [x] Implement logic to manage `Cash` balance within a portfolio.
+    - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
-## Phase 2: Performance & Diversification Analysis
+    ## Phase 2: Performance & Diversification Analysis
 Implement dynamic calculation of P/L and diversification metrics.
 
 - [ ] **Task: Dynamic P/L Calculation Engine**
