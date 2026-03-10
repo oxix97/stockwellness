@@ -62,7 +62,8 @@ services:
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     healthcheck:
-      test: [ "CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok" ]
+      # nc(netcat)이 없을 경우를 대비해 zkServer.sh status로 체크
+      test: [ "CMD-SHELL", "zkServer.sh status" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -113,7 +114,8 @@ services:
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -143,12 +145,13 @@ services:
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 40s
-    profiles: [ green ]   # 기본 비활성 — 배포 시에만 시작
+    profiles: [ green ]   # 기본적으로 비활성 — 배포 중에만 시작됨
 
   # ── Batch (단순 재시작 방식 — Blue-Green 불필요) ──────────────────
   stockwellness-batch:
@@ -171,7 +174,8 @@ services:
       redis:    { condition: service_healthy }
       kafka:    { condition: service_healthy }
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1" ]
+      # Spring Boot 상태: UP → HTTP 200 (wget 종료 코드 0), DOWN → HTTP 503 (wget 종료 코드 8)
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:8080/actuator/health" ]
       interval: 10s
       timeout: 5s
       retries: 5

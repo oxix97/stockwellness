@@ -9,6 +9,8 @@ FROM docker:cli AS docker-cli
 FROM n8nio/n8n:latest
 
 USER root
+# 배포 스크립트 실행을 위한 bash 설치
+RUN apk add --no-cache bash
 # docker CLI 바이너리 복사
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 # docker compose v2 플러그인 복사 (docker compose 명령 사용을 위해 필수)
