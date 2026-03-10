@@ -9,8 +9,12 @@ FROM docker:cli AS docker-cli
 FROM n8nio/n8n:latest
 
 USER root
-# 배포 스크립트 실행 및 Git Pull을 위한 bash, git 설치
-RUN apk add --no-cache bash git
+# 배포 스크립트 실행 및 Git Pull을 위한 bash, git, ssh-client 설치 (Debian 기반)
+RUN apt-get update && apt-get install -y \
+    bash \
+    git \
+    openssh-client \
+    && rm -rf /var/lib/apt/lists/*
 # docker CLI 바이너리 복사
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 # docker compose v2 플러그인 복사 (docker compose 명령 사용을 위해 필수)
