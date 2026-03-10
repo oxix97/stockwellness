@@ -28,15 +28,15 @@ public class PortfolioDiagnosisDataLoader {
         Portfolio portfolio = portfolioPort.findById(portfolioId)
                 .orElseThrow(PortfolioNotFoundException::new);
 
-        List<String> isinCodes = portfolio.getItems().stream()
+        List<String> symbols = portfolio.getItems().stream()
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
-                .map(PortfolioItem::getIsinCode)
+                .map(PortfolioItem::getSymbol)
                 .toList();
 
-        Map<String, Stock> stockMap = stockPort.loadStocksByTickers(isinCodes).stream()
-                .collect(Collectors.toMap(Stock::getStandardCode, stock -> stock));
+        Map<String, Stock> stockMap = stockPort.loadStocksByTickers(symbols).stream()
+                .collect(Collectors.toMap(Stock::getTicker, stock -> stock));
 
-        Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(isinCodes, 5);
+        Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(symbols, 5);
 
         return new DiagnosisContext(portfolio, stockMap, stockPriceMap);
     }

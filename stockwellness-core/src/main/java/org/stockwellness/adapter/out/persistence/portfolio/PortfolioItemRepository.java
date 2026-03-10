@@ -6,5 +6,5 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import java.util.List;
 
 public interface PortfolioItemRepository extends JpaRepository<PortfolioItem, Long> {
-    List<PortfolioItem> findAllByIsinCode(String isinCode);
+    List<PortfolioItem> findAllBySymbol(String symbol);
 }
