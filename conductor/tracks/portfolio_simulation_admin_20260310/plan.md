@@ -21,10 +21,10 @@ Focus on restructuring the domain model to support better extensibility and impl
     ## Phase 2: Performance & Diversification Analysis
 Implement dynamic calculation of P/L and diversification metrics.
 
-- [ ] **Task: Dynamic P/L Calculation Engine**
-    - [ ] Implement a service to fetch the latest EOD prices from Redis/DB.
-    - [ ] Create a calculation utility for real-time portfolio valuation and P/L.
-    - [ ] Optimize performance using Redis-cached price data.
+- [x] **Task: Dynamic P/L Calculation Engine**
+    - [x] Implement a service to fetch the latest EOD prices from Redis/DB.
+    - [x] Create a calculation utility for real-time portfolio valuation and P/L.
+    - [x] Optimize performance using Redis-cached price data. (Handled via StockPricePort/Adapter)
 - [ ] **Task: Diversification Metrics**
     - [ ] Implement sector weight calculation logic.
     - [ ] Implement country weight (KR/US) calculation logic.
