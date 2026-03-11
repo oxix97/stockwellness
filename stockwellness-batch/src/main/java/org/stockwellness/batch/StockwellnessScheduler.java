@@ -10,6 +10,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
 import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -19,6 +20,7 @@ import org.stockwellness.global.error.ErrorCode;
 public class StockwellnessScheduler {
 
     private final JobLauncher jobLauncher;
+    private final AdvisorOrchestrator advisorOrchestrator;
     
     // 주입할 배치 잡들
     private final Job stockMasterSyncJob;
@@ -64,6 +66,20 @@ public class StockwellnessScheduler {
         } catch (Exception e) {
             log.error(">>> Critical error occurred during Daily Full Sync Batch: {}", e.getMessage(), e);
             throw new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED);
+        }
+    }
+
+    /**
+     * 매주 월요일 오전 8시에 모든 포트폴리오에 대한 AI 리밸런싱 조언을 생성합니다.
+     */
+    @Scheduled(cron = "0 0 8 * * MON")
+    public void runAiAdvisorRebalancing() {
+        log.info(">>> Starting Weekly AI Advisor Rebalancing Orchestration...");
+        try {
+            advisorOrchestrator.runAllPortfolios();
+            log.info(">>> Weekly AI Advisor Rebalancing Orchestration Completed.");
+        } catch (Exception e) {
+            log.error(">>> Failed to execute AI Advisor Rebalancing: {}", e.getMessage(), e);
         }
     }
 
