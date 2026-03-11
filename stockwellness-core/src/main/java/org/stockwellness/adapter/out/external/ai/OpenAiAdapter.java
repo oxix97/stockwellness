@@ -7,6 +7,8 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
+import org.stockwellness.application.port.out.portfolio.AiAdvisorPort;
+import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
@@ -19,7 +21,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 @Component
-public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort {
+public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort, AiAdvisorPort {
 
     private final ChatClient chatClient;
     private final PromptTemplateMapper promptTemplateMapper;
@@ -82,6 +84,25 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
                 AiReport.class,
                 AiReport::fallback,
                 "Stock AI Analysis"
+        );
+    }
+
+    @Override
+    @Retryable(
+            retryFor = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000)
+    )
+    public AdvisorAiResult getRebalancingAdvice(AdvisorAiContext context) {
+        String systemInstruction = promptTemplateMapper.getAdvisorSystemInstruction();
+        String userContext = promptTemplateMapper.toAdvisorPromptString(context);
+
+        return executeAiCall(
+                systemInstruction,
+                userContext,
+                AdvisorAiResult.class,
+                AdvisorAiResult::fallback,
+                "Portfolio Rebalancing Advice"
         );
     }
 
