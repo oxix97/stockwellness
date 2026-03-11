@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.PortfolioAnalysisUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.internal.*;
@@ -13,14 +14,18 @@ import org.stockwellness.domain.portfolio.BacktestStrategy;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
 import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.Country;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.FinanceCalculationUtil;
 import org.stockwellness.global.util.PortfolioMapperUtil;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -160,10 +165,20 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             }
         }
 
+        // 제로 가치 포트폴리오 처리
+        PortfolioStats stats = context.stats();
+        if (totalPurchaseAmount.compareTo(BigDecimal.ZERO) == 0 && currentTotalValue.compareTo(BigDecimal.ZERO) == 0) {
+            return new PortfolioValuationResult(
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                (stats != null) ? stats.getMdd() : BigDecimal.ZERO,
+                (stats != null) ? stats.getSharpeRatio() : BigDecimal.ZERO,
+                (stats != null) ? stats.getBeta() : BigDecimal.ZERO
+            );
+        }
+
         BigDecimal totalProfitLoss = currentTotalValue.subtract(totalPurchaseAmount);
         BigDecimal dailyProfitLoss = currentTotalValue.subtract(previousTotalValue);
-
-        PortfolioStats stats = context.stats();
 
         return new PortfolioValuationResult(
                 totalPurchaseAmount, currentTotalValue, totalProfitLoss, 
@@ -180,37 +195,53 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
      */
     private PortfolioDiversificationResult calculateDiversification(AnalysisContext context) {
         BigDecimal totalValue = BigDecimal.ZERO;
-        Map<String, BigDecimal> assetValues = new HashMap<>();
-        Map<String, BigDecimal> sectorValues = new HashMap<>();
-        Map<String, BigDecimal> countryValues = new HashMap<>();
+        
+        // 최적화: EnumMap 활용 및 name() 호출 최소화
+        Map<AssetType, BigDecimal> assetValueMap = new EnumMap<>(AssetType.class);
+        Map<String, BigDecimal> sectorValueMap = new HashMap<>();
+        Map<Country, BigDecimal> countryValueMap = new EnumMap<>(Country.class);
 
         for (PortfolioItem item : context.portfolio().getItems()) {
             BigDecimal currentValue = calculateCurrentValue(item, context.priceMap());
             totalValue = totalValue.add(currentValue);
 
-            // 1. 자산군별 합산 (STOCK/CASH)
-            String assetType = item.getAssetType().name();
-            assetValues.put(assetType, assetValues.getOrDefault(assetType, BigDecimal.ZERO).add(currentValue));
+            // 1. 자산군별 합산
+            AssetType assetType = item.getAssetType();
+            assetValueMap.put(assetType, assetValueMap.getOrDefault(assetType, BigDecimal.ZERO).add(currentValue));
 
-            if (item.getAssetType() == AssetType.STOCK) {
+            if (assetType == AssetType.STOCK) {
                 Stock stock = context.stockMap().get(item.getSymbol());
                 if (stock != null) {
                     // 2. 업종별 합산
                     String sector = stock.getSector().getSectorName();
-                    sectorValues.put(sector, sectorValues.getOrDefault(sector, BigDecimal.ZERO).add(currentValue));
+                    sectorValueMap.put(sector, sectorValueMap.getOrDefault(sector, BigDecimal.ZERO).add(currentValue));
                     // 3. 국가별 합산
-                    String country = PortfolioMapperUtil.resolveCountry(stock.getMarketType()).name();
-                    countryValues.put(country, countryValues.getOrDefault(country, BigDecimal.ZERO).add(currentValue));
+                    Country country = PortfolioMapperUtil.resolveCountry(stock.getMarketType());
+                    countryValueMap.put(country, countryValueMap.getOrDefault(country, BigDecimal.ZERO).add(currentValue));
                 }
             } else {
                 // 현금 자산의 국가 합산 (통화 기준)
-                String country = PortfolioMapperUtil.resolveCountryFromCurrency(item.getCurrency()).name();
-                countryValues.put(country, countryValues.getOrDefault(country, BigDecimal.ZERO).add(currentValue));
+                Country country = PortfolioMapperUtil.resolveCountryFromCurrency(item.getCurrency());
+                countryValueMap.put(country, countryValueMap.getOrDefault(country, BigDecimal.ZERO).add(currentValue));
             }
         }
 
-        return new PortfolioDiversificationResult(totalValue, PortfolioMapperUtil.calculateRatios(assetValues, totalValue),
-                PortfolioMapperUtil.calculateRatios(sectorValues, totalValue), PortfolioMapperUtil.calculateRatios(countryValues, totalValue));
+        return new PortfolioDiversificationResult(totalValue, 
+                convertAssetRatios(assetValueMap, totalValue),
+                PortfolioMapperUtil.calculateRatios(sectorValueMap, totalValue), 
+                convertCountryRatios(countryValueMap, totalValue));
+    }
+
+    private Map<String, BigDecimal> convertAssetRatios(Map<AssetType, BigDecimal> assetValueMap, BigDecimal total) {
+        Map<String, BigDecimal> ratios = new HashMap<>();
+        assetValueMap.forEach((k, v) -> ratios.put(k.name(), FinanceCalculationUtil.calculateRate(v, total)));
+        return ratios;
+    }
+
+    private Map<String, BigDecimal> convertCountryRatios(Map<Country, BigDecimal> countryValueMap, BigDecimal total) {
+        Map<String, BigDecimal> ratios = new HashMap<>();
+        countryValueMap.forEach((k, v) -> ratios.put(k.name(), FinanceCalculationUtil.calculateRate(v, total)));
+        return ratios;
     }
 
     /**
@@ -231,14 +262,16 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             BigDecimal currentWeight = totalValue.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
                     FinanceCalculationUtil.calculateRate(currentValue, totalValue);
             
-            // 목표 비중에 따른 목표 평가 금액 및 괴리 금액 계산
+            // 목표 비중 (%)
             BigDecimal targetWeight = item.getTargetWeight();
-            BigDecimal targetValue = totalValue.multiply(targetWeight).divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP);
+            
+            // 목표 가치 = 전체 가치 * (목표 비중 / 100)
+            BigDecimal targetValue = totalValue.multiply(targetWeight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
             BigDecimal diffValue = targetValue.subtract(currentValue);
             
             // 현재가 기준 추천 매매 수량 (양수: 매수, 음수: 매도)
             BigDecimal recommendedQuantity = currentPrice.compareTo(BigDecimal.ZERO) > 0 ?
-                    diffValue.divide(currentPrice, 4, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                    diffValue.divide(currentPrice, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
             items.add(new PortfolioRebalancingResult.RebalancingItem(item.getSymbol(), currentWeight, targetWeight, 
                     targetWeight.subtract(currentWeight), item.getQuantity(), recommendedQuantity, currentPrice));
@@ -261,5 +294,9 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private BigDecimal calculateCurrentValue(PortfolioItem item, Map<String, List<StockPrice>> priceMap) {
         if (item.getAssetType() == AssetType.CASH) return item.getQuantity();
         return item.getQuantity().multiply(getCurrentPrice(item, priceMap));
+    }
+
+    private List<BigDecimal> calculateDailyReturns(List<StockPriceResult> prices) {
+        return FinanceCalculationUtil.calculateDailyReturns(prices);
     }
 }

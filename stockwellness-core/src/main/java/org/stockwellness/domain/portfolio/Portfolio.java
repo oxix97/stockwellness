@@ -65,8 +65,9 @@ public class Portfolio extends AbstractEntity {
         // 모든 비중이 0인 경우는 초기 상태로 간주하고 허용
         if (sum.compareTo(BigDecimal.ZERO) == 0) return;
 
-        // 비중 설정이 시작되었다면 정확히 100%여야 함
-        if (sum.compareTo(BigDecimal.valueOf(100)) != 0) {
+        // 비중 설정이 시작되었다면 정확히 100%여야 함 (소수점 정밀도 고려)
+        BigDecimal targetSum = BigDecimal.valueOf(100).setScale(4, java.math.RoundingMode.HALF_UP);
+        if (sum.setScale(4, java.math.RoundingMode.HALF_UP).compareTo(targetSum) != 0) {
             throw new InvalidPortfolioException();
         }
     }
