@@ -10,11 +10,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -52,6 +56,9 @@ class BatchAdminControllerTest {
     @MockitoBean
     private org.springframework.batch.core.launch.JobOperator jobOperator;
 
+    @MockitoBean
+    private StockPriceRepository stockPriceRepository;
+
     @Test
     void testSyncMasterResponseFormat() throws Exception {
         // given
@@ -68,5 +75,20 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.jobName").value("stockMasterSyncJob"))
                 .andExpect(jsonPath("$.statusUrl").value("/api/v1/admin/batch/status/stockMasterSyncJob"))
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void testIntegrityCheckResponseFormat() throws Exception {
+        // given
+        when(stockPriceRepository.findInvalidPrices(any(), any())).thenReturn(List.of());
+
+        // when & then
+        mockMvc.perform(get("/api/v1/admin/batch/integrity-check")
+                        .param("startDate", "2024-01-01")
+                        .param("endDate", "2024-01-02")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.issues").isArray());
     }
 }

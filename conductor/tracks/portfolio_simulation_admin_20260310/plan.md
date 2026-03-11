@@ -37,12 +37,12 @@ Implement dynamic calculation of P/L and diversification metrics.
 ## Phase 3: Administrative Monitoring & Health Check
 Implement tools for system observability and batch management.
 
-- [ ] **Task: System Health Check API**
-    - [ ] Implement health check indicators for Database, Redis, and Kafka.
-    - [ ] Create a unified health check endpoint `/api/admin/health`.
-- [ ] **Task: Batch Monitoring & Integrity**
-    - [ ] Implement an API to query the status of Spring Batch jobs from `BATCH_JOB_EXECUTION`.
-    - [ ] Implement a data integrity check for `StockPrice` gaps.
-- [ ] **Task: Admin Control Features**
-    - [ ] (Optional) Implement a secure endpoint to manually trigger data sync for a specific date.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)**
+- [x] **Task: System Health Check API**
+    - [x] Implement health check indicators for Database, Redis, and Kafka. (Using Actuator)
+    - [x] Create a unified health check endpoint `/api/admin/health`.
+- [x] **Task: Batch Monitoring & Integrity**
+    - [x] Implement an API to query the status of Spring Batch jobs from `BATCH_JOB_EXECUTION`.
+    - [x] Implement a data integrity check for `StockPrice` gaps.
+- [x] **Task: Admin Control Features**
+    - [x] (Optional) Implement a secure endpoint to manually trigger data sync for a specific date. (Already exists in BatchAdminController)
+- [x] **Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)**

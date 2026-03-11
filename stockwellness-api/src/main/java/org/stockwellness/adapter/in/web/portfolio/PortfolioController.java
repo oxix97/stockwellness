@@ -1,6 +1,5 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

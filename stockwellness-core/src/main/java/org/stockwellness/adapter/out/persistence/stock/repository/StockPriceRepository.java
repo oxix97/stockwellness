@@ -27,4 +27,7 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
 
     @Query("SELECT s FROM StockPrice s WHERE s.id.stockId = :stockId ORDER BY s.id.baseDate ASC")
     List<StockPrice> findByStockIdOrderByBaseDateAsc(@Param("stockId") Long stockId);
+
+    @Query("SELECT s FROM StockPrice s WHERE s.id.baseDate BETWEEN :startDate AND :endDate AND (s.closePrice IS NULL OR s.closePrice <= 0)")
+    List<StockPrice> findInvalidPrices(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }
