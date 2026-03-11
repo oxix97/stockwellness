@@ -17,6 +17,7 @@ import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedExcepti
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 import org.stockwellness.fixture.PortfolioFixture;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,8 +50,8 @@ class PortfolioCommandServiceTest {
         void create_success() {
             // given
             CreatePortfolioCommand command = PortfolioFixture.createCreateCommand(List.of(
-                    PortfolioFixture.createStockItem("AAPL", 4),
-                    PortfolioFixture.createCashItem(4)
+                    PortfolioFixture.createStockItem("AAPL", BigDecimal.TEN, BigDecimal.valueOf(150)),
+                    PortfolioFixture.createCashItem(BigDecimal.valueOf(500))
             ));
 
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
@@ -83,7 +84,7 @@ class PortfolioCommandServiceTest {
         void fail_invalid_stock_code() {
             // given
             CreatePortfolioCommand command = PortfolioFixture.createCreateCommand(List.of(
-                    PortfolioFixture.createStockItem("INVALID_CODE", 1)
+                    PortfolioFixture.createStockItem("INVALID_CODE", BigDecimal.ONE, BigDecimal.valueOf(100))
             ));
             given(portfolioPort.existsPortfolioName(command.memberId(), command.name())).willReturn(false);
             given(stockPort.existsByTicker("INVALID_CODE")).willReturn(false);
@@ -104,7 +105,7 @@ class PortfolioCommandServiceTest {
             // given
             Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
             UpdatePortfolioCommand command = PortfolioFixture.createUpdateCommand(
-                    PortfolioFixture.PORTFOLIO_ID, "수정된 이름", List.of(PortfolioFixture.updateStockItem("TSLA", 8))
+                    PortfolioFixture.PORTFOLIO_ID, "수정된 이름", List.of(PortfolioFixture.updateStockItem("TSLA", BigDecimal.ONE, BigDecimal.valueOf(200)))
             );
 
             given(portfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
@@ -117,7 +118,7 @@ class PortfolioCommandServiceTest {
 
             // then
             assertThat(portfolio.getName()).isEqualTo("수정된 이름");
-            assertThat(portfolio.getTotalPieces()).isEqualTo(8);
+            assertThat(portfolio.calculateTotalPurchaseAmount()).isEqualByComparingTo(BigDecimal.valueOf(200));
         }
 
         @Test
@@ -158,7 +159,7 @@ class PortfolioCommandServiceTest {
         }
 
         @Test
-        @DisplayName("실패: 다른 사람의 포트폴리오를 삭제하려고 하면 UNAUTHORIZED 예외가 발생한다")
+        @DisplayName("실패: 다른 사람의 포트폴리오를 삭제하려고 하면 UNAUTHORIZED 예외 가 발생한다")
         void fail_unauthorized() {
             // given
             Long otherMemberId = 999L;
@@ -170,7 +171,7 @@ class PortfolioCommandServiceTest {
             // when & then
             assertThatThrownBy(() -> portfolioCommandService.deletePortfolio(otherMemberId, PortfolioFixture.PORTFOLIO_ID))
                     .isInstanceOf(PortfolioAccessDeniedException.class);
-            
+
             verify(portfolioPort, times(0)).deletePortfolio(any());
         }
     }

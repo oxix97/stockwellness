@@ -7,6 +7,76 @@ servers:
 - url: http://localhost:8080
 tags: []
 paths:
+  /api/v1/portfolios:
+    post:
+      tags:
+      - Portfolio
+      summary: 포트폴리오 생성
+      description: 새로운 투자 포트폴리오를 생성합니다.
+      operationId: portfolio-create
+      parameters:
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioCreateRequest"
+            examples:
+              portfolio-create:
+                value: |-
+                  {
+                    "name" : "내 연금 포트폴리오",
+                    "description" : "은퇴 자금 마련용",
+                    "items" : [ {
+                      "symbol" : "AAPL",
+                      "quantity" : 10,
+                      "purchasePrice" : 150,
+                      "currency" : "KRW",
+                      "assetType" : "STOCK",
+                      "targetWeight" : 0
+                    }, {
+                      "symbol" : "CASH",
+                      "quantity" : 500,
+                      "purchasePrice" : 1,
+                      "currency" : "KRW",
+                      "assetType" : "CASH",
+                      "targetWeight" : 0
+                    } ]
+                  }
+      responses:
+        "201":
+          description: "201"
+  /api/v1/admin/health:
+    get:
+      tags:
+      - Admin
+      summary: 시스템 헬스 체크
+      description: "DB, Redis, Kafka의 연결 상태를 통합 조회합니다."
+      operationId: admin-health
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-admin-health178451426"
+              examples:
+                admin-health:
+                  value: |-
+                    {
+                      "status" : "UP",
+                      "components" : {
+                        "kafka" : "UP",
+                        "db" : "UP",
+                        "redis" : "UP"
+                      }
+                    }
   /api/v1/auth/login:
     post:
       tags:
@@ -94,6 +164,134 @@ paths:
                       "accessToken" : "new.access.token",
                       "refreshToken" : "new.refresh.token"
                     }
+  /api/v1/portfolios/{portfolioId}:
+    get:
+      tags:
+      - Portfolio
+      summary: 포트폴리오 상세 조회
+      description: 포트폴리오 상세 조회
+      operationId: portfolio-get
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 조회할 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioResponse"
+              examples:
+                portfolio-get:
+                  value: |-
+                    {
+                      "id" : 5,
+                      "name" : "내 연금 포트폴리오",
+                      "description" : "은퇴 자금 마련용",
+                      "totalPurchaseAmount" : 2000,
+                      "items" : [ {
+                        "symbol" : "AAPL",
+                        "quantity" : 10,
+                        "purchasePrice" : 150,
+                        "currency" : "KRW",
+                        "assetType" : "STOCK",
+                        "purchaseAmount" : 1500,
+                        "targetWeight" : 0
+                      }, {
+                        "symbol" : "CASH",
+                        "quantity" : 500,
+                        "purchasePrice" : 1,
+                        "currency" : "KRW",
+                        "assetType" : "CASH",
+                        "purchaseAmount" : 500,
+                        "targetWeight" : 0
+                      } ]
+                    }
+    put:
+      tags:
+      - Portfolio
+      summary: 포트폴리오 수정
+      description: "포트폴리오의 이름, 설명 및 구성 종목을 수정합니다."
+      operationId: portfolio-update
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 수정할 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioUpdateRequest"
+            examples:
+              portfolio-update:
+                value: |-
+                  {
+                    "name" : "수정후",
+                    "description" : "은퇴 자금 마련용",
+                    "items" : [ {
+                      "symbol" : "TSLA",
+                      "quantity" : 1,
+                      "purchasePrice" : 200,
+                      "currency" : "KRW",
+                      "assetType" : "STOCK",
+                      "targetWeight" : 0
+                    } ]
+                  }
+      responses:
+        "204":
+          description: "204"
+    delete:
+      tags:
+      - Portfolio
+      summary: 포트폴리오 삭제
+      description: 포트폴리오를 삭제합니다.
+      operationId: portfolio-delete
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 삭제할 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
+            examples:
+              portfolio-delete:
+                value: _csrf=QCYbyiNPk3Qqd_pq1AHP_ebzW5Pff81qND-DhHVlcI690VaHd0V4-kF39hEHTptetSz7zN_LdvG9SKxHDQu2tEZRR7iFsG-y
+      responses:
+        "204":
+          description: "204"
   /api/v1/sectors/{sectorCode}:
     get:
       tags:
@@ -331,6 +529,51 @@ paths:
       responses:
         "201":
           description: "201"
+  /api/v1/portfolios/{portfolioId}/health:
+    get:
+      tags:
+      - Portfolio
+      summary: 포트폴리오 건강 진단
+      description: 포트폴리오의 수치적 건강 점수와 AI 인사이트를 조회합니다.
+      operationId: portfolio-health
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 진단할 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      - name: Authorization
+        in: header
+        description: Bearer Access Token
+        required: true
+        schema:
+          type: string
+        example: "Bearer {ACCESS_TOKEN}"
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosisResponse"
+              examples:
+                portfolio-health:
+                  value: |-
+                    {
+                      "overallScore" : 7,
+                      "categories" : {
+                        "balance" : 35,
+                        "defense" : 0,
+                        "attack" : 0,
+                        "endurance" : 0,
+                        "agility" : 0
+                      },
+                      "stockContributions" : [ ],
+                      "summary" : "안정적인 대들보",
+                      "insight" : "시가총액이 큰 우량주 중심의 포트폴리오로 매우 안정적입니다.",
+                      "nextSteps" : [ "현재 비중을 유지하세요.", "현금 비중을 조금 늘려보세요." ]
+                    }
   /api/v1/sectors/ranking/fluctuation:
     get:
       tags:
@@ -465,7 +708,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/api-v1-stocks-search-history486549215"
+              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
             examples:
               stock-search-history-delete:
                 value: keyword=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90
@@ -507,6 +750,212 @@ paths:
                       "period" : "1Y",
                       "stockReturnRate" : 15.5,
                       "benchmarkReturnRate" : 10.2
+                    }
+  /api/v1/portfolios/{portfolioId}/analysis/backtest:
+    post:
+      tags:
+      - Portfolio Analysis
+      summary: 포트폴리오 백테스팅 시뮬레이션
+      description: 적립식(DCA) 또는 거치식 전략으로 과거 성과를 시뮬레이션합니다.
+      operationId: portfolio-analysis-backtest
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BacktestRequest"
+            examples:
+              portfolio-analysis-backtest:
+                value: |-
+                  {
+                    "strategy" : "DCA",
+                    "amount" : 1000000,
+                    "benchmarkTicker" : "KOSPI"
+                  }
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacktestResponse"
+              examples:
+                portfolio-analysis-backtest:
+                  value: |-
+                    {
+                      "dailyResults" : [ {
+                        "date" : "2024-01-01",
+                        "totalValue" : 1000000,
+                        "totalInvested" : 1000000,
+                        "returnRate" : 0,
+                        "benchmarkReturnRate" : 0
+                      }, {
+                        "date" : "2024-01-02",
+                        "totalValue" : 1050000,
+                        "totalInvested" : 1000000,
+                        "returnRate" : 0,
+                        "benchmarkReturnRate" : 0
+                      } ]
+                    }
+  /api/v1/portfolios/{portfolioId}/analysis/correlation:
+    get:
+      tags:
+      - Portfolio Analysis
+      summary: 포트폴리오 종목 간 상관관계 분석
+      description: 포트폴리오 종목 간 상관관계 분석
+      operationId: portfolio-analysis-correlation
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
+              examples:
+                portfolio-analysis-correlation:
+                  value: |-
+                    {
+                      "AAPL" : {
+                        "AAPL" : 1,
+                        "TSLA" : 0.85
+                      },
+                      "TSLA" : {
+                        "AAPL" : 0.85,
+                        "TSLA" : 1
+                      }
+                    }
+  /api/v1/portfolios/{portfolioId}/analysis/diversification:
+    get:
+      tags:
+      - Portfolio Analysis
+      summary: 포트폴리오 비중 분석 (자산군/업종/국가)
+      description: 포트폴리오 비중 분석 (자산군/업종/국가)
+      operationId: portfolio-analysis-diversification
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioDiversificationResponse"
+              examples:
+                portfolio-analysis-diversification:
+                  value: |-
+                    {
+                      "totalValue" : 1000000,
+                      "assetRatios" : [ {
+                        "name" : "STOCK",
+                        "value" : 70.0
+                      }, {
+                        "name" : "CASH",
+                        "value" : 30.0
+                      } ],
+                      "sectorRatios" : [ {
+                        "name" : "IT",
+                        "value" : 40.0
+                      }, {
+                        "name" : "금융",
+                        "value" : 30.0
+                      } ],
+                      "countryRatios" : [ {
+                        "name" : "KR",
+                        "value" : 60.0
+                      }, {
+                        "name" : "US",
+                        "value" : 40.0
+                      } ]
+                    }
+  /api/v1/portfolios/{portfolioId}/analysis/rebalancing:
+    get:
+      tags:
+      - Portfolio Analysis
+      summary: 포트폴리오 리밸런싱 가이드
+      description: 포트폴리오 리밸런싱 가이드
+      operationId: portfolio-analysis-rebalancing
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioRebalancingResponse"
+              examples:
+                portfolio-analysis-rebalancing:
+                  value: |-
+                    {
+                      "totalValue" : 2000,
+                      "items" : [ {
+                        "symbol" : "AAPL",
+                        "currentWeight" : 80,
+                        "targetWeight" : 60,
+                        "diffWeight" : -20,
+                        "currentQuantity" : 10,
+                        "recommendedQuantity" : -2.5,
+                        "currentPrice" : 160,
+                        "expectedTradeAmount" : -400.0
+                      } ]
+                    }
+  /api/v1/portfolios/{portfolioId}/analysis/valuation:
+    get:
+      tags:
+      - Portfolio Analysis
+      summary: 포트폴리오 가치 및 수익률 분석
+      description: 포트폴리오 가치 및 수익률 분석
+      operationId: portfolio-analysis-valuation
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioValuationResponse"
+              examples:
+                portfolio-analysis-valuation:
+                  value: |-
+                    {
+                      "totalPurchaseAmount" : 2000,
+                      "currentTotalValue" : 2100,
+                      "totalProfitLoss" : 100,
+                      "totalReturnRate" : 5.0,
+                      "dailyProfitLoss" : 50,
+                      "dailyReturnRate" : 2.44,
+                      "mdd" : 15.5,
+                      "sharpeRatio" : 1.2,
+                      "beta" : 0.95
                     }
   /api/v1/stocks/search/history/all:
     delete:
@@ -652,15 +1101,30 @@ paths:
           description: "204"
 components:
   schemas:
-    api-v1-stocks-popular1050024950:
-      type: array
-      description: 인기 검색어 목록
-      items:
-        oneOf:
-        - type: object
-        - type: boolean
-        - type: string
-        - type: number
+    api-v1-admin-health178451426:
+      required:
+      - status
+      type: object
+      properties:
+        components:
+          required:
+          - db
+          - kafka
+          - redis
+          type: object
+          properties:
+            kafka:
+              type: string
+              description: Kafka 메시지 브로커 상태
+            redis:
+              type: string
+              description: Redis 캐시 상태
+            db:
+              type: string
+              description: 데이터베이스 상태
+        status:
+          type: string
+          description: 전체 상태 (UP/DOWN)
     LoginRequest:
       title: LoginRequest
       required:
@@ -678,14 +1142,6 @@ components:
         email:
           type: string
           description: 이메일
-    api-v1-watchlist-groups-groupId-items1982699150:
-      required:
-      - isinCode
-      type: object
-      properties:
-        isinCode:
-          type: string
-          description: 종목 ISIN 코드
     SectorRankingResponse:
       title: SectorRankingResponse
       type: array
@@ -715,6 +1171,456 @@ components:
             type: boolean
             description: 과열 여부
         description: 섹터 랭킹 리스트
+    api-v1-stocks-new-listings686579750:
+      type: array
+      items:
+        required:
+        - marketType
+        - name
+        - sectorName
+        - status
+        - ticker
+        type: object
+        properties:
+          ticker:
+            type: string
+            description: 티커
+          name:
+            type: string
+            description: 종목명
+          sectorName:
+            type: string
+            description: 섹터명
+          marketType:
+            type: string
+            description: 마켓 타입
+          status:
+            type: string
+            description: 종목 상태
+    PortfolioDiversificationResponse:
+      title: PortfolioDiversificationResponse
+      required:
+      - totalValue
+      type: object
+      properties:
+        totalValue:
+          type: number
+          description: 포트폴리오 총 가치
+        countryRatios:
+          type: array
+          items:
+            required:
+            - name
+            - value
+            type: object
+            properties:
+              name:
+                type: string
+                description: 국가 코드 (KR/US/...)
+              value:
+                type: number
+                description: 비중 (%)
+        sectorRatios:
+          type: array
+          items:
+            required:
+            - name
+            - value
+            type: object
+            properties:
+              name:
+                type: string
+                description: 업종 이름
+              value:
+                type: number
+                description: 비중 (%)
+        assetRatios:
+          type: array
+          items:
+            required:
+            - name
+            - value
+            type: object
+            properties:
+              name:
+                type: string
+                description: 자산군 이름 (STOCK/CASH)
+              value:
+                type: number
+                description: 비중 (%)
+    api-v1-watchlist-groups-groupId-items-332631838:
+      required:
+      - groupName
+      type: object
+      properties:
+        groupName:
+          type: string
+          description: 그룹 이름
+        items:
+          type: array
+          items:
+            required:
+            - aiInsight
+            - currentPrice
+            - fluctuationRate
+            - isinCode
+            - name
+            - rsi
+            - rsiStatus
+            type: object
+            properties:
+              fluctuationRate:
+                type: number
+                description: 등락률
+              name:
+                type: string
+                description: 종목명
+              rsi:
+                type: number
+                description: RSI 지표
+              currentPrice:
+                type: number
+                description: 현재가
+              aiInsight:
+                type: string
+                description: AI 한줄 분석
+              rsiStatus:
+                type: string
+                description: RSI 상태
+              isinCode:
+                type: string
+                description: ISIN 코드
+    api-v1-stocks-search-history457412190:
+      type: array
+      description: 최근 검색어 목록
+      items:
+        oneOf:
+        - type: object
+        - type: boolean
+        - type: string
+        - type: number
+    ReissueRequest:
+      title: ReissueRequest
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: 리프레시 토큰
+    BacktestRequest:
+      title: BacktestRequest
+      type: object
+    DiagnosisResponse:
+      title: DiagnosisResponse
+      required:
+      - categories
+      - insight
+      - nextSteps
+      - overallScore
+      - stockContributions
+      - summary
+      type: object
+      properties:
+        nextSteps:
+          type: array
+          description: AI 추천 개선 단계 리스트
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        summary:
+          type: string
+          description: "AI 요약 한줄평 (예: 성장하는 궁수)"
+        stockContributions:
+          type: array
+          description: 종목별 기여도 (준비 중)
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        insight:
+          type: string
+          description: AI 상세 분석 내용
+        overallScore:
+          type: number
+          description: 종합 건강 점수 (0-100)
+        categories:
+          required:
+          - agility
+          - attack
+          - balance
+          - defense
+          - endurance
+          type: object
+          properties:
+            balance:
+              type: number
+              description: 균형성 점수
+            defense:
+              type: number
+              description: 방어력 점수
+            attack:
+              type: number
+              description: 공격력 점수
+            agility:
+              type: number
+              description: 민첩성 점수
+            endurance:
+              type: number
+              description: 지구력 점수
+          description: 카테고리별 점수 맵
+    BacktestResponse:
+      title: BacktestResponse
+      type: object
+      properties:
+        dailyResults:
+          type: array
+          items:
+            required:
+            - benchmarkReturnRate
+            - date
+            - returnRate
+            - totalInvested
+            - totalValue
+            type: object
+            properties:
+              totalValue:
+                type: number
+                description: 총 가치
+              date:
+                type: string
+                description: 날짜
+              benchmarkReturnRate:
+                type: number
+                description: 벤치마크 수익률 (%)
+              returnRate:
+                type: number
+                description: 포트폴리오 수익률 (%)
+              totalInvested:
+                type: number
+                description: 총 투자 금액
+    api-v1-stocks-ticker-returns1293285194:
+      required:
+      - benchmarkReturnRate
+      - period
+      - stockReturnRate
+      - ticker
+      type: object
+      properties:
+        benchmarkReturnRate:
+          type: number
+          description: 벤치마크 수익률 (%)
+        period:
+          type: string
+          description: 조회 기간
+        ticker:
+          type: string
+          description: 티커
+        stockReturnRate:
+          type: number
+          description: 종목 수익률 (%)
+    PortfolioResponse:
+      title: PortfolioResponse
+      required:
+      - description
+      - id
+      - name
+      - totalPurchaseAmount
+      type: object
+      properties:
+        name:
+          type: string
+          description: 포트폴리오 이름
+        description:
+          type: string
+          description: 설명
+        id:
+          type: number
+          description: 포트폴리오 ID
+        totalPurchaseAmount:
+          type: number
+          description: 총 매입 가치
+        items:
+          type: array
+          items:
+            required:
+            - assetType
+            - currency
+            - purchaseAmount
+            - purchasePrice
+            - quantity
+            - symbol
+            - targetWeight
+            type: object
+            properties:
+              symbol:
+                type: string
+                description: 종목 코드 (Symbol)
+              quantity:
+                type: number
+                description: 보유 수량
+              targetWeight:
+                type: number
+                description: 목표 비중 (%)
+              currency:
+                type: string
+                description: 통화
+              purchasePrice:
+                type: number
+                description: 매입 단가
+              purchaseAmount:
+                type: number
+                description: 종목별 매입 금액
+              assetType:
+                type: string
+                description: 자산 타입
+    api-v1-portfolios-portfolioId-analysis-correlation486549215:
+      type: object
+    SectorSupplyResponse:
+      title: SectorSupplyResponse
+      type: array
+      description: 섹터 수급 리스트
+      items:
+        required:
+        - foreignConsecutiveBuyDays
+        - instConsecutiveBuyDays
+        - netForeignBuyAmount
+        - netInstBuyAmount
+        - sectorCode
+        - sectorName
+        type: object
+        properties:
+          instConsecutiveBuyDays:
+            type: number
+            description: 기관 연속 매수 일수
+          netForeignBuyAmount:
+            type: number
+            description: 외국인 순매수 금액
+          foreignConsecutiveBuyDays:
+            type: number
+            description: 외국인 연속 매수 일수
+          sectorCode:
+            type: string
+            description: 섹터 코드
+          netInstBuyAmount:
+            type: number
+            description: 기관 순매수 금액
+          sectorName:
+            type: string
+            description: 섹터명
+        description: 섹터 수급 리스트
+    api-v1-stocks-popular1050024950:
+      type: array
+      description: 인기 검색어 목록
+      items:
+        oneOf:
+        - type: object
+        - type: boolean
+        - type: string
+        - type: number
+    PortfolioUpdateRequest:
+      title: PortfolioUpdateRequest
+      required:
+      - description
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: 수정할 이름
+        description:
+          type: string
+          description: 수정할 설명
+        items:
+          type: array
+          items:
+            required:
+            - assetType
+            - currency
+            - purchasePrice
+            - quantity
+            - symbol
+            - targetWeight
+            type: object
+            properties:
+              symbol:
+                type: string
+                description: 종목 코드
+              quantity:
+                type: number
+                description: 보유 수량
+              targetWeight:
+                type: number
+                description: 목표 비중 (%)
+              currency:
+                type: string
+                description: 통화
+              purchasePrice:
+                type: number
+                description: 매입 단가
+              assetType:
+                type: string
+                description: 자산 타입
+    PortfolioRebalancingResponse:
+      title: PortfolioRebalancingResponse
+      required:
+      - totalValue
+      type: object
+      properties:
+        totalValue:
+          type: number
+          description: 포트폴리오 총 시장 가치
+        items:
+          type: array
+          items:
+            required:
+            - currentPrice
+            - currentQuantity
+            - currentWeight
+            - diffWeight
+            - expectedTradeAmount
+            - recommendedQuantity
+            - symbol
+            - targetWeight
+            type: object
+            properties:
+              symbol:
+                type: string
+                description: 종목 코드
+              currentWeight:
+                type: number
+                description: 현재 비중 (%)
+              diffWeight:
+                type: number
+                description: 비중 차이 (목표 - 현재)
+              currentPrice:
+                type: number
+                description: 현재가
+              targetWeight:
+                type: number
+                description: 목표 비중 (%)
+              expectedTradeAmount:
+                type: number
+                description: 예상 매매 금액
+              recommendedQuantity:
+                type: number
+                description: "추천 매매 수량 (+: 매수, -: 매도)"
+              currentQuantity:
+                type: number
+                description: 현재 보유 수량
+    api-v1-watchlist-groups-groupId-items1982699150:
+      required:
+      - isinCode
+      type: object
+      properties:
+        isinCode:
+          type: string
+          description: 종목 ISIN 코드
     api-v1-watchlist-groups288370516:
       required:
       - name
@@ -723,6 +1629,80 @@ components:
         name:
           type: string
           description: 그룹 이름
+    api-v1-stocks-search412068969:
+      required:
+      - empty
+      - first
+      - last
+      - number
+      - numberOfElements
+      - pageable
+      - size
+      type: object
+      properties:
+        number:
+          type: number
+          description: 현재 페이지 번호
+        size:
+          type: number
+          description: 페이지 사이즈
+        numberOfElements:
+          type: number
+          description: 현재 페이지 엘리먼트 수
+        last:
+          type: boolean
+          description: 마지막 페이지 여부
+        pageable:
+          type: string
+          description: 페이징 정보
+        sort:
+          required:
+          - empty
+          - sorted
+          - unsorted
+          type: object
+          properties:
+            unsorted:
+              type: boolean
+              description: 미정렬 여부
+            sorted:
+              type: boolean
+              description: 정렬 여부
+            empty:
+              type: boolean
+              description: 정렬 정보 비어있음 여부
+        first:
+          type: boolean
+          description: 첫 번째 페이지 여부
+        content:
+          type: array
+          items:
+            required:
+            - marketType
+            - name
+            - sectorName
+            - status
+            - ticker
+            type: object
+            properties:
+              ticker:
+                type: string
+                description: 티커
+              name:
+                type: string
+                description: 종목명
+              sectorName:
+                type: string
+                description: 섹터명
+              marketType:
+                type: string
+                description: 마켓 타입
+              status:
+                type: string
+                description: 종목 상태
+        empty:
+          type: boolean
+          description: 결과 비어있음 여부
     SectorDetailResponse:
       title: SectorDetailResponse
       required:
@@ -800,148 +1780,90 @@ components:
         isOverheated:
           type: boolean
           description: 과열 진단 여부
-    api-v1-stocks-search412068969:
+    PortfolioValuationResponse:
+      title: PortfolioValuationResponse
       required:
-      - empty
-      - first
-      - last
-      - number
-      - numberOfElements
-      - pageable
-      - size
+      - beta
+      - currentTotalValue
+      - dailyProfitLoss
+      - dailyReturnRate
+      - mdd
+      - sharpeRatio
+      - totalProfitLoss
+      - totalPurchaseAmount
+      - totalReturnRate
       type: object
       properties:
-        number:
+        totalReturnRate:
           type: number
-          description: 현재 페이지 번호
-        size:
+          description: 총 수익률 (%)
+        dailyReturnRate:
           type: number
-          description: 페이지 사이즈
-        numberOfElements:
+          description: 일일 수익률 (%)
+        totalProfitLoss:
           type: number
-          description: 현재 페이지 엘리먼트 수
-        last:
-          type: boolean
-          description: 마지막 페이지 여부
-        pageable:
-          type: string
-          description: 페이징 정보
-        sort:
-          required:
-          - empty
-          - sorted
-          - unsorted
-          type: object
-          properties:
-            unsorted:
-              type: boolean
-              description: 미정렬 여부
-            sorted:
-              type: boolean
-              description: 정렬 여부
-            empty:
-              type: boolean
-              description: 정렬 정보 비어있음 여부
-        first:
-          type: boolean
-          description: 첫 번째 페이지 여부
-        content:
-          type: array
-          items:
-            required:
-            - marketType
-            - name
-            - sectorName
-            - status
-            - ticker
-            type: object
-            properties:
-              ticker:
-                type: string
-                description: 티커
-              name:
-                type: string
-                description: 종목명
-              sectorName:
-                type: string
-                description: 섹터명
-              marketType:
-                type: string
-                description: 마켓 타입
-              status:
-                type: string
-                description: 종목 상태
-        empty:
-          type: boolean
-          description: 결과 비어있음 여부
-    api-v1-stocks-new-listings686579750:
-      type: array
-      items:
-        required:
-        - marketType
-        - name
-        - sectorName
-        - status
-        - ticker
-        type: object
-        properties:
-          ticker:
-            type: string
-            description: 티커
-          name:
-            type: string
-            description: 종목명
-          sectorName:
-            type: string
-            description: 섹터명
-          marketType:
-            type: string
-            description: 마켓 타입
-          status:
-            type: string
-            description: 종목 상태
-    api-v1-watchlist-groups-groupId-items-332631838:
+          description: 총 평가 손익
+        dailyProfitLoss:
+          type: number
+          description: 일일 평가 손익
+        sharpeRatio:
+          type: number
+          description: 샤프 지수
+        mdd:
+          type: number
+          description: 최대 낙폭 (MDD)
+        totalPurchaseAmount:
+          type: number
+          description: 총 매입 금액
+        currentTotalValue:
+          type: number
+          description: 현재 총 가치
+        beta:
+          type: number
+          description: 베타 계수
+    PortfolioCreateRequest:
+      title: PortfolioCreateRequest
       required:
-      - groupName
+      - description
+      - name
       type: object
       properties:
-        groupName:
+        name:
           type: string
-          description: 그룹 이름
+          description: 포트폴리오 이름
+        description:
+          type: string
+          description: 설명
         items:
           type: array
           items:
             required:
-            - aiInsight
-            - currentPrice
-            - fluctuationRate
-            - isinCode
-            - name
-            - rsi
-            - rsiStatus
+            - assetType
+            - currency
+            - purchasePrice
+            - quantity
+            - symbol
+            - targetWeight
             type: object
             properties:
-              fluctuationRate:
+              symbol:
+                type: string
+                description: 종목 코드 (Symbol)
+              quantity:
                 type: number
-                description: 등락률
-              name:
-                type: string
-                description: 종목명
-              rsi:
+                description: 보유 수량
+              targetWeight:
                 type: number
-                description: RSI 지표
-              currentPrice:
+                description: 목표 비중 (%)
+              currency:
+                type: string
+                description: "통화 (KRW, USD 등)"
+              purchasePrice:
                 type: number
-                description: 현재가
-              aiInsight:
+                description: 매입 단가
+              assetType:
                 type: string
-                description: AI 한줄 분석
-              rsiStatus:
-                type: string
-                description: RSI 상태
-              isinCode:
-                type: string
-                description: ISIN 코드
+                description: 자산 타입 (STOCK/CASH)
     api-v1-stocks-ticker-prices-history-1525844804:
       required:
       - benchmarks
@@ -1050,76 +1972,3 @@ components:
         refreshToken:
           type: string
           description: 새로운 리프레시 토큰
-    api-v1-stocks-search-history457412190:
-      type: array
-      description: 최근 검색어 목록
-      items:
-        oneOf:
-        - type: object
-        - type: boolean
-        - type: string
-        - type: number
-    ReissueRequest:
-      title: ReissueRequest
-      required:
-      - refreshToken
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          description: 리프레시 토큰
-    api-v1-stocks-ticker-returns1293285194:
-      required:
-      - benchmarkReturnRate
-      - period
-      - stockReturnRate
-      - ticker
-      type: object
-      properties:
-        benchmarkReturnRate:
-          type: number
-          description: 벤치마크 수익률 (%)
-        period:
-          type: string
-          description: 조회 기간
-        ticker:
-          type: string
-          description: 티커
-        stockReturnRate:
-          type: number
-          description: 종목 수익률 (%)
-    SectorSupplyResponse:
-      title: SectorSupplyResponse
-      type: array
-      description: 섹터 수급 리스트
-      items:
-        required:
-        - foreignConsecutiveBuyDays
-        - instConsecutiveBuyDays
-        - netForeignBuyAmount
-        - netInstBuyAmount
-        - sectorCode
-        - sectorName
-        type: object
-        properties:
-          instConsecutiveBuyDays:
-            type: number
-            description: 기관 연속 매수 일수
-          netForeignBuyAmount:
-            type: number
-            description: 외국인 순매수 금액
-          foreignConsecutiveBuyDays:
-            type: number
-            description: 외국인 연속 매수 일수
-          sectorCode:
-            type: string
-            description: 섹터 코드
-          netInstBuyAmount:
-            type: number
-            description: 기관 순매수 금액
-          sectorName:
-            type: string
-            description: 섹터명
-        description: 섹터 수급 리스트
-    api-v1-stocks-search-history486549215:
-      type: object

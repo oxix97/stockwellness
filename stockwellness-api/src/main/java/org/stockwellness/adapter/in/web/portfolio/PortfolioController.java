@@ -11,12 +11,10 @@ import org.stockwellness.adapter.in.web.portfolio.dto.DiagnosisResponse;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.application.port.in.portfolio.DiagnosePortfolioUseCase;
-import org.stockwellness.application.port.in.portfolio.LoadPortfolioUseCase;
-import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
+import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.global.security.MemberPrincipal;
 
 import java.net.URI;
@@ -26,13 +24,11 @@ import java.util.List;
 @RequestMapping("/api/v1/portfolios")
 @RequiredArgsConstructor
 public class PortfolioController {
-    private final ManagePortfolioUseCase managePortfolioUseCase;
-    private final LoadPortfolioUseCase loadPortfolioUseCase;
-    private final DiagnosePortfolioUseCase diagnosePortfolioUseCase;
+    
+    private final PortfolioFacade portfolioFacade;
 
     /**
      * 포트폴리오 생성
-     * POST /api/portfolios
      */
     @PostMapping
     public ResponseEntity<Void> createPortfolio(
@@ -45,14 +41,17 @@ public class PortfolioController {
             request.description(),
             request.items().stream()
                 .map(item -> new CreatePortfolioCommand.PortfolioItemCommand(
-                    item.stockCode(),
-                    item.pieceCount(),
-                    item.assetType()
+                    item.symbol(),
+                    item.quantity(),
+                    item.purchasePrice(),
+                    item.currency(),
+                    item.assetType(),
+                    item.targetWeight()
                 ))
                 .toList()
         );
 
-        Long portfolioId = managePortfolioUseCase.createPortfolio(command);
+        Long portfolioId = portfolioFacade.createPortfolio(command);
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -63,32 +62,29 @@ public class PortfolioController {
 
     /**
      * 내 포트폴리오 목록 조회
-     * GET /api/portfolios
      */
     @GetMapping
     public ResponseEntity<List<PortfolioResponse>> getMyPortfolios(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
 
-        List<PortfolioResponse> responses = loadPortfolioUseCase.getMyPortfolios(memberPrincipal.id());
+        List<PortfolioResponse> responses = portfolioFacade.getMyPortfolios(memberPrincipal.id());
         return ResponseEntity.ok(responses);
     }
 
     /**
      * 포트폴리오 상세 조회
-     * GET /api/portfolios/{portfolioId}
      */
     @GetMapping("/{portfolioId}")
     public ResponseEntity<PortfolioResponse> getPortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        PortfolioResponse response = loadPortfolioUseCase.getPortfolio(memberPrincipal.id(), portfolioId);
+        PortfolioResponse response = portfolioFacade.getPortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(response);
     }
 
     /**
      * 포트폴리오 수정 (구성 종목 변경)
-     * PUT /api/portfolios/{portfolioId}
      */
     @PutMapping("/{portfolioId}")
     public ResponseEntity<Void> updatePortfolio(
@@ -103,40 +99,41 @@ public class PortfolioController {
             request.description(),
             request.items().stream()
                 .map(item -> new UpdatePortfolioCommand.PortfolioItemCommand(
-                    item.stockCode(),
-                    item.pieceCount(),
-                    item.assetType()
+                    item.symbol(),
+                    item.quantity(),
+                    item.purchasePrice(),
+                    item.currency(),
+                    item.assetType(),
+                    item.targetWeight()
                 ))
                 .toList()
         );
 
-        managePortfolioUseCase.updatePortfolio(command);
+        portfolioFacade.updatePortfolio(command);
         return ResponseEntity.noContent().build();
     }
 
     /**
      * 포트폴리오 삭제
-     * DELETE /api/v1/portfolios/{portfolioId}
      */
     @DeleteMapping("/{portfolioId}")
     public ResponseEntity<Void> deletePortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        managePortfolioUseCase.deletePortfolio(memberPrincipal.id(), portfolioId);
+        portfolioFacade.deletePortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.noContent().build();
     }
 
     /**
      * 포트폴리오 건강 진단
-     * GET /api/v1/portfolios/{portfolioId}/health
      */
     @GetMapping("/{portfolioId}/health")
     public ResponseEntity<DiagnosisResponse> diagnosePortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        PortfolioHealthResult result = diagnosePortfolioUseCase.diagnosePortfolio(memberPrincipal.id(), portfolioId);
+        PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(DiagnosisResponse.from(result));
     }
 }
