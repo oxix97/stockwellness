@@ -285,7 +285,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/api-v1-stocks-search-history486549215"
+              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
             examples:
               portfolio-delete:
                 value: _csrf=QCYbyiNPk3Qqd_pq1AHP_ebzW5Pff81qND-DhHVlcI690VaHd0V4-kF39hEHTptetSz7zN_LdvG9SKxHDQu2tEZRR7iFsG-y
@@ -455,14 +455,14 @@ paths:
                         "status" : "ACTIVE"
                       } ],
                       "pageable" : "INSTANCE",
-                      "numberOfElements" : 1,
                       "first" : true,
                       "last" : true,
+                      "numberOfElements" : 1,
                       "size" : 1,
                       "number" : 0,
                       "sort" : {
-                        "unsorted" : true,
                         "sorted" : false,
+                        "unsorted" : true,
                         "empty" : true
                       },
                       "empty" : false
@@ -708,7 +708,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/api-v1-stocks-search-history486549215"
+              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
             examples:
               stock-search-history-delete:
                 value: keyword=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90
@@ -823,18 +823,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-stocks-search-history486549215"
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-correlation486549215"
               examples:
                 portfolio-analysis-correlation:
                   value: |-
                     {
-                      "TSLA" : {
-                        "TSLA" : 1,
-                        "AAPL" : 0.85
-                      },
                       "AAPL" : {
-                        "TSLA" : 0.85,
-                        "AAPL" : 1
+                        "AAPL" : 1,
+                        "TSLA" : 0.85
+                      },
+                      "TSLA" : {
+                        "AAPL" : 0.85,
+                        "TSLA" : 1
                       }
                     }
   /api/v1/portfolios/{portfolioId}/analysis/diversification:
@@ -1479,6 +1479,8 @@ components:
               assetType:
                 type: string
                 description: 자산 타입
+    api-v1-portfolios-portfolioId-analysis-correlation486549215:
+      type: object
     SectorSupplyResponse:
       title: SectorSupplyResponse
       type: array
@@ -1512,8 +1514,6 @@ components:
             type: string
             description: 섹터명
         description: 섹터 수급 리스트
-    api-v1-stocks-search-history486549215:
-      type: object
     api-v1-stocks-popular1050024950:
       type: array
       description: 인기 검색어 목록
@@ -1629,6 +1629,80 @@ components:
         name:
           type: string
           description: 그룹 이름
+    api-v1-stocks-search412068969:
+      required:
+      - empty
+      - first
+      - last
+      - number
+      - numberOfElements
+      - pageable
+      - size
+      type: object
+      properties:
+        number:
+          type: number
+          description: 현재 페이지 번호
+        size:
+          type: number
+          description: 페이지 사이즈
+        numberOfElements:
+          type: number
+          description: 현재 페이지 엘리먼트 수
+        last:
+          type: boolean
+          description: 마지막 페이지 여부
+        pageable:
+          type: string
+          description: 페이징 정보
+        sort:
+          required:
+          - empty
+          - sorted
+          - unsorted
+          type: object
+          properties:
+            unsorted:
+              type: boolean
+              description: 미정렬 여부
+            sorted:
+              type: boolean
+              description: 정렬 여부
+            empty:
+              type: boolean
+              description: 정렬 정보 비어있음 여부
+        first:
+          type: boolean
+          description: 첫 번째 페이지 여부
+        content:
+          type: array
+          items:
+            required:
+            - marketType
+            - name
+            - sectorName
+            - status
+            - ticker
+            type: object
+            properties:
+              ticker:
+                type: string
+                description: 티커
+              name:
+                type: string
+                description: 종목명
+              sectorName:
+                type: string
+                description: 섹터명
+              marketType:
+                type: string
+                description: 마켓 타입
+              status:
+                type: string
+                description: 종목 상태
+        empty:
+          type: boolean
+          description: 결과 비어있음 여부
     SectorDetailResponse:
       title: SectorDetailResponse
       required:
@@ -1706,80 +1780,6 @@ components:
         isOverheated:
           type: boolean
           description: 과열 진단 여부
-    api-v1-stocks-search412068969:
-      required:
-      - empty
-      - first
-      - last
-      - number
-      - numberOfElements
-      - pageable
-      - size
-      type: object
-      properties:
-        number:
-          type: number
-          description: 현재 페이지 번호
-        size:
-          type: number
-          description: 페이지 사이즈
-        numberOfElements:
-          type: number
-          description: 현재 페이지 엘리먼트 수
-        last:
-          type: boolean
-          description: 마지막 페이지 여부
-        pageable:
-          type: string
-          description: 페이징 정보
-        sort:
-          required:
-          - empty
-          - sorted
-          - unsorted
-          type: object
-          properties:
-            unsorted:
-              type: boolean
-              description: 미정렬 여부
-            sorted:
-              type: boolean
-              description: 정렬 여부
-            empty:
-              type: boolean
-              description: 정렬 정보 비어있음 여부
-        first:
-          type: boolean
-          description: 첫 번째 페이지 여부
-        content:
-          type: array
-          items:
-            required:
-            - marketType
-            - name
-            - sectorName
-            - status
-            - ticker
-            type: object
-            properties:
-              ticker:
-                type: string
-                description: 티커
-              name:
-                type: string
-                description: 종목명
-              sectorName:
-                type: string
-                description: 섹터명
-              marketType:
-                type: string
-                description: 마켓 타입
-              status:
-                type: string
-                description: 종목 상태
-        empty:
-          type: boolean
-          description: 결과 비어있음 여부
     PortfolioValuationResponse:
       title: PortfolioValuationResponse
       required:
