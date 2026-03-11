@@ -78,27 +78,27 @@ public class PortfolioFixture {
      * 아이템 요청 DTO 헬퍼
      */
     public static PortfolioItemRequest createItemRequest(String symbol, BigDecimal quantity, BigDecimal price, AssetType type) {
-        return new PortfolioItemRequest(symbol, quantity, price, DEFAULT_CURRENCY, type);
+        return new PortfolioItemRequest(symbol, quantity, price, DEFAULT_CURRENCY, type, BigDecimal.ZERO);
     }
 
     /**
      * 주식 항목 커맨드 헬퍼 (Create용)
      */
     public static CreatePortfolioCommand.PortfolioItemCommand createStockItem(String symbol, BigDecimal quantity, BigDecimal price) {
-        return new CreatePortfolioCommand.PortfolioItemCommand(symbol, quantity, price, DEFAULT_CURRENCY, AssetType.STOCK);
+        return new CreatePortfolioCommand.PortfolioItemCommand(symbol, quantity, price, DEFAULT_CURRENCY, AssetType.STOCK, BigDecimal.ZERO);
     }
 
     /**
      * 현금 항목 커맨드 헬퍼 (Create용)
      */
     public static CreatePortfolioCommand.PortfolioItemCommand createCashItem(BigDecimal amount) {
-        return new CreatePortfolioCommand.PortfolioItemCommand("CASH", amount, BigDecimal.ONE, DEFAULT_CURRENCY, AssetType.CASH);
+        return new CreatePortfolioCommand.PortfolioItemCommand("CASH", amount, BigDecimal.ONE, DEFAULT_CURRENCY, AssetType.CASH, BigDecimal.ZERO);
     }
 
     /**
      * 주식 항목 커맨드 헬퍼 (Update용)
      */
     public static UpdatePortfolioCommand.PortfolioItemCommand updateStockItem(String symbol, BigDecimal quantity, BigDecimal price) {
-        return new UpdatePortfolioCommand.PortfolioItemCommand(symbol, quantity, price, DEFAULT_CURRENCY, AssetType.STOCK);
+        return new UpdatePortfolioCommand.PortfolioItemCommand(symbol, quantity, price, DEFAULT_CURRENCY, AssetType.STOCK, BigDecimal.ZERO);
     }
 }

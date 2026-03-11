@@ -97,7 +97,6 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .with(csrf())
                             .contentType(APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                     .andExpect(status().isCreated())
                     .andDo(document("portfolio-create",
                             resource(ResourceSnippetParameters.builder()
@@ -115,7 +114,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                                             fieldWithPath("items[].quantity").description("보유 수량"),
                                             fieldWithPath("items[].purchasePrice").description("매입 단가"),
                                             fieldWithPath("items[].currency").description("통화 (KRW, USD 등)"),
-                                            fieldWithPath("items[].assetType").description("자산 타입 (STOCK/CASH)")
+                                            fieldWithPath("items[].assetType").description("자산 타입 (STOCK/CASH)"),
+                                            fieldWithPath("items[].targetWeight").description("목표 비중 (%)")
                                     )
                                     .build())
                     ));
@@ -151,7 +151,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                                             fieldWithPath("items[].purchasePrice").description("매입 단가"),
                                             fieldWithPath("items[].currency").description("통화"),
                                             fieldWithPath("items[].assetType").description("자산 타입"),
-                                            fieldWithPath("items[].purchaseAmount").description("종목별 매입 금액")
+                                            fieldWithPath("items[].purchaseAmount").description("종목별 매입 금액"),
+                                            fieldWithPath("items[].targetWeight").description("목표 비중 (%)")
                                     )
                                     .build())
                     ));
@@ -179,7 +180,6 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .with(csrf())
                             .contentType(APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateRequest)))
-                    .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                     .andExpect(status().isNoContent())
                     .andDo(document("portfolio-update",
                             resource(ResourceSnippetParameters.builder()
@@ -200,7 +200,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                                             fieldWithPath("items[].quantity").description("보유 수량"),
                                             fieldWithPath("items[].purchasePrice").description("매입 단가"),
                                             fieldWithPath("items[].currency").description("통화"),
-                                            fieldWithPath("items[].assetType").description("자산 타입")
+                                            fieldWithPath("items[].assetType").description("자산 타입"),
+                                            fieldWithPath("items[].targetWeight").description("목표 비중 (%)")
                                     )
                                     .build())
                     ));

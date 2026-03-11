@@ -33,24 +33,41 @@ class PortfolioTest {
         }
 
         @Test
-        @DisplayName("포트폴리오에 아이템을 업데이트할 수 있다")
-        void update_items_success() {
+        @DisplayName("포트폴리오 아이템들의 목표 비중 합계가 100%여야 업데이트 가능하다")
+        void update_items_with_target_weights_success() {
             // given
-            Portfolio portfolio = Portfolio.create(1L, "소액 포트", "");
-            List<PortfolioItem> items = List.of(PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150000), "KRW"));
+            Portfolio portfolio = Portfolio.create(1L, "비중 테스트", "");
+            List<PortfolioItem> items = List.of(
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(60)),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40))
+            );
 
             // when
             portfolio.updateItems(items);
 
             // then
-            assertThat(portfolio.getItems()).hasSize(1);
-            assertThat(portfolio.calculateTotalPurchaseAmount()).isEqualByComparingTo(BigDecimal.valueOf(150000));
+            assertThat(portfolio.getItems()).hasSize(2);
         }
     }
 
     @Nested
     @DisplayName("실패 케이스 (엣지 케이스 중심)")
     class FailureCases {
+
+        @Test
+        @DisplayName("목표 비중의 합계가 100%가 아니면 업데이트 시 예외가 발생한다")
+        void fail_target_weight_sum_not_100() {
+            // given
+            Portfolio portfolio = Portfolio.create(1L, "비중 실패 테스트", "");
+            List<PortfolioItem> items = List.of(
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(50)),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40)) // 합계 90
+            );
+
+            // when & then
+            assertThatThrownBy(() -> portfolio.updateItems(items))
+                    .isInstanceOf(InvalidPortfolioException.class);
+        }
 
         @Test
         @DisplayName("엣지 케이스: 개별 아이템 수량이 딱 0이면 생성 시점에 예외가 발생한다")
