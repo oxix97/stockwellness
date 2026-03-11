@@ -16,19 +16,19 @@
     - [x] 기존 `StockPrice` 및 `TechnicalIndicator` 저장소 연동 어댑터 구현
 - [x] Task: Conductor - User Manual Verification '1단계: 도메인 모델 및 데이터 접근 계층' (Protocol in workflow.md)
 
-## 2단계: AI 엔진 통합 (Spring AI)
+## 2단계: AI 엔진 통합 (Spring AI) [COMPLETED]
 AI 에이전트를 구성하고 리밸런싱 논리를 구현합니다.
 
-- [ ] Task: AI 프롬프트 템플릿 및 인터페이스 정의
-    - [ ] 리밸런싱 전략(가중치, 위험 관리, 기술적 분석)을 포함한 프롬프트 작성
-    - [ ] `AiAdvisorPort` 인터페이스 정의
-- [ ] Task: AI 어드바이저 서비스 구현 (Spring AI/OpenAI)
-    - [ ] OpenAI API 연동 및 프롬프트 실행 로직 구현
-    - [ ] AI 응답 파싱 및 보고서 객체 매핑 구현
-- [ ] Task: TDD - AI 로직 및 추론 검증
-    - [ ] Mock AI 응답을 활용한 어드바이저 논리 단위 테스트 작성
-    - [ ] 다양한 시장 상황(과매수, 목표 비중 이탈 등)에 따른 권고 결과 검증
-- [ ] Task: Conductor - User Manual Verification '2단계: AI 엔진 통합' (Protocol in workflow.md)
+- [x] Task: AI 프롬프트 템플릿 및 인터페이스 정의
+    - [x] 리밸런싱 전략(가중치, 위험 관리, 기술적 분석)을 포함한 프롬프트 작성
+    - [x] `AiAdvisorPort` 인터페이스 정의
+- [x] Task: AI 어드바이저 서비스 구현 (Spring AI/OpenAI)
+    - [x] OpenAI API 연동 및 프롬프트 실행 로직 구현
+    - [x] AI 응답 파싱 및 보고서 객체 매핑 구현
+- [x] Task: TDD - AI 로직 및 추론 검증
+    - [x] Mock AI 응답을 활용한 어드바이저 논리 단위 테스트 작성
+    - [x] 다양한 시장 상황(과매수, 목표 비중 이탈 등)에 따른 권고 결과 검증
+- [x] Task: Conductor - User Manual Verification '2단계: AI 엔진 통합' (Protocol in workflow.md)
 
 ## 3단계: 스케줄링 및 오케스트레이션
 주기적으로 분석을 실행하고 결과를 저장하는 흐름을 관리합니다.
