@@ -40,26 +40,41 @@ public class PortfolioItem extends AbstractEntity {
     @Column(nullable = false)
     private String currency;
 
+    @Column(nullable = false, precision = 7, scale = 4)
+    private BigDecimal targetWeight = BigDecimal.ZERO;
+
     public static PortfolioItem createStock(String symbol, BigDecimal quantity, BigDecimal purchasePrice, String currency) {
+        return createStock(symbol, quantity, purchasePrice, currency, BigDecimal.ZERO);
+    }
+
+    public static PortfolioItem createStock(String symbol, BigDecimal quantity, BigDecimal purchasePrice, String currency, BigDecimal targetWeight) {
         validateQuantity(quantity);
         validatePrice(purchasePrice);
+        validateWeight(targetWeight);
         PortfolioItem item = new PortfolioItem();
         item.symbol = symbol;
         item.assetType = AssetType.STOCK;
         item.quantity = quantity;
         item.purchasePrice = purchasePrice;
         item.currency = currency;
+        item.targetWeight = targetWeight;
         return item;
     }
 
     public static PortfolioItem createCash(BigDecimal amount, String currency) {
+        return createCash(amount, currency, BigDecimal.ZERO);
+    }
+
+    public static PortfolioItem createCash(BigDecimal amount, String currency, BigDecimal targetWeight) {
         validateQuantity(amount);
+        validateWeight(targetWeight);
         PortfolioItem item = new PortfolioItem();
         item.symbol = "CASH";
         item.assetType = AssetType.CASH;
         item.quantity = amount;
         item.purchasePrice = BigDecimal.ONE;
         item.currency = currency;
+        item.targetWeight = targetWeight;
         return item;
     }
 
@@ -71,6 +86,12 @@ public class PortfolioItem extends AbstractEntity {
 
     private static void validatePrice(BigDecimal price) {
         if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new InvalidPortfolioException();
+        }
+    }
+
+    private static void validateWeight(BigDecimal weight) {
+        if (weight == null || weight.compareTo(BigDecimal.ZERO) < 0 || weight.compareTo(BigDecimal.valueOf(100)) > 0) {
             throw new InvalidPortfolioException();
         }
     }

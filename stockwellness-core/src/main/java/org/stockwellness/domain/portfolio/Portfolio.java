@@ -6,6 +6,7 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 
 import java.math.BigDecimal;
@@ -48,10 +49,26 @@ public class Portfolio extends AbstractEntity {
     }
 
     public void updateItems(List<PortfolioItem> newItems) {
-        // Validation logic can be added here if needed (e.g., max items)
+        validateTargetWeightSum(newItems);
         this.items.clear();
         this.items.addAll(newItems);
         newItems.forEach(item -> item.assignPortfolio(this));
+    }
+
+    private void validateTargetWeightSum(List<PortfolioItem> items) {
+        if (items.isEmpty()) return;
+
+        BigDecimal sum = items.stream()
+                .map(PortfolioItem::getTargetWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 모든 비중이 0인 경우는 초기 상태로 간주하고 허용
+        if (sum.compareTo(BigDecimal.ZERO) == 0) return;
+
+        // 비중 설정이 시작되었다면 정확히 100%여야 함
+        if (sum.compareTo(BigDecimal.valueOf(100)) != 0) {
+            throw new InvalidPortfolioException();
+        }
     }
 
     public BigDecimal calculateTotalPurchaseAmount() {
