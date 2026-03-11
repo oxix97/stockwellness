@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.out.persistence.portfolio;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.domain.portfolio.Portfolio;
@@ -36,8 +37,12 @@ public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository 
         return queryFactory
                 .selectFrom(portfolio)
                 .leftJoin(portfolio.items, portfolioItem).fetchJoin()
-                .where(portfolio.memberId.eq(memberId))
+                .where(eqMemberId(memberId))
                 .distinct()
                 .fetch();
+    }
+
+    private BooleanExpression eqMemberId(Long memberId) {
+        return memberId != null ? portfolio.memberId.eq(memberId) : null;
     }
 }
