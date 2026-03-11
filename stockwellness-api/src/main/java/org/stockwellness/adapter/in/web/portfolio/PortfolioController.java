@@ -13,6 +13,7 @@ import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.global.security.MemberPrincipal;
@@ -135,5 +136,17 @@ public class PortfolioController {
 
         PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(DiagnosisResponse.from(result));
+    }
+
+    /**
+     * 최신 AI 리밸런싱 조언 조회
+     */
+    @GetMapping("/{portfolioId}/advice/latest")
+    public ResponseEntity<AdviceResponse> getLatestAdvice(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long portfolioId) {
+
+        AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
+        return ResponseEntity.ok(response);
     }
 }

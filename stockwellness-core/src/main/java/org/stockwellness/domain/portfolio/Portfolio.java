@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
+import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import org.stockwellness.domain.shared.AbstractEntity;
 
 import java.math.BigDecimal;
@@ -35,6 +36,10 @@ public class Portfolio extends AbstractEntity {
     @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
     private List<PortfolioItem> items = new ArrayList<>();
 
+    @ToString.Exclude
+    @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
+    private List<AdvisorReport> advisorReports = new ArrayList<>();
+
     public static Portfolio create(Long memberId, String name, String description) {
         Portfolio portfolio = new Portfolio();
         portfolio.memberId = memberId;
@@ -46,6 +51,10 @@ public class Portfolio extends AbstractEntity {
     public void updateBasicInfo(String name, String description) {
         this.name = name;
         this.description = description;
+    }
+
+    public void addAdvisorReport(AdvisorReport report) {
+        this.advisorReports.add(report);
     }
 
     public void updateItems(List<PortfolioItem> newItems) {

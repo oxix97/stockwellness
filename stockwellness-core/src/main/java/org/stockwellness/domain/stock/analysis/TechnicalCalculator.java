@@ -14,7 +14,18 @@ public class TechnicalCalculator {
             return new MarketCondition(TrendStatus.NEUTRAL, CrossoverSignal.NONE, "데이터 없음");
         }
 
-        return null;
+        var ti = today.getIndicators();
+        if (ti == null) {
+            return new MarketCondition(TrendStatus.NEUTRAL, CrossoverSignal.NONE, "지표 데이터 없음");
+        }
+
+        var yi = (yesterday != null) ? yesterday.getIndicators() : null;
+
+        return analyze(
+                ti.getMa5(), ti.getMa20(), ti.getMa60(), ti.getMa120(),
+                (yi != null) ? yi.getMa5() : null,
+                (yi != null) ? yi.getMa20() : null
+        );
     }
 
     /**

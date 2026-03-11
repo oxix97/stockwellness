@@ -14,26 +14,21 @@ import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateReques
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
-import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
-import org.stockwellness.application.port.out.stock.LlmClientPort;
+import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.domain.portfolio.AssetType;
-import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 import org.stockwellness.domain.stock.*;
-import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.fixture.PortfolioFixture;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
-import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -58,13 +53,7 @@ class PortfolioControllerTest extends RestDocsSupport {
     StockPriceRepository stockPriceRepository;
 
     @MockitoBean
-    PortfolioFacade portfolioFacade; // 실제 서비스 대신 파사드를 모킹
-
-    @MockitoBean
-    LoadPortfolioAiPort loadPortfolioAiPort;
-
-    @MockitoBean
-    LlmClientPort llmClientPort;
+    PortfolioFacade portfolioFacade;
 
     static final Long MY_ID = 1L;
     static final Long OTHER_ID = 99L;
@@ -107,13 +96,44 @@ class PortfolioControllerTest extends RestDocsSupport {
             mockMvc.perform(get("/api/v1/portfolios/{portfolioId}", 100L)
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .contentType(APPLICATION_JSON))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value(PortfolioFixture.NAME));
         }
-    }
 
-    Portfolio savePortfolio(Long memberId, String name) {
-        Portfolio p = Portfolio.create(memberId, name, "설명");
-        p.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100))));
-        return portfolioRepository.save(p);
+        @Test
+        @MockMember(id = 1L)
+        @DisplayName("조언 조회: 최신 AI 리밸런싱 조언을 조회한다")
+        void get_latest_advice() throws Exception {
+            // given
+            Long portfolioId = 100L;
+            AdviceResponse response = new AdviceResponse(
+                    "상세 조언 내용입니다.",
+                    AdviceAction.REBALANCE,
+                    LocalDateTime.now()
+            );
+
+            given(portfolioFacade.getLatestAdvice(any(), any())).willReturn(response);
+
+            // when & then
+            mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/advice/latest", portfolioId)
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .contentType(APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content").value("상세 조언 내용입니다."))
+                    .andExpect(jsonPath("$.action").value("REBALANCE"))
+                    .andDo(document("portfolio-advice-latest",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("최신 AI 리밸런싱 조언 조회")
+                                    .pathParameters(
+                                            parameterWithName("portfolioId").description("포트폴리오 ID")
+                                    )
+                                    .responseFields(
+                                            fieldWithPath("content").description("상세 조언 내용"),
+                                            fieldWithPath("action").description("핵심 조언 액션 (REBALANCE, RISK_MANAGEMENT, TECHNICAL_OPTIMIZATION, DIVERSIFICATION)"),
+                                            fieldWithPath("createdAt").description("생성 일시")
+                                    )
+                                    .build())));
+        }
     }
 }

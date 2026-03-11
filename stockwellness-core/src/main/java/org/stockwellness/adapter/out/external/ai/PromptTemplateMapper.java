@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.out.external.ai;
 
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
 import org.stockwellness.application.port.out.sector.SectorAiContext;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
@@ -91,6 +92,73 @@ public class PromptTemplateMapper {
             
             반드시 초보자의 눈높이에 맞춰 친절하게 설명하세요.
             """;
+
+    private static final String ADVISOR_PROMPT_TEMPLATE = """
+        [포트폴리오 정보]
+        - 포트폴리오명: %s
+        
+        [시장 벤치마크 현황]
+        %s
+        
+        [보유 종목 및 기술적 분석 데이터]
+        %s
+        
+        현재 포트폴리오의 비중과 각 종목의 기술적 지표, 그리고 시장 상황을 종합적으로 분석하여 최적의 리밸런싱 조언을 해줘.
+        """;
+
+    private static final String ADVISOR_SYSTEM_INSTRUCTION = """
+            당신은 "데이터 기반 전략가(Strategic Quantitative Advisor)" 스타일의 자산 배분 전문가입니다.
+            사용자의 포트폴리오 비중 이탈도와 개별 종목의 기술적 상태를 분석하여 합리적인 리밸런싱 가이드를 제공합니다.
+            
+            [분석 가이드]
+            1. targetAlignment: 현재 비중이 목표 비중에서 얼마나 벗어났는지 분석 (주요 이탈 종목 언급)
+            2. technicalInsight: 기술적 지표(RSI, MACD, 이평선)를 바탕으로 한 매수/매도 적기 판단
+            3. riskStrategy: 시장 벤치마크 대비 포트폴리오의 위험도 및 방어 전략 제안
+            4. adviceContent: 위의 모든 내용을 종합하여 투자자가 읽기 편하게 작성한 상세 리밸런싱 보고서 (상세 텍스트)
+            5. primaryAction: 제안하는 핵심 액션 (REBALANCE, RISK_MANAGEMENT, TECHNICAL_OPTIMIZATION, DIVERSIFICATION 중 하나)
+            
+            전문적이면서도 논리적인 근거를 바탕으로 단호한 어조로 조언하세요.
+            """;
+
+    public String getAdvisorSystemInstruction() {
+        return ADVISOR_SYSTEM_INSTRUCTION;
+    }
+
+    public String toAdvisorPromptString(AdvisorAiContext context) {
+        String benchmarksInfo = context.benchmarks().stream()
+                .map(b -> String.format("   - %s: %s (%s%%)", b.name(),
+                        FinanceFormatUtil.formatDecimal(b.currentPrice()),
+                        FinanceFormatUtil.formatRate(b.fluctuationRate())))
+                .collect(Collectors.joining("\n"));
+
+        String holdingsInfo = context.holdings().stream()
+                .map(h -> {
+                    var tech = h.technicalContext().technicalSignal();
+                    return String.format("""
+                            - %s (%s):
+                              비중: 현재 %s%% (목표 %s%%)
+                              현재가: %s
+                              기술적 상태: %s, RSI: %s (%s), MACD: %s, 신호: %s
+                            """,
+                            h.name(), h.ticker(),
+                            FinanceFormatUtil.formatRate(h.currentWeight()),
+                            FinanceFormatUtil.formatRate(h.targetWeight()),
+                            FinanceFormatUtil.formatPrice(h.currentPrice()),
+                            translateTrend(tech.trendStatus()),
+                            FinanceFormatUtil.formatDecimal(tech.rsi()),
+                            tech.rsiStatus(),
+                            FinanceFormatUtil.formatDecimal(tech.macd()),
+                            translateSignal(tech.signal())
+                    );
+                })
+                .collect(Collectors.joining("\n"));
+
+        return ADVISOR_PROMPT_TEMPLATE.formatted(
+                context.portfolioName(),
+                benchmarksInfo,
+                holdingsInfo
+        );
+    }
 
     public String getPortfolioSystemInstruction() {
         return PORTFOLIO_SYSTEM_INSTRUCTION;

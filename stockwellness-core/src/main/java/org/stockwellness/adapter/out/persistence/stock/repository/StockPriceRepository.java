@@ -33,4 +33,10 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
 
     @Query("SELECT s FROM StockPrice s WHERE s.stock.ticker IN :tickers AND s.id.baseDate BETWEEN :startDate AND :endDate ORDER BY s.id.baseDate ASC")
     List<StockPrice> findByStockTickerInAndIdBaseDateBetween(@Param("tickers") Collection<String> tickers, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT s FROM StockPrice s WHERE s.stock.ticker = :ticker AND s.id.baseDate <= :date ORDER BY s.id.baseDate DESC")
+    List<StockPrice> findRecentPrices(@Param("ticker") String ticker, @Param("date") LocalDate date, Pageable pageable);
+
+    @Query("SELECT s FROM StockPrice s WHERE s.stock.ticker IN :tickers AND s.id.baseDate <= :date ORDER BY s.id.baseDate DESC")
+    List<StockPrice> findRecentPricesByTickers(@Param("tickers") Collection<String> tickers, @Param("date") LocalDate date);
 }
