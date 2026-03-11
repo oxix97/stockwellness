@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,34 +33,20 @@ class PortfolioTest {
         }
 
         @Test
-        @DisplayName("경계값 테스트: 총 조각 수가 딱 1개일 때 정상 업데이트된다")
-        void update_valid_min_boundary() {
+        @DisplayName("포트폴리오 아이템들의 목표 비중 합계가 100%여야 업데이트 가능하다")
+        void update_items_with_target_weights_success() {
             // given
-            Portfolio portfolio = Portfolio.create(1L, "소액 포트", "");
-            List<PortfolioItem> items = List.of(PortfolioItem.createStock("AAPL", 1));
-
-            // when
-            portfolio.updateItems(items);
-
-            // then
-            assertThat(portfolio.getTotalPieces()).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("경계값 테스트: 총 조각 수가 딱 8개일 때 정상 업데이트된다")
-        void update_valid_max_boundary() {
-            // given
-            Portfolio portfolio = Portfolio.create(1L, "풀 매수 포트", "");
+            Portfolio portfolio = Portfolio.create(1L, "비중 테스트", "");
             List<PortfolioItem> items = List.of(
-                    PortfolioItem.createStock("AAPL", 4),
-                    PortfolioItem.createCash(4)
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(60)),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40))
             );
 
             // when
             portfolio.updateItems(items);
 
             // then
-            assertThat(portfolio.getTotalPieces()).isEqualTo(8);
+            assertThat(portfolio.getItems()).hasSize(2);
         }
     }
 
@@ -68,25 +55,13 @@ class PortfolioTest {
     class FailureCases {
 
         @Test
-        @DisplayName("엣지 케이스: 총 조각 수가 0개이면 PortfolioDomainException이 발생한다")
-        void fail_zero_pieces() {
+        @DisplayName("목표 비중의 합계가 100%가 아니면 업데이트 시 예외가 발생한다")
+        void fail_target_weight_sum_not_100() {
             // given
-            Portfolio portfolio = Portfolio.create(1L, "빈 포트", "");
-            List<PortfolioItem> items = List.of(); // 0개
-
-            // when & then
-            assertThatThrownBy(() -> portfolio.updateItems(items))
-                    .isInstanceOf(InvalidPortfolioException.class);
-        }
-
-        @Test
-        @DisplayName("엣지 케이스: 총 조각 수가 딱 9개(MAX+1)이면 PortfolioDomainException이 발생한다")
-        void fail_exactly_over_max() {
-            // given
-            Portfolio portfolio = Portfolio.create(1L, "초과 포트", "");
+            Portfolio portfolio = Portfolio.create(1L, "비중 실패 테스트", "");
             List<PortfolioItem> items = List.of(
-                    PortfolioItem.createStock("AAPL", 5),
-                    PortfolioItem.createStock("TSLA", 4) // 총 9개
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(50)),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40)) // 합계 90
             );
 
             // when & then
@@ -95,18 +70,26 @@ class PortfolioTest {
         }
 
         @Test
-        @DisplayName("엣지 케이스: 개별 아이템 조각 수가 딱 0개이면 생성 시점에 예외가 발생한다")
-        void fail_item_zero_piece() {
+        @DisplayName("엣지 케이스: 개별 아이템 수량이 딱 0이면 생성 시점에 예외가 발생한다")
+        void fail_item_zero_quantity() {
             // when & then
-            assertThatThrownBy(() -> PortfolioItem.createStock("AAPL", 0))
+            assertThatThrownBy(() -> PortfolioItem.createStock("AAPL", BigDecimal.ZERO, BigDecimal.valueOf(100), "KRW"))
                     .isInstanceOf(InvalidPortfolioException.class);
         }
 
         @Test
-        @DisplayName("엣지 케이스: 개별 아이템 조각 수가 음수(-1)이면 생성 시점에 예외가 발생한다")
-        void fail_item_negative_piece() {
+        @DisplayName("엣지 케이스: 개별 아이템 수량이 음수(-1)이면 생성 시점에 예외가 발생한다")
+        void fail_item_negative_quantity() {
             // when & then
-            assertThatThrownBy(() -> PortfolioItem.createCash(-1))
+            assertThatThrownBy(() -> PortfolioItem.createCash(BigDecimal.valueOf(-1), "KRW"))
+                    .isInstanceOf(InvalidPortfolioException.class);
+        }
+
+        @Test
+        @DisplayName("엣지 케이스: 매입단가가 음수이면 생성 시점에 예외가 발생한다")
+        void fail_item_negative_price() {
+            // when & then
+            assertThatThrownBy(() -> PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(-100), "KRW"))
                     .isInstanceOf(InvalidPortfolioException.class);
         }
     }

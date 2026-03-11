@@ -51,6 +51,11 @@ public interface StockPricePort {
     List<StockPriceResult> loadPricesByTicker(String ticker, LocalDate start, LocalDate end);
 
     /**
+     * 여러 티커와 기간을 기준으로 일봉 데이터를 로드합니다. (벌크 조회용)
+     */
+    Map<String, List<StockPriceResult>> loadPricesByTickers(List<String> tickers, LocalDate start, LocalDate end);
+
+    /**
      * 특정 종목의 최근 종가 리스트를 조회합니다. (지표 계산용)
      */
     List<BigDecimal> findRecentClosingPrices(Stock stock, LocalDate date, int limit);

@@ -7,8 +7,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
+import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import org.stockwellness.domain.shared.AbstractEntity;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,8 +24,6 @@ import static lombok.AccessLevel.PROTECTED;
 @NoArgsConstructor(access = PROTECTED)
 public class Portfolio extends AbstractEntity {
 
-    public static final int MAX_PIECES = 8;
-
     @Column(nullable = false)
     private Long memberId;
 
@@ -35,6 +35,10 @@ public class Portfolio extends AbstractEntity {
     @ToString.Exclude
     @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
     private List<PortfolioItem> items = new ArrayList<>();
+
+    @ToString.Exclude
+    @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
+    private List<AdvisorReport> advisorReports = new ArrayList<>();
 
     public static Portfolio create(Long memberId, String name, String description) {
         Portfolio portfolio = new Portfolio();
@@ -49,23 +53,41 @@ public class Portfolio extends AbstractEntity {
         this.description = description;
     }
 
+    public void addAdvisorReport(AdvisorReport report) {
+        this.advisorReports.add(report);
+    }
+
     public void updateItems(List<PortfolioItem> newItems) {
-        validateTotalPieces(newItems);
+        validateTargetWeightSum(newItems);
         this.items.clear();
         this.items.addAll(newItems);
         newItems.forEach(item -> item.assignPortfolio(this));
     }
 
-    private void validateTotalPieces(List<PortfolioItem> items) {
-        int sum = items.stream()
-                .mapToInt(PortfolioItem::getPieceCount)
-                .sum();
+    private void validateTargetWeightSum(List<PortfolioItem> items) {
+        if (items.isEmpty()) return;
 
-        if (sum < 1 || sum > MAX_PIECES) {
+        BigDecimal sum = items.stream()
+                .map(PortfolioItem::getTargetWeight)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 모든 비중이 0인 경우는 초기 상태로 간주하고 허용
+        if (sum.compareTo(BigDecimal.ZERO) == 0) return;
+
+        // 비중 설정이 시작되었다면 정확히 100%여야 함 (소수점 정밀도 고려)
+        BigDecimal targetSum = BigDecimal.valueOf(100).setScale(4, java.math.RoundingMode.HALF_UP);
+        if (sum.setScale(4, java.math.RoundingMode.HALF_UP).compareTo(targetSum) != 0) {
             throw new InvalidPortfolioException();
         }
     }
 
+    public BigDecimal calculateTotalPurchaseAmount() {
+        return items.stream()
+                .map(PortfolioItem::calculatePurchaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Deprecated
     public int getTotalPieces() {
         return items.stream().mapToInt(PortfolioItem::getPieceCount).sum();
     }

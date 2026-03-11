@@ -1,6 +1,7 @@
 package org.stockwellness.domain.stock.analysis;
 
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,14 +15,13 @@ public record AiAnalysisContext(
 ) {
 
     public static AiAnalysisContext of(StockPrice today, MarketCondition condition) {
-        return null;
-//        return new AiAnalysisContext(
-//                today.getIsinCode(),
-//                today.getBaseDate(),
-//                PriceSummary.from(today),
-//                TechnicalSignal.of(today, condition),
-//                new PortfolioRisk(false, 0.0)
-//        );
+        return new AiAnalysisContext(
+                today.getStock().getTicker(), // Ticker를 종목 식별자로 사용
+                today.getId().getBaseDate(),
+                PriceSummary.from(today),
+                TechnicalSignal.of(today, condition),
+                new PortfolioRisk(false, 0.0)
+        );
     }
 
     // 1. 가격 정보 그룹
@@ -31,12 +31,11 @@ public record AiAnalysisContext(
             BigDecimal volume           // 거래량 (보조 지표용)
     ) {
         public static PriceSummary from(StockPrice price) {
-            return null;
-//            return new PriceSummary(
-//                    price.getClosePrice(),
-//                    price.getFluctuationRate(),
-//                    new BigDecimal(price.getVolume())
-//            );
+            return new PriceSummary(
+                    price.getClosePrice(),
+                    price.getFluctuationRate(),
+                    BigDecimal.valueOf(price.getVolume() != null ? price.getVolume() : 0)
+            );
         }
     }
 
@@ -55,18 +54,20 @@ public record AiAnalysisContext(
             BigDecimal ma120
     ) {
         public static TechnicalSignal of(StockPrice price, MarketCondition condition) {
-            return null;
-//            return new TechnicalSignal(
-//                    condition.trendStatus(),
-//                    price.getRsi14(),
-//                    TechnicalCalculator.analyzeRsiLevel(price.getRsi14()),
-//                    price.getMacd(),
-//                    condition.signal(),
-//                    price.getMa5(),
-//                    price.getMa20(),
-//                    price.getMa60(),
-//                    price.getMa120()
-//            );
+            TechnicalIndicators ind = price.getIndicators();
+            BigDecimal rsi = ind != null ? ind.getRsi14() : null;
+            
+            return new TechnicalSignal(
+                    condition.trendStatus(),
+                    rsi,
+                    TechnicalCalculator.analyzeRsiLevel(rsi),
+                    ind != null ? ind.getMacd() : null,
+                    condition.signal(),
+                    ind != null ? ind.getMa5() : null,
+                    ind != null ? ind.getMa20() : null,
+                    ind != null ? ind.getMa60() : null,
+                    ind != null ? ind.getMa120() : null
+            );
         }
     }
 

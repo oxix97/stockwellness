@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation;
@@ -14,15 +15,31 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
+import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
+import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
+import org.stockwellness.application.port.out.stock.LlmClientPort;
 
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.main.allow-bean-definition-overriding=true")
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @ActiveProfiles("test")
 @ExtendWith(RestDocumentationExtension.class)
 public abstract class RestDocsSupport {
+
+    @MockitoBean
+    protected LoadPortfolioAiPort loadPortfolioAiPort;
+
+    @MockitoBean
+    protected AiAdviceProviderPort aiAdviceProviderPort;
+
+    @MockitoBean
+    protected LoadSectorAiPort loadSectorAiPort;
+
+    @MockitoBean
+    protected LlmClientPort llmClientPort;
 
     @Autowired
     protected MockMvc mockMvc;
@@ -35,9 +52,10 @@ public abstract class RestDocsSupport {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .apply(MockMvcRestDocumentation.documentationConfiguration(restDocumentation)
                         .operationPreprocessors()
-                        .withRequestDefaults(prettyPrint())  // 요청 JSON 예쁘게 출력
-                        .withResponseDefaults(prettyPrint()) // 응답 JSON 예쁘게 출력
+                        .withRequestDefaults(prettyPrint())
+                        .withResponseDefaults(prettyPrint())
                 )
                 .build();
     }
 }
+
