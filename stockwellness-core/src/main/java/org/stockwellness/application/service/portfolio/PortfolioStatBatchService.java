@@ -5,13 +5,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.service.portfolio.internal.*;
+import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,8 @@ public class PortfolioStatBatchService {
     private final BacktestEngine backtestEngine;
     private final PortfolioStatCalculator statCalculator = new PortfolioStatCalculator();
 
+    private static final int MAX_SYMBOLS_PER_LOAD = 50; // 메모리 보호를 위한 임계치
+
     /**
      * 한 청크의 포트폴리오들을 벌크 시세 로딩을 통해 효율적으로 업데이트합니다.
      */
@@ -38,16 +43,16 @@ public class PortfolioStatBatchService {
         // 1. 청크 내 모든 종목 합집합 추출
         Set<String> allSymbols = portfolios.stream()
                 .flatMap(p -> p.getItems().stream())
-                .filter(item -> item.getAssetType() == org.stockwellness.domain.portfolio.AssetType.STOCK)
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
                 .map(PortfolioItem::getSymbol)
                 .collect(Collectors.toSet());
 
         if (allSymbols.isEmpty()) return;
 
-        // 2. 청크 전체 시세 데이터 단 한번 벌크 로딩
+        // 2. 청크 전체 시세 데이터 분할 벌크 로딩 (메모리 보호)
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData chunkSharedData = simulationDataProvider.loadData(new java.util.ArrayList<>(allSymbols), "KOSPI", start, end);
+        SimulationData chunkSharedData = loadPartitionedData(allSymbols, "KOSPI", start, end);
 
         // 3. 각 포트폴리오별 통계 계산 (로딩된 데이터 재사용)
         for (Portfolio portfolio : portfolios) {
@@ -57,6 +62,23 @@ public class PortfolioStatBatchService {
                 log.error("포트폴리오 {} 통계 업데이트 실패", portfolio.getId(), e);
             }
         }
+    }
+
+    private SimulationData loadPartitionedData(Set<String> allSymbols, String benchmark, LocalDate start, LocalDate end) {
+        List<String> symbolList = new ArrayList<>(allSymbols);
+        Map<String, List<StockPriceResult>> allStockPrices = new HashMap<>();
+        List<StockPriceResult> benchmarkPrices = null;
+
+        for (int i = 0; i < symbolList.size(); i += MAX_SYMBOLS_PER_LOAD) {
+            List<String> partition = symbolList.subList(i, Math.min(i + MAX_SYMBOLS_PER_LOAD, symbolList.size()));
+            SimulationData partData = simulationDataProvider.loadData(partition, benchmark, start, end);
+            allStockPrices.putAll(partData.stockPrices());
+            if (benchmarkPrices == null) {
+                benchmarkPrices = partData.benchmarkPrices();
+            }
+        }
+
+        return new SimulationData(allStockPrices, benchmarkPrices);
     }
 
     private void processSinglePortfolio(Portfolio portfolio, SimulationData sharedData, LocalDate baseDate) {
@@ -92,8 +114,13 @@ public class PortfolioStatBatchService {
     }
 
     private SimulationData filterDataForPortfolio(SimulationData sharedData, Set<String> symbols) {
-        Map<String, List<org.stockwellness.application.port.in.stock.result.StockPriceResult>> filteredStockPrices = new HashMap<>();
-        symbols.forEach(s -> filteredStockPrices.put(s, sharedData.stockPrices().get(s)));
+        Map<String, List<StockPriceResult>> filteredStockPrices = new HashMap<>();
+        symbols.forEach(s -> {
+            List<StockPriceResult> prices = sharedData.stockPrices().get(s);
+            if (prices != null) {
+                filteredStockPrices.put(s, prices);
+            }
+        });
         
         return new SimulationData(filteredStockPrices, sharedData.benchmarkPrices());
     }
