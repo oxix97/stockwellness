@@ -16,6 +16,7 @@ public record UpdatePortfolioCommand(
         BigDecimal quantity,
         BigDecimal purchasePrice,
         String currency,
-        AssetType assetType
+        AssetType assetType,
+        BigDecimal targetWeight
     ) {}
 }

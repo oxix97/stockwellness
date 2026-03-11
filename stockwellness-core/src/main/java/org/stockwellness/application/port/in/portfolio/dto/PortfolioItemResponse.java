@@ -10,7 +10,8 @@ public record PortfolioItemResponse(
     BigDecimal purchasePrice,
     String currency,
     AssetType assetType,
-    BigDecimal purchaseAmount
+    BigDecimal purchaseAmount,
+    BigDecimal targetWeight
 ) {
     public static PortfolioItemResponse from(PortfolioItem entity) {
         return new PortfolioItemResponse(
@@ -19,7 +20,8 @@ public record PortfolioItemResponse(
             entity.getPurchasePrice(),
             entity.getCurrency(),
             entity.getAssetType(),
-            entity.calculatePurchaseAmount()
+            entity.calculatePurchaseAmount(),
+            entity.getTargetWeight()
         );
     }
 }

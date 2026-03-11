@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -48,7 +49,8 @@ public class PortfolioController {
                     item.quantity(),
                     item.purchasePrice(),
                     item.currency(),
-                    item.assetType()
+                    item.assetType(),
+                    item.targetWeight()
                 ))
                 .toList()
         );
@@ -108,7 +110,8 @@ public class PortfolioController {
                     item.quantity(),
                     item.purchasePrice(),
                     item.currency(),
-                    item.assetType()
+                    item.assetType(),
+                    item.targetWeight()
                 ))
                 .toList()
         );
