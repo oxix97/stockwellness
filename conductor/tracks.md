@@ -11,8 +11,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*---- [ ] **Track: Advanced Chart & Price API with VWAP, Fundamentals, Benchmarking and High-Performance Caching**
 *Link: [./tracks/advanced_chart_price_api_20260219/](./tracks/advanced_chart_price_api_20260219/)*---- [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
 *Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
-
----
-
-- [x] **Track: 보유 종목 리스트에 대한 AI의 리밸런싱 조언**
-*Link: [./tracks/portfolio_ai_advisor_20260311/](./tracks/portfolio_ai_advisor_20260311/)*
