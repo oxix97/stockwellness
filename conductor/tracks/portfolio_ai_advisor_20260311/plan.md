@@ -43,16 +43,16 @@ AI 에이전트를 구성하고 리밸런싱 논리를 구현합니다.
     - [x] PostgreSQL을 활용한 보고서 영속화 구현
 - [x] Task: Conductor - User Manual Verification '3단계: 스케줄링 및 오케스트레이션' (Protocol in workflow.md)
 
-## 4단계: API 및 문서화
+## 4단계: API 및 문서화 [COMPLETED]
 사용자가 보고서를 조회할 수 있도록 인터페이스를 제공합니다.
 
-- [ ] Task: 최신 어드바이저 보고서 조회 API 엔드포인트 구현
-    - [ ] `GET /api/v1/portfolio/advice/latest` 구현
-- [ ] Task: Spring REST Docs 및 API 문서 업데이트
-    - [ ] API 스펙 테스트 작성 및 문서 생성
-- [ ] Task: 통합 테스트 (E2E 흐름 검증)
-    - [ ] 데이터베이스부터 AI 호출, 보고서 생성 및 조회까지의 전체 흐름 테스트
-- [ ] Task: Conductor - User Manual Verification '4단계: API 및 문서화' (Protocol in workflow.md)
+- [x] Task: 최신 어드바이저 보고서 조회 API 엔드포인트 구현
+    - [x] `GET /api/v1/portfolio/advice/latest` 구현
+- [x] Task: Spring REST Docs 및 API 문서 업데이트
+    - [x] API 스펙 테스트 작성 및 문서 생성
+- [x] Task: 통합 테스트 (E2E 흐름 검증)
+    - [x] 데이터베이스부터 AI 호출, 보고서 생성 및 조회까지의 전체 흐름 테스트
+- [x] Task: Conductor - User Manual Verification '4단계: API 및 문서화' (Protocol in workflow.md)
 
 ## 5단계: 성능 및 최종 검증
 시스템 성능을 측정하고 코드를 정리합니다.
