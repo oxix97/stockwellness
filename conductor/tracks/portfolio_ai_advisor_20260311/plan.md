@@ -2,19 +2,19 @@
 
 이 계획은 사용자의 보유 종목, 시장 벤치마크, 기술적 지표를 분석하여 주기적인 리밸런싱 권고안을 제공하는 AI 어드바이저 기능을 구현합니다.
 
-## 1단계: 도메인 모델 및 데이터 접근 계층 (Core/Persistence)
+## 1단계: 도메인 모델 및 데이터 접근 계층 (Core/Persistence) [COMPLETED]
 핵심 도메인 엔티티와 분석에 필요한 데이터 접근 포트를 정의합니다.
 
-- [ ] Task: 어드바이저 보고서 도메인 모델 및 DTO 정의
-    - [ ] `AdvisorReport`, `AdviceAction` 엔티티 정의
-    - [ ] `AdviceResponse` DTO 정의 (텍스트 보고서 포함)
-- [ ] Task: 포트폴리오 데이터 조회 포트 및 어댑터 구현
-    - [ ] TDD: 현재 보유 종목(티커, 수량, 가치) 조회 로직 테스트 작성
-    - [ ] QueryDSL을 활용한 포트폴리오 현황 조회 어댑터 구현
-- [ ] Task: 시장 및 기술적 지표 데이터 조회 포트 구현
-    - [ ] TDD: 벤치마크 및 종목별 기술적 지표(RSI, MA) 조회 테스트 작성
-    - [ ] 기존 `StockPrice` 및 `TechnicalIndicator` 저장소 연동 어댑터 구현
-- [ ] Task: Conductor - User Manual Verification '1단계: 도메인 모델 및 데이터 접근 계층' (Protocol in workflow.md)
+- [x] Task: 어드바이저 보고서 도메인 모델 및 DTO 정의
+    - [x] `AdvisorReport`, `AdviceAction` 엔티티 정의
+    - [x] `AdviceResponse` DTO 정의 (텍스트 보고서 포함)
+- [x] Task: 포트폴리오 데이터 조회 포트 및 어댑터 구현
+    - [x] TDD: 현재 보유 종목(티커, 수량, 가치) 조회 로직 테스트 작성
+    - [x] QueryDSL을 활용한 포트폴리오 현황 조회 어댑터 구현
+- [x] Task: 시장 및 기술적 지표 데이터 조회 포트 구현
+    - [x] TDD: 벤치마크 및 종목별 기술적 지표(RSI, MA) 조회 테스트 작성
+    - [x] 기존 `StockPrice` 및 `TechnicalIndicator` 저장소 연동 어댑터 구현
+- [x] Task: Conductor - User Manual Verification '1단계: 도메인 모델 및 데이터 접근 계층' (Protocol in workflow.md)
 
 ## 2단계: AI 엔진 통합 (Spring AI)
 AI 에이전트를 구성하고 리밸런싱 논리를 구현합니다.

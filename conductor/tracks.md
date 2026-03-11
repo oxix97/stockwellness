@@ -14,5 +14,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: 보유 종목 리스트에 대한 AI의 리밸런싱 조언**
+- [~] **Track: 보유 종목 리스트에 대한 AI의 리밸런싱 조언**
 *Link: [./tracks/portfolio_ai_advisor_20260311/](./tracks/portfolio_ai_advisor_20260311/)*
