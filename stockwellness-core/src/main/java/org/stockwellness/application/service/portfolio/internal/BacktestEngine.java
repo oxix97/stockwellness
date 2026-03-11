@@ -20,20 +20,18 @@ public class BacktestEngine {
 
         if (allDates.isEmpty()) return new BacktestResult(List.of());
 
-        // 조회를 위한 Map 변환 (O(1) 조회용)
-        Map<String, NavigableMap<LocalDate, BigDecimal>> priceLookup = createPriceLookup(data);
-        NavigableMap<LocalDate, BigDecimal> benchmarkLookup = createBenchmarkLookup(data.benchmarkPrices());
+        // 최적화: 시계열 데이터를 배열로 사전 정렬 및 매핑 (O(1) 접근)
+        Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data, allDates);
+        BigDecimal[] benchmarkArray = extractClosePrices(data.benchmarkPrices(), allDates);
 
         // 시작일 기준 수량 계산
-        LocalDate startDate = allDates.get(0);
         Map<String, BigDecimal> shares = new HashMap<>();
-        
         for (Map.Entry<String, BigDecimal> entry : weights.entrySet()) {
             String symbol = entry.getKey();
             BigDecimal weight = entry.getValue();
             BigDecimal allocatedAmount = initialAmount.multiply(weight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
             
-            BigDecimal price = getPriceAt(priceLookup.get(symbol), startDate);
+            BigDecimal price = priceArrays.get(symbol)[0];
             if (price.compareTo(BigDecimal.ZERO) > 0) {
                 shares.put(symbol, allocatedAmount.divide(price, 8, RoundingMode.HALF_UP));
             } else {
@@ -41,20 +39,19 @@ public class BacktestEngine {
             }
         }
 
-        BigDecimal initialBenchmarkPrice = data.benchmarkPrices().get(0).closePrice();
-        List<BacktestResult.DailyBacktestResult> results = new ArrayList<>();
+        BigDecimal initialBenchmarkPrice = benchmarkArray[0];
+        List<BacktestResult.DailyBacktestResult> results = new ArrayList<>(allDates.size());
 
-        for (LocalDate date : allDates) {
+        for (int i = 0; i < allDates.size(); i++) {
+            LocalDate date = allDates.get(i);
             BigDecimal dailyValue = BigDecimal.ZERO;
             for (Map.Entry<String, BigDecimal> entry : shares.entrySet()) {
-                BigDecimal price = getPriceAt(priceLookup.get(entry.getKey()), date);
+                BigDecimal price = priceArrays.get(entry.getKey())[i];
                 dailyValue = dailyValue.add(entry.getValue().multiply(price));
             }
 
             BigDecimal returnRate = calculateRate(dailyValue.subtract(initialAmount), initialAmount);
-            
-            BigDecimal currentBenchmarkPrice = getPriceAt(benchmarkLookup, date);
-            BigDecimal benchmarkReturnRate = calculateRate(currentBenchmarkPrice.subtract(initialBenchmarkPrice), initialBenchmarkPrice);
+            BigDecimal benchmarkReturnRate = calculateRate(benchmarkArray[i].subtract(initialBenchmarkPrice), initialBenchmarkPrice);
 
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, initialAmount, returnRate, benchmarkReturnRate));
         }
@@ -70,19 +67,22 @@ public class BacktestEngine {
 
         if (allDates.isEmpty()) return new BacktestResult(List.of());
 
-        Map<String, NavigableMap<LocalDate, BigDecimal>> priceLookup = createPriceLookup(data);
-        NavigableMap<LocalDate, BigDecimal> benchmarkLookup = createBenchmarkLookup(data.benchmarkPrices());
+        Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data, allDates);
+        BigDecimal[] benchmarkArray = extractClosePrices(data.benchmarkPrices(), allDates);
 
         Map<String, BigDecimal> totalShares = new HashMap<>();
         weights.keySet().forEach(s -> totalShares.put(s, BigDecimal.ZERO));
         
         BigDecimal totalInvested = BigDecimal.ZERO;
-        BigDecimal initialBenchmarkPrice = data.benchmarkPrices().get(0).closePrice();
-        List<BacktestResult.DailyBacktestResult> results = new ArrayList<>();
+        BigDecimal initialBenchmarkPrice = benchmarkArray[0];
+        List<BacktestResult.DailyBacktestResult> results = new ArrayList<>(allDates.size());
 
         LocalDate lastInvestMonth = null;
 
-        for (LocalDate date : allDates) {
+        for (int i = 0; i < allDates.size(); i++) {
+            LocalDate date = allDates.get(i);
+            
+            // 매월 첫 거래일에 투자
             if (lastInvestMonth == null || date.getMonthValue() != lastInvestMonth.getMonthValue()) {
                 totalInvested = totalInvested.add(monthlyAmount);
                 for (Map.Entry<String, BigDecimal> entry : weights.entrySet()) {
@@ -90,7 +90,7 @@ public class BacktestEngine {
                     BigDecimal weight = entry.getValue();
                     BigDecimal allocatedAmount = monthlyAmount.multiply(weight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
                     
-                    BigDecimal price = getPriceAt(priceLookup.get(symbol), date);
+                    BigDecimal price = priceArrays.get(symbol)[i];
                     if (price.compareTo(BigDecimal.ZERO) > 0) {
                         BigDecimal newShares = allocatedAmount.divide(price, 8, RoundingMode.HALF_UP);
                         totalShares.put(symbol, totalShares.get(symbol).add(newShares));
@@ -101,14 +101,12 @@ public class BacktestEngine {
 
             BigDecimal dailyValue = BigDecimal.ZERO;
             for (Map.Entry<String, BigDecimal> entry : totalShares.entrySet()) {
-                BigDecimal price = getPriceAt(priceLookup.get(entry.getKey()), date);
+                BigDecimal price = priceArrays.get(entry.getKey())[i];
                 dailyValue = dailyValue.add(entry.getValue().multiply(price));
             }
 
             BigDecimal returnRate = calculateRate(dailyValue.subtract(totalInvested), totalInvested);
-            
-            BigDecimal currentBenchmarkPrice = getPriceAt(benchmarkLookup, date);
-            BigDecimal benchmarkReturnRate = calculateRate(currentBenchmarkPrice.subtract(initialBenchmarkPrice), initialBenchmarkPrice);
+            BigDecimal benchmarkReturnRate = calculateRate(benchmarkArray[i].subtract(initialBenchmarkPrice), initialBenchmarkPrice);
 
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, totalInvested, returnRate, benchmarkReturnRate));
         }
@@ -116,37 +114,35 @@ public class BacktestEngine {
         return new BacktestResult(results);
     }
 
-    private Map<String, NavigableMap<LocalDate, BigDecimal>> createPriceLookup(SimulationData data) {
-        Map<String, NavigableMap<LocalDate, BigDecimal>> lookup = new HashMap<>();
+    /**
+     * 모든 종목의 시세를 벤치마크 날짜 리스트에 맞춰 정렬된 배열로 변환합니다. (중간에 빈 날짜는 이전 날짜 가격으로 채움)
+     */
+    private Map<String, BigDecimal[]> createAlignedPriceArrays(SimulationData data, List<LocalDate> allDates) {
+        Map<String, BigDecimal[]> alignedPrices = new HashMap<>();
         data.stockPrices().forEach((symbol, prices) -> {
-            TreeMap<LocalDate, BigDecimal> priceMap = prices.stream()
-                    .collect(Collectors.toMap(
-                            StockPriceResult::baseDate,
-                            StockPriceResult::closePrice,
-                            (v1, v2) -> v1,
-                            TreeMap::new
-                    ));
-            lookup.put(symbol, priceMap);
+            NavigableMap<LocalDate, BigDecimal> priceMap = prices.stream()
+                    .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::closePrice, (v1, v2) -> v1, TreeMap::new));
+            
+            BigDecimal[] array = new BigDecimal[allDates.size()];
+            for (int i = 0; i < allDates.size(); i++) {
+                Map.Entry<LocalDate, BigDecimal> entry = priceMap.floorEntry(allDates.get(i));
+                array[i] = (entry != null) ? entry.getValue() : BigDecimal.ZERO;
+            }
+            alignedPrices.put(symbol, array);
         });
-        return lookup;
+        return alignedPrices;
     }
 
-    private NavigableMap<LocalDate, BigDecimal> createBenchmarkLookup(List<StockPriceResult> benchmarkPrices) {
-        return benchmarkPrices.stream()
-                .collect(Collectors.toMap(
-                        StockPriceResult::baseDate,
-                        StockPriceResult::closePrice,
-                        (v1, v2) -> v1,
-                        TreeMap::new
-                ));
-    }
-
-    private BigDecimal getPriceAt(NavigableMap<LocalDate, BigDecimal> priceMap, LocalDate date) {
-        if (priceMap == null || priceMap.isEmpty()) return BigDecimal.ZERO;
+    private BigDecimal[] extractClosePrices(List<StockPriceResult> prices, List<LocalDate> allDates) {
+        NavigableMap<LocalDate, BigDecimal> priceMap = prices.stream()
+                .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::closePrice, (v1, v2) -> v1, TreeMap::new));
         
-        // 해당 날짜 가격이 있으면 즉시 반환, 없으면 가장 가까운 이전 날짜 가격 반환
-        Map.Entry<LocalDate, BigDecimal> entry = priceMap.floorEntry(date);
-        return (entry != null) ? entry.getValue() : BigDecimal.ZERO;
+        BigDecimal[] array = new BigDecimal[allDates.size()];
+        for (int i = 0; i < allDates.size(); i++) {
+            Map.Entry<LocalDate, BigDecimal> entry = priceMap.floorEntry(allDates.get(i));
+            array[i] = (entry != null) ? entry.getValue() : BigDecimal.ZERO;
+        }
+        return array;
     }
 
     private BigDecimal calculateRate(BigDecimal numerator, BigDecimal denominator) {
