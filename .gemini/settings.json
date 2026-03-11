@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "superpowers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-everything"
+      ]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgres://chan:o0o0@100.85.199.81:5432/mydatabase"
+      ]
+    }
+  }
+}
