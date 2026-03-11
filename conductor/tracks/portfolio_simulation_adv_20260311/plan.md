@@ -11,9 +11,9 @@
 - [x] **Task: 리밸런싱 엔진 구현**
     - [x] 현재 시장 가치 기반 실시간 비중 계산 로직 고도화
     - [x] 목표 비중 도달을 위한 필요 매매 수량(Buy/Sell Quantity) 계산 유틸리티 구현
-- [ ] **Task: 리밸런싱 API 개발**
-    - [ ] `GET /api/v1/portfolios/{id}/analysis/rebalancing` 엔드포인트 추가
-    - [ ] 현재 수량, 목표 수량, 차이 및 예상 매매 금액 응답 DTO 구현
+- [x] **Task: 리밸런싱 API 개발**
+    - [x] `GET /api/v1/portfolios/{id}/analysis/rebalancing` 엔드포인트 추가
+    - [x] 현재 수량, 목표 수량, 차이 및 예상 매매 금액 응답 DTO 구현
 - [ ] **Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)**
 
 ## Phase 2: 백테스팅 엔진 (DCA & 거치식)

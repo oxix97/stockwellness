@@ -7,13 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.application.port.in.portfolio.PortfolioDiversificationUseCase;
+import org.stockwellness.application.port.in.portfolio.PortfolioRebalancingUseCase;
 import org.stockwellness.application.port.in.portfolio.PortfolioValuationUseCase;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -34,6 +37,9 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
     @MockitoBean
     private PortfolioDiversificationUseCase portfolioDiversificationUseCase;
+
+    @MockitoBean
+    private PortfolioRebalancingUseCase portfolioRebalancingUseCase;
 
     @Test
     @MockMember(id = 1L)
@@ -109,6 +115,50 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                         fieldWithPath("sectorRatios[].value").description("비중 (%)"),
                                         fieldWithPath("countryRatios[].name").description("국가 코드 (KR/US/...)"),
                                         fieldWithPath("countryRatios[].value").description("비중 (%)")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("리밸런싱: 목표 비중에 도달하기 위한 매매 가이드를 조회한다")
+    void get_rebalancing() throws Exception {
+        // given
+        PortfolioRebalancingResult result = new PortfolioRebalancingResult(
+                new BigDecimal("2000"),
+                List.of(
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "AAPL", new BigDecimal("80"), new BigDecimal("60"), new BigDecimal("-20"),
+                                new BigDecimal("10"), new BigDecimal("-2.5"), new BigDecimal("160")
+                        )
+                )
+        );
+        given(portfolioRebalancingUseCase.getRebalancingGuide(1L, 100L)).willReturn(result);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("portfolio-analysis-rebalancing",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Portfolio Analysis")
+                                .summary("포트폴리오 리밸런싱 가이드")
+                                .pathParameters(
+                                        parameterWithName("portfolioId").description("포트폴리오 ID")
+                                )
+                                .responseSchema(Schema.schema("PortfolioRebalancingResponse"))
+                                .responseFields(
+                                        fieldWithPath("totalValue").description("포트폴리오 총 시장 가치"),
+                                        fieldWithPath("items[].symbol").description("종목 코드"),
+                                        fieldWithPath("items[].currentWeight").description("현재 비중 (%)"),
+                                        fieldWithPath("items[].targetWeight").description("목표 비중 (%)"),
+                                        fieldWithPath("items[].diffWeight").description("비중 차이 (목표 - 현재)"),
+                                        fieldWithPath("items[].currentQuantity").description("현재 보유 수량"),
+                                        fieldWithPath("items[].recommendedQuantity").description("추천 매매 수량 (+: 매수, -: 매도)"),
+                                        fieldWithPath("items[].currentPrice").description("현재가"),
+                                        fieldWithPath("items[].expectedTradeAmount").description("예상 매매 금액")
                                 )
                                 .build())
                 ));

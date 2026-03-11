@@ -8,10 +8,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioDiversificationResponse;
+import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioRebalancingResponse;
 import org.stockwellness.adapter.in.web.portfolio.dto.PortfolioValuationResponse;
 import org.stockwellness.application.port.in.portfolio.PortfolioDiversificationUseCase;
+import org.stockwellness.application.port.in.portfolio.PortfolioRebalancingUseCase;
 import org.stockwellness.application.port.in.portfolio.PortfolioValuationUseCase;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.global.security.MemberPrincipal;
 
@@ -22,6 +25,7 @@ public class PortfolioAnalysisController {
 
     private final PortfolioValuationUseCase portfolioValuationUseCase;
     private final PortfolioDiversificationUseCase portfolioDiversificationUseCase;
+    private final PortfolioRebalancingUseCase portfolioRebalancingUseCase;
 
     /**
      * 포트폴리오 성과 분석 (가치 및 수익률)
@@ -45,5 +49,17 @@ public class PortfolioAnalysisController {
 
         PortfolioDiversificationResult result = portfolioDiversificationUseCase.getDiversification(memberPrincipal.id(), portfolioId);
         return ResponseEntity.ok(PortfolioDiversificationResponse.from(result));
+    }
+
+    /**
+     * 포트폴리오 리밸런싱 가이드 조회
+     */
+    @GetMapping("/rebalancing")
+    public ResponseEntity<PortfolioRebalancingResponse> getRebalancingGuide(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long portfolioId) {
+
+        PortfolioRebalancingResult result = portfolioRebalancingUseCase.getRebalancingGuide(memberPrincipal.id(), portfolioId);
+        return ResponseEntity.ok(PortfolioRebalancingResponse.from(result));
     }
 }
