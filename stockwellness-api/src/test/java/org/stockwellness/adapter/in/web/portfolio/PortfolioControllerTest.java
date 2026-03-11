@@ -93,7 +93,7 @@ class PortfolioControllerTest extends RestDocsSupport {
                     .andExpect(status().isCreated());
 
             // when (Get)
-            mockMvc.perform(get("/api/v1/portfolios/{id}", 100L)
+            mockMvc.perform(get("/api/v1/portfolios/{portfolioId}", 100L)
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
