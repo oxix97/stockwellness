@@ -30,18 +30,18 @@ AI 에이전트를 구성하고 리밸런싱 논리를 구현합니다.
     - [x] 다양한 시장 상황(과매수, 목표 비중 이탈 등)에 따른 권고 결과 검증
 - [x] Task: Conductor - User Manual Verification '2단계: AI 엔진 통합' (Protocol in workflow.md)
 
-## 3단계: 스케줄링 및 오케스트레이션
+## 3단계: 스케줄링 및 오케스트레이션 [COMPLETED]
 주기적으로 분석을 실행하고 결과를 저장하는 흐름을 관리합니다.
 
-- [ ] Task: 어드바이저 오케스트레이션 서비스 구현
-    - [ ] TDD: (보유 종목 + 시장 데이터) -> AI -> 저장 프로세스 테스트 작성
-    - [ ] `AdvisorOrchestrator` 구현 (데이터 수집 및 AI 호출 제어)
-- [ ] Task: Spring Scheduler를 활용한 주기적 트리거 설정
-    - [ ] `@Scheduled`를 활용한 주간/월간 실행 로직 구현
-    - [ ] 실행 이력 및 상태 로깅 구현
-- [ ] Task: 생성된 보고서 저장 로직 구현
-    - [ ] PostgreSQL을 활용한 보고서 영속화 구현
-- [ ] Task: Conductor - User Manual Verification '3단계: 스케줄링 및 오케스트레이션' (Protocol in workflow.md)
+- [x] Task: 어드바이저 오케스트레이션 서비스 구현
+    - [x] TDD: (보유 종목 + 시장 데이터) -> AI -> 저장 프로세스 테스트 작성
+    - [x] `AdvisorOrchestrator` 구현 (데이터 수집 및 AI 호출 제어)
+- [x] Task: Spring Scheduler를 활용한 주기적 트리거 설정
+    - [x] `@Scheduled`를 활용한 주간/월간 실행 로직 구현
+    - [x] 실행 이력 및 상태 로깅 구현
+- [x] Task: 생성된 보고서 저장 로직 구현
+    - [x] PostgreSQL을 활용한 보고서 영속화 구현
+- [x] Task: Conductor - User Manual Verification '3단계: 스케줄링 및 오케스트레이션' (Protocol in workflow.md)
 
 ## 4단계: API 및 문서화
 사용자가 보고서를 조회할 수 있도록 인터페이스를 제공합니다.
