@@ -2,6 +2,7 @@ package org.stockwellness.application.service.portfolio;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.DiagnosePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.LoadPortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
@@ -10,6 +11,7 @@ import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolio
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
+import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
@@ -34,6 +36,7 @@ public class PortfolioFacade {
     private final LoadPortfolioUseCase loadPortfolioUseCase;
     private final PortfolioAnalysisUseCase portfolioAnalysisUseCase;
     private final DiagnosePortfolioUseCase diagnosePortfolioUseCase;
+    private final AiAdvisorUseCase aiAdvisorUseCase;
 
     // -- 포트폴리오 관리 (Manage) --
 
@@ -89,5 +92,11 @@ public class PortfolioFacade {
 
     public PortfolioHealthResult diagnosePortfolio(Long memberId, Long portfolioId) {
         return diagnosePortfolioUseCase.diagnosePortfolio(memberId, portfolioId);
+    }
+
+    // -- AI 어드바이저 (Advisor) --
+
+    public AdviceResponse getLatestAdvice(Long memberId, Long portfolioId) {
+        return aiAdvisorUseCase.getLatestAdvice(memberId, portfolioId);
     }
 }

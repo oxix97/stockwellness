@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.application.port.out.portfolio.AiAdvisorPort;
+import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SaveAdvisorPort;
@@ -36,7 +36,7 @@ class AdvisorOrchestratorTest {
     private AdvisorAiDataLoader dataLoader;
 
     @Mock
-    private AiAdvisorPort aiAdvisorPort;
+    private AiAdviceProviderPort aiAdviceProviderPort;
 
     @Mock
     private SaveAdvisorPort saveAdvisorPort;
@@ -52,10 +52,10 @@ class AdvisorOrchestratorTest {
         AdvisorAiContext context = mock(AdvisorAiContext.class);
         given(dataLoader.loadContext(portfolioId)).willReturn(context);
         
-        AiAdvisorPort.AdvisorAiResult aiResult = new AiAdvisorPort.AdvisorAiResult(
+        AiAdviceProviderPort.AdvisorAiResult aiResult = new AiAdviceProviderPort.AdvisorAiResult(
                 "", "", "", "내용", AdviceAction.REBALANCE
         );
-        given(aiAdvisorPort.getRebalancingAdvice(context)).willReturn(aiResult);
+        given(aiAdviceProviderPort.getRebalancingAdvice(context)).willReturn(aiResult);
 
         // when
         orchestrator.generateAndSaveAdvice(portfolioId);
@@ -81,6 +81,6 @@ class AdvisorOrchestratorTest {
         orchestrator.runAllPortfolios();
 
         // then
-        verify(aiAdvisorPort, times(2)).getRebalancingAdvice(any());
+        verify(aiAdviceProviderPort, times(2)).getRebalancingAdvice(any());
     }
 }
