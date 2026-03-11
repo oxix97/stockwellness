@@ -8,5 +8,8 @@ public record PortfolioValuationResult(
     BigDecimal totalProfitLoss,
     BigDecimal totalReturnRate,
     BigDecimal dailyProfitLoss,
-    BigDecimal dailyReturnRate
+    BigDecimal dailyReturnRate,
+    BigDecimal mdd,
+    BigDecimal sharpeRatio,
+    BigDecimal beta
 ) {}

@@ -19,6 +19,7 @@ import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.dto.BatchExecutionResponse;
 import org.stockwellness.batch.dto.BatchJobStatusResponse;
 import org.stockwellness.batch.dto.DataIntegrityResponse;
+import org.stockwellness.domain.stock.price.PriceIssueType;
 import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
@@ -43,6 +44,7 @@ public class BatchAdminController {
     private final Job stockPriceBatchJob;
     private final Job sectorEodJob;
     private final Job stockPricePrevCloseSyncJob;
+    private final Job portfolioStatsJob;
 
     private final StockPort stockPort;
     private final MarketIndexSyncService marketIndexSyncService;
@@ -96,7 +98,7 @@ public class BatchAdminController {
                         p.getStock().getTicker(),
                         p.getStock().getName(),
                         p.getId().getBaseDate(),
-                        (p.getClosePrice() == null) ? "NULL_PRICE" : "ZERO_PRICE"
+                        (p.getClosePrice() == null) ? PriceIssueType.NULL_PRICE.name() : PriceIssueType.ZERO_PRICE.name()
                 ))
                 .toList();
 
@@ -224,6 +226,17 @@ public class BatchAdminController {
                 .toJobParameters();
 
         return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
+    }
+
+    /**
+     * 포트폴리오 통계 지표(MDD, Sharpe, Beta) 갱신 배치 실행
+     */
+    @PostMapping("/sync-portfolio-stats")
+    public ResponseEntity<BatchExecutionResponse> runPortfolioStatsSync() {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .toJobParameters();
+        return ResponseEntity.ok(launchJobAsync(portfolioStatsJob, params));
     }
 
     /**

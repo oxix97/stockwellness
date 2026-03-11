@@ -16,7 +16,8 @@
 - **Batch Processing:** Spring Batch (leveraging JdbcBatchItemWriter for high-performance bulk data ingestion)
 - **Price Aggregation:** Java 21 Stream API (for high-performance in-memory weekly/monthly aggregation)
 - **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
-- **Portfolio Analysis Engine:** In-memory valuation engine supporting real-time P/L and diversification metrics with high-precision (BigDecimal) calculation.
+- **Portfolio Analysis Engine:** In-memory valuation and simulation engine (Backtest, Rebalancing) supporting professional-grade risk metrics (MDD, Sharpe, Beta).
+- **Design Patterns:** Facade Pattern (PortfolioFacade for unified orchestration), Domain Utility Pattern (FinanceCalculationUtil, PortfolioMapperUtil).
 - **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
 
 ## 4. Security & Integration

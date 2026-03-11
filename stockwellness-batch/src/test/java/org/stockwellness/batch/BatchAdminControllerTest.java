@@ -5,6 +5,7 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -44,6 +45,9 @@ class BatchAdminControllerTest {
     @MockitoBean(name = "stockPricePrevCloseSyncJob")
     private Job stockPricePrevCloseSyncJob;
 
+    @MockitoBean(name = "portfolioStatsJob")
+    private Job portfolioStatsJob;
+
     @MockitoBean
     private StockPort stockPort;
 
@@ -54,7 +58,7 @@ class BatchAdminControllerTest {
     private org.springframework.batch.core.explore.JobExplorer jobExplorer;
 
     @MockitoBean
-    private org.springframework.batch.core.launch.JobOperator jobOperator;
+    private JobOperator jobOperator;
 
     @MockitoBean
     private StockPriceRepository stockPriceRepository;
