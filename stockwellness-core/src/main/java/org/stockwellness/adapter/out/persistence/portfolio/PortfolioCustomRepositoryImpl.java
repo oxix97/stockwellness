@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import static org.stockwellness.domain.portfolio.QPortfolio.portfolio;
 import static org.stockwellness.domain.portfolio.QPortfolioItem.portfolioItem;
+import static org.stockwellness.domain.portfolio.advisor.QAdvisorReport.advisorReport;
 
 @RequiredArgsConstructor
 public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository {
@@ -25,6 +26,7 @@ public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository 
                                 portfolio.id.eq(id),
                                 portfolio.memberId.eq(memberId)
                         )
+                        .distinct()
                         .fetchOne()
         );
     }
