@@ -11,8 +11,10 @@ import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 
 import java.math.BigDecimal;
@@ -37,6 +39,9 @@ class AdvisorAiDataLoaderTest {
     private PortfolioPort portfolioPort;
 
     @Mock
+    private StockPort stockPort;
+
+    @Mock
     private LoadTechnicalDataPort loadTechnicalDataPort;
 
     @Mock
@@ -53,6 +58,11 @@ class AdvisorAiDataLoaderTest {
 
         given(portfolioPort.findById(portfolioId)).willReturn(Optional.of(portfolio));
         
+        Stock stock = mock(Stock.class);
+        given(stock.getTicker()).willReturn("AAPL");
+        given(stock.getName()).willReturn("애플");
+        given(stockPort.loadStocksByTickers(anyList())).willReturn(List.of(stock));
+
         AiAnalysisContext tech = mock(AiAnalysisContext.class);
         given(tech.priceInfo()).willReturn(new AiAnalysisContext.PriceSummary(new BigDecimal("150"), BigDecimal.ZERO, BigDecimal.ZERO));
         given(loadTechnicalDataPort.loadTechnicalContexts(anyList())).willReturn(Map.of("AAPL", tech));
@@ -67,6 +77,7 @@ class AdvisorAiDataLoaderTest {
         assertThat(context.portfolioName()).isEqualTo("테스트");
         assertThat(context.holdings()).hasSize(1);
         assertThat(context.holdings().get(0).ticker()).isEqualTo("AAPL");
+        assertThat(context.holdings().get(0).name()).isEqualTo("애플");
         assertThat(context.benchmarks()).hasSize(1);
         assertThat(context.benchmarks().get(0).name()).isEqualTo("KOSPI");
     }

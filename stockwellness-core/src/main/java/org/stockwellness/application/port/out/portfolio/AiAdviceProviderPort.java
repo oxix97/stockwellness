@@ -3,9 +3,9 @@ package org.stockwellness.application.port.out.portfolio;
 import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 
 /**
- * AI 어드바이저 분석 수행 포트
+ * AI 어드바이저 분석 수행 포트 (공급자 추상화)
  */
-public interface AiAdvisorPort {
+public interface AiAdviceProviderPort {
     /**
      * 포트폴리오 데이터를 기반으로 AI 리밸런싱 조언을 생성한다.
      */

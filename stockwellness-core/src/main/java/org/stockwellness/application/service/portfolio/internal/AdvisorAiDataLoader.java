@@ -6,10 +6,12 @@ import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 
 import java.math.BigDecimal;
@@ -17,12 +19,14 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class AdvisorAiDataLoader {
 
     private final PortfolioPort portfolioPort;
+    private final StockPort stockPort;
     private final LoadTechnicalDataPort loadTechnicalDataPort;
     private final LoadBenchmarkPort loadBenchmarkPort;
 
@@ -35,6 +39,9 @@ public class AdvisorAiDataLoader {
                 .map(PortfolioItem::getSymbol)
                 .toList();
 
+        Map<String, Stock> stockMap = stockPort.loadStocksByTickers(tickers).stream()
+                .collect(Collectors.toMap(Stock::getTicker, s -> s));
+
         Map<String, AiAnalysisContext> technicalMap = loadTechnicalDataPort.loadTechnicalContexts(tickers);
 
         BigDecimal totalPurchaseAmount = portfolio.calculateTotalPurchaseAmount();
@@ -43,13 +50,15 @@ public class AdvisorAiDataLoader {
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
                 .map(item -> {
                     AiAnalysisContext tech = technicalMap.get(item.getSymbol());
+                    Stock stock = stockMap.get(item.getSymbol());
+                    
                     BigDecimal currentWeight = totalPurchaseAmount.compareTo(BigDecimal.ZERO) > 0
                             ? item.calculatePurchaseAmount().divide(totalPurchaseAmount, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                             : BigDecimal.ZERO;
 
                     return new AdvisorAiContext.HoldingInfo(
                             item.getSymbol(),
-                            item.getSymbol(), // TODO: 실제 종목명 로드 필요시 추가
+                            stock != null ? stock.getName() : item.getSymbol(),
                             BigDecimal.valueOf(item.getPieceCount()),
                             tech != null ? tech.priceInfo().closePrice() : BigDecimal.ZERO,
                             currentWeight,

@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.adapter.out.external.ai.OpenAiAdapter;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
@@ -56,8 +55,8 @@ class PortfolioControllerTest extends RestDocsSupport {
     @MockitoBean
     PortfolioFacade portfolioFacade;
 
-    @Autowired
-    private OpenAiAdapter openAiAdapter;
+    static final Long MY_ID = 1L;
+    static final Long OTHER_ID = 99L;
 
     @Nested
     @DisplayName("성공 케이스")
