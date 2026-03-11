@@ -19,7 +19,9 @@ Stockwellness is an asset allocation simulator and AI-powered prediction service
 - **Automated Data Pipeline:** Daily stock price fetching and management using Spring Batch (integrating with KIS). Orchestrated event-driven coordination via **Kafka** ensures API caches and AI insights are automatically invalidated and refreshed upon successful data sync.
 - **High-Performance Price Engine:** Optimized EOD price retrieval and return rate calculation using hierarchical Redis caching and in-memory aggregation.
 - **AI-Powered Analysis:** Generation of market reports and stock analysis based on pre-calculated technical indicators (RSI, MACD, etc.).
-- **Robust Deployment Architecture:** n8n을 활용한 배포 오케스트레이션과 Slack 상세 진단 알림을 통해 배포 안정성(Stability Check) 및 운영 가시성(Diagnostic Monitoring)을 확보합니다.
+- **Portfolio Analysis:** Real-time performance tracking (Daily P/L, Total Return) and diversification analysis (Sector, Country, Asset Type) based on accurate unit-based asset management.
+- **Robust Admin & Monitoring:** Comprehensive system health check (DB, Redis, Kafka) and batch integrity monitoring to ensure financial data accuracy and system reliability.
+- **Deployment Architecture:** n8n을 활용한 배포 오케스트레이션과 Slack 상세 진단 알림을 통해 배포 안정성(Stability Check) 및 운영 가시성(Diagnostic Monitoring)을 확보합니다.
 - **Portfolio Simulation:** Robust portfolio creation and simulation tools with backtesting capabilities.
 
 ## 5. Unique Value Proposition & Strategic Pillars

@@ -10,5 +10,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/stock_price_engine_20260214/](./tracks/stock_price_engine_20260214/)*---- [x] **Track: Core Security Cleanup**
 *Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*---- [ ] **Track: Advanced Chart & Price API with VWAP, Fundamentals, Benchmarking and High-Performance Caching**
 *Link: [./tracks/advanced_chart_price_api_20260219/](./tracks/advanced_chart_price_api_20260219/)*---- [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
-*Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*---- [x] **Track: Portfolio Simulation & Admin (Track H - Phase 1)**
-*Link: [./tracks/portfolio_simulation_admin_20260310/](./tracks/portfolio_simulation_admin_20260310/)*
+*Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
