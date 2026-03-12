@@ -11,3 +11,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*---- [ ] **Track: Advanced Chart & Price API with VWAP, Fundamentals, Benchmarking and High-Performance Caching**
 *Link: [./tracks/advanced_chart_price_api_20260219/](./tracks/advanced_chart_price_api_20260219/)*---- [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
 *Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
+
+---
+
+- [x] **Track: feature global pointcut logging system**
+*Link: [./tracks/global_pointcut_logging_20260312/](./tracks/global_pointcut_logging_20260312/)*
+

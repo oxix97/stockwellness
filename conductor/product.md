@@ -22,7 +22,7 @@ Stockwellness is an asset allocation simulator and AI-powered prediction service
 - **Portfolio Analysis:** Real-time performance tracking (Daily P/L, Total Return) and diversification analysis (Sector, Country, Asset Type) based on accurate unit-based asset management.
 - **Advanced Portfolio Simulation:** In-depth backtesting (DCA/Lump-sum) and **AI-driven rebalancing advisor** providing personalized adjustment advice based on target weights and technical trends.
 - **Quantitative Risk Metrics:** Automated daily calculation of MDD, Sharpe Ratio, and Beta to provide professional-grade risk assessment.
-- **Robust Admin & Monitoring:** Comprehensive system health check (DB, Redis, Kafka) and batch integrity monitoring to ensure financial data accuracy and system reliability.
+- **Robust Admin & Monitoring:** Comprehensive system health check (DB, Redis, Kafka), batch integrity monitoring, and **global structured logging via Spring AOP** to ensure financial data accuracy and system reliability.
 
 ## 5. Unique Value Proposition & Strategic Pillars
 - **Sophisticated Asset Allocation Simulation:**
