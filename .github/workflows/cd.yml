@@ -111,18 +111,24 @@ jobs:
           tags: tag:github-actions
 
       - name: Trigger n8n webhook
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
+          # JSON 객체를 안전하게 생성 (줄바꿈 및 특수문자 자동 처리)
+          JSON_DATA=$(jq -n \
+            --arg img "${{ env.IMAGE_BATCH }}" \
+            --arg tag "${{ needs.build-batch.outputs.image_tag }}" \
+            --arg commit "${{ github.sha }}" \
+            --arg msg "$MSG" \
+            --arg author "${{ github.event.head_commit.author.name }}" \
+            '{image: $img, tag: $tag, commit: $commit, message: $msg, author: $author}')
+
+          # 생성된 JSON으로 요청 전송
           curl -f -X POST \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Token: ${{ secrets.N8N_DEPLOY_TOKEN }}" \
-            -d '{
-              "image": "${{ env.IMAGE_API }}",
-              "tag": "${{ needs.build-api.outputs.image_tag }}",
-              "commit": "${{ github.sha }}",
-              "message": "${{ github.event.head_commit.message }}",
-              "author": "${{ github.event.head_commit.author.name }}"
-            }' \
-            ${{ secrets.N8N_WEBHOOK_URL }}
+            -d "$JSON_DATA" \
+            "${{ secrets.N8N_WEBHOOK_BATCH_URL }}"
 
       - name: Done
         run: echo "✅ API 배포 트리거 완료 → ${{ env.IMAGE_API }}:${{ needs.build-api.outputs.image_tag }}"
