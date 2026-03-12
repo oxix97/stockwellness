@@ -15,7 +15,7 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -81,7 +81,7 @@ public class WatchlistGroup extends AbstractEntity {
         WatchlistItem itemToRemove = this.items.stream()
                 .filter(item -> item.getStock().getStandardCode().equals(isinCode) && item.getDeletedAt() == null)
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
         
         itemToRemove.delete();
         this.items.remove(itemToRemove);
@@ -92,7 +92,7 @@ public class WatchlistGroup extends AbstractEntity {
                 .filter(item -> item.getDeletedAt() == null)
                 .count();
         if (activeCount >= MAX_ITEM_COUNT) {
-            throw new BusinessException(ErrorCode.WATCHLIST_ITEM_LIMIT_EXCEEDED);
+            throw new GlobalException(ErrorCode.WATCHLIST_ITEM_LIMIT_EXCEEDED);
         }
     }
 
@@ -100,19 +100,19 @@ public class WatchlistGroup extends AbstractEntity {
         boolean isDuplicate = this.items.stream()
                 .anyMatch(item -> item.getStock().getStandardCode().equals(stock.getStandardCode()) && item.getDeletedAt() == null);
         if (isDuplicate) {
-            throw new BusinessException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
+            throw new GlobalException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
         }
     }
 
     private void validation(String name) {
         if (StringUtils.isEmpty(name)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
         }
     }
 
     public static void validateGroupCount(long currentCount) {
         if (currentCount >= MAX_GROUP_COUNT) {
-            throw new BusinessException(ErrorCode.WATCHLIST_GROUP_LIMIT_EXCEEDED);
+            throw new GlobalException(ErrorCode.WATCHLIST_GROUP_LIMIT_EXCEEDED);
         }
     }
 }

@@ -17,7 +17,7 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import java.util.List;
 import java.util.Map;
@@ -38,7 +38,7 @@ public class WatchlistService implements WatchlistUseCase {
         WatchlistGroup.validateGroupCount(currentCount);
 
         Member member = loadMemberPort.loadMember(memberId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.MEMBER_NOT_FOUND));
 
         WatchlistGroup group = WatchlistGroup.create(member, name);
         return watchlistPort.saveGroup(group).getId();
@@ -78,7 +78,7 @@ public class WatchlistService implements WatchlistUseCase {
     public void addItem(Long memberId, Long groupId, String isinCode) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
         Stock stock = stockPort.loadStockByTicker(isinCode)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
 
         group.addItem(stock);
     }
@@ -112,10 +112,10 @@ public class WatchlistService implements WatchlistUseCase {
 
     private WatchlistGroup getGroupAndCheckOwnership(Long memberId, Long groupId) {
         WatchlistGroup group = watchlistPort.findGroupById(groupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
 
         if (!group.getMember().getId().equals(memberId)) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+            throw new GlobalException(ErrorCode.ACCESS_DENIED);
         }
         return group;
     }

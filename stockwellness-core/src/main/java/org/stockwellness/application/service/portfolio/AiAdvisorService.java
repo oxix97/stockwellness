@@ -12,7 +12,7 @@ import org.stockwellness.application.service.portfolio.internal.AdvisorAiDataLoa
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import java.time.LocalDateTime;
 
@@ -51,7 +51,7 @@ public class AiAdvisorService implements AiAdvisorUseCase {
                         report.getAction(),
                         report.getCreatedAt()
                 ))
-                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
     }
 
     private void validateOwnership(Long memberId, Long portfolioId) {
