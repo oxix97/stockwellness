@@ -21,7 +21,7 @@ import org.stockwellness.domain.member.event.MemberCreatedEvent;
 import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.error.exception.GlobalException;
 import org.stockwellness.global.util.DateUtil;
 
 import java.time.Duration;
@@ -55,7 +55,7 @@ public class AuthService implements AuthUseCase {
                 });
 
         if (!member.isActive()) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+            throw new GlobalException(ErrorCode.UNAUTHORIZED);
         }
 
         String accessToken = jwtProvider.generateAccessToken(member);
@@ -75,19 +75,19 @@ public class AuthService implements AuthUseCase {
         try {
             memberId = jwtProvider.validateAndGetId(oldRefreshToken);
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.EXPIRED_JWT); // 또는 INVALID_TOKEN
+            throw new GlobalException(ErrorCode.EXPIRED_JWT); // 또는 INVALID_TOKEN
         }
 
         RefreshToken stored = refreshTokenPort.findByMemberId(memberId);
         if (stored == null || !stored.tokenValue().equals(oldRefreshToken) || stored.isExpired()) {
-            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+            throw new GlobalException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         Member member = loadMemberPort.loadMember(memberId)
                 .orElseThrow(MemberNotFoundException::new);
 
         if (!member.isActive()) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+            throw new GlobalException(ErrorCode.UNAUTHORIZED);
         }
 
         // 2. Rotation
