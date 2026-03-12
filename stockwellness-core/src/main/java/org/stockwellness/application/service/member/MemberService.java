@@ -11,7 +11,7 @@ import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.member.exception.NicknameDuplicateException;
-import org.stockwellness.global.error.exception.BusinessException;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import static org.stockwellness.global.error.ErrorCode.*;
 
@@ -34,7 +34,7 @@ public class MemberService implements MemberUseCase {
         var member = findMember(memberId);
 
         if (!member.isActive()) {
-            throw new BusinessException(UNAUTHORIZED);
+            throw new GlobalException(UNAUTHORIZED);
         }
 
         if (command.nickname() != null && !member.getNickname().equals(command.nickname())) {

@@ -97,7 +97,7 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.name").value(PortfolioFixture.NAME));
+                    .andExpect(jsonPath("$.data.name").value(PortfolioFixture.NAME));
         }
 
         @Test
@@ -119,8 +119,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content").value("상세 조언 내용입니다."))
-                    .andExpect(jsonPath("$.action").value("REBALANCE"))
+                    .andExpect(jsonPath("$.data.content").value("상세 조언 내용입니다."))
+                    .andExpect(jsonPath("$.data.action").value("REBALANCE"))
                     .andDo(document("portfolio-advice-latest",
                             resource(ResourceSnippetParameters.builder()
                                     .tag("Portfolio")
@@ -129,9 +129,11 @@ class PortfolioControllerTest extends RestDocsSupport {
                                             parameterWithName("portfolioId").description("포트폴리오 ID")
                                     )
                                     .responseFields(
-                                            fieldWithPath("content").description("상세 조언 내용"),
-                                            fieldWithPath("action").description("핵심 조언 액션 (REBALANCE, RISK_MANAGEMENT, TECHNICAL_OPTIMIZATION, DIVERSIFICATION)"),
-                                            fieldWithPath("createdAt").description("생성 일시")
+                                            fieldWithPath("data").description("응답 데이터"),
+                                            fieldWithPath("data.content").description("상세 조언 내용"),
+                                            fieldWithPath("data.action").description("핵심 조언 액션 (REBALANCE, RISK_MANAGEMENT, TECHNICAL_OPTIMIZATION, DIVERSIFICATION)"),
+                                            fieldWithPath("data.createdAt").description("생성 일시"),
+                                            fieldWithPath("timestamp").description("응답 일시")
                                     )
                                     .build())));
         }

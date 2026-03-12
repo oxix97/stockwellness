@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.member.dto.UpdateMemberRequest;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.result.MemberResult;
+import org.stockwellness.global.common.ApiResponse;
 import org.stockwellness.global.security.MemberPrincipal;
 
 @RestController
@@ -21,29 +22,29 @@ public class MemberController {
      * 내 정보 조회
      */
     @GetMapping("/me")
-    public ResponseEntity<MemberResult> getMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+    public ResponseEntity<ApiResponse<MemberResult>> getMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         MemberResult member = memberUseCase.getMember(memberPrincipal.id());
-        return ResponseEntity.ok(member);
+        return ResponseEntity.ok(ApiResponse.success(member));
     }
 
     /**
      * 내 정보 수정
      */
     @PutMapping("/me")
-    public ResponseEntity<Void> updateMember(
+    public ResponseEntity<ApiResponse<Void>> updateMember(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid UpdateMemberRequest request
     ) {
         memberUseCase.updateMember(memberPrincipal.id(), request.toCommand(memberPrincipal.id()));
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**
      * 회원 탈퇴
      */
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deactivateMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+    public ResponseEntity<ApiResponse<Void>> deactivateMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         memberUseCase.withdrawMember(memberPrincipal.id());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
