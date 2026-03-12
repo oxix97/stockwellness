@@ -16,6 +16,7 @@ import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCo
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
+import org.stockwellness.global.common.ApiResponse;
 import org.stockwellness.global.security.MemberPrincipal;
 
 import java.net.URI;
@@ -32,7 +33,7 @@ public class PortfolioController {
      * 포트폴리오 생성
      */
     @PostMapping
-    public ResponseEntity<Void> createPortfolio(
+    public ResponseEntity<ApiResponse<Void>> createPortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid PortfolioCreateRequest request) {
 
@@ -58,37 +59,37 @@ public class PortfolioController {
                 .path("/{id}")
                 .buildAndExpand(portfolioId)
                 .toUri();
-        return ResponseEntity.created(location).build();
+        return ResponseEntity.created(location).body(ApiResponse.success(null));
     }
 
     /**
      * 내 포트폴리오 목록 조회
      */
     @GetMapping
-    public ResponseEntity<List<PortfolioResponse>> getMyPortfolios(
+    public ResponseEntity<ApiResponse<List<PortfolioResponse>>> getMyPortfolios(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
 
         List<PortfolioResponse> responses = portfolioFacade.getMyPortfolios(memberPrincipal.id());
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     /**
      * 포트폴리오 상세 조회
      */
     @GetMapping("/{portfolioId}")
-    public ResponseEntity<PortfolioResponse> getPortfolio(
+    public ResponseEntity<ApiResponse<PortfolioResponse>> getPortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
         PortfolioResponse response = portfolioFacade.getPortfolio(memberPrincipal.id(), portfolioId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
      * 포트폴리오 수정 (구성 종목 변경)
      */
     @PutMapping("/{portfolioId}")
-    public ResponseEntity<Void> updatePortfolio(
+    public ResponseEntity<ApiResponse<Void>> updatePortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId,
             @RequestBody @Valid PortfolioUpdateRequest request) {
@@ -111,42 +112,42 @@ public class PortfolioController {
         );
 
         portfolioFacade.updatePortfolio(command);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**
      * 포트폴리오 삭제
      */
     @DeleteMapping("/{portfolioId}")
-    public ResponseEntity<Void> deletePortfolio(
+    public ResponseEntity<ApiResponse<Void>> deletePortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
         portfolioFacade.deletePortfolio(memberPrincipal.id(), portfolioId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**
      * 포트폴리오 건강 진단
      */
     @GetMapping("/{portfolioId}/health")
-    public ResponseEntity<DiagnosisResponse> diagnosePortfolio(
+    public ResponseEntity<ApiResponse<DiagnosisResponse>> diagnosePortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
         PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
-        return ResponseEntity.ok(DiagnosisResponse.from(result));
+        return ResponseEntity.ok(ApiResponse.success(DiagnosisResponse.from(result)));
     }
 
     /**
      * 최신 AI 리밸런싱 조언 조회
      */
     @GetMapping("/{portfolioId}/advice/latest")
-    public ResponseEntity<AdviceResponse> getLatestAdvice(
+    public ResponseEntity<ApiResponse<AdviceResponse>> getLatestAdvice(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
         AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

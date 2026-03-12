@@ -26,6 +26,9 @@
 - **Observability-First:**
     - Monitor actual DB queries via **P6Spy**.
     - Log detailed execution steps for Kafka event publishing and Batch processing stages.
+- **Standardized Communication:**
+    - All API responses must follow the **ApiResponse<T>** structure for success and **ErrorResponse** for failures.
+    - Use machine-readable error codes (e.g., G001, M001) to facilitate client-side error handling.
 - **Reliability over Speed:**
     - Accuracy of financial data is paramount.
     - Must include logic to verify batch data consistency.

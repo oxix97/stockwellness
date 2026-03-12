@@ -1,0 +1,8 @@
+{
+  "track_id": "standardize_api_response_20260312",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-12T00:00:00Z",
+  "updated_at": "2026-03-12T00:00:00Z",
+  "description": "Standardize API response format (ApiResponse, ErrorResponse) and implement GlobalExceptionHandler using Java 21 features."
+}

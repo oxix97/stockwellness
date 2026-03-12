@@ -3,68 +3,83 @@ package org.stockwellness.global.error;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.stockwellness.domain.member.exception.MemberDomainException;
-import org.stockwellness.domain.portfolio.exception.PortfolioDomainException;
-import org.stockwellness.domain.stock.exception.StockDomainException;
 import org.stockwellness.global.error.exception.BusinessException;
 
-import static org.stockwellness.global.error.ErrorCode.*;
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(PortfolioDomainException.class)
-    public ProblemDetail handlePortfolioDomainException(PortfolioDomainException e) {
-        return createProblemDetail(e.getErrorCode());
+    /**
+     * 표준 예외 처리 통합 핸들러
+     */
+    @ExceptionHandler({
+            BusinessException.class,
+            MethodArgumentNotValidException.class,
+            ExpiredJwtException.class,
+            JwtException.class,
+            NoResourceFoundException.class,
+            Exception.class
+    })
+    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception e) {
+        String traceId = generateTraceId();
+
+        return switch (e) {
+            case BusinessException be -> handleBusinessException(be, traceId);
+            case MethodArgumentNotValidException me -> handleBindingException(me, traceId);
+            case ExpiredJwtException ignored -> createErrorResponse(ErrorCode.EXPIRED_JWT, traceId);
+            case JwtException ignored -> createErrorResponse(ErrorCode.INVALID_JWT, traceId);
+            case NoResourceFoundException ignored -> createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, traceId);
+            default -> handleUnexpectedException(e, traceId);
+        };
     }
 
-    @ExceptionHandler(MemberDomainException.class)
-    public ProblemDetail handleMemberDomainException(MemberDomainException e) {
-        return createProblemDetail(e.getErrorCode());
+    private ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e, String traceId) {
+        log.warn("[{}] BusinessException: {}", traceId, e.getMessage());
+        return createErrorResponse(e.getErrorCode(), traceId);
     }
 
-    @ExceptionHandler(StockDomainException.class)
-    public ProblemDetail handleStockDomainException(StockDomainException e) {
-        return createProblemDetail(e.getErrorCode());
+    private ResponseEntity<ErrorResponse> handleBindingException(MethodArgumentNotValidException e, String traceId) {
+        log.warn("[{}] MethodArgumentNotValidException: {}", traceId, e.getMessage());
+        List<ErrorResponse.FieldError> fieldErrors = getFieldErrors(e.getBindingResult());
+        return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
     }
 
-    @ExceptionHandler(BusinessException.class)
-    public ProblemDetail handleBusinessException(BusinessException e) {
-        return e.getProblemDetail();
+    private ResponseEntity<ErrorResponse> handleUnexpectedException(Exception e, String traceId) {
+        log.error("[{}] Unexpected Exception: ", traceId, e);
+        return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, traceId);
     }
 
-    @ExceptionHandler(ExpiredJwtException.class)
-    public ProblemDetail handleExpiredJwt() {
-        return createProblemDetail(EXPIRED_JWT);
+    private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, String traceId) {
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode, traceId));
     }
 
-    @ExceptionHandler(JwtException.class)
-    public ProblemDetail handleJwtException(JwtException e) {
-        // 서명 오류, malformed 등은 모두 INVALID_JWT
-        return createProblemDetail(INVALID_JWT);
+    private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, String traceId, List<ErrorResponse.FieldError> fieldErrors) {
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode, traceId, fieldErrors));
     }
 
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ProblemDetail handleNoResourceFound(NoResourceFoundException e) {
-        return createProblemDetail(RESOURCE_NOT_FOUND);
+    private List<ErrorResponse.FieldError> getFieldErrors(BindingResult bindingResult) {
+        return bindingResult.getFieldErrors().stream()
+                .map(error -> new ErrorResponse.FieldError(
+                        error.getField(),
+                        error.getRejectedValue() == null ? "" : error.getRejectedValue().toString(),
+                        error.getDefaultMessage()))
+                .toList();
     }
 
-    @ExceptionHandler(Exception.class)
-    public ProblemDetail handleUnexpected(Exception e) {
-        log.error("Unexpected error occurred: ", e);
-        return createProblemDetail(INTERNAL_SERVER_ERROR);
-    }
-
-    private ProblemDetail createProblemDetail(ErrorCode errorCode) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                errorCode.getStatus(), errorCode.getMessage());
-        pd.setTitle(errorCode.name());
-        pd.setProperty("errorCode", errorCode.name());
-        return pd;
+    private String generateTraceId() {
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 }

@@ -23,7 +23,8 @@
 ## 4. Security & Integration
 - **Security:** Spring Security & JWT (token-based authentication)
 - **API Documentation:** Spring REST Docs (test-driven) & Swagger/OpenAPI 3 (interactive UI)
-- **Observability:** P6Spy (SQL query monitoring)
+- **API Communication:** **Standardized ApiResponse<T> & ErrorResponse** using Java 21 records, ensuring consistent JSON wrapping and machine-readable error codes.
+- **Observability:** P6Spy (SQL query monitoring) and **Spring AOP based structured JSON logging** for system-wide traceability.
 - **Health & Monitoring:** Spring Boot Actuator (standard metrics and health probes)
 
 ## 5. Infrastructure & Devops
