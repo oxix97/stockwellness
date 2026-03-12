@@ -85,8 +85,8 @@ class AiAdvisorIntegrationTest extends RestDocsSupport {
                         .header("Authorization", "Bearer " + validToken))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").value("성공적인 통합 테스트 조언"))
-                .andExpect(jsonPath("$.action").value("RISK_MANAGEMENT"));
+                .andExpect(jsonPath("$.data.content").value("성공적인 통합 테스트 조언"))
+                .andExpect(jsonPath("$.data.action").value("RISK_MANAGEMENT"));
     }
 }
 
