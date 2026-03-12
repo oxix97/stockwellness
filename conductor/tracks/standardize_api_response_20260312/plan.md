@@ -1,13 +1,13 @@
 # Implementation Plan: Standardizing API Response and Global Exception Handling (plan.md)
 
-## Phase 1: Core Foundation (stockwellness-core)
+## Phase 1: Core Foundation (stockwellness-core) [x]
 Building the foundational components in the core module for global use.
 
-- [ ] Task: Create `ApiResponse<T>` record in `org.stockwellness.global.common`.
-- [ ] Task: Create `ErrorCode` Enum with fields for HTTP Status, custom code, and default message.
-- [ ] Task: Create `ErrorResponse` record in `org.stockwellness.global.error` including a list of `FieldError` records.
-- [ ] Task: Implement `BusinessException` as an abstract class and migrate common domain exceptions to use it.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Foundation' (Protocol in workflow.md)
+- [x] Task: Create `ApiResponse<T>` record in `org.stockwellness.global.common`.
+- [x] Task: Create `ErrorCode` Enum with fields for HTTP Status, custom code, and default message.
+- [x] Task: Create `ErrorResponse` record in `org.stockwellness.global.error` including a list of `FieldError` records.
+- [x] Task: Implement `BusinessException` as an abstract class and migrate common domain exceptions to use it.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Core Foundation' (Protocol in workflow.md)
 
 ## Phase 2: Global Handler Enhancement (stockwellness-api)
 Implementing the logic to catch exceptions and return standardized responses.
