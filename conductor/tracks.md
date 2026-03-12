@@ -8,7 +8,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./tracks/stock_watchlist_20260209/](./tracks/stock_watchlist_20260209/)*---- [x] **Track: Stock Discovery & Basic Inquiry (Track A)**
 *Link: [./tracks/stock_discovery_20260214/](./tracks/stock_discovery_20260214/)*---- [x] **Track: 핵심 시세 및 차트 데이터 엔진 구축 (배치 전처리 및 계층적 캐싱 전략)**
 *Link: [./tracks/stock_price_engine_20260214/](./tracks/stock_price_engine_20260214/)*---- [x] **Track: Core Security Cleanup**
-*Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*---- [ ] **Track: Advanced Chart & Price API with VWAP, Fundamentals, Benchmarking and High-Performance Caching**
+*Link: [./tracks/core_security_cleanup_20260215/](./tracks/core_security_cleanup_20260215/)*---- [x] **Track: Advanced Chart & Price API with VWAP, Fundamentals, Benchmarking and High-Performance Caching**
 *Link: [./tracks/advanced_chart_price_api_20260219/](./tracks/advanced_chart_price_api_20260219/)*---- [x] **Track: Refactor stock price and sector sync batch jobs for performance and correctness.**
 *Link: [./tracks/batch_refactor_20260302/](./tracks/batch_refactor_20260302/)*
 
@@ -16,4 +16,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: feature global pointcut logging system**
 *Link: [./tracks/global_pointcut_logging_20260312/](./tracks/global_pointcut_logging_20260312/)*
+
+---
+
+- [ ] **Track: Standardizing Common Response and Global Exception Handling**
+*Link: [./tracks/standardize_api_response_20260312/](./tracks/standardize_api_response_20260312/)*
 
