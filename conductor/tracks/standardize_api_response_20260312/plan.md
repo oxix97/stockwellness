@@ -18,13 +18,13 @@ Implementing the logic to catch exceptions and return standardized responses.
 - [x] Task: Integrate `Trace ID` (MDC or request header) into the `ErrorResponse` generation.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Global Handler Enhancement' (Protocol in workflow.md)
 
-## Phase 3: Adoption and Validation (Integration)
+## Phase 3: Adoption and Validation (Integration) [x]
 Updating existing controllers and verifying the new structure.
 
-- [ ] Task: Update `PortfolioController` and `MemberController` to use `ApiResponse<T>` as the return type.
-- [ ] Task: Create integration tests to verify both success and error response formats.
-- [ ] Task: Verify that `RestDocs` correctly document the new standardized response fields.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Adoption and Validation' (Protocol in workflow.md)
+- [x] Task: Update `PortfolioController` and `MemberController` to use `ApiResponse<T>` as the return type.
+- [x] Task: Create integration tests to verify both success and error response formats.
+- [x] Task: Verify that `RestDocs` correctly document the new standardized response fields.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Adoption and Validation' (Protocol in workflow.md)
 
 ## Phase 4: Final Cleanup and Documentation
 Ensuring consistency and final polish.
