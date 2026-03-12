@@ -10,19 +10,23 @@ import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskExecutor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.dto.BatchExecutionResponse;
+import org.stockwellness.batch.dto.BatchJobStatusResponse;
+import org.stockwellness.batch.dto.DataIntegrityResponse;
+import org.stockwellness.domain.stock.price.PriceIssueType;
 import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
 import org.stockwellness.global.error.ErrorCode;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,9 +44,11 @@ public class BatchAdminController {
     private final Job stockPriceBatchJob;
     private final Job sectorEodJob;
     private final Job stockPricePrevCloseSyncJob;
+    private final Job portfolioStatsJob;
 
     private final StockPort stockPort;
     private final MarketIndexSyncService marketIndexSyncService;
+    private final StockPriceRepository stockPriceRepository;
 
     /**
      * 업종/지수 마스터(idxcode.mst) 동기화
@@ -62,16 +68,41 @@ public class BatchAdminController {
      * 특정 Job의 최근 실행 상태 조회
      */
     @GetMapping("/status/{jobName}")
-    public List<String> getJobStatus(@PathVariable String jobName) {
-        return jobExplorer.getJobInstances(jobName, 0, 5).stream()
+    public List<BatchJobStatusResponse> getJobStatus(@PathVariable String jobName) {
+        return jobExplorer.getJobInstances(jobName, 0, 10).stream()
                 .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
-                .map(execution -> String.format("[%d] %s: %s (Start: %s, End: %s)",
+                .map(execution -> new BatchJobStatusResponse(
                         execution.getId(),
                         execution.getJobInstance().getJobName(),
-                        execution.getStatus(),
+                        execution.getStatus().name(),
                         execution.getStartTime(),
-                        execution.getEndTime()))
+                        execution.getEndTime(),
+                        execution.getExitStatus().getExitCode()
+                ))
+                .sorted((a, b) -> b.executionId().compareTo(a.executionId()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 시세 데이터 정합성 체크 (누락 또는 0원 시세)
+     */
+    @GetMapping("/integrity-check")
+    public ResponseEntity<DataIntegrityResponse> checkDataIntegrity(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        var invalidPrices = stockPriceRepository.findInvalidPrices(startDate, endDate);
+        
+        List<DataIntegrityResponse.InvalidPriceDetail> details = invalidPrices.stream()
+                .map(p -> new DataIntegrityResponse.InvalidPriceDetail(
+                        p.getStock().getTicker(),
+                        p.getStock().getName(),
+                        p.getId().getBaseDate(),
+                        (p.getClosePrice() == null) ? PriceIssueType.NULL_PRICE.name() : PriceIssueType.ZERO_PRICE.name()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(new DataIntegrityResponse(details.size(), details));
     }
 
     /**
@@ -195,6 +226,17 @@ public class BatchAdminController {
                 .toJobParameters();
 
         return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
+    }
+
+    /**
+     * 포트폴리오 통계 지표(MDD, Sharpe, Beta) 갱신 배치 실행
+     */
+    @PostMapping("/sync-portfolio-stats")
+    public ResponseEntity<BatchExecutionResponse> runPortfolioStatsSync() {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("time", System.currentTimeMillis())
+                .toJobParameters();
+        return ResponseEntity.ok(launchJobAsync(portfolioStatsJob, params));
     }
 
     /**

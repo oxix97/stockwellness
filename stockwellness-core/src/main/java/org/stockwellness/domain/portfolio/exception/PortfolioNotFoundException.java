@@ -4,6 +4,6 @@ import org.stockwellness.global.error.ErrorCode;
 
 public class PortfolioNotFoundException extends PortfolioDomainException {
     public PortfolioNotFoundException() {
-        super(ErrorCode.RESOURCE_NOT_FOUND);
+        super(ErrorCode.PORTFOLIO_NOT_FOUND);
     }
 }

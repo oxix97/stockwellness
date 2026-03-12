@@ -12,18 +12,23 @@ import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Component
 @RequiredArgsConstructor
 public class PortfolioHealthCalculator {
 
-//    private final StockStatCalculator stockStatCalculator;
-
     public CalculatedHealth calculate(DiagnosisContext context) {
         Portfolio portfolio = context.portfolio();
         Map<String, Stock> stockMap = context.stockMap();
         Map<String, List<StockPrice>> stockPriceMap = context.stockPriceMap();
+
+        BigDecimal totalPurchaseAmount = portfolio.calculateTotalPurchaseAmount();
+        if (totalPurchaseAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return new CalculatedHealth(0, Collections.emptyMap());
+        }
 
         double totalDefense = 0;
         double totalAttack = 0;
@@ -34,22 +39,18 @@ public class PortfolioHealthCalculator {
         Set<MarketType> marketTypes = new HashSet<>();
 
         for (PortfolioItem item : portfolio.getItems()) {
-            double weight = (double) item.getPieceCount() / Portfolio.MAX_PIECES;
+            BigDecimal itemPurchaseAmount = item.calculatePurchaseAmount();
+            double weight = itemPurchaseAmount.divide(totalPurchaseAmount, 4, RoundingMode.HALF_UP).doubleValue();
 
             if (item.getAssetType() == AssetType.STOCK) {
                 stockCount++;
-                Stock stock = Optional.ofNullable(stockMap.get(item.getIsinCode()))
-                        .orElseThrow(() -> new IllegalArgumentException("Stock not found: " + item.getIsinCode()));
+                Stock stock = Optional.ofNullable(stockMap.get(item.getSymbol()))
+                        .orElseThrow(() -> new IllegalArgumentException("Stock not found: " + item.getSymbol()));
 
                 marketTypes.add(stock.getMarketType());
 
-                List<StockPrice> histories = stockPriceMap.getOrDefault(item.getIsinCode(), List.of());
-//                StockStatResult stat = stockStatCalculator.calculate(stock, histories);
-
-//                totalDefense += stat.defense() * weight;
-//                totalAttack += stat.attack() * weight;
-//                totalEndurance += stat.endurance() * weight;
-//                totalAgility += stat.agility() * weight;
+                // List<StockPrice> histories = stockPriceMap.getOrDefault(item.getSymbol(), List.of());
+                // TODO: Re-integrate stockStatCalculator
             } else if (item.getAssetType() == AssetType.CASH) {
                 totalDefense += CashScorePolicy.DEFENSE.getScore() * weight;
                 totalAttack += CashScorePolicy.ATTACK.getScore() * weight;

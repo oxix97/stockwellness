@@ -31,13 +31,13 @@ public class StockAdapter implements StockPort {
     }
 
     @Override
-    public List<Stock> loadStocksByTickers(List<String> isinCodes) {
-        return stockRepository.findAllById(isinCodes);
+    public List<Stock> loadStocksByTickers(List<String> tickers) {
+        return stockRepository.findAllByTickerIn(tickers);
     }
 
     @Override
-    public boolean existsByTicker(String isinCode) {
-        return stockRepository.existsById(isinCode);
+    public boolean existsByTicker(String ticker) {
+        return stockRepository.findByTicker(ticker).isPresent();
     }
 
     @Override
@@ -72,7 +72,7 @@ public class StockAdapter implements StockPort {
 
 
     public List<Stock> findByIsinCodeIn(List<String> isinCodes) {
-        return stockRepository.findByTickerIn(isinCodes);
+        return stockRepository.findAllByTickerIn(isinCodes);
     }
 
 

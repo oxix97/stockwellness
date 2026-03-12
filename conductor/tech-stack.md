@@ -16,12 +16,16 @@
 - **Batch Processing:** Spring Batch (leveraging JdbcBatchItemWriter for high-performance bulk data ingestion)
 - **Price Aggregation:** Java 21 Stream API (for high-performance in-memory weekly/monthly aggregation)
 - **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
+- **Portfolio Analysis Engine:** In-memory valuation and simulation engine (Backtest, Rebalancing) supporting professional-grade risk metrics (MDD, Sharpe, Beta).
+- **Design Patterns:** Facade Pattern (PortfolioFacade for unified orchestration), Domain Utility Pattern (FinanceCalculationUtil, PortfolioMapperUtil).
 - **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
 
 ## 4. Security & Integration
 - **Security:** Spring Security & JWT (token-based authentication)
 - **API Documentation:** Spring REST Docs (test-driven) & Swagger/OpenAPI 3 (interactive UI)
-- **Observability:** P6Spy (SQL query monitoring)
+- **API Communication:** **Standardized ApiResponse<T> & ErrorResponse** using Java 21 records, ensuring consistent JSON wrapping and machine-readable error codes.
+- **Observability:** P6Spy (SQL query monitoring) and **Spring AOP based structured JSON logging** for system-wide traceability.
+- **Health & Monitoring:** Spring Boot Actuator (standard metrics and health probes)
 
 ## 5. Infrastructure & Devops
 - **Containerization:** Docker & Docker Compose (local development environment), n8n 커스텀 이미지(배포 오케스트레이터)
