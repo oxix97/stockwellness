@@ -19,6 +19,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Standardizing Common Response and Global Exception Handling**
+- [x] **Track: Standardizing Common Response and Global Exception Handling**
 *Link: [./tracks/standardize_api_response_20260312/](./tracks/standardize_api_response_20260312/)*
 
