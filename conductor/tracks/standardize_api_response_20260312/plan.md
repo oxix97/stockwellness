@@ -9,14 +9,14 @@ Building the foundational components in the core module for global use.
 - [x] Task: Implement `BusinessException` as an abstract class and migrate common domain exceptions to use it.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Foundation' (Protocol in workflow.md)
 
-## Phase 2: Global Handler Enhancement (stockwellness-api)
+## Phase 2: Global Handler Enhancement (stockwellness-api) [x]
 Implementing the logic to catch exceptions and return standardized responses.
 
-- [ ] Task: Implement `GlobalExceptionHandler` using `@RestControllerAdvice`.
-- [ ] Task: Use Java 21 `switch pattern matching` in `GlobalExceptionHandler` to handle different exception types.
-- [ ] Task: Implement logic to handle `MethodArgumentNotValidException` and populate `FieldError` details.
-- [ ] Task: Integrate `Trace ID` (MDC or request header) into the `ErrorResponse` generation.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Global Handler Enhancement' (Protocol in workflow.md)
+- [x] Task: Implement `GlobalExceptionHandler` using `@RestControllerAdvice`.
+- [x] Task: Use Java 21 `switch pattern matching` in `GlobalExceptionHandler` to handle different exception types.
+- [x] Task: Implement logic to handle `MethodArgumentNotValidException` and populate `FieldError` details.
+- [x] Task: Integrate `Trace ID` (MDC or request header) into the `ErrorResponse` generation.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Global Handler Enhancement' (Protocol in workflow.md)
 
 ## Phase 3: Adoption and Validation (Integration)
 Updating existing controllers and verifying the new structure.
