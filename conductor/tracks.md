@@ -17,8 +17,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: feature global pointcut logging system**
 *Link: [./tracks/global_pointcut_logging_20260312/](./tracks/global_pointcut_logging_20260312/)*
 
----
-
-- [x] **Track: Standardizing Common Response and Global Exception Handling**
-*Link: [./tracks/standardize_api_response_20260312/](./tracks/standardize_api_response_20260312/)*
-
