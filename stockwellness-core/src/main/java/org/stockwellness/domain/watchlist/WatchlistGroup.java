@@ -70,21 +70,33 @@ public class WatchlistGroup extends AbstractEntity {
     }
 
     public void addItem(Stock stock) {
+        addItem(stock, null);
+    }
+
+    public void addItem(Stock stock, String note) {
         validateItemLimit();
         validateDuplicateItem(stock);
-        
-        WatchlistItem item = WatchlistItem.create(this, stock);
+
+        WatchlistItem item = WatchlistItem.create(this, stock, note);
         this.items.add(item);
     }
-    
-    public void removeItem(String isinCode) {
-        WatchlistItem itemToRemove = this.items.stream()
-                .filter(item -> item.getStock().getStandardCode().equals(isinCode) && item.getDeletedAt() == null)
-                .findFirst()
-                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
-        
+
+    public void updateItemNote(String ticker, String newNote) {
+        WatchlistItem item = findItemByTicker(ticker);
+        item.updateNote(newNote);
+    }
+
+    public void removeItem(String ticker) {
+        WatchlistItem itemToRemove = findItemByTicker(ticker);
         itemToRemove.delete();
         this.items.remove(itemToRemove);
+    }
+
+    private WatchlistItem findItemByTicker(String ticker) {
+        return this.items.stream()
+                .filter(item -> item.getTicker().equals(ticker) && item.getDeletedAt() == null)
+                .findFirst()
+                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
     }
 
     private void validateItemLimit() {
@@ -98,7 +110,7 @@ public class WatchlistGroup extends AbstractEntity {
 
     private void validateDuplicateItem(Stock stock) {
         boolean isDuplicate = this.items.stream()
-                .anyMatch(item -> item.getStock().getStandardCode().equals(stock.getStandardCode()) && item.getDeletedAt() == null);
+                .anyMatch(item -> item.getTicker().equals(stock.getTicker()) && item.getDeletedAt() == null);
         if (isDuplicate) {
             throw new GlobalException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
         }
