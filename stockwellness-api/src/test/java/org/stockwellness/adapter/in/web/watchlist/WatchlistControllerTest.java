@@ -1,7 +1,6 @@
 package org.stockwellness.adapter.in.web.watchlist;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -94,7 +93,7 @@ class WatchlistControllerTest extends RestDocsSupport {
     @DisplayName("관심 그룹에 종목을 추가한다")
     void addItem() throws Exception {
         // given
-        AddWatchlistItemRequest request = new AddWatchlistItemRequest("KR7005930003");
+        AddWatchlistItemRequest request = new AddWatchlistItemRequest("005930", "삼성전자 메모");
 
         // when & then
         mockMvc.perform(post("/api/v1/watchlist/groups/{groupId}/items", 10L)
@@ -102,14 +101,68 @@ class WatchlistControllerTest extends RestDocsSupport {
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isCreated())
                 .andDo(document("watchlist-item-add",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
                                 .summary("관심 종목 추가")
                                 .pathParameters(parameterWithName("groupId").description("그룹 ID"))
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
-                                .requestFields(fieldWithPath("isinCode").description("종목 ISIN 코드"))
+                                .requestFields(
+                                        fieldWithPath("ticker").description("종목 티커"),
+                                        fieldWithPath("note").description("투자 메모 (선택)")
+                                )
+                                .build())
+                ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("관심 그룹 내 종목의 메모를 수정한다")
+    void updateItemNote() throws Exception {
+        // given
+        UpdateWatchlistItemNoteRequest request = new UpdateWatchlistItemNoteRequest("수정된 메모");
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/watchlist/groups/{groupId}/items/{ticker}/note", 10L, "005930")
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .with(csrf())
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent())
+                .andDo(document("watchlist-item-note-update",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Watchlist")
+                                .summary("관심 종목 메모 수정")
+                                .pathParameters(
+                                        parameterWithName("groupId").description("그룹 ID"),
+                                        parameterWithName("ticker").description("종목 티커")
+                                )
+                                .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
+                                .requestFields(fieldWithPath("note").description("수정할 메모 내용"))
+                                .build())
+                ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("관심 그룹에서 종목을 제거한다")
+    void removeItem() throws Exception {
+        // when & then
+        mockMvc.perform(delete("/api/v1/watchlist/groups/{groupId}/items/{ticker}", 10L, "005930")
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .with(csrf())
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isNoContent())
+                .andDo(document("watchlist-item-remove",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Watchlist")
+                                .summary("관심 종목 제거")
+                                .pathParameters(
+                                        parameterWithName("groupId").description("그룹 ID"),
+                                        parameterWithName("ticker").description("종목 티커")
+                                )
+                                .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
                                 .build())
                 ));
     }
@@ -120,7 +173,7 @@ class WatchlistControllerTest extends RestDocsSupport {
     void getItems() throws Exception {
         // given
         WatchlistItemListResponse response = new WatchlistItemListResponse("테크주", List.of(
-                new WatchlistItemListResponse.WatchlistItemDetail("KR7005930003", "삼성전자", BigDecimal.valueOf(70000), BigDecimal.valueOf(-1.2), BigDecimal.valueOf(45), "중립", "AI 요약 내용...")
+                new WatchlistItemListResponse.WatchlistItemDetail("005930", "삼성전자", BigDecimal.valueOf(70000), BigDecimal.valueOf(-1.2), "메모 내용", BigDecimal.valueOf(45), "중립", "AI 요약 내용...")
         ));
         given(watchlistUseCase.getItems(1L, 10L)).willReturn(response);
 
@@ -137,10 +190,11 @@ class WatchlistControllerTest extends RestDocsSupport {
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
                                 .responseFields(
                                         fieldWithPath("groupName").description("그룹 이름"),
-                                        fieldWithPath("items[].isinCode").description("ISIN 코드"),
+                                        fieldWithPath("items[].ticker").description("종목 티커"),
                                         fieldWithPath("items[].name").description("종목명"),
                                         fieldWithPath("items[].currentPrice").description("현재가"),
                                         fieldWithPath("items[].fluctuationRate").description("등락률"),
+                                        fieldWithPath("items[].note").description("투자 메모"),
                                         fieldWithPath("items[].rsi").description("RSI 지표"),
                                         fieldWithPath("items[].rsiStatus").description("RSI 상태"),
                                         fieldWithPath("items[].aiInsight").description("AI 한줄 분석")
