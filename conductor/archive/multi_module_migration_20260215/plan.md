@@ -53,5 +53,5 @@ This plan follows an incremental approach to refactor the Stockwellness project 
     - [x] Verify `stockwellness-core.jar` is a plain library JAR.
 - [x] Task: Cleanup Orphaned Files
     - [x] Remove unused code and resources from the root `src` directory.
-    - [x] Update `README.md` or `GUIDE.md` to reflect the new module structure.
+    - [x] Update `README.md` or `GEMINI.md` to reflect the new module structure.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Final Integration' (Protocol in workflow.md)
