@@ -11,18 +11,18 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Global logging aspect for method boundary, execution time, and exception logging.
- * Logs are output in structured JSON format.
+ * Logs are output in structured JSON format with deep masking for sensitive data.
  */
 @Aspect
 @Component
@@ -30,6 +30,7 @@ public class LoggingAspect {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String MASKED_VALUE = "********";
     private static final Set<String> SENSITIVE_KEYWORDS = new HashSet<>(Arrays.asList(
             "password", "pwd", "accessToken", "refreshToken", "token", "secret", "authorization"
     ));
@@ -40,13 +41,16 @@ public class LoggingAspect {
     @Pointcut("within(org.stockwellness.adapter.in.web..*)")
     public void webAdapterLayer() {}
 
+    @Pointcut("within(org.stockwellness.adapter.out..*)")
+    public void adapterOutLayer() {}
+
     @Pointcut("within(org.stockwellness.batch.job..*)")
     public void batchJobLayer() {}
 
     @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || @annotation(org.stockwellness.global.logging.LogExecution)")
     public void logExecutionAnnotation() {}
 
-    @Around("applicationServiceLayer() || webAdapterLayer() || batchJobLayer() || logExecutionAnnotation()")
+    @Around("applicationServiceLayer() || webAdapterLayer() || adapterOutLayer() || batchJobLayer() || logExecutionAnnotation()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
@@ -65,6 +69,7 @@ public class LoggingAspect {
         } finally {
             long executionTime = System.currentTimeMillis() - start;
             LogEvent logEvent = LogEvent.builder()
+                    .traceId(MDC.get("traceId"))
                     .className(className)
                     .methodName(methodName)
                     .args(maskSensitiveData(args))
@@ -75,7 +80,9 @@ public class LoggingAspect {
                     .build();
 
             try {
-                log.info(objectMapper.writeValueAsString(logEvent));
+                if (log.isInfoEnabled()) {
+                    log.info(objectMapper.writeValueAsString(logEvent));
+                }
             } catch (JsonProcessingException e) {
                 log.warn("Failed to serialize log event to JSON: {}", e.getMessage());
             }
@@ -84,27 +91,84 @@ public class LoggingAspect {
 
     private Object maskSensitiveData(Object data) {
         if (data == null) return null;
-        // Simple masking logic: if it's an array, mask each element if it's a string matching keywords.
-        // For complex objects, this is harder without deep reflection.
-        // For now, let's just do a basic check for string arguments.
+
         if (data instanceof Object[] objects) {
             return Arrays.stream(objects)
-                    .map(this::maskIfString)
+                    .map(this::processObject)
                     .collect(Collectors.toList());
         }
-        return maskIfString(data);
+
+        if (data instanceof Collection<?> collection) {
+            return collection.stream()
+                    .map(this::processObject)
+                    .collect(Collectors.toList());
+        }
+
+        if (data instanceof Map<?, ?> map) {
+            Map<Object, Object> maskedMap = new HashMap<>();
+            map.forEach((k, v) -> {
+                if (k instanceof String key && isSensitiveKey(key)) {
+                    maskedMap.put(k, MASKED_VALUE);
+                } else {
+                    maskedMap.put(k, processObject(v));
+                }
+            });
+            return maskedMap;
+        }
+
+        return processObject(data);
     }
 
-    private Object maskIfString(Object obj) {
-        if (obj instanceof String s) {
-            String lower = s.toLowerCase();
-            for (String keyword : SENSITIVE_KEYWORDS) {
-                if (lower.contains(keyword.toLowerCase())) {
-                    return "********";
-                }
-            }
+    private Object processObject(Object obj) {
+        if (obj == null) return null;
+
+        if (isSimpleType(obj)) {
+            return obj;
         }
+
+        // If it's a StockWellness object, perform deep masking
+        if (obj.getClass().getName().startsWith("org.stockwellness")) {
+            return performDeepMasking(obj);
+        }
+
         return obj;
+    }
+
+    private boolean isSimpleType(Object obj) {
+        return obj instanceof String || obj instanceof Number || obj instanceof Boolean ||
+               obj instanceof Character || obj.getClass().isPrimitive() || obj.getClass().isEnum();
+    }
+
+    private Object performDeepMasking(Object obj) {
+        try {
+            Map<String, Object> maskedFields = new HashMap<>();
+            Class<?> clazz = obj.getClass();
+
+            while (clazz != null && clazz != Object.class) {
+                for (Field field : clazz.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    String fieldName = field.getName();
+                    Object fieldValue = field.get(obj);
+
+                    if (field.isAnnotationPresent(Masked.class) || isSensitiveKey(fieldName)) {
+                        maskedFields.put(fieldName, MASKED_VALUE);
+                    } else if (fieldValue != null && field.getType().getName().startsWith("org.stockwellness")) {
+                        maskedFields.put(fieldName, processObject(fieldValue));
+                    } else {
+                        maskedFields.put(fieldName, fieldValue);
+                    }
+                }
+                clazz = clazz.getSuperclass();
+            }
+            return maskedFields;
+        } catch (Exception e) {
+            return "[Masking Error: " + e.getMessage() + "]";
+        }
+    }
+
+    private boolean isSensitiveKey(String key) {
+        String lower = key.toLowerCase();
+        return SENSITIVE_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
     private String getStackTrace(Throwable throwable) {
@@ -118,6 +182,7 @@ public class LoggingAspect {
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class LogEvent {
+        private String traceId;
         private String className;
         private String methodName;
         private Object args;

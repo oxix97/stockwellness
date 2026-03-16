@@ -15,16 +15,16 @@ This file tracks the status of all major project tracks.
 - [x] **Track: Advanced Chart & Price API** - *Link: [./archive/advanced_chart_price_api_20260219/](./archive/advanced_chart_price_api_20260219/)*
 - [x] **Track: Batch Jobs Refactoring (v1)** - *Link: [./archive/batch_refactor_20260302/](./archive/batch_refactor_20260302/)*
 - [x] **Track: Global Pointcut Logging System (v1)** - *Link: [./archive/global_pointcut_logging_20260312/](./archive/global_pointcut_logging_20260312/)*
+- [x] **Track 2: 글로벌 포인트컷 로깅 구현 (Final)** - *Link: [./tracks/global_pointcut_logging_final/](./tracks/global_pointcut_logging_final/)*
 
 ## 🏗️ Current Tracks (In Progress)
 
-- [~] **Track 1: 트랙 상태 업데이트 및 정리 (관리 작업)** - *Link: [./index.md](./index.md)*
+- [x] **Track 1: 트랙 상태 업데이트 및 정리 (관리 작업)** - *Link: [./index.md](./index.md)*
 
 ## 📅 Upcoming Tracks (Planned)
 
-1. **Track 2: 글로벌 포인트컷 로깅 구현 (Final/Re-verification)**
-2. **Track 3: 배치 리팩토링 및 데이터 정합성 강화 (Deep Refactor)**
-3. **Track 4: 포트폴리오 건강 진단 기능 고도화**
+1. **Track 3: 배치 리팩토링 및 데이터 정합성 강화 (Deep Refactor)**
+2. **Track 4: 포트폴리오 건강 진단 기능 고도화**
 
 ---
 *Note: Completed tracks are moved to the `archive/` directory to keep the workspace clean.*
