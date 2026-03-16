@@ -10,6 +10,7 @@ import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 import org.stockwellness.global.util.FinanceFormatUtil;
 
+import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
 @Component
@@ -78,7 +79,13 @@ public class PromptTemplateMapper {
         - 민첩성 (Agility): %d
         - 균형성 (Balance): %d
         
-        위 점수들을 바탕으로 현재 포트폴리오의 상태를 진단하고, 초보 투자자가 이해하기 쉬운 언어로 조언을 해줘.
+        [정밀 리스크 지표]
+        - 샤프 지수 (Sharpe Ratio): %s (위험 대비 수익성)
+        - 최대 낙폭 (MDD): %s%% (최대 손실 발생 가능성)
+        - 변동성 (Volatility): %s%% (가격 변동 폭)
+        
+        위 데이터와 점수들을 바탕으로 현재 포트폴리오의 상태를 진단하고, 초보 투자자가 이해하기 쉬운 언어로 조언을 해줘.
+        특히 정밀 리스크 지표를 해석하여 현재 투자가 효율적인지, 혹은 너무 위험한 상태인지 구체적으로 짚어줘.
         """;
 
     private static final String PORTFOLIO_SYSTEM_INSTRUCTION = """
@@ -170,13 +177,17 @@ public class PromptTemplateMapper {
 
     public String toPortfolioPromptString(PortfolioAiContext context) {
         var categories = context.categories();
+        var risk = context.riskMetrics();
         return PORTFOLIO_PROMPT_TEMPLATE.formatted(
                 context.overallScore(),
                 categories.getOrDefault(DiagnosisCategory.DEFENSE.getKey(), 0),
                 categories.getOrDefault(DiagnosisCategory.ATTACK.getKey(), 0),
                 categories.getOrDefault(DiagnosisCategory.ENDURANCE.getKey(), 0),
                 categories.getOrDefault(DiagnosisCategory.AGILITY.getKey(), 0),
-                categories.getOrDefault(DiagnosisCategory.BALANCE.getKey(), 0)
+                categories.getOrDefault(DiagnosisCategory.BALANCE.getKey(), 0),
+                FinanceFormatUtil.formatDecimal(risk.sharpeRatio()),
+                FinanceFormatUtil.formatDecimal(risk.mdd()), // MDD는 이미 % 단위로 가정
+                FinanceFormatUtil.formatRate(risk.volatility().multiply(BigDecimal.valueOf(100)))
         );
     }
 

@@ -36,7 +36,7 @@ public class PortfolioDiagnosisDataLoader {
         Map<String, Stock> stockMap = stockPort.loadStocksByTickers(symbols).stream()
                 .collect(Collectors.toMap(Stock::getTicker, stock -> stock));
 
-        Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(symbols, 5);
+        Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(symbols, 60);
 
         return new DiagnosisContext(portfolio, stockMap, stockPriceMap);
     }
