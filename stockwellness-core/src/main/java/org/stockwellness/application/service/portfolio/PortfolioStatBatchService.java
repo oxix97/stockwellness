@@ -103,7 +103,7 @@ public class PortfolioStatBatchService {
                 .toList();
 
         BigDecimal mdd = statCalculator.calculateMDD(values);
-        BigDecimal sharpe = statCalculator.calculateSharpeRatio(pReturns);
+        BigDecimal sharpe = statCalculator.calculateSharpeRatio(pReturns, BigDecimal.ZERO);
         BigDecimal beta = statCalculator.calculateBeta(pReturns, mReturns);
 
         portfolioStatsRepository.findByPortfolioId(portfolio.getId())

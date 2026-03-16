@@ -30,15 +30,26 @@ public class PortfolioStatCalculator {
     }
 
     public BigDecimal calculateSharpeRatio(List<BigDecimal> returns) {
+        return calculateSharpeRatio(returns, BigDecimal.ZERO);
+    }
+
+    public BigDecimal calculateSharpeRatio(List<BigDecimal> returns, BigDecimal riskFreeRate) {
         if (returns == null || returns.isEmpty()) return BigDecimal.ZERO;
 
         BigDecimal mean = calculateMean(returns);
-        BigDecimal variance = calculateVariance(returns, mean);
-        BigDecimal stdDev = sqrt(variance);
+        BigDecimal excessReturn = mean.subtract(riskFreeRate != null ? riskFreeRate : BigDecimal.ZERO);
+        BigDecimal stdDev = calculateVolatility(returns);
 
         if (stdDev.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
 
-        return mean.divide(stdDev, 4, RoundingMode.HALF_UP);
+        return excessReturn.divide(stdDev, 4, RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal calculateVolatility(List<BigDecimal> returns) {
+        if (returns == null || returns.isEmpty()) return BigDecimal.ZERO;
+        BigDecimal mean = calculateMean(returns);
+        BigDecimal variance = calculateVariance(returns, mean);
+        return sqrt(variance);
     }
 
     public BigDecimal calculateBeta(List<BigDecimal> portfolioReturns, List<BigDecimal> marketReturns) {

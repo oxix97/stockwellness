@@ -1,5 +1,7 @@
 package org.stockwellness.application.service.portfolio.internal;
 
+import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
+
 import java.util.Map;
 
 /**
@@ -7,6 +9,7 @@ import java.util.Map;
  */
 public record CalculatedHealth(
         int overallScore,
-        Map<String, Integer> categories
+        Map<String, Integer> categories,
+        PortfolioAiContext.RiskMetrics riskMetrics
 ) {
 }

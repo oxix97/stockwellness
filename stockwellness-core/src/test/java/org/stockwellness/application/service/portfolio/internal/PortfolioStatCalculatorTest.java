@@ -44,7 +44,7 @@ class PortfolioStatCalculatorTest {
                 BigDecimal.valueOf(2)
         );
 
-        BigDecimal sharpe = calculator.calculateSharpeRatio(returns);
+        BigDecimal sharpe = calculator.calculateSharpeRatio(returns, BigDecimal.ZERO);
 
         assertThat(sharpe).isEqualByComparingTo(BigDecimal.valueOf(0.8165));
     }
