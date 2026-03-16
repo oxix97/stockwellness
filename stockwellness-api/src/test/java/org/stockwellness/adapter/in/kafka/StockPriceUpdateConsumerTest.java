@@ -43,7 +43,7 @@ class StockPriceUpdateConsumerTest {
     @Test
     void testConsumeStockPriceUpdatedEvent() {
         // given
-        List<String> symbols = List.of("AAPL", "TSLA");
+        List<String> symbols = List.of("005930", "000660");
         StockPriceUpdatedEvent event = StockPriceUpdatedEvent.of(symbols);
         
         Cache mockCache = mock(Cache.class);
@@ -64,6 +64,8 @@ class StockPriceUpdateConsumerTest {
             .untilAsserted(() -> {
                 // 적어도 한 번은 캐시 무효화가 발생했는지 확인
                 verify(mockCache, atLeastOnce()).evict(anyString());
+                // 섹터 관련 캐시 clear가 호출되었는지 확인
+                verify(mockCache, atLeastOnce()).clear();
             });
     }
 }

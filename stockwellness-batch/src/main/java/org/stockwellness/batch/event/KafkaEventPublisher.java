@@ -15,19 +15,28 @@ import java.util.List;
 public class KafkaEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private static final int MAX_BATCH_SIZE = 500; // Kafka 메시지 당 최대 심볼 수 제한
 
     public void publishStockPriceUpdated(List<String> symbols) {
-        StockPriceUpdatedEvent event = StockPriceUpdatedEvent.of(symbols);
-        log.info("Publishing stock price updated event for symbols: {}", symbols);
-        
-        kafkaTemplate.send(KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, event)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("Successfully published event to topic: {}, offset: {}", 
-                                KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, result.getRecordMetadata().offset());
-                    } else {
-                        log.error("Failed to publish event to topic: {}", KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, ex);
-                    }
-                });
+        if (symbols == null || symbols.isEmpty()) return;
+
+        // 분할 발행 로직 추가 (메시지 크기 제한 및 컨슈머 부하 분산)
+        for (int i = 0; i < symbols.size(); i += MAX_BATCH_SIZE) {
+            int end = Math.min(i + MAX_BATCH_SIZE, symbols.size());
+            List<String> subList = symbols.subList(i, end);
+            
+            StockPriceUpdatedEvent event = StockPriceUpdatedEvent.of(subList);
+            log.info("Publishing stock price updated event for {}/{} symbols", subList.size(), symbols.size());
+            
+            kafkaTemplate.send(KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, event)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Successfully published chunk to topic: {}, offset: {}", 
+                                    KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, result.getRecordMetadata().offset());
+                        } else {
+                            log.error("Failed to publish chunk to topic: {}", KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, ex);
+                        }
+                    });
+        }
     }
 }

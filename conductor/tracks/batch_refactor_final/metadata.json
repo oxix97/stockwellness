@@ -1,0 +1,7 @@
+{
+  "id": "batch_refactor_final",
+  "name": "배치 리팩토링 및 데이터 정합성 강화",
+  "description": "주가 동기화 배치 안정성 확보 및 Kafka 캐시 무효화 로직 개선",
+  "issue_number": 103,
+  "status": "Completed"
+}
