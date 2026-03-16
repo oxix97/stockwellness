@@ -56,7 +56,7 @@ public class KisDailyPriceAdapter {
             return response.output2();
 
         } catch (Exception e) {
-            log.error("Failed to fetch multi-stock prices for {}: {}", tickers, e.getMessage());
+            log.error("멀티 종목 시세 조회 실패 (종목: {}): {}", tickers, e.getMessage());
             return Collections.emptyList();
         }
     }

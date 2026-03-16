@@ -43,24 +43,24 @@ public class StockPriceSyncEventListener implements ItemWriteListener<List<Stock
         String publishEvent = jobExecution.getJobParameters().getString("publishEvent", "false");
         
         if (!"true".equalsIgnoreCase(publishEvent)) {
-            log.info(">>> Kafka event publishing is DISABLED for this job execution (publishEvent=false).");
+            log.info(">>> 이번 잡 실행에서는 카프카 이벤트 발행이 비활성화되었습니다 (publishEvent=false).");
             updatedSymbols.clear();
             return;
         }
 
         if (jobExecution.getStatus().isUnsuccessful()) {
-            log.warn(BatchLogTemplate.error("Stock price sync job failed. Skipping event publishing."));
+            log.warn(BatchLogTemplate.error("종목 시세 동기화 잡 실패. 이벤트 발행을 건너뜁니다."));
             updatedSymbols.clear();
             return;
         }
 
         if (!updatedSymbols.isEmpty()) {
             List<String> symbols = new ArrayList<>(updatedSymbols);
-            log.info("Stock price sync job completed. Publishing events for {} symbols.", symbols.size());
+            log.info("종목 시세 동기화 잡 완료. {}개 종목에 대한 이벤트를 발행합니다.", symbols.size());
             kafkaEventPublisher.publishStockPriceUpdated(symbols);
             updatedSymbols.clear();
         } else {
-            log.info("Stock price sync job completed, but no symbols were updated.");
+            log.info("종목 시세 동기화 잡 완료. 업데이트된 종목이 없어 이벤트를 발행하지 않습니다.");
         }
     }
 

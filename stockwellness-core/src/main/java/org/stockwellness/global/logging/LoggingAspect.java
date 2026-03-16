@@ -78,16 +78,16 @@ public class LoggingAspect {
                         .exceptionMessage(exception != null ? exception.getMessage() : null)
                         .stackTrace(exception != null ? getStackTrace(exception) : null)
                         .build();
-
-                if (log.isInfoEnabled()) {
-                    log.info(objectMapper.writeValueAsString(logEvent));
-                }
-            } catch (JsonProcessingException e) {
-                log.warn("Failed to serialize log event to JSON: {}", e.getMessage());
-            } finally {
-                // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
-                visited.get().clear();
-            }
+try {
+    if (log.isInfoEnabled()) {
+        log.info(objectMapper.writeValueAsString(logEvent));
+    }
+} catch (JsonProcessingException e) {
+    log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
+} finally {
+    // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
+    visited.get().clear();
+}
         }
     }
 

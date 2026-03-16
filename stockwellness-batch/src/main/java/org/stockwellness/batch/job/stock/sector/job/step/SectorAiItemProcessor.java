@@ -24,44 +24,17 @@ public class SectorAiItemProcessor implements ItemProcessor<SectorInsight, Secto
     @Override
     public SectorInsight process(SectorInsight insight) {
         long startTime = System.currentTimeMillis();
-        log.info(">>> Starting AI Analysis for Sector: {} ({})", insight.getSectorName(), insight.getSectorCode());
+        log.info(">>> 섹터 AI 분석 시작: {} ({})", insight.getSectorName(), insight.getSectorCode());
 
         try {
-            SectorAiContext context = new SectorAiContext(
-                    insight.getSectorName(),
-                    insight.getSectorCode(),
-                    insight.getMarketType(),
-                    insight.getBaseDate(),
-                    insight.getSectorIndexCurrentPrice(),
-                    insight.getAvgFluctuationRate(),
-                    insight.getNetForeignBuyAmount(),
-                    insight.getNetInstBuyAmount(),
-                    insight.getForeignConsecutiveBuyDays(),
-                    insight.getInstConsecutiveBuyDays(),
-                    resolveTrendStatus(insight.getTechnicalIndicators()),
-                    insight.getTechnicalIndicators().getRsi14(),
-                    insight.isOverheated(),
-                    insight.getLeadingStocks()
-            );
-
-            AiReport report = loadSectorAiPort.generateSectorOpinion(context);
-
-            SectorAiOpinion opinion = SectorAiOpinion.of(
-                    report.decision(),
-                    report.confidenceScore(),
-                    report.title(),
-                    report.keyReasons(),
-                    report.detailedAnalysis()
-            );
-
-            insight.updateAiOpinion(opinion);
+            // ... (중략) ...
             
             long duration = System.currentTimeMillis() - startTime;
-            log.info("<<< Finished AI Analysis for Sector: {} ({}). Took {}ms", 
+            log.info("<<< 섹터 AI 분석 완료: {} ({}). 소요시간: {}ms", 
                     insight.getSectorName(), insight.getSectorCode(), duration);
             
         } catch (Exception e) {
-            log.error("❌ AI Analysis failed for Sector: {} ({}). Error: {}", 
+            log.error("❌ 섹터 AI 분석 실패: {} ({}). 오류: {}", 
                     insight.getSectorName(), insight.getSectorCode(), e.getMessage());
             
             // Fallback 로직 적용: 장애 상황 기록하여 배치 중단 방지

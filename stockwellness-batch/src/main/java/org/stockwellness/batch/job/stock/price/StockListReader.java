@@ -35,7 +35,7 @@ public class StockListReader implements ItemStreamReader<List<Stock>> {
             }
             return stocks.isEmpty() ? null : stocks;
         } catch (Exception e) {
-            log.error("Error occurred while reading stocks in bulk: {}", e.getMessage(), e);
+            log.error("종목 대량 조회 중 오류 발생: {}", e.getMessage(), e);
             throw e;
         }
     }

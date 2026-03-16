@@ -22,7 +22,7 @@ public class SectorAiItemWriter implements ItemWriter<SectorInsight> {
         List<? extends SectorInsight> items = chunk.getItems();
         if (!items.isEmpty()) {
             sectorInsightPort.saveAll((List<SectorInsight>) items);
-            log.info("Successfully saved {} sector insights with AI opinions.", items.size());
+            log.info("AI 분석 의견이 포함된 섹터 인사이트 {}건 저장 완료", items.size());
         }
     }
 }
