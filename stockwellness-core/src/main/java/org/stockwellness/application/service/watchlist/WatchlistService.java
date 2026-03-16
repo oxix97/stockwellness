@@ -75,18 +75,24 @@ public class WatchlistService implements WatchlistUseCase {
     }
 
     @Override
-    public void addItem(Long memberId, Long groupId, String isinCode) {
+    public void addItem(Long memberId, Long groupId, String ticker, String note) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        Stock stock = stockPort.loadStockByTicker(isinCode)
-                .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
+        Stock stock = stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new GlobalException(ErrorCode.STOCK_NOT_FOUND));
 
-        group.addItem(stock);
+        group.addItem(stock, note);
     }
 
     @Override
-    public void removeItem(Long memberId, Long groupId, String isinCode) {
+    public void removeItem(Long memberId, Long groupId, String ticker) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        group.removeItem(isinCode);
+        group.removeItem(ticker);
+    }
+
+    @Override
+    public void updateItemNote(Long memberId, Long groupId, String ticker, String note) {
+        WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
+        group.updateItemNote(ticker, note);
     }
 
     @Override

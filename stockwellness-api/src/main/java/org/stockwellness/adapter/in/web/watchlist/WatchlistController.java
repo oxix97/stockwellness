@@ -2,18 +2,18 @@ package org.stockwellness.adapter.in.web.watchlist;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.stockwellness.adapter.in.web.watchlist.dto.AddWatchlistItemRequest;
 import org.stockwellness.adapter.in.web.watchlist.dto.CreateWatchlistGroupRequest;
+import org.stockwellness.adapter.in.web.watchlist.dto.UpdateWatchlistItemNoteRequest;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistGroupResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
 import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.global.security.MemberPrincipal;
 
-import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -24,23 +24,16 @@ public class WatchlistController {
     private final WatchlistUseCase watchlistUseCase;
 
     @PostMapping("/groups")
-    public ResponseEntity<Void> createGroup(
+    public ResponseEntity<Long> createGroup(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid CreateWatchlistGroupRequest request) {
-
         Long groupId = watchlistUseCase.createGroup(memberPrincipal.id(), request.name());
-
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(groupId)
-                .toUri();
-        return ResponseEntity.created(location).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(groupId);
     }
 
     @GetMapping("/groups")
     public ResponseEntity<List<WatchlistGroupResponse>> getGroups(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
-
         List<WatchlistGroupResponse> response = watchlistUseCase.getGroups(memberPrincipal.id());
         return ResponseEntity.ok(response);
     }
@@ -50,7 +43,6 @@ public class WatchlistController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @RequestBody @Valid CreateWatchlistGroupRequest request) {
-
         watchlistUseCase.updateGroupName(memberPrincipal.id(), groupId, request.name());
         return ResponseEntity.noContent().build();
     }
@@ -59,7 +51,6 @@ public class WatchlistController {
     public ResponseEntity<Void> deleteGroup(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId) {
-
         watchlistUseCase.deleteGroup(memberPrincipal.id(), groupId);
         return ResponseEntity.noContent().build();
     }
@@ -69,18 +60,26 @@ public class WatchlistController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @RequestBody @Valid AddWatchlistItemRequest request) {
-
-        watchlistUseCase.addItem(memberPrincipal.id(), groupId, request.isinCode());
-        return ResponseEntity.noContent().build();
+        watchlistUseCase.addItem(memberPrincipal.id(), groupId, request.ticker(), request.note());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @DeleteMapping("/groups/{groupId}/items/{isinCode}")
+    @DeleteMapping("/groups/{groupId}/items/{ticker}")
     public ResponseEntity<Void> removeItem(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
-            @PathVariable String isinCode) {
+            @PathVariable String ticker) {
+        watchlistUseCase.removeItem(memberPrincipal.id(), groupId, ticker);
+        return ResponseEntity.noContent().build();
+    }
 
-        watchlistUseCase.removeItem(memberPrincipal.id(), groupId, isinCode);
+    @PatchMapping("/groups/{groupId}/items/{ticker}/note")
+    public ResponseEntity<Void> updateItemNote(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long groupId,
+            @PathVariable String ticker,
+            @RequestBody @Valid UpdateWatchlistItemNoteRequest request) {
+        watchlistUseCase.updateItemNote(memberPrincipal.id(), groupId, ticker, request.note());
         return ResponseEntity.noContent().build();
     }
 
@@ -88,7 +87,6 @@ public class WatchlistController {
     public ResponseEntity<WatchlistItemListResponse> getItems(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId) {
-
         WatchlistItemListResponse response = watchlistUseCase.getItems(memberPrincipal.id(), groupId);
         return ResponseEntity.ok(response);
     }
