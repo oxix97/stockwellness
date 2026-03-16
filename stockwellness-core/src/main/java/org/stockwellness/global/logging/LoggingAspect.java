@@ -35,6 +35,9 @@ public class LoggingAspect {
             "password", "pwd", "accessToken", "refreshToken", "token", "secret", "authorization"
     ));
 
+    // Current thread's visited objects to prevent infinite recursion in deep masking
+    private final ThreadLocal<Set<Object>> visited = ThreadLocal.withInitial(() -> Collections.newSetFromMap(new IdentityHashMap<>()));
+
     /**
      * Targets classes marked with @LogExecution or methods marked with @LogExecution.
      * Also targets Service, Controller, and Adapter layers by naming convention.
@@ -63,24 +66,27 @@ public class LoggingAspect {
             exception = e;
             throw e;
         } finally {
-            long executionTime = System.currentTimeMillis() - start;
-            LogEvent logEvent = LogEvent.builder()
-                    .traceId(MDC.get("traceId"))
-                    .className(className)
-                    .methodName(methodName)
-                    .args(maskSensitiveData(args))
-                    .result(maskSensitiveData(result))
-                    .executionTimeMs(executionTime)
-                    .exceptionMessage(exception != null ? exception.getMessage() : null)
-                    .stackTrace(exception != null ? getStackTrace(exception) : null)
-                    .build();
-
             try {
+                long executionTime = System.currentTimeMillis() - start;
+                LogEvent logEvent = LogEvent.builder()
+                        .traceId(MDC.get("traceId"))
+                        .className(className)
+                        .methodName(methodName)
+                        .args(maskSensitiveData(args))
+                        .result(maskSensitiveData(result))
+                        .executionTimeMs(executionTime)
+                        .exceptionMessage(exception != null ? exception.getMessage() : null)
+                        .stackTrace(exception != null ? getStackTrace(exception) : null)
+                        .build();
+
                 if (log.isInfoEnabled()) {
                     log.info(objectMapper.writeValueAsString(logEvent));
                 }
             } catch (JsonProcessingException e) {
                 log.warn("Failed to serialize log event to JSON: {}", e.getMessage());
+            } finally {
+                // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
+                visited.get().clear();
             }
         }
     }
@@ -135,6 +141,13 @@ public class LoggingAspect {
     }
 
     private Object performDeepMasking(Object obj) {
+        if (obj == null) return null;
+
+        // Prevent infinite recursion by checking if the object has already been visited in the current masking chain
+        if (!visited.get().add(obj)) {
+            return "[Circular Reference]";
+        }
+
         try {
             Map<String, Object> maskedFields = new HashMap<>();
             Class<?> clazz = obj.getClass();
@@ -158,6 +171,9 @@ public class LoggingAspect {
             return maskedFields;
         } catch (Exception e) {
             return "[Masking Error: " + e.getMessage() + "]";
+        } finally {
+            // Remove from visited after processing to allow the same object to be masked in different branches of the object tree
+            visited.get().remove(obj);
         }
     }
 
