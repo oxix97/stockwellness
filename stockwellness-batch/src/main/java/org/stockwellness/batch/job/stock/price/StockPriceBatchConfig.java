@@ -86,7 +86,7 @@ public class StockPriceBatchConfig {
             ItemWriter<List<StockPrice>> stockPriceListWriter
     ) {
         return new StepBuilder("stockPriceStep", jobRepository)
-                .<List<Stock>, List<StockPrice>>chunk(1, transactionManager)
+                .<List<Stock>, List<StockPrice>>chunk(5, transactionManager)
                 .reader(stockListReader)
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
@@ -95,10 +95,14 @@ public class StockPriceBatchConfig {
                 .listener(progressListener)
                 .listener(eventListener)
                 .faultTolerant()
-                .retryLimit(3)
+                .retryLimit(5) // 리트라이 횟수 상향 (3 -> 5)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
-                .retry(org.springframework.web.client.RestClientException.class) // API 에러 리트라이 추가
+                .retry(org.springframework.web.client.RestClientException.class)
+                .retry(java.net.SocketTimeoutException.class) // 타임아웃 추가
+                .retry(java.net.ConnectException.class) // 연결 오류 추가
+                .skip(org.stockwellness.batch.exception.BatchException.class) // 복구 불가능한 비즈니스 에러는 스킵
+                .skipLimit(10)
                 .build();
     }
 
@@ -134,7 +138,7 @@ public class StockPriceBatchConfig {
                 .entityManagerFactory(entityManagerFactory)
                 .queryString(query)
                 .parameterValues(parameters)
-                .pageSize(300)
+                .pageSize(100)
                 .saveState(false)
                 .build();
     }

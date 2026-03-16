@@ -15,16 +15,20 @@ This file tracks the status of all major project tracks.
 - [x] **Track: Advanced Chart & Price API** - *Link: [./archive/advanced_chart_price_api_20260219/](./archive/advanced_chart_price_api_20260219/)*
 - [x] **Track: Batch Jobs Refactoring (v1)** - *Link: [./archive/batch_refactor_20260302/](./archive/batch_refactor_20260302/)*
 - [x] **Track: Global Pointcut Logging System (v1)** - *Link: [./archive/global_pointcut_logging_20260312/](./archive/global_pointcut_logging_20260312/)*
+- [x] **Track 1: 트랙 상태 업데이트 및 정리 (관리 작업)** - *Link: [./index.md](./index.md)*
 - [x] **Track 2: 글로벌 포인트컷 로깅 구현 (Final)** - *Link: [./tracks/global_pointcut_logging_final/](./tracks/global_pointcut_logging_final/)*
+- [x] **Track 3: 배치 리팩토링 및 데이터 정합성 강화 (Deep Refactor)** - *Link: [./tracks/batch_refactor_final/](./tracks/batch_refactor_final/)*
+- [x] **Track 4: 포트폴리오 건강 진단 기능 고도화** - *Link: [./tracks/portfolio_health_adv/](./tracks/portfolio_health_adv/)*
 
 ## 🏗️ Current Tracks (In Progress)
 
-- [x] **Track 1: 트랙 상태 업데이트 및 정리 (관리 작업)** - *Link: [./index.md](./index.md)*
+(진행 중인 트랙 없음)
 
 ## 📅 Upcoming Tracks (Planned)
 
-1. **Track 3: 배치 리팩토링 및 데이터 정합성 강화 (Deep Refactor)**
-2. **Track 4: 포트폴리오 건강 진단 기능 고도화**
+1. **유지보수 트랙 1: 도메인 분석 컨텍스트(Parameter Object) 도입**
+2. **유지보수 트랙 2: Gradle Test Fixtures 기반의 픽스처 모듈화**
+3. **유지보수 트랙 3: Testcontainers 도입을 통한 인프라 테스트 안정화**
 
 ---
 *Note: Completed tracks are moved to the `archive/` directory to keep the workspace clean.*
