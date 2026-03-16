@@ -44,7 +44,7 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
         CalculatedHealth health = healthCalculator.calculate(context);
 
         // 4. AI 인사이트 생성
-        PortfolioAiContext aiContext = new PortfolioAiContext(health.overallScore(), health.categories());
+        PortfolioAiContext aiContext = new PortfolioAiContext(health.overallScore(), health.categories(), health.riskMetrics());
         PortfolioAiResult aiResult = loadPortfolioAiPort.generatePortfolioInsight(aiContext);
 
         // 5. 결과 조합

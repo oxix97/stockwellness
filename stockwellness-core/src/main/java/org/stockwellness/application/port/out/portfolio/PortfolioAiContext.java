@@ -1,5 +1,6 @@
 package org.stockwellness.application.port.out.portfolio;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -7,6 +8,12 @@ import java.util.Map;
  */
 public record PortfolioAiContext(
         int overallScore,
-        Map<String, Integer> categories
+        Map<String, Integer> categories,
+        RiskMetrics riskMetrics
 ) {
+    public record RiskMetrics(
+            BigDecimal sharpeRatio,
+            BigDecimal mdd,
+            BigDecimal volatility
+    ) {}
 }

@@ -18,6 +18,7 @@ import org.stockwellness.application.service.portfolio.internal.PortfolioHealthC
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +66,7 @@ class PortfolioDiagnosisServiceTest {
         categories.put(DiagnosisCategory.AGILITY.getKey(), 60);
         categories.put(DiagnosisCategory.BALANCE.getKey(), 85);
         
-        CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories);
+        CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories, new PortfolioAiContext.RiskMetrics(BigDecimal.valueOf(1.5), BigDecimal.valueOf(10.0), BigDecimal.valueOf(0.02)));
         given(healthCalculator.calculate(diagnosisContext)).willReturn(calculatedHealth);
 
         given(loadPortfolioAiPort.generatePortfolioInsight(any(PortfolioAiContext.class)))
