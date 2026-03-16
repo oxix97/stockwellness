@@ -2,7 +2,7 @@ name: CD
 
 on:
   push:
-    branches: [ main ]        # develop → main 병합 시에만 실행
+    branches: [ main, develop ]        # develop에서도 이미지 빌드 테스트 수행
 
 env:
   REGISTRY: ghcr.io
@@ -101,6 +101,7 @@ jobs:
     name: Trigger API Deployment (Blue-Green)
     runs-on: ubuntu-latest
     needs: build-api
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Connect to Tailscale
@@ -132,6 +133,7 @@ jobs:
     name: Trigger Batch Deployment
     runs-on: ubuntu-latest
     needs: build-batch
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Connect to Tailscale
