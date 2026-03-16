@@ -35,7 +35,7 @@ public class DateRangeItemReader implements ItemReader<LocalDate> {
             current = current.plusDays(1);
         }
         this.dateIterator = dates.iterator();
-        log.info("DateRangeItemReader initialized: {} to {} (Total: {} days)", start, end, dates.size());
+        log.info("DateRangeItemReader 초기화 완료: {} ~ {} (총 {}일)", start, end, dates.size());
     }
 
     @Override

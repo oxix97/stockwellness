@@ -1,6 +1,5 @@
 package org.stockwellness.global.logging;
 
-import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -10,13 +9,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import org.stockwellness.application.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
+import org.stockwellness.application.service.TestService;
 
 import java.io.IOException;
 import java.util.List;
@@ -98,7 +97,7 @@ class LoggingAspectContentTest {
     }
 
     @Configuration
-    @EnableAspectJAutoProxy
+    @EnableAspectJAutoProxy(proxyTargetClass = true)
     @Import(LoggingAspect.class)
     static class TestConfig {
         @Bean

@@ -35,7 +35,7 @@
     - Design **Retry mechanisms** to handle scenarios of data corruption or processing failure.
 
 ## 5. Workflow & Branching Strategy
-- For detailed procedures, branch naming conventions, and merge strategies, refer to the **[GUIDE.md](../GUIDE.md)** at the project root.
+- For detailed procedures, branch naming conventions, and merge strategies, refer to the **[GEMINI.md](../GEMINI.md)** at the project root.
 - **Key Principles:**
     - **Issue-Driven:** All work starts with an issue and follows a hierarchy (Epic -> Task).
     - **Hierarchical Branching:** Use `feature/` for features and `task/` for sub-tasks.

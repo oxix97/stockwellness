@@ -1,5 +1,6 @@
 package org.stockwellness.batch.job.stock.master;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.stock.insight.MarketIndex;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Slf4j
 class MarketIndexMstParserTest {
 
     private static final String KIS_DIR = "kis";
@@ -27,7 +29,7 @@ class MarketIndexMstParserTest {
 
         // then
         assertThat(indices).isNotEmpty();
-        System.out.printf("[MarketIndex] 총 %,d개 업종 로드됨%n", indices.size());
+        log.info("[MarketIndex] 총 {}개 업종 로드됨", String.format("%,d", indices.size()));
 
         // 1. KOSPI 종합 (0001) 확인
         Optional<MarketIndex> kospiTotal = indices.stream()
@@ -52,7 +54,7 @@ class MarketIndexMstParserTest {
                 .findFirst();
 
         assertThat(kosdaqIt).isPresent();
-        System.out.println("검증 성공 [MarketIndex]: " + kosdaqIt.get().getIndexName() + " (" + kosdaqIt.get().getIndexCode() + ")");
+        log.info("검증 성공 [MarketIndex]: {} ({})", kosdaqIt.get().getIndexName(), kosdaqIt.get().getIndexCode());
     }
 
     private Path findMstFile(String fileName) {

@@ -30,5 +30,5 @@ Updating existing controllers and verifying the new structure.
 Ensuring consistency and final polish.
 
 - [x] Task: Perform final code review for consistency with project style guides.
-- [x] Task: Document the new API response and error handling protocol in the project documentation (e.g., `GUIDE.md` or a new API-standard.md).
+- [x] Task: Document the new API response and error handling protocol in the project documentation (e.g., `GEMINI.md` or a new API-standard.md).
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Final Cleanup and Documentation' (Protocol in workflow.md)

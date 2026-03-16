@@ -4,7 +4,7 @@ on:
   push:
     branches: [ develop ]
   pull_request:
-    branches: [ main ]        # develop → main PR 시 병합 전 테스트 강제
+    branches: [ main, develop ]        # main 및 develop 대상 PR 시 실행
 
 jobs:
   build:

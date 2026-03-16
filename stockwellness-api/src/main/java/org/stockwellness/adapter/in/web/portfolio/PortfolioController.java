@@ -17,12 +17,14 @@ import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.global.common.ApiResponse;
+import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
 
 import java.net.URI;
 import java.util.List;
 
 @RestController
+@LogExecution
 @RequestMapping("/api/v1/portfolios")
 @RequiredArgsConstructor
 public class PortfolioController {

@@ -52,21 +52,21 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
         // 4. Factory를 통한 UserInfo 객체 생성
         OAuth2UserInfo oAuth2UserInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(loginType, attributes);
-        log.debug("OAuth2 UserInfo: {}", oAuth2UserInfo);
+        log.debug("OAuth2 사용자 정보 로드 완료: {}", oAuth2UserInfo);
 
         // 5. 회원 가입 및 조회 로직
         String email = oAuth2UserInfo.email();
         String nickname = oAuth2UserInfo.nickname();
-        log.debug("Attempting to load/register member with email: {} and loginType: {}", email, loginType);
+        log.debug("회원 조회 또는 등록 시도 (Email: {}, LoginType: {})", email, loginType);
 
         Member member = loadMemberPort.loadMemberByEmailAndLoginType(new Email(email), loginType)
                 .orElseGet(() -> {
-                    log.info("New member registration for email: {}", email);
+                    log.info("신규 회원 등록 (Email: {})", email);
                     Member newMember = Member.register(email, nickname, loginType);
                     return saveMemberPort.saveMember(newMember);
                 });
 
-        log.info("Successfully loaded member: ID={}", member.getId());
+        log.info("회원 로드 완료: ID={}", member.getId());
         // 6. MemberPrincipal 반환
         return MemberPrincipal.of(member, attributes);
     }

@@ -22,7 +22,7 @@ public class SectorInsightItemWriter implements ItemWriter<SectorInsight> {
         List<? extends SectorInsight> items = chunk.getItems();
         if (!items.isEmpty()) {
             sectorInsightPort.saveAll((List<SectorInsight>) items);
-            log.info("Successfully saved {} sector insights.", items.size());
+            log.info("섹터 인사이트 {}건 저장 완료", items.size());
         }
     }
 }

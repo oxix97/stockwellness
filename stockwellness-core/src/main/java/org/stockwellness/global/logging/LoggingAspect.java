@@ -21,8 +21,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Global logging aspect for method boundary, execution time, and exception logging.
- * Logs are output in structured JSON format with deep masking for sensitive data.
+ * Global logging aspect triggered by @LogExecution annotation.
+ * Logs are output in structured JSON format with deep masking.
  */
 @Aspect
 @Component
@@ -35,22 +35,21 @@ public class LoggingAspect {
             "password", "pwd", "accessToken", "refreshToken", "token", "secret", "authorization"
     ));
 
-    @Pointcut("within(org.stockwellness.application.service..*)")
-    public void applicationServiceLayer() {}
+    // Current thread's visited objects to prevent infinite recursion in deep masking
+    private final ThreadLocal<Set<Object>> visited = ThreadLocal.withInitial(() -> Collections.newSetFromMap(new IdentityHashMap<>()));
 
-    @Pointcut("within(org.stockwellness.adapter.in.web..*)")
-    public void webAdapterLayer() {}
+    /**
+     * Targets classes marked with @LogExecution or methods marked with @LogExecution.
+     * Also targets Service, Controller, and Adapter layers by naming convention.
+     */
+    @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
+            "@annotation(org.stockwellness.global.logging.LogExecution) || " +
+            "within(org.stockwellness..*Service) || " +
+            "within(org.stockwellness..*Controller) || " +
+            "within(org.stockwellness..*Adapter*)")
+    public void logExecutionTarget() {}
 
-    @Pointcut("within(org.stockwellness.adapter.out..*)")
-    public void adapterOutLayer() {}
-
-    @Pointcut("within(org.stockwellness.batch.job..*)")
-    public void batchJobLayer() {}
-
-    @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || @annotation(org.stockwellness.global.logging.LogExecution)")
-    public void logExecutionAnnotation() {}
-
-    @Around("applicationServiceLayer() || webAdapterLayer() || adapterOutLayer() || batchJobLayer() || logExecutionAnnotation()")
+    @Around("logExecutionTarget()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
@@ -67,25 +66,28 @@ public class LoggingAspect {
             exception = e;
             throw e;
         } finally {
-            long executionTime = System.currentTimeMillis() - start;
-            LogEvent logEvent = LogEvent.builder()
-                    .traceId(MDC.get("traceId"))
-                    .className(className)
-                    .methodName(methodName)
-                    .args(maskSensitiveData(args))
-                    .result(maskSensitiveData(result))
-                    .executionTimeMs(executionTime)
-                    .exceptionMessage(exception != null ? exception.getMessage() : null)
-                    .stackTrace(exception != null ? getStackTrace(exception) : null)
-                    .build();
-
             try {
-                if (log.isInfoEnabled()) {
-                    log.info(objectMapper.writeValueAsString(logEvent));
-                }
-            } catch (JsonProcessingException e) {
-                log.warn("Failed to serialize log event to JSON: {}", e.getMessage());
-            }
+                long executionTime = System.currentTimeMillis() - start;
+                LogEvent logEvent = LogEvent.builder()
+                        .traceId(MDC.get("traceId"))
+                        .className(className)
+                        .methodName(methodName)
+                        .args(maskSensitiveData(args))
+                        .result(maskSensitiveData(result))
+                        .executionTimeMs(executionTime)
+                        .exceptionMessage(exception != null ? exception.getMessage() : null)
+                        .stackTrace(exception != null ? getStackTrace(exception) : null)
+                        .build();
+try {
+    if (log.isInfoEnabled()) {
+        log.info(objectMapper.writeValueAsString(logEvent));
+    }
+} catch (JsonProcessingException e) {
+    log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
+} finally {
+    // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
+    visited.get().clear();
+}
         }
     }
 
@@ -126,7 +128,6 @@ public class LoggingAspect {
             return obj;
         }
 
-        // If it's a StockWellness object, perform deep masking
         if (obj.getClass().getName().startsWith("org.stockwellness")) {
             return performDeepMasking(obj);
         }
@@ -140,6 +141,13 @@ public class LoggingAspect {
     }
 
     private Object performDeepMasking(Object obj) {
+        if (obj == null) return null;
+
+        // Prevent infinite recursion by checking if the object has already been visited in the current masking chain
+        if (!visited.get().add(obj)) {
+            return "[Circular Reference]";
+        }
+
         try {
             Map<String, Object> maskedFields = new HashMap<>();
             Class<?> clazz = obj.getClass();
@@ -163,6 +171,9 @@ public class LoggingAspect {
             return maskedFields;
         } catch (Exception e) {
             return "[Masking Error: " + e.getMessage() + "]";
+        } finally {
+            // Remove from visited after processing to allow the same object to be masked in different branches of the object tree
+            visited.get().remove(obj);
         }
     }
 
