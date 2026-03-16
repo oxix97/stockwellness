@@ -49,7 +49,6 @@ public class KisMasterClient {
             if (zis.getNextEntry() != null) {
                 String line;
                 while ((line = br.readLine()) != null) {
-                    System.out.println("line str : " + line);
                     lines.add(line);
                 }
             }

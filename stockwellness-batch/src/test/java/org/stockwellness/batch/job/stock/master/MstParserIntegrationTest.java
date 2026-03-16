@@ -1,5 +1,6 @@
 package org.stockwellness.batch.job.stock.master;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.stock.KosdaqItem;
@@ -13,6 +14,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Slf4j
 class MstParserIntegrationTest {
 
     private static final String KIS_DIR = "kis";
@@ -28,11 +30,11 @@ class MstParserIntegrationTest {
 
         // then
         assertThat(items).isNotEmpty();
-        System.out.printf("[KOSPI] 총 %,d개 종목 로드됨%n", items.size());
+        log.info("[KOSPI] 총 {}개 종목 로드됨", String.format("%,d", items.size()));
 
         // 디버깅: 상위 10개 출력
         items.stream().limit(10).forEach(it -> 
-            System.out.printf(" - Code: [%s], Name: [%s], Group: [%s]%n", 
+            log.info(" - Code: [{}], Name: [{}], Group: [{}]", 
                 it.shortCode(), it.koreanName(), it.groupCode())
         );
 
@@ -49,12 +51,12 @@ class MstParserIntegrationTest {
             assertThat(it.marketCapAsLong()).isGreaterThan(0L);
 
             // 업종 코드 검증 (0000이 아니어야 함)
-            System.out.println("검증 [KOSPI] 삼성전자 업종 코드:");
-            System.out.println(" - Large: " + it.sectorLarge());
-            System.out.println(" - Medium: " + it.sectorMedium());
+            log.info("검증 [KOSPI] 삼성전자 업종 코드:");
+            log.info(" - Large: {}", it.sectorLarge());
+            log.info(" - Medium: {}", it.sectorMedium());
             assertThat(it.sectorMedium()).isNotEqualTo("0000");
 
-            System.out.println("검증 성공 [KOSPI]: " + it.koreanName() + " (" + it.shortCode() + ")");
+            log.info("검증 성공 [KOSPI]: {} ({})", it.koreanName(), it.shortCode());
         });
         }
 
@@ -69,7 +71,7 @@ class MstParserIntegrationTest {
 
         // then
         assertThat(items).isNotEmpty();
-        System.out.printf("[KOSDAQ] 총 %,d개 종목 로드됨%n", items.size());
+        log.info("[KOSDAQ] 총 {}개 종목 로드됨", String.format("%,d", items.size()));
 
         // 나라스페이스(478340) 또는 알려진 종목 검색
         Optional<KosdaqItem> nara = items.stream()
@@ -77,8 +79,8 @@ class MstParserIntegrationTest {
                 .findFirst();
 
         nara.ifPresent(it -> {
-            System.out.println("검증 [KOSDAQ] 나라스페이스 업종 코드:");
-            System.out.println(" - Medium: " + it.sectorMedium());
+            log.info("검증 [KOSDAQ] 나라스페이스 업종 코드:");
+            log.info(" - Medium: {}", it.sectorMedium());
             assertThat(it.sectorMedium()).isEqualTo("1030"); // IT S/W & SVC
         });
 
@@ -95,9 +97,9 @@ class MstParserIntegrationTest {
         // ROE 필드가 숫자로만 구성되어 있거나 마이너스 기호를 포함해야 함
         assertThat(firstStock.roe().strip()).matches("-?\\d+");
 
-        System.out.println("검증 성공 [KOSDAQ]: " + firstStock.koreanName() + " (" + firstStock.shortCode() + ")");
-        System.out.println(" - 그룹코드: " + firstStock.groupCode());
-        System.out.println(" - ROE(정수): " + firstStock.roeAsLong() + "%");
+        log.info("검증 성공 [KOSDAQ]: {} ({})", firstStock.koreanName(), firstStock.shortCode());
+        log.info(" - 그룹코드: {}", firstStock.groupCode());
+        log.info(" - ROE(정수): {}%", firstStock.roeAsLong());
     }
 
     private Path findMstFile(String fileName) {
