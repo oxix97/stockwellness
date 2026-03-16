@@ -1,9 +1,6 @@
 package org.stockwellness.global.logging;
 
 import org.junit.jupiter.api.Test;
-import org.stockwellness.adapter.in.web.TestController;
-import org.stockwellness.adapter.out.persistence.TestAdapterOut;
-import org.stockwellness.application.service.TestService;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,13 +25,13 @@ class LoggingAspectTest {
     private AnnotatedService annotatedService;
 
     @Autowired
-    private TestService testService;
+    private MockService mockService;
 
     @Autowired
-    private TestController testController;
+    private MockController mockController;
 
     @Autowired
-    private TestAdapterOut testAdapterOut;
+    private MockAdapterOut mockAdapterOut;
 
     @Autowired
     private NonTargetClass nonTargetClass;
@@ -42,9 +39,9 @@ class LoggingAspectTest {
     @Test
     void testPointcutMatching() {
         assertThat(AopUtils.isAopProxy(annotatedService)).as("AnnotatedService should be a proxy").isTrue();
-        assertThat(AopUtils.isAopProxy(testService)).as("TestService should be a proxy").isTrue();
-        assertThat(AopUtils.isAopProxy(testController)).as("TestController should be a proxy").isTrue();
-        assertThat(AopUtils.isAopProxy(testAdapterOut)).as("TestAdapterOut should be a proxy").isTrue();
+        assertThat(AopUtils.isAopProxy(mockService)).as("MockService should be a proxy").isTrue();
+        assertThat(AopUtils.isAopProxy(mockController)).as("MockController should be a proxy").isTrue();
+        assertThat(AopUtils.isAopProxy(mockAdapterOut)).as("MockAdapterOut should be a proxy").isTrue();
         assertThat(AopUtils.isAopProxy(nonTargetClass)).as("NonTargetClass should NOT be a proxy").isFalse();
     }
 
@@ -64,6 +61,7 @@ class LoggingAspectTest {
                 .build();
 
         // When
+        // LoggingAspect uses Object[] for arguments
         Object maskedResult = ReflectionTestUtils.invokeMethod(loggingAspect, "maskSensitiveData", (Object) new Object[]{dto});
 
         // Then
@@ -82,7 +80,7 @@ class LoggingAspectTest {
     }
 
     @Configuration
-    @EnableAspectJAutoProxy
+    @EnableAspectJAutoProxy(proxyTargetClass = true)
     @Import(LoggingAspect.class)
     static class TestConfig {
         @Bean
@@ -91,18 +89,18 @@ class LoggingAspectTest {
         }
 
         @Bean
-        public TestService testService() {
-            return new TestService();
+        public MockService mockService() {
+            return new MockService();
         }
 
         @Bean
-        public TestController testController() {
-            return new TestController();
+        public MockController mockController() {
+            return new MockController();
         }
 
         @Bean
-        public TestAdapterOut testAdapterOut() {
-            return new TestAdapterOut();
+        public MockAdapterOut mockAdapterOut() {
+            return new MockAdapterOut();
         }
 
         @Bean
@@ -113,6 +111,21 @@ class LoggingAspectTest {
 
     @LogExecution
     static class AnnotatedService {
+        public void execute() {}
+    }
+
+    @Component
+    static class MockService {
+        public void execute() {}
+    }
+
+    @Component
+    static class MockController {
+        public void execute() {}
+    }
+
+    @Component
+    static class MockAdapterOut {
         public void execute() {}
     }
 

@@ -21,8 +21,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Global logging aspect for method boundary, execution time, and exception logging.
- * Logs are output in structured JSON format with deep masking for sensitive data.
+ * Global logging aspect triggered by @LogExecution annotation.
+ * Logs are output in structured JSON format with deep masking.
  */
 @Aspect
 @Component
@@ -35,22 +35,18 @@ public class LoggingAspect {
             "password", "pwd", "accessToken", "refreshToken", "token", "secret", "authorization"
     ));
 
-    @Pointcut("within(org.stockwellness.application.service..*)")
-    public void applicationServiceLayer() {}
+    /**
+     * Targets classes marked with @LogExecution or methods marked with @LogExecution.
+     * Also targets Service, Controller, and Adapter layers by naming convention.
+     */
+    @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
+            "@annotation(org.stockwellness.global.logging.LogExecution) || " +
+            "within(org.stockwellness..*Service) || " +
+            "within(org.stockwellness..*Controller) || " +
+            "within(org.stockwellness..*Adapter*)")
+    public void logExecutionTarget() {}
 
-    @Pointcut("within(org.stockwellness.adapter.in.web..*)")
-    public void webAdapterLayer() {}
-
-    @Pointcut("within(org.stockwellness.adapter.out..*)")
-    public void adapterOutLayer() {}
-
-    @Pointcut("within(org.stockwellness.batch.job..*)")
-    public void batchJobLayer() {}
-
-    @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || @annotation(org.stockwellness.global.logging.LogExecution)")
-    public void logExecutionAnnotation() {}
-
-    @Around("applicationServiceLayer() || webAdapterLayer() || adapterOutLayer() || batchJobLayer() || logExecutionAnnotation()")
+    @Around("logExecutionTarget()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
@@ -126,7 +122,6 @@ public class LoggingAspect {
             return obj;
         }
 
-        // If it's a StockWellness object, perform deep masking
         if (obj.getClass().getName().startsWith("org.stockwellness")) {
             return performDeepMasking(obj);
         }
