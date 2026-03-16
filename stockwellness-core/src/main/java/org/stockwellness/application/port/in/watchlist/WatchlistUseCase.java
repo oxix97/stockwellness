@@ -13,7 +13,8 @@ public interface WatchlistUseCase {
     void deleteGroup(Long memberId, Long groupId);
     List<WatchlistGroupResponse> getGroups(Long memberId);
 
-    void addItem(Long memberId, Long groupId, String isinCode);
-    void removeItem(Long memberId, Long groupId, String isinCode);
+    void addItem(Long memberId, Long groupId, String ticker, String note);
+    void removeItem(Long memberId, Long groupId, String ticker);
+    void updateItemNote(Long memberId, Long groupId, String ticker, String note);
     WatchlistItemListResponse getItems(Long memberId, Long groupId);
 }

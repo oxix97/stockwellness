@@ -24,5 +24,5 @@ public interface WatchlistPort {
 
     WatchlistGroup saveGroup(WatchlistGroup group);
 
-    Optional<WatchlistItem> findItemByGroupAndStock(WatchlistGroup group, String isinCode);
+    Optional<WatchlistItem> findItemByGroupAndStock(WatchlistGroup group, String ticker);
 }

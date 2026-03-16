@@ -1,7 +1,6 @@
 package org.stockwellness.global.error.exception;
 
 import lombok.Getter;
-import org.springframework.http.ProblemDetail;
 import org.stockwellness.global.error.ErrorCode;
 
 @Getter

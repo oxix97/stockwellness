@@ -1,0 +1,7 @@
+{
+  "id": "global_pointcut_logging_final",
+  "name": "글로벌 포인트컷 로깅 시스템 고도화",
+  "description": "운영 환경 추적성과 보안성이 강화된 JSON 구조화 로깅 시스템 최종 구현",
+  "issue_number": 102,
+  "status": "In Progress"
+}
