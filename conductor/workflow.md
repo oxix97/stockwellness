@@ -176,8 +176,10 @@ Before requesting review:
 
 ### Message Format
 
+**지침: 커밋 메시지는 한글로 작성한다.**
+
 ```
-<type>(<scope>): <description>
+<type>(<scope>): <description> (한글로 작성)
 
 [optional body]
 
@@ -186,21 +188,21 @@ Before requesting review:
 
 ### Types
 
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation only
-- `style`: Formatting, missing semicolons, etc.
-- `refactor`: Code change that neither fixes a bug nor adds a feature
-- `test`: Adding missing tests
-- `chore`: Maintenance tasks
+- `feat`: 새로운 기능 추가
+- `fix`: 버그 수정
+- `docs`: 문서 수정만 해당
+- `style`: 코드 포맷팅, 세미콜론 누락 등 (코드 변경 없음)
+- `refactor`: 기능을 추가하거나 버그를 수정하지 않는 코드 변경
+- `test`: 누락된 테스트 추가 또는 기존 테스트 수정
+- `chore`: 빌드 업무, 패키지 매니저 설정 등 유지보수 작업
 
 ### Examples
 
 ```bash
-git commit -m "feat(auth): Add remember me functionality"
-git commit -m "fix(posts): Correct excerpt generation for short posts"
-git commit -m "test(comments): Add tests for emoji reaction limits"
-git commit -m "style(mobile): Improve button touch targets"
+git commit -m "feat(auth): 자동 로그인 기능 추가"
+git commit -m "fix(posts): 짧은 게시글의 요약문 생성 오류 수정"
+git commit -m "test(comments): 댓글 이모지 반응 제한 테스트 추가"
+git commit -m "style(mobile): 모바일 버튼 터치 영역 개선"
 ```
 
 ## Definition of Done
