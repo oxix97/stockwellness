@@ -21,8 +21,9 @@ RUN gradle :stockwellness-batch:bootJar --no-daemon -x test
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# 보안: non-root 유저로 실행
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# 보안: non-root 유저로 실행 및 로그 디렉토리 권한 설정
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p logs && chown appuser:appgroup logs
 USER appuser
 
 # batch 모듈 JAR만 복사

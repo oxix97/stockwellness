@@ -7,25 +7,128 @@ services:
       - 'POSTGRES_USER=myuser'
     ports:
       - '5432:5432'
+    volumes:
+      - postgresql_data:/var/lib/postgresql
+    networks:
+      - stockwellness-net
+
   redis:
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     image: 'bitnami/redis:latest'
     ports:
       - '6379:6379'
+    volumes:
+      - redis_data:/bitnami/redis/data
+    networks:
+      - stockwellness-net
+
   zookeeper:
-    image: 'bitnami/zookeeper:latest'
+    image: 'confluentinc/cp-zookeeper:7.5.0'
     ports:
       - '2181:2181'
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - stockwellness-net
+
   kafka:
-    image: 'bitnami/kafka:latest'
+    image: 'confluentinc/cp-kafka:7.5.0'
     ports:
       - '9092:9092'
     environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
     depends_on:
       - zookeeper
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - stockwellness-net
+
+  stockwellness-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: stockwellness-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_BATCH_JDBC_INITIALIZE_SCHEMA=always
+      - DB_URL=jdbc:postgresql://postgres:5432/mydatabase
+      - DB_USERNAME=myuser
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - KIS_APP_KEY=${KIS_APP_KEY}
+      - KIS_APP_SECRET=${KIS_APP_SECRET}
+      - REDIRECT_URL=http://localhost:3000
+      - APP_BASE_URL=http://localhost:8080
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - stockwellness-net
+
+  stockwellness-batch:
+    build:
+      context: .
+      dockerfile: Dockerfile.batch
+    container_name: stockwellness-batch
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_BATCH_JDBC_INITIALIZE_SCHEMA=always
+      - DB_URL=jdbc:postgresql://postgres:5432/mydatabase
+      - DB_USERNAME=myuser
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - KIS_APP_KEY=${KIS_APP_KEY}
+      - KIS_APP_SECRET=${KIS_APP_SECRET}
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - stockwellness-net
+
+networks:
+  stockwellness-net:
+    driver: bridge
+
+volumes:
+  postgresql_data:
+    driver: local
+  redis_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_log:
+    driver: local
+  kafka_data:
+    driver: local
