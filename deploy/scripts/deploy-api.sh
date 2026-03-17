@@ -43,7 +43,7 @@ HEALTH_INTERVAL=10      # 체크 간격 (초)
 GRACE_PERIOD=30         # 이전 슬롯 중지 전 유예 기간 (초)
 
 # ── 로그 헬퍼 ──────────────────────────────────────────────────
-log()  { 
+log()  {
     local msg="[$(date '+%H:%M:%S')] $*"
     echo "${msg}"
 }
@@ -55,14 +55,14 @@ collect_diagnostics() {
     local service_name="$1"
     local port="$2"
     echo "--- ${service_name} 진단 데이터 수집 ---" >&2
-    
+
     echo "[Docker 로그 - 최근 20줄]" >&2
     docker logs --tail 20 "${service_name}" >&2 || echo "Docker 로그를 가져올 수 없습니다." >&2
-    
+
     echo -e "\n[Spring Boot Actuator 헬스 상태]" >&2
     # 컨테이너 내부에서 localhost로 접근 시도
     docker exec "${service_name}" wget -qO- http://localhost:8080/actuator/health 2>/dev/null >&2 || echo "Actuator 헬스 정보를 가져올 수 없습니다. (포트: 8080)" >&2
-    
+
     echo -e "\n[Nginx 에러 로그 - 최근 10줄]" >&2
     if [[ -f "${PROJECT_DIR}/nginx/logs/error.log" ]]; then
         tail -n 10 "${PROJECT_DIR}/nginx/logs/error.log" >&2
@@ -72,16 +72,16 @@ collect_diagnostics() {
     echo "---------------------------------------" >&2
 }
 
-fail() { 
+fail() {
     local error_msg="$*"
     # 인자 중 서비스 이름이 있으면 진단 수집 시도 (여기서는 로직 단순화를 위해 전역 변수 활용 가능)
     if [[ -n "${NEXT_SERVICE:-}" ]]; then
         collect_diagnostics "${NEXT_SERVICE}" "${NEXT_PORT:-8080}"
     fi
-    
+
     echo "[$(date '+%H:%M:%S')] ❌ ${error_msg}" >&2
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [FAIL] API Deployment (${IMAGE_TAG}) - ${error_msg}" >> "${DEPLOY_HISTORY:-/dev/null}"
-    exit 1; 
+    exit 1;
 }
 
 # ── 현재 활성 슬롯 읽기 ─────────────────────────────────────
@@ -182,19 +182,19 @@ sleep "${GRACE_PERIOD}"
 FINAL_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "${NEXT_SERVICE}" 2>/dev/null || echo "error")
 if [[ "${FINAL_STATUS}" != "healthy" ]]; then
     warn "새 슬롯(${NEXT_SLOT})에서 문제가 감지되었습니다! 롤백을 시작합니다. (상태: ${FINAL_STATUS})"
-    
+
     # Nginx를 다시 이전 슬롯으로 복구
     sed -i \
         "s|server ${NEXT_UPSTREAM};   # ${NEXT_MARK}|server ${CURRENT_SERVICE}:8080;   # ${CURRENT_MARK}|" \
     "${NGINX_CONF}"
-    
+
     docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -s reload
     warn "nginx 업스트림이 이전 슬롯(${CURRENT_SLOT})으로 복구되었습니다."
-    
+
     # 문제 있는 새 슬롯 중지
     docker compose --env-file .env.prod -f "${COMPOSE_FILE}" \
         --profile "${NEXT_SLOT}" stop "${NEXT_SERVICE}"
-    
+
     fail "배포 후 안정성 검증 실패: 시스템이 이전 슬롯으로 자동 롤백되었습니다."
 fi
 

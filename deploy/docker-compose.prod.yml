@@ -9,6 +9,7 @@ name: stockwellness
 
 networks:
   stockwellness-net:
+    name: stockwellness-net
     driver: bridge
 
 volumes:
@@ -35,6 +36,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Seoul
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
@@ -42,6 +44,11 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── Redis (공유 캐시 — Blue/Green 공용) ─────────────────────────
   redis:
@@ -52,6 +59,8 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      TZ: Asia/Seoul
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
@@ -59,6 +68,12 @@ services:
       retries: 5
     ports:
       - "6379:6379"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # ── Zookeeper (Kafka용) ────────────────────────────────────────
   zookeeper:
     image: bitnami/zookeeper:3.9
@@ -69,12 +84,18 @@ services:
       - zookeeper_data:/bitnami/zookeeper
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+      - TZ=Asia/Seoul
     healthcheck:
       test: [ "CMD-SHELL", "zkServer.sh status" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── Kafka (메시지 브로커) ───────────────────────────────────────
   kafka:
@@ -84,11 +105,16 @@ services:
     networks: [ stockwellness-net ]
     volumes:
       - kafka_data:/bitnami/kafka
+    ports:
+      - 9092:9092
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://:29092,EXTERNAL://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - TZ=Asia/Seoul
     depends_on:
       zookeeper: { condition: service_healthy }
     healthcheck:
@@ -97,6 +123,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── API Blue 슬롯 (포트 8080) ────────────────────────────────────
   stockwellness-api-blue:
@@ -106,6 +137,8 @@ services:
     networks: [ stockwellness-net ]
     ports:
       - "8080:8080"
+    volumes:
+      - ./logs/blue:/app/logs
     env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -115,8 +148,9 @@ services:
       SPRING_DATA_REDIS_HOST: stockwellness-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET}
+      TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -127,6 +161,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── API Green 슬롯 (포트 8082) ───────────────────────────────────
   stockwellness-api-green:
@@ -136,6 +175,8 @@ services:
     networks: [ stockwellness-net ]
     ports:
       - "8082:8080"
+    volumes:
+      - ./logs/green:/app/logs
     env_file: .env.prod
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -145,8 +186,9 @@ services:
       SPRING_DATA_REDIS_HOST: stockwellness-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET}
+      TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -158,6 +200,11 @@ services:
       retries: 5
       start_period: 40s
     profiles: [ green ]   # 기본적으로 비활성 — 배포 중에만 시작됨
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── Batch (단순 재시작 방식 — Blue-Green 불필요) ──────────────────
   stockwellness-batch:
@@ -176,12 +223,18 @@ services:
       SPRING_DATA_REDIS_HOST: stockwellness-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       kafka: { condition: service_healthy }
     # [수정] Batch는 HTTP 서버가 없으므로 헬스체크 제거
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── nginx (라우터 — Blue/Green 전환 담당) ────────────────────────
   nginx:
@@ -195,13 +248,21 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro       # SSL 인증서 마운트
+    environment:
+      TZ: Asia/Seoul
     depends_on:
-      - stockwellness-api-blue
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     healthcheck:
       test: [ "CMD", "nginx", "-t" ]
       interval: 30s
       timeout: 5s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── n8n (Blue-Green 배포 오케스트레이터) ─────────────────────────
   # 역할: GitHub Actions 웹훅 수신 → Blue-Green 배포 실행 → 알림
@@ -213,7 +274,7 @@ services:
     container_name: stockwellness-n8n
     user: "1000:1000"                  # 호스트 사용자와 권한 일치 (Permission Denied 방지)
     group_add:
-      - "988"                          # 호스트의 docker 그룹 GID (docker.sock 접근 권한)
+      - "${DOCKER_GID:-988}"           # 호스트의 docker 그룹 GID (환경 변수화)
     restart: unless-stopped
     networks: [ stockwellness-net ]
     ports:
@@ -242,6 +303,12 @@ services:
       DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
       DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      TZ: Asia/Seoul
 
     depends_on:
       postgres: { condition: service_healthy }
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
