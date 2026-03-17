@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
-@JobScope
 @RequiredArgsConstructor
 public class StockPriceSyncEventListener implements ItemWriteListener<List<StockPrice>>, JobExecutionListener {
 

@@ -246,6 +246,7 @@ conductor/tmp-*
 # API 키/비밀 정보 (존재할 경우)
 conductor/secrets.*
 conductor/config/private.*
+/conductor/
 
 # Gemini CLI 전역 캐시 (프로젝트별)
 .gemini-cli/
@@ -270,3 +271,4 @@ conductor/config/private.*
 # Claude
 .claude/
 /deploy/.env.prod
+/.gemini/
