@@ -27,8 +27,36 @@ public class SectorAiItemProcessor implements ItemProcessor<SectorInsight, Secto
         log.info(">>> 섹터 AI 분석 시작: {} ({})", insight.getSectorName(), insight.getSectorCode());
 
         try {
-            // ... (중략) ...
-            
+            // 1. AI 분석을 위한 컨텍스트 생성
+            SectorAiContext context = new SectorAiContext(
+                    insight.getSectorName(),
+                    insight.getSectorCode(),
+                    insight.getMarketType(),
+                    insight.getBaseDate(),
+                    insight.getIndicators().getSectorIndexCurrentPrice(),
+                    insight.getIndicators().getAvgFluctuationRate(),
+                    insight.getIndicators().getNetForeignBuyAmount(),
+                    insight.getIndicators().getNetInstBuyAmount(),
+                    insight.getIndicators().getForeignConsecutiveBuyDays(),
+                    insight.getIndicators().getInstConsecutiveBuyDays(),
+                    resolveTrendStatus(insight.getTechnicalIndicators()),
+                    insight.getTechnicalIndicators() != null ? insight.getTechnicalIndicators().getRsi14() : null,
+                    insight.isOverheated(),
+                    insight.getLeadingStocks()
+            );
+
+            // 2. AI 의견 생성 요청 (OpenAI 연동 Port)
+            AiReport report = loadSectorAiPort.generateSectorOpinion(context);
+
+            // 3. 섹터 인사이트 엔티티에 AI 의견 업데이트 (임베디드 타입)
+            insight.updateAiOpinion(SectorAiOpinion.of(
+                    report.decision(),
+                    report.confidenceScore(),
+                    report.title(),
+                    report.keyReasons(),
+                    report.detailedAnalysis()
+            ));
+
             long duration = System.currentTimeMillis() - startTime;
             log.info("<<< 섹터 AI 분석 완료: {} ({}). 소요시간: {}ms", 
                     insight.getSectorName(), insight.getSectorCode(), duration);
