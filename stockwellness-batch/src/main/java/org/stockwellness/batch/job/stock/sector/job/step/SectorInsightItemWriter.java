@@ -21,7 +21,7 @@ public class SectorInsightItemWriter implements ItemWriter<SectorInsight> {
     public void write(Chunk<? extends SectorInsight> chunk) {
         List<? extends SectorInsight> items = chunk.getItems();
         if (!items.isEmpty()) {
-            sectorInsightPort.saveAll((List<SectorInsight>) items);
+            sectorInsightPort.saveAll(items);
             log.info("섹터 인사이트 {}건 저장 완료", items.size());
         }
     }

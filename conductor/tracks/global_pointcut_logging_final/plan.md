@@ -31,3 +31,5 @@
     - [x] MDC 기반 TraceID 주입 및 전파 로직 구현 완료
 - [x] Task: 코드 커버리지 80% 달성 및 최종 수동 검증
     - [x] org.stockwellness.global.logging 패키지 테스트 커버리지 확보 완료
+- [x] Task: `LoggingAspect.java` 컴파일 에러 수정
+    - [x] finally 블록 내의 불필요한 try 블록(catch/finally 없음) 중괄호 오타 수정 및 정상 빌드 확인 완료 (Success)

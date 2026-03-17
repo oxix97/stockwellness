@@ -47,7 +47,8 @@ public class LoggingAspect {
             "within(org.stockwellness..*Service) || " +
             "within(org.stockwellness..*Controller) || " +
             "within(org.stockwellness..*Adapter*)")
-    public void logExecutionTarget() {}
+    public void logExecutionTarget() {
+    }
 
     @Around("logExecutionTarget()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -66,140 +67,140 @@ public class LoggingAspect {
             exception = e;
             throw e;
         } finally {
+            long executionTime = System.currentTimeMillis() - start;
+            LogEvent logEvent = LogEvent.builder()
+                    .traceId(MDC.get("traceId"))
+                    .className(className)
+                    .methodName(methodName)
+                    .args(maskSensitiveData(args))
+                    .result(maskSensitiveData(result))
+                    .executionTimeMs(executionTime)
+                    .exceptionMessage(exception != null ? exception.getMessage() : null)
+                    .stackTrace(exception != null ? getStackTrace(exception) : null)
+                    .build();
+
             try {
-                long executionTime = System.currentTimeMillis() - start;
-                LogEvent logEvent = LogEvent.builder()
-                        .traceId(MDC.get("traceId"))
-                        .className(className)
-                        .methodName(methodName)
-                        .args(maskSensitiveData(args))
-                        .result(maskSensitiveData(result))
-                        .executionTimeMs(executionTime)
-                        .exceptionMessage(exception != null ? exception.getMessage() : null)
-                        .stackTrace(exception != null ? getStackTrace(exception) : null)
-                        .build();
-try {
-    if (log.isInfoEnabled()) {
-        log.info(objectMapper.writeValueAsString(logEvent));
-    }
-} catch (JsonProcessingException e) {
-    log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
-} finally {
-    // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
-    visited.get().clear();
-}
-        }
-    }
-
-    private Object maskSensitiveData(Object data) {
-        if (data == null) return null;
-
-        if (data instanceof Object[] objects) {
-            return Arrays.stream(objects)
-                    .map(this::processObject)
-                    .collect(Collectors.toList());
-        }
-
-        if (data instanceof Collection<?> collection) {
-            return collection.stream()
-                    .map(this::processObject)
-                    .collect(Collectors.toList());
-        }
-
-        if (data instanceof Map<?, ?> map) {
-            Map<Object, Object> maskedMap = new HashMap<>();
-            map.forEach((k, v) -> {
-                if (k instanceof String key && isSensitiveKey(key)) {
-                    maskedMap.put(k, MASKED_VALUE);
-                } else {
-                    maskedMap.put(k, processObject(v));
+                if (log.isInfoEnabled()) {
+                    log.info(objectMapper.writeValueAsString(logEvent));
                 }
-            });
-            return maskedMap;
+            } catch (JsonProcessingException e) {
+                log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
+            } finally {
+                // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
+                visited.get().clear();
+            }
         }
-
-        return processObject(data);
     }
 
-    private Object processObject(Object obj) {
-        if (obj == null) return null;
+        private Object maskSensitiveData (Object data){
+            if (data == null) return null;
 
-        if (isSimpleType(obj)) {
+            if (data instanceof Object[] objects) {
+                return Arrays.stream(objects)
+                        .map(this::processObject)
+                        .collect(Collectors.toList());
+            }
+
+            if (data instanceof Collection<?> collection) {
+                return collection.stream()
+                        .map(this::processObject)
+                        .collect(Collectors.toList());
+            }
+
+            if (data instanceof Map<?, ?> map) {
+                Map<Object, Object> maskedMap = new HashMap<>();
+                map.forEach((k, v) -> {
+                    if (k instanceof String key && isSensitiveKey(key)) {
+                        maskedMap.put(k, MASKED_VALUE);
+                    } else {
+                        maskedMap.put(k, processObject(v));
+                    }
+                });
+                return maskedMap;
+            }
+
+            return processObject(data);
+        }
+
+        private Object processObject (Object obj){
+            if (obj == null) return null;
+
+            if (isSimpleType(obj)) {
+                return obj;
+            }
+
+            if (obj.getClass().getName().startsWith("org.stockwellness")) {
+                return performDeepMasking(obj);
+            }
+
             return obj;
         }
 
-        if (obj.getClass().getName().startsWith("org.stockwellness")) {
-            return performDeepMasking(obj);
+        private boolean isSimpleType (Object obj){
+            return obj instanceof String || obj instanceof Number || obj instanceof Boolean ||
+                    obj instanceof Character || obj.getClass().isPrimitive() || obj.getClass().isEnum();
         }
 
-        return obj;
-    }
+        private Object performDeepMasking (Object obj){
+            if (obj == null) return null;
 
-    private boolean isSimpleType(Object obj) {
-        return obj instanceof String || obj instanceof Number || obj instanceof Boolean ||
-               obj instanceof Character || obj.getClass().isPrimitive() || obj.getClass().isEnum();
-    }
-
-    private Object performDeepMasking(Object obj) {
-        if (obj == null) return null;
-
-        // Prevent infinite recursion by checking if the object has already been visited in the current masking chain
-        if (!visited.get().add(obj)) {
-            return "[Circular Reference]";
-        }
-
-        try {
-            Map<String, Object> maskedFields = new HashMap<>();
-            Class<?> clazz = obj.getClass();
-
-            while (clazz != null && clazz != Object.class) {
-                for (Field field : clazz.getDeclaredFields()) {
-                    field.setAccessible(true);
-                    String fieldName = field.getName();
-                    Object fieldValue = field.get(obj);
-
-                    if (field.isAnnotationPresent(Masked.class) || isSensitiveKey(fieldName)) {
-                        maskedFields.put(fieldName, MASKED_VALUE);
-                    } else if (fieldValue != null && field.getType().getName().startsWith("org.stockwellness")) {
-                        maskedFields.put(fieldName, processObject(fieldValue));
-                    } else {
-                        maskedFields.put(fieldName, fieldValue);
-                    }
-                }
-                clazz = clazz.getSuperclass();
+            // Prevent infinite recursion by checking if the object has already been visited in the current masking chain
+            if (!visited.get().add(obj)) {
+                return "[Circular Reference]";
             }
-            return maskedFields;
-        } catch (Exception e) {
-            return "[Masking Error: " + e.getMessage() + "]";
-        } finally {
-            // Remove from visited after processing to allow the same object to be masked in different branches of the object tree
-            visited.get().remove(obj);
+
+            try {
+                Map<String, Object> maskedFields = new HashMap<>();
+                Class<?> clazz = obj.getClass();
+
+                while (clazz != null && clazz != Object.class) {
+                    for (Field field : clazz.getDeclaredFields()) {
+                        field.setAccessible(true);
+                        String fieldName = field.getName();
+                        Object fieldValue = field.get(obj);
+
+                        if (field.isAnnotationPresent(Masked.class) || isSensitiveKey(fieldName)) {
+                            maskedFields.put(fieldName, MASKED_VALUE);
+                        } else if (fieldValue != null && field.getType().getName().startsWith("org.stockwellness")) {
+                            maskedFields.put(fieldName, processObject(fieldValue));
+                        } else {
+                            maskedFields.put(fieldName, fieldValue);
+                        }
+                    }
+                    clazz = clazz.getSuperclass();
+                }
+                return maskedFields;
+            } catch (Exception e) {
+                return "[Masking Error: " + e.getMessage() + "]";
+            } finally {
+                // Remove from visited after processing to allow the same object to be masked in different branches of the object tree
+                visited.get().remove(obj);
+            }
+        }
+
+        private boolean isSensitiveKey (String key){
+            String lower = key.toLowerCase();
+            return SENSITIVE_KEYWORDS.stream().anyMatch(lower::contains);
+        }
+
+        private String getStackTrace (Throwable throwable){
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            throwable.printStackTrace(pw);
+            return sw.toString();
+        }
+
+        @Getter
+        @Builder
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private static class LogEvent {
+            private String traceId;
+            private String className;
+            private String methodName;
+            private Object args;
+            private Object result;
+            private Long executionTimeMs;
+            private String exceptionMessage;
+            private String stackTrace;
         }
     }
-
-    private boolean isSensitiveKey(String key) {
-        String lower = key.toLowerCase();
-        return SENSITIVE_KEYWORDS.stream().anyMatch(lower::contains);
-    }
-
-    private String getStackTrace(Throwable throwable) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        throwable.printStackTrace(pw);
-        return sw.toString();
-    }
-
-    @Getter
-    @Builder
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private static class LogEvent {
-        private String traceId;
-        private String className;
-        private String methodName;
-        private Object args;
-        private Object result;
-        private Long executionTimeMs;
-        private String exceptionMessage;
-        private String stackTrace;
-    }
-}

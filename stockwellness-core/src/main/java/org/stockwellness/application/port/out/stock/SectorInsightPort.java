@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface SectorInsightPort {
     void save(SectorInsight sectorInsight);
-    void saveAll(List<SectorInsight> sectorInsights);
+    void saveAll(List<? extends SectorInsight> sectorInsights);
     Optional<SectorInsight> findLatestBefore(String sectorCode, LocalDate date);
     
     // [벌크 조회 추가] N+1 방지용

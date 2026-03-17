@@ -53,21 +53,24 @@ openapi3 {
 }
 
 // openapi3 태스크의 기본 의존성 재설정
-afterEvaluate {
-    tasks.named("openapi3") {
-        setDependsOn(listOf(tasks.test))
-    }
+tasks.matching { it.name == "openapi3" }.configureEach {
+    dependsOn(tasks.test)
 }
 
 // 소스 디렉토리의 openapi3.yaml을 최신으로 업데이트
 tasks.register<Copy>("updateOpenApiSpec") {
-    dependsOn("openapi3")
+    dependsOn(tasks.matching { it.name == "openapi3" })
     from(layout.buildDirectory.file("api-spec/openapi3.yaml"))
     into("src/main/resources/static/docs")
 }
 
 // build 실행 시 openapi3.yaml 자동 업데이트
 tasks.build {
+    dependsOn("updateOpenApiSpec")
+}
+
+// processResources 태스크가 updateOpenApiSpec에 의존하도록 설정하여 암시적 의존성 오류 해결
+tasks.processResources {
     dependsOn("updateOpenApiSpec")
 }
 
