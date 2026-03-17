@@ -1,12 +1,11 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
+import org.stockwellness.adapter.in.web.portfolio.dto.*;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
@@ -17,11 +16,11 @@ import org.stockwellness.support.annotation.MockMember;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
-import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -29,8 +28,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Portfolio 분석 API 통합 테스트")
@@ -41,169 +41,169 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("가치 분석: 포트폴리오의 실시간 가치와 성과를 조회한다")
-    void get_valuation() throws Exception {
+    @DisplayName("자산가치: 포트폴리오의 현재 총 가치와 수익률을 조회한다")
+    void get_value() throws Exception {
         // given
         PortfolioValuationResult result = new PortfolioValuationResult(
-                new BigDecimal("2000"),
-                new BigDecimal("2100"),
-                new BigDecimal("100"),
-                new BigDecimal("5.00"),
-                new BigDecimal("50"),
-                new BigDecimal("2.44"),
-                new BigDecimal("15.5"),
-                new BigDecimal("1.2"),
-                new BigDecimal("0.95")
+                BigDecimal.valueOf(1350000), BigDecimal.valueOf(1500000), BigDecimal.valueOf(150000),
+                BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.totalPurchaseAmount").description("총 매수 금액"),
+                fieldWithPath("data.currentTotalValue").description("현재 총 자산 가치"),
+                fieldWithPath("data.totalProfitLoss").description("총 평가 손익"),
+                fieldWithPath("data.totalReturnRate").description("총 수익률 (%)"),
+                fieldWithPath("data.dailyProfitLoss").description("당일 평가 손익"),
+                fieldWithPath("data.dailyReturnRate").description("당일 수익률 (%)"),
+                fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
+                fieldWithPath("data.sharpeRatio").description("샤프 지수"),
+                fieldWithPath("data.beta").description("베타 계수")
+        ));
+
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andDo(document("portfolio-analysis-valuation",
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("portfolio-analysis-value",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 가치 및 수익률 분석")
+                                .summary("포트폴리오 자산 가치 분석")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
-                                .responseSchema(Schema.schema("PortfolioValuationResponse"))
-                                .responseFields(
-                                        fieldWithPath("totalPurchaseAmount").description("총 매입 금액"),
-                                        fieldWithPath("currentTotalValue").description("현재 총 가치"),
-                                        fieldWithPath("totalProfitLoss").description("총 평가 손익"),
-                                        fieldWithPath("totalReturnRate").description("총 수익률 (%)"),
-                                        fieldWithPath("dailyProfitLoss").description("일일 평가 손익"),
-                                        fieldWithPath("dailyReturnRate").description("일일 수익률 (%)"),
-                                        fieldWithPath("mdd").description("최대 낙폭 (MDD)"),
-                                        fieldWithPath("sharpeRatio").description("샤프 지수"),
-                                        fieldWithPath("beta").description("베타 계수")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("비중 분석: 포트폴리오의 자산군, 업종, 국가 비중을 조회한다")
+    @DisplayName("분산도: 자산군별 비중 데이터를 조회한다")
     void get_diversification() throws Exception {
         // given
         PortfolioDiversificationResult result = new PortfolioDiversificationResult(
-                new BigDecimal("1000000"),
-                Map.of("STOCK", new BigDecimal("70.00"), "CASH", new BigDecimal("30.00")),
-                Map.of("IT", new BigDecimal("40.00"), "금융", new BigDecimal("30.00")),
-                Map.of("KR", new BigDecimal("60.00"), "US", new BigDecimal("40.00"))
+                BigDecimal.valueOf(1500000),
+                Map.of("STOCK", BigDecimal.valueOf(60)),
+                Map.of("TECH", BigDecimal.valueOf(40)),
+                Map.of("US", BigDecimal.valueOf(100))
         );
         given(portfolioFacade.getDiversification(1L, 100L)).willReturn(result);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.totalValue").description("총 자산 가치"),
+                fieldWithPath("data.assetRatios[].name").description("자산군 명칭"),
+                fieldWithPath("data.assetRatios[].value").description("비중 (%)"),
+                fieldWithPath("data.sectorRatios[].name").description("섹터 명칭"),
+                fieldWithPath("data.sectorRatios[].value").description("비중 (%)"),
+                fieldWithPath("data.countryRatios[].name").description("국가 명칭"),
+                fieldWithPath("data.countryRatios[].value").description("비중 (%)")
+        ));
+
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/diversification", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("portfolio-analysis-diversification",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 비중 분석 (자산군/업종/국가)")
+                                .summary("포트폴리오 자산 분산도 분석")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
-                                .responseSchema(Schema.schema("PortfolioDiversificationResponse"))
-                                .responseFields(
-                                        fieldWithPath("totalValue").description("포트폴리오 총 가치"),
-                                        fieldWithPath("assetRatios[].name").description("자산군 이름 (STOCK/CASH)"),
-                                        fieldWithPath("assetRatios[].value").description("비중 (%)"),
-                                        fieldWithPath("sectorRatios[].name").description("업종 이름"),
-                                        fieldWithPath("sectorRatios[].value").description("비중 (%)"),
-                                        fieldWithPath("countryRatios[].name").description("국가 코드 (KR/US/...)"),
-                                        fieldWithPath("countryRatios[].value").description("비중 (%)")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("리밸런싱: 목표 비중에 도달하기 위한 매매 가이드를 조회한다")
+    @DisplayName("리밸런싱: 목표 비중 대비 현재 비중 차이를 분석한다")
     void get_rebalancing() throws Exception {
         // given
         PortfolioRebalancingResult result = new PortfolioRebalancingResult(
-                new BigDecimal("2000"),
-                List.of(
-                        new PortfolioRebalancingResult.RebalancingItem(
-                                "AAPL", new BigDecimal("80"), new BigDecimal("60"), new BigDecimal("-20"),
-                                new BigDecimal("10"), new BigDecimal("-2.5"), new BigDecimal("160")
-                        )
-                )
+                BigDecimal.valueOf(1500000),
+                List.of(new PortfolioRebalancingResult.RebalancingItem(
+                        "AAPL", BigDecimal.valueOf(50), BigDecimal.valueOf(60), BigDecimal.valueOf(-10),
+                        BigDecimal.TEN, BigDecimal.valueOf(12), BigDecimal.valueOf(150000)))
         );
         given(portfolioFacade.getRebalancingGuide(1L, 100L)).willReturn(result);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.totalValue").description("총 자산 가치"),
+                fieldWithPath("data.items[].symbol").description("종목 심볼"),
+                fieldWithPath("data.items[].currentWeight").description("현재 비중 (%)"),
+                fieldWithPath("data.items[].targetWeight").description("목표 비중 (%)"),
+                fieldWithPath("data.items[].diffWeight").description("비중 차이 (%p)"),
+                fieldWithPath("data.items[].currentQuantity").description("현재 보유 수량"),
+                fieldWithPath("data.items[].recommendedQuantity").description("권장 보유 수량"),
+                fieldWithPath("data.items[].currentPrice").description("현재가"),
+                fieldWithPath("data.items[].expectedTradeAmount").description("예상 매매 금액")
+        ));
+
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("portfolio-analysis-rebalancing",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 리밸런싱 가이드")
+                                .summary("포트폴리오 리밸런싱 분석")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
-                                .responseSchema(Schema.schema("PortfolioRebalancingResponse"))
-                                .responseFields(
-                                        fieldWithPath("totalValue").description("포트폴리오 총 시장 가치"),
-                                        fieldWithPath("items[].symbol").description("종목 코드"),
-                                        fieldWithPath("items[].currentWeight").description("현재 비중 (%)"),
-                                        fieldWithPath("items[].targetWeight").description("목표 비중 (%)"),
-                                        fieldWithPath("items[].diffWeight").description("비중 차이 (목표 - 현재)"),
-                                        fieldWithPath("items[].currentQuantity").description("현재 보유 수량"),
-                                        fieldWithPath("items[].recommendedQuantity").description("추천 매매 수량 (+: 매수, -: 매도)"),
-                                        fieldWithPath("items[].currentPrice").description("현재가"),
-                                        fieldWithPath("items[].expectedTradeAmount").description("예상 매매 금액")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("백테스팅: 포트폴리오의 과거 성과를 시뮬레이션한다")
+    @DisplayName("백테스팅: 과거 시점부터 현재까지의 수익 시뮬레이션을 실행한다")
     void run_backtest() throws Exception {
         // given
-        BacktestRequest request = new BacktestRequest("DCA", BigDecimal.valueOf(1000000), "KOSPI");
-        BacktestResult result = new BacktestResult(List.of(
-                new BacktestResult.DailyBacktestResult(LocalDate.of(2024, 1, 1), new BigDecimal("1000000"), new BigDecimal("1000000"), BigDecimal.ZERO, BigDecimal.ZERO),
-                new BacktestResult.DailyBacktestResult(LocalDate.of(2024, 1, 2), new BigDecimal("1050000"), new BigDecimal("1000000"), BigDecimal.ZERO, BigDecimal.ZERO)
-        ));
+        BacktestResult result = new BacktestResult(
+                List.of(new BacktestResult.DailyBacktestResult(
+                        LocalDate.now(), BigDecimal.valueOf(1000000), BigDecimal.valueOf(1000000),
+                        BigDecimal.valueOf(5), BigDecimal.valueOf(3)))
+        );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.dailyResults[].date").description("날짜"),
+                fieldWithPath("data.dailyResults[].totalValue").description("총 가치"),
+                fieldWithPath("data.dailyResults[].totalInvested").description("총 투자금"),
+                fieldWithPath("data.dailyResults[].returnRate").description("누적 수익률 (%)"),
+                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("벤치마크 수익률 (%)")
+        ));
+
         mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
-                        .with(csrf())
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content("{\"strategy\":\"WEIGHTED\",\"amount\":1000000,\"benchmarkTicker\":\"SPY\"}")
+                        .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("portfolio-analysis-backtest",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 백테스팅 시뮬레이션")
-                                .description("적립식(DCA) 또는 거치식 전략으로 과거 성과를 시뮬레이션합니다.")
+                                .summary("포트폴리오 과거 백테스팅")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
-                                .requestSchema(Schema.schema("BacktestRequest"))
-                                .responseSchema(Schema.schema("BacktestResponse"))
-                                .responseFields(
-                                        fieldWithPath("dailyResults[].date").description("날짜"),
-                                        fieldWithPath("dailyResults[].totalValue").description("총 가치"),
-                                        fieldWithPath("dailyResults[].totalInvested").description("총 투자 금액"),
-                                        fieldWithPath("dailyResults[].returnRate").description("포트폴리오 수익률 (%)"),
-                                        fieldWithPath("dailyResults[].benchmarkReturnRate").description("벤치마크 수익률 (%)")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -220,10 +220,14 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         given(portfolioFacade.getCorrelationMatrix(1L, 100L)).willReturn(matrix);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.add(subsectionWithPath("data").description("종목별 상관관계 행렬 데이터 (가변 구조)"));
+
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/correlation", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("portfolio-analysis-correlation",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
@@ -231,6 +235,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }

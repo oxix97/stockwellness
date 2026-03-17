@@ -3,6 +3,7 @@ package org.stockwellness.adapter.in.web.watchlist;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.in.web.watchlist.dto.*;
@@ -13,6 +14,7 @@ import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -24,6 +26,7 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Transactional
@@ -42,18 +45,24 @@ class WatchlistControllerTest extends RestDocsSupport {
         given(watchlistUseCase.createGroup(1L, "내 관심 그룹")).willReturn(10L);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.add(fieldWithPath("data").description("생성된 그룹 ID"));
+
         mockMvc.perform(post("/api/v1/watchlist/groups")
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").value(10L))
                 .andDo(document("watchlist-group-create",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
                                 .summary("관심 그룹 생성")
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
                                 .requestFields(fieldWithPath("name").description("그룹 이름"))
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -70,20 +79,25 @@ class WatchlistControllerTest extends RestDocsSupport {
         given(watchlistUseCase.getGroups(1L)).willReturn(response);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data[].id").description("그룹 ID"),
+                fieldWithPath("data[].name").description("그룹 이름"),
+                fieldWithPath("data[].itemCount").description("포함된 종목 수")
+        ));
+
         mockMvc.perform(get("/api/v1/watchlist/groups")
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
                 .andDo(document("watchlist-group-list",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
                                 .summary("관심 그룹 목록 조회")
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
-                                .responseFields(
-                                        fieldWithPath("[].id").description("그룹 ID"),
-                                        fieldWithPath("[].name").description("그룹 이름"),
-                                        fieldWithPath("[].itemCount").description("포함된 종목 수")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -102,6 +116,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("watchlist-item-add",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
@@ -112,6 +127,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                         fieldWithPath("ticker").description("종목 티커"),
                                         fieldWithPath("note").description("투자 메모 (선택)")
                                 )
+                                .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
     }
@@ -129,7 +145,8 @@ class WatchlistControllerTest extends RestDocsSupport {
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("watchlist-item-note-update",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
@@ -140,6 +157,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                 )
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
                                 .requestFields(fieldWithPath("note").description("수정할 메모 내용"))
+                                .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
     }
@@ -153,7 +171,8 @@ class WatchlistControllerTest extends RestDocsSupport {
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .with(csrf())
                         .contentType(APPLICATION_JSON))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("watchlist-item-remove",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
@@ -163,6 +182,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                         parameterWithName("ticker").description("종목 티커")
                                 )
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
+                                .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
     }
@@ -178,27 +198,32 @@ class WatchlistControllerTest extends RestDocsSupport {
         given(watchlistUseCase.getItems(1L, 10L)).willReturn(response);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.groupName").description("그룹 이름"),
+                fieldWithPath("data.items[].ticker").description("종목 티커"),
+                fieldWithPath("data.items[].name").description("종목명"),
+                fieldWithPath("data.items[].currentPrice").description("현재가"),
+                fieldWithPath("data.items[].fluctuationRate").description("등락률"),
+                fieldWithPath("data.items[].note").description("투자 메모"),
+                fieldWithPath("data.items[].rsi").description("RSI 지표"),
+                fieldWithPath("data.items[].rsiStatus").description("RSI 상태"),
+                fieldWithPath("data.items[].aiInsight").description("AI 한줄 분석")
+        ));
+
         mockMvc.perform(get("/api/v1/watchlist/groups/{groupId}/items", 10L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.groupName").value("테크주"))
                 .andDo(document("watchlist-item-list",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Watchlist")
                                 .summary("관심 종목 목록 조회")
                                 .pathParameters(parameterWithName("groupId").description("그룹 ID"))
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
-                                .responseFields(
-                                        fieldWithPath("groupName").description("그룹 이름"),
-                                        fieldWithPath("items[].ticker").description("종목 티커"),
-                                        fieldWithPath("items[].name").description("종목명"),
-                                        fieldWithPath("items[].currentPrice").description("현재가"),
-                                        fieldWithPath("items[].fluctuationRate").description("등락률"),
-                                        fieldWithPath("items[].note").description("투자 메모"),
-                                        fieldWithPath("items[].rsi").description("RSI 지표"),
-                                        fieldWithPath("items[].rsiStatus").description("RSI 상태"),
-                                        fieldWithPath("items[].aiInsight").description("AI 한줄 분석")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }

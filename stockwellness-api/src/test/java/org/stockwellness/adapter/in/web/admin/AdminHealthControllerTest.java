@@ -16,6 +16,7 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Admin Health API 통합 테스트")
@@ -29,10 +30,6 @@ class AdminHealthControllerTest extends RestDocsSupport {
     @DisplayName("시스템 상태 조회: DB, Redis, Kafka 연결 상태를 확인한다")
     void get_health() throws Exception {
         // given
-        // CompositeHealth is not public constructor or easily buildable in some versions.
-        // Let's use simple Health with details if Composite casting fails in controller, 
-        // OR better, mock HealthEndpoint to return a mock HealthComponent.
-        
         org.springframework.boot.actuate.health.CompositeHealth mockHealth = mock(org.springframework.boot.actuate.health.CompositeHealth.class);
         given(mockHealth.getStatus()).willReturn(org.springframework.boot.actuate.health.Status.UP);
         given(mockHealth.getComponents()).willReturn(Map.of(
@@ -48,16 +45,27 @@ class AdminHealthControllerTest extends RestDocsSupport {
                         .header("Authorization", "Bearer {ADMIN_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.code").value("S000"))
+                .andExpect(jsonPath("$.data.status").value("UP"))
                 .andDo(document("admin-health",
                         resource(com.epages.restdocs.apispec.ResourceSnippetParameters.builder()
                                 .tag("Admin")
                                 .summary("시스템 헬스 체크")
                                 .description("DB, Redis, Kafka의 연결 상태를 통합 조회합니다.")
                                 .responseFields(
-                                        fieldWithPath("status").description("전체 상태 (UP/DOWN)"),
-                                        fieldWithPath("components.db").description("데이터베이스 상태"),
-                                        fieldWithPath("components.redis").description("Redis 캐시 상태"),
-                                        fieldWithPath("components.kafka").description("Kafka 메시지 브로커 상태")
+                                        fieldWithPath("success").description("성공 여부"),
+                                        fieldWithPath("status").description("HTTP 상태 코드"),
+                                        fieldWithPath("code").description("비즈니스 상세 코드"),
+                                        fieldWithPath("message").description("응답 메시지"),
+                                        fieldWithPath("data.status").description("전체 상태 (UP/DOWN)"),
+                                        fieldWithPath("data.components.db").description("데이터베이스 상태"),
+                                        fieldWithPath("data.components.redis").description("Redis 캐시 상태"),
+                                        fieldWithPath("data.components.kafka").description("Kafka 메시지 브로커 상태"),
+                                        fieldWithPath("timestamp").description("응답 시간"),
+                                        fieldWithPath("traceId").description("에러 추적 ID").optional(),
+                                        fieldWithPath("errors").description("상세 에러 리스트").optional()
                                 )
                                 .build())
                 ));

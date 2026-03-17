@@ -15,6 +15,10 @@ import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
 import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.support.RestDocsSupport;
+import org.springframework.restdocs.payload.FieldDescriptor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
@@ -46,6 +50,15 @@ class AuthControllerTest extends RestDocsSupport {
 
             given(authUseCase.login(any(LoginCommand.class))).willReturn(result);
 
+            List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+            responseFields.addAll(List.of(
+                    fieldWithPath("data.accessToken").description("액세스 토큰"),
+                    fieldWithPath("data.refreshToken").description("리프레시 토큰"),
+                    fieldWithPath("data.memberId").description("회원 ID"),
+                    fieldWithPath("data.email").description("이메일"),
+                    fieldWithPath("data.nickname").description("닉네임")
+            ));
+
             // when & then
             mockMvc.perform(post("/api/v1/auth/login")
                             .with(csrf())
@@ -64,13 +77,7 @@ class AuthControllerTest extends RestDocsSupport {
                                             fieldWithPath("nickname").description("닉네임"),
                                             fieldWithPath("loginType").description("로그인 타입 (GOOGLE, KAKAO, NAVER)")
                                     )
-                                    .responseFields(
-                                            fieldWithPath("accessToken").description("액세스 토큰"),
-                                            fieldWithPath("refreshToken").description("리프레시 토큰"),
-                                            fieldWithPath("memberId").description("회원 ID"),
-                                            fieldWithPath("email").description("이메일"),
-                                            fieldWithPath("nickname").description("닉네임")
-                                    )
+                                    .responseFields(responseFields)
                                     .build())
                     ));
         }
@@ -88,6 +95,12 @@ class AuthControllerTest extends RestDocsSupport {
 
             given(authUseCase.reissue(any())).willReturn(result);
 
+            List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+            responseFields.addAll(List.of(
+                    fieldWithPath("data.accessToken").description("새로운 액세스 토큰"),
+                    fieldWithPath("data.refreshToken").description("새로운 리프레시 토큰")
+            ));
+
             // when & then
             mockMvc.perform(post("/api/v1/auth/reissue")
                             .with(csrf())
@@ -104,10 +117,7 @@ class AuthControllerTest extends RestDocsSupport {
                                     .requestFields(
                                             fieldWithPath("refreshToken").description("리프레시 토큰")
                                     )
-                                    .responseFields(
-                                            fieldWithPath("accessToken").description("새로운 액세스 토큰"),
-                                            fieldWithPath("refreshToken").description("새로운 리프레시 토큰")
-                                    )
+                                    .responseFields(responseFields)
                                     .build())
                     ));
         }
@@ -134,6 +144,7 @@ class AuthControllerTest extends RestDocsSupport {
                                     .requestHeaders(
                                             headerWithName("Authorization").description("Bearer Access Token")
                                     )
+                                    .responseFields(commonResponseFieldsWithNoData())
                                     .build())
                     ));
             

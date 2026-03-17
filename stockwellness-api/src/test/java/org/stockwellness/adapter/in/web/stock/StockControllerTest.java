@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
 import org.stockwellness.application.port.in.stock.StockSearchUseCase;
@@ -18,6 +19,7 @@ import org.stockwellness.support.RestDocsSupport;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -29,6 +31,7 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class StockControllerTest extends RestDocsSupport {
@@ -50,12 +53,33 @@ class StockControllerTest extends RestDocsSupport {
         given(stockUseCase.searchStocks(any())).willReturn(new SliceImpl<>(List.of(result)));
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.content[].ticker").description("티커"),
+                fieldWithPath("data.content[].name").description("종목명"),
+                fieldWithPath("data.content[].marketType").description("마켓 타입"),
+                fieldWithPath("data.content[].sectorName").description("섹터명"),
+                fieldWithPath("data.content[].status").description("종목 상태"),
+                fieldWithPath("data.pageable").description("페이징 정보"),
+                fieldWithPath("data.last").description("마지막 페이지 여부"),
+                fieldWithPath("data.numberOfElements").description("현재 페이지 엘리먼트 수"),
+                fieldWithPath("data.first").description("첫 번째 페이지 여부"),
+                fieldWithPath("data.size").description("페이지 사이즈"),
+                fieldWithPath("data.number").description("현재 페이지 번호"),
+                fieldWithPath("data.sort.empty").description("정렬 정보 비어있음 여부"),
+                fieldWithPath("data.sort.sorted").description("정렬 여부"),
+                fieldWithPath("data.sort.unsorted").description("미정렬 여부"),
+                fieldWithPath("data.empty").description("결과 비어있음 여부")
+        ));
+
         mockMvc.perform(get("/api/v1/stocks/search")
                         .param("keyword", "삼성")
                         .param("page", "0")
                         .param("size", "10")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content").isArray())
                 .andDo(document("stock-search",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
@@ -68,23 +92,7 @@ class StockControllerTest extends RestDocsSupport {
                                         parameterWithName("page").description("페이지 번호 (0부터 시작)").optional(),
                                         parameterWithName("size").description("페이지 사이즈").optional()
                                 )
-                                .responseFields(
-                                        fieldWithPath("content[].ticker").description("티커"),
-                                        fieldWithPath("content[].name").description("종목명"),
-                                        fieldWithPath("content[].marketType").description("마켓 타입"),
-                                        fieldWithPath("content[].sectorName").description("섹터명"),
-                                        fieldWithPath("content[].status").description("종목 상태"),
-                                        fieldWithPath("pageable").description("페이징 정보"),
-                                        fieldWithPath("last").description("마지막 페이지 여부"),
-                                        fieldWithPath("numberOfElements").description("현재 페이지 엘리먼트 수"),
-                                        fieldWithPath("first").description("첫 번째 페이지 여부"),
-                                        fieldWithPath("size").description("페이지 사이즈"),
-                                        fieldWithPath("number").description("현재 페이지 번호"),
-                                        fieldWithPath("sort.empty").description("정렬 정보 비어있음 여부"),
-                                        fieldWithPath("sort.sorted").description("정렬 여부"),
-                                        fieldWithPath("sort.unsorted").description("미정렬 여부"),
-                                        fieldWithPath("empty").description("결과 비어있음 여부")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -96,15 +104,18 @@ class StockControllerTest extends RestDocsSupport {
         given(stockSearchUseCase.getRecentSearches(any())).willReturn(List.of("삼성전자", "애플"));
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.add(fieldWithPath("data[]").description("최근 검색어 목록"));
+
         mockMvc.perform(get("/api/v1/stocks/search/history"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
                 .andDo(document("stock-search-history",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("최근 검색어 조회")
-                                .responseFields(
-                                        fieldWithPath("[]").description("최근 검색어 목록")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -116,15 +127,18 @@ class StockControllerTest extends RestDocsSupport {
         given(stockSearchUseCase.getPopularSearches()).willReturn(List.of("삼성전자", "애플", "엔비디아"));
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.add(fieldWithPath("data[]").description("인기 검색어 목록"));
+
         mockMvc.perform(get("/api/v1/stocks/popular"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
                 .andDo(document("stock-popular-search",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("인기 검색어 조회")
-                                .responseFields(
-                                        fieldWithPath("[]").description("인기 검색어 목록")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -137,19 +151,24 @@ class StockControllerTest extends RestDocsSupport {
         given(stockUseCase.getNewListings()).willReturn(List.of(result));
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data[].ticker").description("티커"),
+                fieldWithPath("data[].name").description("종목명"),
+                fieldWithPath("data[].marketType").description("마켓 타입"),
+                fieldWithPath("data[].sectorName").description("섹터명"),
+                fieldWithPath("data[].status").description("종목 상태")
+        ));
+
         mockMvc.perform(get("/api/v1/stocks/new-listings"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
                 .andDo(document("stock-new-listings",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("신규 상장 종목 조회")
-                                .responseFields(
-                                        fieldWithPath("[].ticker").description("티커"),
-                                        fieldWithPath("[].name").description("종목명"),
-                                        fieldWithPath("[].marketType").description("마켓 타입"),
-                                        fieldWithPath("[].sectorName").description("섹터명"),
-                                        fieldWithPath("[].status").description("종목 상태")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -159,7 +178,8 @@ class StockControllerTest extends RestDocsSupport {
     void removeSearchHistory() throws Exception {
         // when & then
         mockMvc.perform(delete("/api/v1/stocks/search/history?keyword=삼성전자"))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("stock-search-history-delete",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
@@ -167,6 +187,7 @@ class StockControllerTest extends RestDocsSupport {
                                 .queryParameters(
                                         parameterWithName("keyword").description("삭제할 검색어")
                                 )
+                                .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
     }
@@ -176,11 +197,13 @@ class StockControllerTest extends RestDocsSupport {
     void clearSearchHistory() throws Exception {
         // when & then
         mockMvc.perform(delete("/api/v1/stocks/search/history/all"))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("stock-search-history-clear",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("최근 검색어 전체 삭제")
+                                .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
     }
@@ -199,10 +222,25 @@ class StockControllerTest extends RestDocsSupport {
         given(stockPriceUseCase.loadChartData(any())).willReturn(response);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.ticker").description("티커"),
+                fieldWithPath("data.prices[].date").description("날짜"),
+                fieldWithPath("data.prices[].open").description("시가"),
+                fieldWithPath("data.prices[].high").description("고가"),
+                fieldWithPath("data.prices[].low").description("저가"),
+                fieldWithPath("data.prices[].close").description("종가"),
+                fieldWithPath("data.prices[].adjClose").description("수정종가"),
+                fieldWithPath("data.prices[].volume").description("거래량"),
+                fieldWithPath("data.benchmarks").description("벤치마크 데이터 목록")
+        ));
+
         mockMvc.perform(get("/api/v1/stocks/{ticker}/prices/history", "AAPL")
                         .param("period", "1Y")
                         .param("frequency", "DAILY"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.ticker").value("AAPL"))
                 .andDo(document("stock-price-history",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Price")
@@ -213,17 +251,7 @@ class StockControllerTest extends RestDocsSupport {
                                         parameterWithName("frequency").description("데이터 주기 (DAILY, WEEKLY, MONTHLY)").optional(),
                                         parameterWithName("includeBenchmark").description("벤치마크 포함 여부").optional()
                                 )
-                                .responseFields(
-                                        fieldWithPath("ticker").description("티커"),
-                                        fieldWithPath("prices[].date").description("날짜"),
-                                        fieldWithPath("prices[].open").description("시가"),
-                                        fieldWithPath("prices[].high").description("고가"),
-                                        fieldWithPath("prices[].low").description("저가"),
-                                        fieldWithPath("prices[].close").description("종가"),
-                                        fieldWithPath("prices[].adjClose").description("수정종가"),
-                                        fieldWithPath("prices[].volume").description("거래량"),
-                                        fieldWithPath("benchmarks").description("벤치마크 데이터 목록")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }
@@ -236,9 +264,19 @@ class StockControllerTest extends RestDocsSupport {
         given(stockPriceUseCase.calculateReturn(eq("AAPL"), any())).willReturn(response);
 
         // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.ticker").description("티커"),
+                fieldWithPath("data.period").description("조회 기간"),
+                fieldWithPath("data.stockReturnRate").description("종목 수익률 (%)"),
+                fieldWithPath("data.benchmarkReturnRate").description("벤치마크 수익률 (%)")
+        ));
+
         mockMvc.perform(get("/api/v1/stocks/{ticker}/returns", "AAPL")
                         .param("period", "1Y"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.ticker").value("AAPL"))
                 .andDo(document("stock-returns",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Price")
@@ -247,12 +285,7 @@ class StockControllerTest extends RestDocsSupport {
                                 .queryParameters(
                                         parameterWithName("period").description("조회 기간 (1W, 1M, 1Y 등)")
                                 )
-                                .responseFields(
-                                        fieldWithPath("ticker").description("티커"),
-                                        fieldWithPath("period").description("조회 기간"),
-                                        fieldWithPath("stockReturnRate").description("종목 수익률 (%)"),
-                                        fieldWithPath("benchmarkReturnRate").description("벤치마크 수익률 (%)")
-                                )
+                                .responseFields(responseFields)
                                 .build())
                 ));
     }

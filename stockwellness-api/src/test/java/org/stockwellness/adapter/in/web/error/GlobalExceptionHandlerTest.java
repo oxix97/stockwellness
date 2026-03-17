@@ -29,11 +29,12 @@ class GlobalExceptionHandlerTest {
             .build();
 
     @Test
-    @DisplayName("GlobalException 발생 시 표준 ErrorResponse를 반환한다")
+    @DisplayName("GlobalException 발생 시 표준 ApiResponse를 반환한다")
     void handleGlobalException_test() throws Exception {
         mockMvc.perform(get("/test/exception")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("M001"))
                 .andExpect(jsonPath("$.message").value("회원을 찾을 수 없습니다."))
@@ -42,12 +43,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("입력값 검증 실패 시 FieldError 목록을 포함한 ErrorResponse를 반환한다")
+    @DisplayName("입력값 검증 실패 시 FieldError 목록을 포함한 ApiResponse를 반환한다")
     void handleBindingException_test() throws Exception {
         mockMvc.perform(post("/test/validation")
                         .content("{\"name\":\"\"}")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.code").value("G001"))
                 .andExpect(jsonPath("$.errors").isArray())
