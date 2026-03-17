@@ -34,7 +34,7 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
 
     @Override
     @Transactional
-    public void saveAll(List<SectorInsight> insights) {
+    public void saveAll(List<? extends SectorInsight> insights) {
         for (SectorInsight insight : insights) {
             Optional<SectorInsight> existingOpt = sectorInsightRepository
                     .findBySectorCodeAndBaseDate(insight.getSectorCode(), insight.getBaseDate());

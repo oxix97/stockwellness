@@ -23,7 +23,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     private final AuthUseCase authUseCase;
 
-    @Value("${app.frontend-redirect-url:http://localhost:3000/oauth/callback}")
+    @Value("${app.frontend-redirect-url:http://localhost:5173/oauth/callback}")
     private String frontendRedirectUrl;
 
     @Override
@@ -44,7 +44,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .queryParam("refreshToken", loginResult.refreshToken())
                 .build().toUriString();
 
-        log.info("OAuth2 Login Success for member: {}. Redirecting to {}", loginResult.memberId(), targetUrl);
+        log.info("OAuth2 로그인 성공 - 회원 ID: {}. 리다이렉트 경로: {}", loginResult.memberId(), targetUrl);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

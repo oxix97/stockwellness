@@ -59,7 +59,7 @@ public class AdvisorAiDataLoader {
                     return new AdvisorAiContext.HoldingInfo(
                             item.getSymbol(),
                             stock != null ? stock.getName() : item.getSymbol(),
-                            BigDecimal.valueOf(item.getPieceCount()),
+                            item.getQuantity(),
                             tech != null ? tech.priceInfo().closePrice() : BigDecimal.ZERO,
                             currentWeight,
                             item.getTargetWeight(),

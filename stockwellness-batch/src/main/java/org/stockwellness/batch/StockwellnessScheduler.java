@@ -34,11 +34,11 @@ public class StockwellnessScheduler {
     @Scheduled(cron = "0 30 15 * * MON-FRI")
     public void runDailyFullSync() {
         long timestamp = System.currentTimeMillis();
-        log.info(">>> Starting Daily Full Sync Batch [Time: {}]", timestamp);
+        log.info(">>> 일일 전체 데이터 동기화 배치 시작 [시작 시각: {}]", timestamp);
 
         try {
             // 1. 종목 마스터 동기화
-            log.info("Step 1: Running Stock Master Sync...");
+            log.info("[1단계] 종목 마스터 데이터 동기화 시작...");
             JobParameters masterParams = new JobParametersBuilder()
                     .addLong("time", timestamp)
                     .toJobParameters();
@@ -46,7 +46,7 @@ public class StockwellnessScheduler {
             validateStatus(masterExecution);
 
             // 2. 가격 정보 동기화 (Kafka 이벤트 발행 활성화)
-            log.info("Step 2: Running Stock Price Sync with Kafka Event Publishing...");
+            log.info("[2단계] 종목 시세 동기화 및 카프카 이벤트 발행 시작...");
             JobParameters priceParams = new JobParametersBuilder()
                     .addLong("time", timestamp)
                     .addString("publishEvent", "true")
@@ -55,16 +55,16 @@ public class StockwellnessScheduler {
             validateStatus(priceExecution);
 
             // 3. 섹터 인사이트 동기화
-            log.info("Step 3: Running Sector Insight Sync...");
+            log.info("[3단계] 섹터 인사이트 및 AI 분석 동기화 시작...");
             JobParameters sectorParams = new JobParametersBuilder()
                     .addLong("time", timestamp)
                     .toJobParameters();
             JobExecution sectorExecution = jobLauncher.run(sectorEodJob, sectorParams);
             validateStatus(sectorExecution);
 
-            log.info(">>> Daily Full Sync Batch Completed Successfully.");
+            log.info(">>> 일일 전체 데이터 동기화 배치 성공적으로 완료.");
         } catch (Exception e) {
-            log.error(">>> Critical error occurred during Daily Full Sync Batch: {}", e.getMessage(), e);
+            log.error(">>> 일일 전체 동기화 배치 중 심각한 오류 발생: {}", e.getMessage(), e);
             throw new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED);
         }
     }
@@ -74,12 +74,12 @@ public class StockwellnessScheduler {
      */
     @Scheduled(cron = "0 0 8 * * MON")
     public void runAiAdvisorRebalancing() {
-        log.info(">>> Starting Weekly AI Advisor Rebalancing Orchestration...");
+        log.info(">>> 주간 AI 어드바이저 리밸런싱 오케스트레이션 시작...");
         try {
             advisorOrchestrator.runAllPortfolios();
-            log.info(">>> Weekly AI Advisor Rebalancing Orchestration Completed.");
+            log.info(">>> 주간 AI 어드바이저 리밸런싱 완료.");
         } catch (Exception e) {
-            log.error(">>> Failed to execute AI Advisor Rebalancing: {}", e.getMessage(), e);
+            log.error(">>> AI 어드바이저 리밸런싱 실행 실패: {}", e.getMessage(), e);
         }
     }
 

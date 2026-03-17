@@ -32,7 +32,7 @@ public class KisSectorAdapter implements SectorDataPort {
     @Override
     @Retry(name = "kisRetry")
     public KisDailySectorDetail fetchDailySectorDetail(String indexCode, LocalDate date) {
-        log.debug("Fetching sector detail for {} on {}", indexCode, date);
+        log.debug("섹터 상세 정보 조회: {} (기준일: {})", indexCode, date);
 
         KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -144,7 +144,7 @@ public class KisSectorAdapter implements SectorDataPort {
                 )));
             }
         } catch (Exception e) {
-            log.error("Failed to fetch sector prices for {}: {}", iscd, e.getMessage());
+            log.error("섹터 시세 조회 실패 (업종코드: {}): {}", iscd, e.getMessage());
         }
     }
 

@@ -1,5 +1,6 @@
 package org.stockwellness.application.service.portfolio.concurrency;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+@Slf4j
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AiAdvisorService 동시성 테스트")
 class AiAdvisorConcurrencyTest {
@@ -70,7 +72,7 @@ class AiAdvisorConcurrencyTest {
         // then
         // 가상 스레드나 멀티스레드 환경에서 병렬로 처리되어야 함. 
         // 순차 처리 시 1000ms 이상 걸리겠지만, 병렬 처리 시 훨씬 단축되어야 함.
-        System.out.println("Total time for " + requestCount + " concurrent requests: " + (end - start) + "ms");
+        log.info("Total time for {} concurrent requests: {}ms", requestCount, (end - start));
         assertThat(end - start).isLessThan(1000); // 병렬 처리가 정상이라면 1초 이내 완료 기대
     }
 }

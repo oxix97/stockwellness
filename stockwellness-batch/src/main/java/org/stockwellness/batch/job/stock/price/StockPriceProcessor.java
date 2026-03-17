@@ -92,7 +92,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
             try {
                 resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate, historicalEntitiesMap));
             } catch (Exception e) {
-                log.error("Failed to process multi stock prices for {} stocks: {}", todaySyncStocks.size(), e.getMessage());
+                log.error("{}개 종목의 멀티 시세 처리 실패: {}", todaySyncStocks.size(), e.getMessage());
             }
         }
 
@@ -100,21 +100,21 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
             try {
                 resultEntities.addAll(processIndividualGap(stock, latestDatesMap.get(stock.getId()), effectiveStartDate, endDate, historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList())));
             } catch (io.github.resilience4j.ratelimiter.RequestNotPermitted e) {
-                log.warn("Rate limit exceeded for stock {}", stock.getTicker());
+                log.warn("종목 {}에 대한 API 호출 제한(Rate Limit) 초과", stock.getTicker());
             } catch (io.github.resilience4j.core.exception.AcquirePermissionCancelledException e) {
-                log.info("Batch process interrupted during shutdown for stock {}. Stopping current task.", stock.getTicker());
+                log.info("종목 {} 처리 중 셧다운으로 인한 배치 중단. 현재 작업을 중지합니다.", stock.getTicker());
                 throw new BatchException(ErrorCode.RATE_LIMIT_WAIT_CANCELLED);
             } catch (Exception e) {
                 if (Thread.currentThread().isInterrupted()) {
-                    log.info("Thread interrupted during processing stock {}. Stopping.", stock.getTicker());
+                    log.info("종목 {} 처리 중 스레드 인터럽트 발생. 중단합니다.", stock.getTicker());
                     throw new BatchException(ErrorCode.BATCH_STEP_INTERRUPTED);
                 }
-                log.error("Critical error processing individual gap for stock {}: {}", stock.getTicker(), e.getMessage(), e);
+                log.error("종목 {}의 개별 갭 처리 중 치명적 오류 발생: {}", stock.getTicker(), e.getMessage(), e);
             }
         }
 
         long duration = System.currentTimeMillis() - startTime;
-        log.info("Batch Processed ({}ms): [Total: {}] TodaySync: {}, RangeSync: {}, Created Entities: {}",
+        log.info("배치 처리 완료 ({}ms): [총: {}] 당일동기화: {}, 범위동기화: {}, 생성된 엔티티: {}",
                 duration, stocks.size(), todaySyncStocks.size(), gapSyncStocks.size(), resultEntities.size());
 
         return resultEntities.isEmpty() ? null : resultEntities;
@@ -131,7 +131,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
         try {
             apiResults = kisRateLimiter.executeSupplier(() -> kisAdapter.fetchMultiStockPrices(tickers));
         } catch (Exception e) {
-            log.error("API fetch failed for multi stock prices: {}", e.getMessage());
+            log.error("멀티 종목 시세 API 호출 실패: {}", e.getMessage());
             return Collections.emptyList();
         }
 
@@ -178,7 +178,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
                         indicators
                 ));
             } catch (Exception e) {
-                log.error("Failed to process multi-price for stock {}: {}", stock.getTicker(), e.getMessage());
+                log.error("종목 {}의 멀티 시세 처리 실패: {}", stock.getTicker(), e.getMessage());
             }
         }
         return entities;
@@ -260,7 +260,7 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
                     kisAdapter.fetchDailyPrices(stock, finalChunkStartDate, finalCursorDate));
 
             if (response.isEmpty()) {
-                log.warn("Empty response for {} between {} and {}. Continuing to older dates...",
+                log.warn("{} 종목의 {} ~ {} 기간 데이터 응답 없음. 이전 날짜 탐색을 계속합니다...",
                         stock.getTicker(), chunkStartDate, cursorDate);
                 cursorDate = chunkStartDate.minusDays(1);
                 continue;

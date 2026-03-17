@@ -18,15 +18,15 @@ public class KafkaEventPublisher {
 
     public void publishStockPriceUpdated(List<String> symbols) {
         StockPriceUpdatedEvent event = StockPriceUpdatedEvent.of(symbols);
-        log.info("Publishing stock price updated event for symbols: {}", symbols);
+        log.info("종목 시세 업데이트 이벤트 발행 중 (종목 수: {})", symbols.size());
         
         kafkaTemplate.send(KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, event)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
-                        log.info("Successfully published event to topic: {}, offset: {}", 
+                        log.info("이벤트 발행 성공: 토픽={}, 오프셋={}", 
                                 KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, result.getRecordMetadata().offset());
                     } else {
-                        log.error("Failed to publish event to topic: {}", KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, ex);
+                        log.error("이벤트 발행 실패: 토픽={}", KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, ex);
                     }
                 });
     }

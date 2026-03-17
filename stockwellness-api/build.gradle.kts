@@ -53,25 +53,20 @@ openapi3 {
 }
 
 // openapi3 태스크의 기본 의존성 재설정
-afterEvaluate {
-    tasks.named("openapi3") {
-        setDependsOn(listOf(tasks.test))
-    }
+tasks.matching { it.name == "openapi3" }.configureEach {
+    // 테스트 결과물(snippets)이 생성된 후에 실행 가능
+    mustRunAfter(tasks.test)
 }
 
-// 소스 디렉토리의 openapi3.yaml을 최신으로 업데이트
+// 소스 디렉토리의 openapi3.yaml을 수동으로 업데이트할 때 사용하는 태스크
+// 사용법: ./gradlew updateOpenApiSpec
 tasks.register<Copy>("updateOpenApiSpec") {
-    dependsOn("openapi3")
+    group = "documentation"
+    description = "테스트 기반 snippets를 사용하여 src/main/resources에 OpenAPI 스펙을 업데이트합니다."
+    
+    dependsOn(tasks.test)
+    dependsOn(tasks.matching { it.name == "openapi3" })
+    
     from(layout.buildDirectory.file("api-spec/openapi3.yaml"))
     into("src/main/resources/static/docs")
-}
-
-// build 실행 시 openapi3.yaml 자동 업데이트
-tasks.build {
-    dependsOn("updateOpenApiSpec")
-}
-
-// bootRun 실행 시에도 최신 문서로 업데이트
-tasks.bootRun {
-    dependsOn("updateOpenApiSpec")
 }

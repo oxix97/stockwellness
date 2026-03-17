@@ -14,10 +14,12 @@ import org.stockwellness.application.service.portfolio.internal.PortfolioDiagnos
 import org.stockwellness.application.service.portfolio.internal.PortfolioHealthCalculator;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.global.logging.LogExecution;
 
 import java.util.List;
 
 @Service
+@LogExecution
 @RequiredArgsConstructor
 public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
 

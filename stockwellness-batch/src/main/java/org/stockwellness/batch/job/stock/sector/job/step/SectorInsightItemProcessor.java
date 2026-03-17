@@ -42,13 +42,13 @@ public class SectorInsightItemProcessor implements ItemProcessor<SectorApiDto, S
         String code = apiDto.sectorCode();
         MarketIndex index = indexMapCache.get(code);
         if (index == null) {
-            log.warn("MarketIndex not found for code: {}", code);
+            log.warn("해당 코드에 대한 MarketIndex를 찾을 수 없음: {}", code);
             return null;
         }
 
         List<Stock> sectorStocks = sectorToStocksMapCache.get(code);
         if (sectorStocks == null || sectorStocks.isEmpty()) {
-            log.debug(">>> Sector {}({}): No matching stocks found in DB grouping", index.getIndexName(), code);
+            log.debug(">>> 섹터 {}({}): DB 그룹화 결과 매칭되는 종목이 없음", index.getIndexName(), code);
             return null;
         }
 
@@ -71,7 +71,7 @@ public class SectorInsightItemProcessor implements ItemProcessor<SectorApiDto, S
     private synchronized void initializeCaches(LocalDate targetDate) {
         if (priceMapCache != null) return;
 
-        log.info("Initializing caches for SectorInsightItemProcessor (date: {})", targetDate);
+        log.info("SectorInsightItemProcessor 캐시 초기화 중 (기준일: {})", targetDate);
         
         // 1. 모든 종목 시세 로드
         List<StockPrice> allPrices = stockPricePort.findAllByDate(targetDate);
@@ -92,7 +92,7 @@ public class SectorInsightItemProcessor implements ItemProcessor<SectorApiDto, S
         indexMapCache = marketIndexPort.findAll().stream()
                 .collect(Collectors.toMap(MarketIndex::getIndexCode, i -> i));
         
-        log.info("Caches initialized: {} prices, {} mapped sectors, {} indices", 
+        log.info("캐시 초기화 완료: 시세 {}건, 매핑된 섹터 {}개, 인덱스 {}개", 
                 priceMapCache.size(), sectorToStocksMapCache.size(), indexMapCache.size());
     }
 

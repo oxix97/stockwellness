@@ -33,7 +33,7 @@ public class KisMasterClient {
     }
 
     private List<String> downloadAndParse(String url) {
-        log.info("Start downloading master file from: {}", url);
+        log.info("KIS 마스터 파일 다운로드 시작: {}", url);
 
         byte[] zipBytes = kisAuthClient.get()
                 .uri(url)
@@ -49,16 +49,15 @@ public class KisMasterClient {
             if (zis.getNextEntry() != null) {
                 String line;
                 while ((line = br.readLine()) != null) {
-                    System.out.println("line str : " + line);
                     lines.add(line);
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to parse master file", e);
+            log.error("마스터 파일 파싱 실패", e);
             throw new RuntimeException("Master file download failed", e);
         }
 
-        log.info("Downloaded {} lines.", lines.size());
+        log.info("총 {}개 라인 다운로드 완료.", lines.size());
         return lines;
     }
 }

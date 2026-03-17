@@ -9,6 +9,8 @@ import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 /**
  * 배치 로그에 Job 및 Step 정보를 MDC에 주입하여 추적성을 강화하는 리스너
  */
@@ -19,15 +21,22 @@ public class BatchMdcListener implements JobExecutionListener, StepExecutionList
     public static final String JOB_NAME = "jobName";
     public static final String JOB_EXECUTION_ID = "jobExecutionId";
     public static final String STEP_NAME = "stepName";
+    public static final String TRACE_ID = "traceId";
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
+        String traceId = jobExecution.getJobParameters().getString(TRACE_ID);
+        if (traceId == null || traceId.isEmpty()) {
+            traceId = "batch-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+        MDC.put(TRACE_ID, traceId);
         MDC.put(JOB_NAME, jobExecution.getJobInstance().getJobName());
         MDC.put(JOB_EXECUTION_ID, String.valueOf(jobExecution.getId()));
     }
 
     @Override
     public void afterJob(JobExecution jobExecution) {
+        MDC.remove(TRACE_ID);
         MDC.remove(JOB_NAME);
         MDC.remove(JOB_EXECUTION_ID);
     }
