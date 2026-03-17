@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.stockwellness.global.error.exception.BusinessException;
 
+import org.stockwellness.global.common.response.ApiResponse;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -29,7 +31,7 @@ public class GlobalExceptionHandler {
             NoResourceFoundException.class,
             Exception.class
     })
-    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception e) {
+    public ResponseEntity<ApiResponse<Void>> handleAllExceptions(Exception e) {
         String traceId = generateTraceId();
 
         return switch (e) {
@@ -42,37 +44,37 @@ public class GlobalExceptionHandler {
         };
     }
 
-    private ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e, String traceId) {
+    private ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e, String traceId) {
         log.warn("[{}] BusinessException: {}", traceId, e.getMessage());
         return createErrorResponse(e.getErrorCode(), traceId);
     }
 
-    private ResponseEntity<ErrorResponse> handleBindingException(MethodArgumentNotValidException e, String traceId) {
+    private ResponseEntity<ApiResponse<Void>> handleBindingException(MethodArgumentNotValidException e, String traceId) {
         log.warn("[{}] MethodArgumentNotValidException: {}", traceId, e.getMessage());
-        List<ErrorResponse.FieldError> fieldErrors = getFieldErrors(e.getBindingResult());
+        List<ApiResponse.FieldError> fieldErrors = getFieldErrors(e.getBindingResult());
         return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
     }
 
-    private ResponseEntity<ErrorResponse> handleUnexpectedException(Exception e, String traceId) {
+    private ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception e, String traceId) {
         log.error("[{}] Unexpected Exception: ", traceId, e);
         return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, traceId);
     }
 
-    private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, String traceId) {
+    private ResponseEntity<ApiResponse<Void>> createErrorResponse(ErrorCode errorCode, String traceId) {
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ErrorResponse.of(errorCode, traceId));
+                .body(ApiResponse.error(errorCode, traceId));
     }
 
-    private ResponseEntity<ErrorResponse> createErrorResponse(ErrorCode errorCode, String traceId, List<ErrorResponse.FieldError> fieldErrors) {
+    private ResponseEntity<ApiResponse<Void>> createErrorResponse(ErrorCode errorCode, String traceId, List<ApiResponse.FieldError> fieldErrors) {
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ErrorResponse.of(errorCode, traceId, fieldErrors));
+                .body(ApiResponse.error(errorCode, traceId, fieldErrors));
     }
 
-    private List<ErrorResponse.FieldError> getFieldErrors(BindingResult bindingResult) {
+    private List<ApiResponse.FieldError> getFieldErrors(BindingResult bindingResult) {
         return bindingResult.getFieldErrors().stream()
-                .map(error -> new ErrorResponse.FieldError(
+                .map(error -> new ApiResponse.FieldError(
                         error.getField(),
                         error.getRejectedValue() == null ? "" : error.getRejectedValue().toString(),
                         error.getDefaultMessage()))

@@ -9,9 +9,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.error.ErrorCode;
 
 import java.io.IOException;
@@ -43,18 +43,12 @@ public class JwtExceptionFilter extends OncePerRequestFilter {
         }
     }
 
-    private void setErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException, IOException {
+    private void setErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
         response.setStatus(errorCode.getStatusCode());
-        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                errorCode.getStatus(),
-                errorCode.getMessage()
-        );
-        problemDetail.setTitle(errorCode.name());
-        problemDetail.setProperty("errorCode", errorCode.name());
-
-        response.getWriter().write(mapper.writeValueAsString(problemDetail));
+        ApiResponse<Void> apiResponse = ApiResponse.error(errorCode, null);
+        response.getWriter().write(mapper.writeValueAsString(apiResponse));
     }
 }
