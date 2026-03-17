@@ -1,6 +1,5 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +15,8 @@ import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCo
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
-import org.stockwellness.global.common.ApiResponse;
+import org.stockwellness.global.common.response.ApiResponse;
+import org.stockwellness.global.common.response.SuccessCode;
 import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
 
@@ -35,7 +35,7 @@ public class PortfolioController {
      * 포트폴리오 생성
      */
     @PostMapping
-    public ResponseEntity<ApiResponse<Void>> createPortfolio(
+    public ResponseEntity<ApiResponse<Long>> createPortfolio(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid PortfolioCreateRequest request) {
 
@@ -61,7 +61,7 @@ public class PortfolioController {
                 .path("/{id}")
                 .buildAndExpand(portfolioId)
                 .toUri();
-        return ResponseEntity.created(location).body(ApiResponse.success(null));
+        return ResponseEntity.created(location).body(ApiResponse.success(SuccessCode.CREATED, portfolioId));
     }
 
     /**
@@ -114,7 +114,7 @@ public class PortfolioController {
         );
 
         portfolioFacade.updatePortfolio(command);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**
@@ -126,7 +126,7 @@ public class PortfolioController {
             @PathVariable Long portfolioId) {
 
         portfolioFacade.deletePortfolio(memberPrincipal.id(), portfolioId);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**

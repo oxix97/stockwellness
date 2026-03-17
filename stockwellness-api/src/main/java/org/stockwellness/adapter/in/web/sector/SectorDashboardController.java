@@ -11,7 +11,7 @@ import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.MarketType;
-
+import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
@@ -29,53 +29,53 @@ public class SectorDashboardController {
      * [기능 26] 등락률 상위 섹터 조회
      */
     @GetMapping("/ranking/fluctuation")
-    public ResponseEntity<List<SectorRankingResult>> getTopSectorsByFluctuation(
+    public ResponseEntity<ApiResponse<List<SectorRankingResult>>> getTopSectorsByFluctuation(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, marketType, limit));
+        return ResponseEntity.ok(ApiResponse.success(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, marketType, limit)));
     }
 
     /**
      * [기능 27] 수급 상위 섹터 조회
      */
     @GetMapping("/ranking/supply")
-    public ResponseEntity<List<SectorSupplyResult>> getTopSectorsBySupply(
+    public ResponseEntity<ApiResponse<List<SectorSupplyResult>>> getTopSectorsBySupply(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
         
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ResponseEntity.ok(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit));
+        return ResponseEntity.ok(ApiResponse.success(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit)));
     }
 
     /**
      * [기능 31] 섹터 vs 시장 비교 분석 조회
      */
     @GetMapping("/{sectorCode}/comparison")
-    public ResponseEntity<SectorComparisonResult> compareWithMarket(
+    public ResponseEntity<ApiResponse<SectorComparisonResult>> compareWithMarket(
             @PathVariable String sectorCode,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ResponseEntity.ok(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate));
+        return ResponseEntity.ok(ApiResponse.success(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate)));
     }
 
     /**
      * [기능 30] 섹터 상세 및 진단 정보 조회
      */
     @GetMapping("/{sectorCode}")
-    public ResponseEntity<SectorDetailResult> getSectorDetail(
+    public ResponseEntity<ApiResponse<SectorDetailResult>> getSectorDetail(
             @PathVariable String sectorCode,
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ResponseEntity.ok(sectorInsightUseCase.getSectorDetail(sectorCode, targetDate));
+        return ResponseEntity.ok(ApiResponse.success(sectorInsightUseCase.getSectorDetail(sectorCode, targetDate)));
     }
 }

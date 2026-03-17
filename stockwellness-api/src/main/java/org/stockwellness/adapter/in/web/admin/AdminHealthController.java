@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.stockwellness.adapter.in.web.admin.dto.AdminHealthResponse;
+import org.stockwellness.global.common.response.ApiResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class AdminHealthController {
     private final HealthEndpoint healthEndpoint;
 
     @GetMapping
-    public ResponseEntity<AdminHealthResponse> getHealth() {
+    public ResponseEntity<ApiResponse<AdminHealthResponse>> getHealth() {
         HealthComponent healthContribution = healthEndpoint.health();
         
         Map<String, String> statusMap = new HashMap<>();
@@ -39,10 +40,10 @@ public class AdminHealthController {
             statusMap.put("kafka", overall);
         }
 
-        return ResponseEntity.ok(new AdminHealthResponse(
+        return ResponseEntity.ok(ApiResponse.success(new AdminHealthResponse(
                 healthContribution.getStatus().getCode(),
                 statusMap
-        ));
+        )));
     }
 
     private String getComponentStatus(Map<String, HealthComponent> components, String key) {

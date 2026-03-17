@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.member.dto.UpdateMemberRequest;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.result.MemberResult;
-import org.stockwellness.global.common.ApiResponse;
+import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.security.MemberPrincipal;
 
 @RestController
@@ -36,7 +36,7 @@ public class MemberController {
             @RequestBody @Valid UpdateMemberRequest request
     ) {
         memberUseCase.updateMember(memberPrincipal.id(), request.toCommand(memberPrincipal.id()));
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**
@@ -45,6 +45,6 @@ public class MemberController {
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> deactivateMember(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         memberUseCase.withdrawMember(memberPrincipal.id());
-        return ResponseEntity.ok(ApiResponse.success(null));
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }
