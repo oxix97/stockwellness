@@ -11,7 +11,6 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
@@ -23,6 +22,7 @@ import org.stockwellness.domain.stock.price.PriceIssueType;
 import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.batch.job.stock.master.MarketIndexSyncService;
 import org.stockwellness.batch.job.stock.price.StockPriceSyncRequest;
+import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.error.ErrorCode;
 
 import java.time.LocalDate;
@@ -54,10 +54,10 @@ public class BatchAdminController {
      * 업종/지수 마스터(idxcode.mst) 동기화
      */
     @PostMapping("/sync-indices")
-    public ResponseEntity<BatchExecutionResponse> runIndicesSync() {
+    public ApiResponse<BatchExecutionResponse> runIndicesSync() {
         try {
             marketIndexSyncService.syncIndices("idxcode.mst");
-            return ResponseEntity.ok(new BatchExecutionResponse(0L, "MarketIndexSync", null, "업종 마스터 동기화 성공"));
+            return ApiResponse.success(new BatchExecutionResponse(0L, "MarketIndexSync", null, "업종 마스터 동기화 성공"));
         } catch (Exception e) {
             log.error("업종 마스터 동기화 실패", e);
             throw new BatchException(ErrorCode.BATCH_EXECUTION_FAILED);
@@ -68,8 +68,8 @@ public class BatchAdminController {
      * 특정 Job의 최근 실행 상태 조회
      */
     @GetMapping("/status/{jobName}")
-    public List<BatchJobStatusResponse> getJobStatus(@PathVariable String jobName) {
-        return jobExplorer.getJobInstances(jobName, 0, 10).stream()
+    public ApiResponse<List<BatchJobStatusResponse>> getJobStatus(@PathVariable String jobName) {
+        List<BatchJobStatusResponse> responses = jobExplorer.getJobInstances(jobName, 0, 10).stream()
                 .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
                 .map(execution -> new BatchJobStatusResponse(
                         execution.getId(),
@@ -81,13 +81,14 @@ public class BatchAdminController {
                 ))
                 .sorted((a, b) -> b.executionId().compareTo(a.executionId()))
                 .collect(Collectors.toList());
+        return ApiResponse.success(responses);
     }
 
     /**
      * 시세 데이터 정합성 체크 (누락 또는 0원 시세)
      */
     @GetMapping("/integrity-check")
-    public ResponseEntity<DataIntegrityResponse> checkDataIntegrity(
+    public ApiResponse<DataIntegrityResponse> checkDataIntegrity(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
@@ -102,25 +103,25 @@ public class BatchAdminController {
                 ))
                 .toList();
 
-        return ResponseEntity.ok(new DataIntegrityResponse(details.size(), details));
+        return ApiResponse.success(new DataIntegrityResponse(details.size(), details));
     }
 
     /**
      * 종목 마스터(KOSPI/KOSDAQ) 동기화 배치 실행
      */
     @PostMapping("/sync-master")
-    public ResponseEntity<BatchExecutionResponse> runMasterSync() {
+    public ApiResponse<BatchExecutionResponse> runMasterSync() {
         JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(stockMasterSyncJob, params));
+        return ApiResponse.success(launchJobAsync(stockMasterSyncJob, params));
     }
 
     /**
      * 섹터 인사이트 배치 실행
      */
     @PostMapping("/sync-sector")
-    public ResponseEntity<BatchExecutionResponse> runSectorSync(
+    public ApiResponse<BatchExecutionResponse> runSectorSync(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -129,14 +130,14 @@ public class BatchAdminController {
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(sectorEodJob, params));
+        return ApiResponse.success(launchJobAsync(sectorEodJob, params));
     }
 
     /**
      * 시세 수집 배치 실행 (전체 종목)
      */
     @PostMapping("/fetch-prices")
-    public ResponseEntity<BatchExecutionResponse> runPriceFetch(
+    public ApiResponse<BatchExecutionResponse> runPriceFetch(
             @RequestBody(required = false) StockPriceSyncRequest request,
             @RequestParam(defaultValue = "false") boolean publishEvent
     ) {
@@ -159,14 +160,14 @@ public class BatchAdminController {
                 .addString("endDate", endDate)
                 .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(stockPriceBatchJob, params));
+        return ApiResponse.success(launchJobAsync(stockPriceBatchJob, params));
     }
 
     /**
      * 시세 수집 배치 실행 (단건 종목)
      */
     @PostMapping("/fetch-prices/single")
-    public ResponseEntity<BatchExecutionResponse> runSinglePriceFetch(
+    public ApiResponse<BatchExecutionResponse> runSinglePriceFetch(
             @RequestBody StockPriceSyncRequest request,
             @RequestParam(defaultValue = "false") boolean publishEvent
     ) {
@@ -186,14 +187,14 @@ public class BatchAdminController {
                 .addString("endDate", request.getEndDate())
                 .addString("publishEvent", String.valueOf(publishEvent))
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(stockPriceBatchJob, params));
+        return ApiResponse.success(launchJobAsync(stockPriceBatchJob, params));
     }
 
     /**
      * 전일 종가 데이터 소급 보정 실행
      */
     @PostMapping("/sync-prev-close")
-    public ResponseEntity<BatchExecutionResponse> runPrevCloseSync(
+    public ApiResponse<BatchExecutionResponse> runPrevCloseSync(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
     ) {
@@ -202,14 +203,14 @@ public class BatchAdminController {
                 .addString("startDate", startDate)
                 .addString("endDate", endDate)
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
+        return ApiResponse.success(launchJobAsync(stockPricePrevCloseSyncJob, params));
     }
 
     /**
      * 특정 종목 단건 즉시 동기화 (보정 배치 활용)
      */
     @PostMapping("/sync-stock/{ticker}")
-    public ResponseEntity<BatchExecutionResponse> syncSingleStock(
+    public ApiResponse<BatchExecutionResponse> syncSingleStock(
             @PathVariable String ticker,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate
@@ -225,30 +226,31 @@ public class BatchAdminController {
                 .addString("endDate", endDate)
                 .toJobParameters();
 
-        return ResponseEntity.ok(launchJobAsync(stockPricePrevCloseSyncJob, params));
+        return ApiResponse.success(launchJobAsync(stockPricePrevCloseSyncJob, params));
     }
 
     /**
      * 포트폴리오 통계 지표(MDD, Sharpe, Beta) 갱신 배치 실행
      */
     @PostMapping("/sync-portfolio-stats")
-    public ResponseEntity<BatchExecutionResponse> runPortfolioStatsSync() {
+    public ApiResponse<BatchExecutionResponse> runPortfolioStatsSync() {
         JobParameters params = new JobParametersBuilder()
                 .addLong("time", System.currentTimeMillis())
                 .toJobParameters();
-        return ResponseEntity.ok(launchJobAsync(portfolioStatsJob, params));
+        return ApiResponse.success(launchJobAsync(portfolioStatsJob, params));
     }
 
     /**
      * 실행 중인 배치 중단
      */
     @PostMapping("/stop/{executionId}")
-    public String stopJob(@PathVariable Long executionId) {
+    public ApiResponse<String> stopJob(@PathVariable Long executionId) {
         try {
             boolean result = jobOperator.stop(executionId);
-            return result ? "중단 요청 성공" : "중단 실패 (이미 종료되었을 수 있음)";
+            String message = result ? "중단 요청 성공" : "중단 실패 (이미 종료되었을 수 있음)";
+            return ApiResponse.success(message);
         } catch (Exception e) {
-            return "오류 발생: " + e.getMessage();
+            return ApiResponse.success("오류 발생: " + e.getMessage());
         }
     }
 

@@ -2,7 +2,6 @@ package org.stockwellness.adapter.in.web.auth;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.stockwellness.application.port.in.auth.dto.LoginRequest;
@@ -15,6 +14,8 @@ import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
 import org.stockwellness.global.security.MemberPrincipal;
 
+import org.stockwellness.global.common.response.ApiResponse;
+
 import java.util.Map;
 
 @RestController
@@ -25,7 +26,7 @@ public class AuthController {
     private final AuthUseCase authUseCase;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginCommand command = new LoginCommand(request.email(), request.nickname(), request.loginType());
         LoginResult result = authUseCase.login(command);
 
@@ -36,28 +37,28 @@ public class AuthController {
             result.email(),
             result.nickname()
         );
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<ReissueResponse> reissue(@Valid @RequestBody ReissueRequest request) {
+    public ApiResponse<ReissueResponse> reissue(@Valid @RequestBody ReissueRequest request) {
         ReissueResult result = authUseCase.reissue(request.refreshToken());
         
         ReissueResponse response = new ReissueResponse(
             result.accessToken(),
             result.refreshToken()
         );
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+    public ApiResponse<Void> logout(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         authUseCase.logout(memberPrincipal.id());
-        return ResponseEntity.ok().build();
+        return ApiResponse.success();
     }
 
     @GetMapping("/test")
-    public Map<String, String> test() {
-        return Map.of("status", "ok", "service", "stockwellness");
+    public ApiResponse<Map<String, String>> test() {
+        return ApiResponse.success(Map.of("status", "ok", "service", "stockwellness"));
     }
 }

@@ -75,10 +75,11 @@ class BatchAdminControllerTest {
         mockMvc.perform(post("/api/v1/admin/batch/sync-master")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.executionId").value(123))
-                .andExpect(jsonPath("$.jobName").value("stockMasterSyncJob"))
-                .andExpect(jsonPath("$.statusUrl").value("/api/v1/admin/batch/status/stockMasterSyncJob"))
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.executionId").value(123))
+                .andExpect(jsonPath("$.data.jobName").value("stockMasterSyncJob"))
+                .andExpect(jsonPath("$.data.statusUrl").value("/api/v1/admin/batch/status/stockMasterSyncJob"))
+                .andExpect(jsonPath("$.data.message").exists());
     }
 
     @Test
@@ -92,7 +93,8 @@ class BatchAdminControllerTest {
                         .param("endDate", "2024-01-02")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(0))
-                .andExpect(jsonPath("$.issues").isArray());
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalCount").value(0))
+                .andExpect(jsonPath("$.data.issues").isArray());
     }
 }

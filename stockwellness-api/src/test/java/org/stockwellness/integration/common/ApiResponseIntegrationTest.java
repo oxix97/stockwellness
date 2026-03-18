@@ -37,7 +37,7 @@ class ApiResponseIntegrationTest {
     private MemberUseCase memberUseCase;
 
     @Test
-    @DisplayName("성공 응답 시 표준 포맷(data, timestamp)을 준수해야 한다")
+    @DisplayName("성공 응답 시 표준 포맷(success, data, timestamp)을 준수해야 한다")
     @MockMember(id = 1L)
     void success_response_format_test() throws Exception {
         MemberResult result = new MemberResult(
@@ -51,12 +51,13 @@ class ApiResponseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").exists())
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
-    @DisplayName("에러 응답 시 표준 포맷(status, code, message, timestamp, traceId, errors)을 준수해야 한다")
+    @DisplayName("에러 응답 시 표준 포맷(success, status, code, message, timestamp, traceId, errors)을 준수해야 한다")
     @MockMember(id = 1L)
     void error_response_format_test() throws Exception {
         // 존재하지 않는 포트폴리오 ID로 요청하여 BusinessException 유도
@@ -64,6 +65,7 @@ class ApiResponseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("P004"))
                 .andExpect(jsonPath("$.message").exists())

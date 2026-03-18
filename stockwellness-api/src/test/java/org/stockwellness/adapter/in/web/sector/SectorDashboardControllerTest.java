@@ -12,9 +12,11 @@ import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.support.RestDocsSupport;
+import org.springframework.restdocs.payload.FieldDescriptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -61,14 +63,14 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                         parameterWithName("limit").description("조회 개수").optional()
                                 )
                                 .responseSchema(Schema.schema("SectorRankingResponse"))
-                                .responseFields(
-                                        fieldWithPath("[]").description("섹터 랭킹 리스트"),
-                                        fieldWithPath("[].sectorCode").description("섹터 코드"),
-                                        fieldWithPath("[].sectorName").description("섹터명"),
-                                        fieldWithPath("[].currentPrice").description("현재 지수"),
-                                        fieldWithPath("[].fluctuationRate").description("평균 등락률"),
-                                        fieldWithPath("[].isOverheated").description("과열 여부")
-                                )
+                                .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                    add(fieldWithPath("data").description("섹터 랭킹 리스트"));
+                                    add(fieldWithPath("data[].sectorCode").description("섹터 코드"));
+                                    add(fieldWithPath("data[].sectorName").description("섹터명"));
+                                    add(fieldWithPath("data[].currentPrice").description("현재 지수"));
+                                    add(fieldWithPath("data[].fluctuationRate").description("평균 등락률"));
+                                    add(fieldWithPath("data[].isOverheated").description("과열 여부"));
+                                }})
                                 .build())
                 ));
     }
@@ -102,15 +104,15 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                         parameterWithName("limit").description("조회 개수").optional()
                                 )
                                 .responseSchema(Schema.schema("SectorSupplyResponse"))
-                                .responseFields(
-                                        fieldWithPath("[]").description("섹터 수급 리스트"),
-                                        fieldWithPath("[].sectorCode").description("섹터 코드"),
-                                        fieldWithPath("[].sectorName").description("섹터명"),
-                                        fieldWithPath("[].netForeignBuyAmount").description("외국인 순매수 금액"),
-                                        fieldWithPath("[].netInstBuyAmount").description("기관 순매수 금액"),
-                                        fieldWithPath("[].foreignConsecutiveBuyDays").description("외국인 연속 매수 일수"),
-                                        fieldWithPath("[].instConsecutiveBuyDays").description("기관 연속 매수 일수")
-                                )
+                                .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                    add(fieldWithPath("data").description("섹터 수급 리스트"));
+                                    add(fieldWithPath("data[].sectorCode").description("섹터 코드"));
+                                    add(fieldWithPath("data[].sectorName").description("섹터명"));
+                                    add(fieldWithPath("data[].netForeignBuyAmount").description("외국인 순매수 금액"));
+                                    add(fieldWithPath("data[].netInstBuyAmount").description("기관 순매수 금액"));
+                                    add(fieldWithPath("data[].foreignConsecutiveBuyDays").description("외국인 연속 매수 일수"));
+                                    add(fieldWithPath("data[].instConsecutiveBuyDays").description("기관 연속 매수 일수"));
+                                }})
                                 .build())
                 ));
     }
@@ -146,39 +148,39 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                         parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional()
                                 )
                                 .responseSchema(Schema.schema("SectorDetailResponse"))
-                                .responseFields(
-                                        fieldWithPath("sectorCode").description("섹터 코드"),
-                                        fieldWithPath("sectorName").description("섹터명"),
-                                        fieldWithPath("baseDate").description("기준 날짜"),
-                                        fieldWithPath("currentPrice").description("현재 지수"),
-                                        fieldWithPath("fluctuationRate").description("평균 등락률"),
-                                        fieldWithPath("technicalIndicators").description("기술적 지표").optional(),
-                                        fieldWithPath("technicalIndicators.ma5").description("5일 이동평균선").optional(),
-                                        fieldWithPath("technicalIndicators.ma20").description("20일 이동평균선").optional(),
-                                        fieldWithPath("technicalIndicators.ma60").description("60일 이동평균선").optional(),
-                                        fieldWithPath("technicalIndicators.ma120").description("120일 이동평균선").optional(),
-                                        fieldWithPath("technicalIndicators.rsi14").description("RSI(14) 지표").optional(),
-                                        fieldWithPath("technicalIndicators.macd").description("MACD").optional(),
-                                        fieldWithPath("technicalIndicators.macdSignal").description("MACD Signal").optional(),
-                                        fieldWithPath("technicalIndicators.bollingerUpper").description("볼린저 밴드 상단").optional(),
-                                        fieldWithPath("technicalIndicators.bollingerMid").description("볼린저 밴드 중앙").optional(),
-                                        fieldWithPath("technicalIndicators.bollingerLower").description("볼린저 밴드 하단").optional(),
-                                        fieldWithPath("technicalIndicators.adx").description("ADX").optional(),
-                                        fieldWithPath("technicalIndicators.plusDi").description("Plus DI").optional(),
-                                        fieldWithPath("technicalIndicators.minusDi").description("Minus DI").optional(),
-                                        fieldWithPath("technicalIndicators.alignmentStatus").description("배열 상태").optional(),
-                                        fieldWithPath("technicalIndicators.isGoldenCross").description("골든 크로스 여부").optional(),
-                                        fieldWithPath("technicalIndicators.isDeadCross").description("데드 크로스 여부").optional(),
-                                        fieldWithPath("technicalIndicators.isMacdCross").description("MACD 크로스 여부").optional(),
-                                        fieldWithPath("isOverheated").description("과열 진단 여부"),
-                                        fieldWithPath("diagnosisMessage").description("상세 진단 메시지"),
-                                        fieldWithPath("leadingStocks[]").description("주도주 리스트"),
-                                        fieldWithPath("leadingStocks[].ticker").description("주도주 티커"),
-                                        fieldWithPath("leadingStocks[].name").description("주도주 명"),
-                                        fieldWithPath("leadingStocks[].fluctuationRate").description("주도주 등락률"),
-                                        fieldWithPath("leadingStocks[].tradeVolume").description("주도주 거래량"),
-                                        fieldWithPath("leadingStocks[].transactionAmt").description("주도주 거래대금")
-                                )
+                                .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                    add(fieldWithPath("data.sectorCode").description("섹터 코드"));
+                                    add(fieldWithPath("data.sectorName").description("섹터명"));
+                                    add(fieldWithPath("data.baseDate").description("기준 날짜"));
+                                    add(fieldWithPath("data.currentPrice").description("현재 지수"));
+                                    add(fieldWithPath("data.fluctuationRate").description("평균 등락률"));
+                                    add(fieldWithPath("data.technicalIndicators").description("기술적 지표").optional());
+                                    add(fieldWithPath("data.technicalIndicators.ma5").description("5일 이동평균선").optional());
+                                    add(fieldWithPath("data.technicalIndicators.ma20").description("20일 이동평균선").optional());
+                                    add(fieldWithPath("data.technicalIndicators.ma60").description("60일 이동평균선").optional());
+                                    add(fieldWithPath("data.technicalIndicators.ma120").description("120일 이동평균선").optional());
+                                    add(fieldWithPath("data.technicalIndicators.rsi14").description("RSI(14) 지표").optional());
+                                    add(fieldWithPath("data.technicalIndicators.macd").description("MACD").optional());
+                                    add(fieldWithPath("data.technicalIndicators.macdSignal").description("MACD Signal").optional());
+                                    add(fieldWithPath("data.technicalIndicators.bollingerUpper").description("볼린저 밴드 상단").optional());
+                                    add(fieldWithPath("data.technicalIndicators.bollingerMid").description("볼린저 밴드 중앙").optional());
+                                    add(fieldWithPath("data.technicalIndicators.bollingerLower").description("볼린저 밴드 하단").optional());
+                                    add(fieldWithPath("data.technicalIndicators.adx").description("ADX").optional());
+                                    add(fieldWithPath("data.technicalIndicators.plusDi").description("Plus DI").optional());
+                                    add(fieldWithPath("data.technicalIndicators.minusDi").description("Minus DI").optional());
+                                    add(fieldWithPath("data.technicalIndicators.alignmentStatus").description("배열 상태").optional());
+                                    add(fieldWithPath("data.technicalIndicators.isGoldenCross").description("골든 크로스 여부").optional());
+                                    add(fieldWithPath("data.technicalIndicators.isDeadCross").description("데드 크로스 여부").optional());
+                                    add(fieldWithPath("data.technicalIndicators.isMacdCross").description("MACD 크로스 여부").optional());
+                                    add(fieldWithPath("data.isOverheated").description("과열 진단 여부"));
+                                    add(fieldWithPath("data.diagnosisMessage").description("상세 진단 메시지"));
+                                    add(fieldWithPath("data.leadingStocks[]").description("주도주 리스트"));
+                                    add(fieldWithPath("data.leadingStocks[].ticker").description("주도주 티커"));
+                                    add(fieldWithPath("data.leadingStocks[].name").description("주도주 명"));
+                                    add(fieldWithPath("data.leadingStocks[].fluctuationRate").description("주도주 등락률"));
+                                    add(fieldWithPath("data.leadingStocks[].tradeVolume").description("주도주 거래량"));
+                                    add(fieldWithPath("data.leadingStocks[].transactionAmt").description("주도주 거래대금"));
+                                }})
                                 .build())
                 ));
     }
