@@ -93,6 +93,10 @@ kis:
   app-key: ${KIS_APP_KEY}
   app-secret: ${KIS_APP_SECRET}
 
+app:
+  frontend-redirect-url: http://localhost:5173/auth/callback
+
+
 logging:
   level:
     # 1. 전역 설정: 너무 시끄러운 로그는 INFO로 잠재움
