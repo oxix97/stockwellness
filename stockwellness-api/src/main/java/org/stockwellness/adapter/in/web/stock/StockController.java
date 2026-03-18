@@ -41,7 +41,7 @@ public class StockController {
      * 통합 종목 검색
      */
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Slice<StockSearchResult>>> searchStocks(
+    public ApiResponse<Slice<StockSearchResult>> searchStocks(
             @AuthenticationPrincipal MemberPrincipal member,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) MarketType marketType,
@@ -57,74 +57,74 @@ public class StockController {
             stockSearchUseCase.saveSearchHistory(member.id(), keyword);
         }
 
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ApiResponse.success(result);
     }
 
     /**
      * 최근 검색어 조회
      */
     @GetMapping("/search/history")
-    public ResponseEntity<ApiResponse<List<String>>> getRecentSearches(
+    public ApiResponse<List<String>> getRecentSearches(
             @AuthenticationPrincipal MemberPrincipal member
     ) {
         if (member == null) {
-            return ResponseEntity.ok(ApiResponse.success(Collections.emptyList()));
+            return ApiResponse.success(Collections.emptyList());
         }
-        return ResponseEntity.ok(ApiResponse.success(stockSearchUseCase.getRecentSearches(member.id())));
+        return ApiResponse.success(stockSearchUseCase.getRecentSearches(member.id()));
     }
 
     /**
      * 최근 검색어 개별 삭제
      */
     @DeleteMapping("/search/history")
-    public ResponseEntity<ApiResponse<Void>> removeSearchHistory(
+    public ApiResponse<Void> removeSearchHistory(
             @AuthenticationPrincipal MemberPrincipal member,
             @RequestParam String keyword
     ) {
         if (member != null) {
             stockSearchUseCase.removeSearchHistory(member.id(), keyword);
         }
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     /**
      * 최근 검색어 전체 삭제
      */
     @DeleteMapping("/search/history/all")
-    public ResponseEntity<ApiResponse<Void>> clearSearchHistory(
+    public ApiResponse<Void> clearSearchHistory(
             @AuthenticationPrincipal MemberPrincipal member
     ) {
         if (member != null) {
             stockSearchUseCase.clearSearchHistory(member.id());
         }
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     /**
      * 인기 검색어 Top 10 조회
      */
     @GetMapping("/popular")
-    public ResponseEntity<ApiResponse<List<String>>> getPopularSearches() {
-        return ResponseEntity.ok(ApiResponse.success(stockSearchUseCase.getPopularSearches()));
+    public ApiResponse<List<String>> getPopularSearches() {
+        return ApiResponse.success(stockSearchUseCase.getPopularSearches());
     }
 
     /**
      * 신규 상장 종목 조회
      */
     @GetMapping("/new-listings")
-    public ResponseEntity<ApiResponse<List<StockSearchResult>>> getNewListings() {
-        return ResponseEntity.ok(ApiResponse.success(stockUseCase.getNewListings()));
+    public ApiResponse<List<StockSearchResult>> getNewListings() {
+        return ApiResponse.success(stockUseCase.getNewListings());
     }
 
     /**
      * 종목 상세 정보 조회
      */
     @GetMapping("/{ticker}")
-    public ResponseEntity<ApiResponse<StockDetailResult>> getStockDetail(
+    public ApiResponse<StockDetailResult> getStockDetail(
             @PathVariable String ticker
     ) {
         var result = stockUseCase.getStockDetail(ticker);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ApiResponse.success(result);
     }
 
     // ==========================================
@@ -135,7 +135,7 @@ public class StockController {
      * 8, 14, 25. 차트용 과거 가격 데이터 조회 (기간별)
      */
     @GetMapping("/{ticker}/prices/history")
-    public ResponseEntity<ApiResponse<ChartDataResponse>> getPriceHistory(
+    public ApiResponse<ChartDataResponse> getPriceHistory(
             @PathVariable String ticker,
             @RequestParam(defaultValue = "1Y") String period,
             @RequestParam(defaultValue = "DAILY") String frequency,
@@ -147,20 +147,20 @@ public class StockController {
                 ChartFrequency.fromString(frequency),
                 includeBenchmark
         );
-        return ResponseEntity.ok(ApiResponse.success(stockPriceUseCase.loadChartData(query)));
+        return ApiResponse.success(stockPriceUseCase.loadChartData(query));
     }
 
     /**
      * 15. 기간별 수익률 및 벤치마크 대비 수익률 조회
      */
     @GetMapping("/{ticker}/returns")
-    public ResponseEntity<ApiResponse<ReturnRateResponse>> getReturns(
+    public ApiResponse<ReturnRateResponse> getReturns(
             @PathVariable String ticker,
             @RequestParam(defaultValue = "1Y") String period
     ) {
-        return ResponseEntity.ok(ApiResponse.success(stockPriceUseCase.calculateReturn(
+        return ApiResponse.success(stockPriceUseCase.calculateReturn(
                 ticker,
                 ChartPeriod.fromLabel(period)
-        )));
+        ));
     }
 }

@@ -2,8 +2,6 @@ package org.stockwellness.adapter.in.web.watchlist;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.watchlist.dto.AddWatchlistItemRequest;
@@ -26,70 +24,70 @@ public class WatchlistController {
     private final WatchlistUseCase watchlistUseCase;
 
     @PostMapping("/groups")
-    public ResponseEntity<ApiResponse<Long>> createGroup(
+    public ApiResponse<Long> createGroup(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @RequestBody @Valid CreateWatchlistGroupRequest request) {
         Long groupId = watchlistUseCase.createGroup(memberPrincipal.id(), request.name());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(SuccessCode.CREATED, groupId));
+        return ApiResponse.success(SuccessCode.CREATED, groupId);
     }
 
     @GetMapping("/groups")
-    public ResponseEntity<ApiResponse<List<WatchlistGroupResponse>>> getGroups(
+    public ApiResponse<List<WatchlistGroupResponse>> getGroups(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         List<WatchlistGroupResponse> response = watchlistUseCase.getGroups(memberPrincipal.id());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ApiResponse.success(response);
     }
 
     @PatchMapping("/groups/{groupId}")
-    public ResponseEntity<ApiResponse<Void>> updateGroupName(
+    public ApiResponse<Void> updateGroupName(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @RequestBody @Valid CreateWatchlistGroupRequest request) {
         watchlistUseCase.updateGroupName(memberPrincipal.id(), groupId, request.name());
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     @DeleteMapping("/groups/{groupId}")
-    public ResponseEntity<ApiResponse<Void>> deleteGroup(
+    public ApiResponse<Void> deleteGroup(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId) {
         watchlistUseCase.deleteGroup(memberPrincipal.id(), groupId);
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     @PostMapping("/groups/{groupId}/items")
-    public ResponseEntity<ApiResponse<Void>> addItem(
+    public ApiResponse<Void> addItem(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @RequestBody @Valid AddWatchlistItemRequest request) {
         watchlistUseCase.addItem(memberPrincipal.id(), groupId, request.ticker(), request.note());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(SuccessCode.CREATED, null));
+        return ApiResponse.success(SuccessCode.CREATED, null);
     }
 
     @DeleteMapping("/groups/{groupId}/items/{ticker}")
-    public ResponseEntity<ApiResponse<Void>> removeItem(
+    public ApiResponse<Void> removeItem(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @PathVariable String ticker) {
         watchlistUseCase.removeItem(memberPrincipal.id(), groupId, ticker);
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     @PatchMapping("/groups/{groupId}/items/{ticker}/note")
-    public ResponseEntity<ApiResponse<Void>> updateItemNote(
+    public ApiResponse<Void> updateItemNote(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId,
             @PathVariable String ticker,
             @RequestBody @Valid UpdateWatchlistItemNoteRequest request) {
         watchlistUseCase.updateItemNote(memberPrincipal.id(), groupId, ticker, request.note());
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     @GetMapping("/groups/{groupId}/items")
-    public ResponseEntity<ApiResponse<WatchlistItemListResponse>> getItems(
+    public ApiResponse<WatchlistItemListResponse> getItems(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long groupId) {
         WatchlistItemListResponse response = watchlistUseCase.getItems(memberPrincipal.id(), groupId);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ApiResponse.success(response);
     }
 }

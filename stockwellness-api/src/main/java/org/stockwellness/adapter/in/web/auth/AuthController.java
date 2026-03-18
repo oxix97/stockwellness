@@ -2,7 +2,6 @@ package org.stockwellness.adapter.in.web.auth;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.stockwellness.application.port.in.auth.dto.LoginRequest;
@@ -27,7 +26,7 @@ public class AuthController {
     private final AuthUseCase authUseCase;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginCommand command = new LoginCommand(request.email(), request.nickname(), request.loginType());
         LoginResult result = authUseCase.login(command);
 
@@ -38,28 +37,28 @@ public class AuthController {
             result.email(),
             result.nickname()
         );
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<ApiResponse<ReissueResponse>> reissue(@Valid @RequestBody ReissueRequest request) {
+    public ApiResponse<ReissueResponse> reissue(@Valid @RequestBody ReissueRequest request) {
         ReissueResult result = authUseCase.reissue(request.refreshToken());
         
         ReissueResponse response = new ReissueResponse(
             result.accessToken(),
             result.refreshToken()
         );
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
+    public ApiResponse<Void> logout(@AuthenticationPrincipal MemberPrincipal memberPrincipal) {
         authUseCase.logout(memberPrincipal.id());
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     @GetMapping("/test")
-    public ResponseEntity<ApiResponse<Map<String, String>>> test() {
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", "ok", "service", "stockwellness")));
+    public ApiResponse<Map<String, String>> test() {
+        return ApiResponse.success(Map.of("status", "ok", "service", "stockwellness"));
     }
 }

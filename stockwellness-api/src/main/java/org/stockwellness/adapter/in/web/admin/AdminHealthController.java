@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.health.CompositeHealth;
 import org.springframework.boot.actuate.health.HealthComponent;
 import org.springframework.boot.actuate.health.HealthEndpoint;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,7 +21,7 @@ public class AdminHealthController {
     private final HealthEndpoint healthEndpoint;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<AdminHealthResponse>> getHealth() {
+    public ApiResponse<AdminHealthResponse> getHealth() {
         HealthComponent healthContribution = healthEndpoint.health();
         
         Map<String, String> statusMap = new HashMap<>();
@@ -40,10 +39,10 @@ public class AdminHealthController {
             statusMap.put("kafka", overall);
         }
 
-        return ResponseEntity.ok(ApiResponse.success(new AdminHealthResponse(
+        return ApiResponse.success(new AdminHealthResponse(
                 healthContribution.getStatus().getCode(),
                 statusMap
-        )));
+        ));
     }
 
     private String getComponentStatus(Map<String, HealthComponent> components, String key) {
