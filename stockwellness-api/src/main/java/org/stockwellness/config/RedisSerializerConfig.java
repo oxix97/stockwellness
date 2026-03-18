@@ -40,6 +40,11 @@ public final class RedisSerializerConfig {
                 .allowIfBaseType("java.util")
                 .allowIfBaseType("java.time")
                 .allowIfBaseType("org.springframework.security")
+                .allowIfSubType("org.stockwellness")
+                .allowIfSubType("java.util")
+                .allowIfSubType("java.time")
+                .allowIfSubType("org.springframework.security")
+                .allowIfSubType("java.lang")
                 .build();
 
         ObjectMapper mapper = new ObjectMapper();
