@@ -17,7 +17,8 @@ class StockPriceResultTest {
                 new BigDecimal("90"),
                 new BigDecimal("105"),
                 new BigDecimal("105"),
-                1000L
+                1000L,
+                null, null, null, null, null
         );
 
         assertThat(result.baseDate()).isEqualTo(now);
