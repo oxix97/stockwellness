@@ -9,6 +9,8 @@ import java.util.List;
  */
 public record ChartDataResponse(
         String ticker,
+        String stockName,
+        String benchmarkName,
         List<ChartPoint> prices,
         List<BenchmarkPoint> benchmarks
 ) {
@@ -19,7 +21,12 @@ public record ChartDataResponse(
             BigDecimal low,
             BigDecimal close,
             BigDecimal adjClose,
-            Long volume
+            Long volume,
+            BigDecimal transactionAmt,
+            BigDecimal ma5,
+            BigDecimal ma20,
+            BigDecimal ma60,
+            BigDecimal ma120
     ) {
     }
 

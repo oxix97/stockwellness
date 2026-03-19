@@ -17,6 +17,7 @@ import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.support.RestDocsSupport;
 import org.springframework.restdocs.payload.FieldDescriptor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +47,7 @@ class AuthControllerTest extends RestDocsSupport {
         void login_success() throws Exception {
             // given
             LoginRequest request = AuthFixture.createLoginRequest();
-            LoginResult result = new LoginResult(AuthFixture.ACCESS_TOKEN, AuthFixture.REFRESH_TOKEN, 1L, AuthFixture.EMAIL, AuthFixture.NICKNAME);
+            LoginResult result = new LoginResult(AuthFixture.ACCESS_TOKEN, AuthFixture.REFRESH_TOKEN, 1L, AuthFixture.EMAIL, AuthFixture.NICKNAME, LocalDate.now());
 
             given(authUseCase.login(any(LoginCommand.class))).willReturn(result);
 
@@ -56,7 +57,8 @@ class AuthControllerTest extends RestDocsSupport {
                     fieldWithPath("data.refreshToken").description("리프레시 토큰"),
                     fieldWithPath("data.memberId").description("회원 ID"),
                     fieldWithPath("data.email").description("이메일"),
-                    fieldWithPath("data.nickname").description("닉네임")
+                    fieldWithPath("data.nickname").description("닉네임"),
+                    fieldWithPath("data.joinedDate").description("가입 일자")
             ));
 
             // when & then

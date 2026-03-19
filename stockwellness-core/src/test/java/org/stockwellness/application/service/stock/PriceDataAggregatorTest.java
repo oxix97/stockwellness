@@ -70,7 +70,8 @@ class PriceDataAggregatorTest {
                 BigDecimal.valueOf(l),
                 BigDecimal.valueOf(c),
                 BigDecimal.valueOf(c), // adjClose
-                v
+                v,
+                null, null, null, null, null
         );
     }
 }
