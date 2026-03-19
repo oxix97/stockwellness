@@ -18,7 +18,7 @@ public class StockPriceCacheAdapter {
      * 연도별 시세 데이터를 캐싱합니다.
      * 캐시 키 예시: stock_prices::AAPL:2024
      */
-    @Cacheable(value = "stock_prices", key = "#ticker + ':' + #year")
+    @Cacheable(value = "stock_prices_v2", key = "#ticker + ':' + #year")
     public List<StockPriceResult> loadPricesByYear(String ticker, int year) {
         return stockPriceRepository.findAllByTickerAndYear(ticker, year);
     }

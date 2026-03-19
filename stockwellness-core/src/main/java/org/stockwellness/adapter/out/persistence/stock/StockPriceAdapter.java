@@ -163,20 +163,23 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
         return stockPriceRepository.findByStockTickerInAndIdBaseDateBetween(tickers, start, end).stream()
                 .collect(Collectors.groupingBy(
                         p -> p.getStock().getTicker(),
-                        Collectors.mapping(p -> new StockPriceResult(
-                                p.getId().getBaseDate(),
-                                p.getOpenPrice(),
-                                p.getHighPrice(),
-                                p.getLowPrice(),
-                                p.getClosePrice(),
-                                p.getAdjClosePrice(),
-                                p.getVolume(),
-                                p.getTransactionAmt(),
-                                p.getIndicators() != null ? p.getIndicators().getMa5() : null,
-                                p.getIndicators() != null ? p.getIndicators().getMa20() : null,
-                                p.getIndicators() != null ? p.getIndicators().getMa60() : null,
-                                p.getIndicators() != null ? p.getIndicators().getMa120() : null
-                        ), Collectors.toList())
+                        Collectors.mapping(p -> {
+                            var indicators = p.getIndicators();
+                            return new StockPriceResult(
+                                    p.getId().getBaseDate(),
+                                    p.getOpenPrice(),
+                                    p.getHighPrice(),
+                                    p.getLowPrice(),
+                                    p.getClosePrice(),
+                                    p.getAdjClosePrice(),
+                                    p.getVolume(),
+                                    p.getTransactionAmt(),
+                                    indicators != null ? indicators.getMa5() : null,
+                                    indicators != null ? indicators.getMa20() : null,
+                                    indicators != null ? indicators.getMa60() : null,
+                                    indicators != null ? indicators.getMa120() : null
+                            );
+                        }, Collectors.toList())
                 ));
     }
 

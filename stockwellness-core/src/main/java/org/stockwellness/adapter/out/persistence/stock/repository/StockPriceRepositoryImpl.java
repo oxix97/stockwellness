@@ -128,7 +128,12 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stockPrice.lowPrice,
                         stockPrice.closePrice,
                         stockPrice.adjClosePrice,
-                        stockPrice.volume
+                        stockPrice.volume,
+                        stockPrice.transactionAmt,
+                        stockPrice.indicators.ma5,
+                        stockPrice.indicators.ma20,
+                        stockPrice.indicators.ma60,
+                        stockPrice.indicators.ma120
                 ))
                 .from(stockPrice)
                 .join(stockPrice.stock, stock)
