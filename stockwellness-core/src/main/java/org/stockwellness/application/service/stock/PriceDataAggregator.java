@@ -3,10 +3,13 @@ package org.stockwellness.application.service.stock;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -18,7 +21,7 @@ public class PriceDataAggregator {
         // 월요일 기준으로 그룹화
         Map<LocalDate, List<StockPriceResult>> grouped = dailyPrices.stream()
                 .collect(Collectors.groupingBy(
-                        p -> p.baseDate().with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                        p -> p.baseDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                 ));
 
         return grouped.entrySet().stream()
@@ -45,17 +48,22 @@ public class PriceDataAggregator {
         StockPriceResult first = prices.get(0);
         StockPriceResult last = prices.get(prices.size() - 1);
 
-        java.math.BigDecimal high = prices.stream()
+        BigDecimal high = prices.stream()
                 .map(StockPriceResult::highPrice)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::max);
+                .reduce(BigDecimal.ZERO, BigDecimal::max);
 
-        java.math.BigDecimal low = prices.stream()
+        BigDecimal low = prices.stream()
                 .map(StockPriceResult::lowPrice)
-                .reduce(first.lowPrice(), java.math.BigDecimal::min);
+                .reduce(first.lowPrice(), BigDecimal::min);
 
         long totalVolume = prices.stream()
                 .mapToLong(StockPriceResult::volume)
                 .sum();
+
+        BigDecimal totalTransactionAmt = prices.stream()
+                .map(StockPriceResult::transactionAmt)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ChartPoint(
                 date,
@@ -65,11 +73,11 @@ public class PriceDataAggregator {
                 last.closePrice(),
                 last.adjClosePrice(),
                 totalVolume,
-                null, // transactionAmt
-                null, // ma5
-                null, // ma20
-                null, // ma60
-                null  // ma120
+                totalTransactionAmt,
+                last.ma5(),
+                last.ma20(),
+                last.ma60(),
+                last.ma120()
         );
     }
 }

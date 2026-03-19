@@ -13,6 +13,8 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
@@ -33,13 +35,12 @@ public class StockChartService implements StockPriceUseCase {
     private final LoadBenchmarkPort loadBenchmarkPort;
     private final StockPort stockPort;
 
-    private static final String DEFAULT_BENCHMARK = "^KS11"; // KOSPI
     private static final int CALC_SCALE = 8;
     private static final int DISPLAY_SCALE = 4;
 
     @Override
     public ChartDataResponse loadChartData(ChartQuery query) {
-        validateStock(query.ticker());
+        Stock stock = findStockOrThrow(query.ticker());
 
         LocalDate end = LocalDate.now();
         LocalDate start = query.period().calculateStartDate(end);
@@ -55,23 +56,31 @@ public class StockChartService implements StockPriceUseCase {
             case DAILY -> dailyPrices.stream().map(this::toChartPoint).toList();
         };
 
+        BenchmarkInfo benchmarkInfo = resolveBenchmark(stock.getMarketType());
         List<BenchmarkPoint> benchmarks = Collections.emptyList();
+
         if (query.includeBenchmark()) {
-            String benchmarkTicker = resolveBenchmarkTicker(query.ticker());
             try {
-                List<StockPriceResult> benchmarkDaily = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
+                List<StockPriceResult> benchmarkDaily = loadBenchmarkPort.loadBenchmarkPrices(benchmarkInfo.ticker(), start, end);
                 benchmarks = calculateBenchmarkReturns(benchmarkDaily);
             } catch (Exception e) {
-                log.warn("Failed to load benchmark data for {}", benchmarkTicker, e);
+                log.warn("Failed to load benchmark data for {}", benchmarkInfo.ticker(), e);
             }
         }
 
-        return new ChartDataResponse(query.ticker(), null, null, aggregatedPrices, benchmarks);
+        return new ChartDataResponse(
+                query.ticker(),
+                stock.getName(),
+                benchmarkInfo.name(),
+                aggregatedPrices,
+                benchmarks
+        );
     }
 
     @Override
     public ReturnRateResponse calculateReturn(String ticker, ChartPeriod period) {
-        validateStock(ticker);
+        // 시장 유형에 따른 벤치마크 결정 및 종목 조회를 위해 Stock 로드
+        Stock stock = findStockOrThrow(ticker);
 
         LocalDate end = LocalDate.now();
         LocalDate start = period.calculateStartDate(end);
@@ -81,8 +90,8 @@ public class StockChartService implements StockPriceUseCase {
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
 
-        String benchmarkTicker = resolveBenchmarkTicker(ticker);
-        List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
+        BenchmarkInfo benchmarkInfo = resolveBenchmark(stock.getMarketType());
+        List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkInfo.ticker(), start, end);
 
         BigDecimal stockReturn = calculateTotalReturn(stockPrices);
         BigDecimal benchmarkReturn = calculateTotalReturn(benchmarkPrices);
@@ -90,15 +99,19 @@ public class StockChartService implements StockPriceUseCase {
         return new ReturnRateResponse(ticker, period.getLabel(), stockReturn, benchmarkReturn);
     }
 
-    private void validateStock(String ticker) {
-        if (!stockPort.existsByTicker(ticker)) {
-            throw new StockPriceException(ErrorCode.STOCK_NOT_FOUND);
-        }
+    private Stock findStockOrThrow(String ticker) {
+        return stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new StockPriceException(ErrorCode.STOCK_NOT_FOUND));
     }
 
-    private String resolveBenchmarkTicker(String ticker) {
-        // TODO: MarketType에 따른 벤치마크 매핑 로직 추가 (예: 나스닥 종목 -> ^IXIC)
-        return DEFAULT_BENCHMARK;
+    private record BenchmarkInfo(String ticker, String name) {}
+
+    private BenchmarkInfo resolveBenchmark(MarketType marketType) {
+        return switch (marketType) {
+            case KOSPI -> new BenchmarkInfo("^KS11", "KOSPI");
+            case KOSDAQ -> new BenchmarkInfo("^KQ11", "KOSDAQ");
+            case NASDAQ, NYSE, AMEX -> new BenchmarkInfo("^GSPC", "S&P 500");
+        };
     }
 
     private ChartPoint toChartPoint(StockPriceResult p) {
@@ -120,7 +133,7 @@ public class StockChartService implements StockPriceUseCase {
 
     private List<BenchmarkPoint> calculateBenchmarkReturns(List<StockPriceResult> daily) {
         if (daily.isEmpty()) return Collections.emptyList();
-        
+
         BigDecimal firstPrice = daily.get(0).adjClosePrice();
         if (firstPrice.compareTo(BigDecimal.ZERO) == 0) return Collections.emptyList();
 
@@ -138,10 +151,10 @@ public class StockChartService implements StockPriceUseCase {
 
     private BigDecimal calculateTotalReturn(List<StockPriceResult> prices) {
         if (prices.size() < 2) return BigDecimal.ZERO;
-        
+
         BigDecimal startPrice = prices.get(0).adjClosePrice();
         BigDecimal endPrice = prices.get(prices.size() - 1).adjClosePrice();
-        
+
         if (startPrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
 
         return endPrice.subtract(startPrice)
