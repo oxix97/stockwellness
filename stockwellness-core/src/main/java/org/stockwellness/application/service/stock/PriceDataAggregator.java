@@ -64,7 +64,12 @@ public class PriceDataAggregator {
                 low,
                 last.closePrice(),
                 last.adjClosePrice(),
-                totalVolume
+                totalVolume,
+                null, // transactionAmt
+                null, // ma5
+                null, // ma20
+                null, // ma60
+                null  // ma120
         );
     }
 }

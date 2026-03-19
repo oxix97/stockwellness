@@ -66,7 +66,7 @@ public class StockChartService implements StockPriceUseCase {
             }
         }
 
-        return new ChartDataResponse(query.ticker(), aggregatedPrices, benchmarks);
+        return new ChartDataResponse(query.ticker(), null, null, aggregatedPrices, benchmarks);
     }
 
     @Override
@@ -109,7 +109,12 @@ public class StockChartService implements StockPriceUseCase {
                 p.lowPrice(),
                 p.closePrice(),
                 p.adjClosePrice(),
-                p.volume()
+                p.volume(),
+                p.transactionAmt(),
+                p.ma5(),
+                p.ma20(),
+                p.ma60(),
+                p.ma120()
         );
     }
 

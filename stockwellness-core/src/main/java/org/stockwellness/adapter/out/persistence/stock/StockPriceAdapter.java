@@ -170,7 +170,12 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
                                 p.getLowPrice(),
                                 p.getClosePrice(),
                                 p.getAdjClosePrice(),
-                                p.getVolume()
+                                p.getVolume(),
+                                p.getTransactionAmt(),
+                                p.getIndicators() != null ? p.getIndicators().getMa5() : null,
+                                p.getIndicators() != null ? p.getIndicators().getMa20() : null,
+                                p.getIndicators() != null ? p.getIndicators().getMa60() : null,
+                                p.getIndicators() != null ? p.getIndicators().getMa120() : null
                         ), Collectors.toList())
                 ));
     }
