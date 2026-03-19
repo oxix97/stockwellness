@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 
@@ -17,9 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(classes = LoggingAspectTest.TestConfig.class)
 class LoggingAspectTest {
-
-    @Autowired
-    private LoggingAspect loggingAspect;
 
     @Autowired
     private AnnotatedService annotatedService;
@@ -47,7 +43,7 @@ class LoggingAspectTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void testMaskingLogic() {
+    void testMaskingLogic() throws Exception {
         // Given
         TestDto dto = TestDto.builder()
                 .username("user1")
@@ -61,14 +57,11 @@ class LoggingAspectTest {
                 .build();
 
         // When
-        // LoggingAspect uses Object[] for arguments
-        Object maskedResult = ReflectionTestUtils.invokeMethod(loggingAspect, "maskSensitiveData", (Object) new Object[]{dto});
+        com.fasterxml.jackson.databind.ObjectMapper mapper = MaskingObjectMapper.create();
+        String json = mapper.writeValueAsString(dto);
+        Map<String, Object> resultMap = mapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<>() {});
 
         // Then
-        assertThat(maskedResult).isInstanceOf(java.util.List.class);
-        java.util.List<?> results = (java.util.List<?>) maskedResult;
-        Map<String, Object> resultMap = (Map<String, Object>) results.get(0);
-
         assertThat(resultMap.get("username")).isEqualTo("user1");
         assertThat(resultMap.get("password")).isEqualTo("********");
         assertThat(resultMap.get("email")).isEqualTo("********");
