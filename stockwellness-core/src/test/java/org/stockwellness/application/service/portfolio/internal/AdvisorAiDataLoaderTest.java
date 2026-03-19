@@ -67,7 +67,7 @@ class AdvisorAiDataLoaderTest {
         given(tech.priceInfo()).willReturn(new AiAnalysisContext.PriceSummary(new BigDecimal("150"), BigDecimal.ZERO, BigDecimal.ZERO));
         given(loadTechnicalDataPort.loadTechnicalContexts(anyList())).willReturn(Map.of("AAPL", tech));
         
-        StockPriceResult benchmark = new StockPriceResult(LocalDate.now(), new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"), new BigDecimal("2505"), new BigDecimal("2505"), 1000000L);
+        StockPriceResult benchmark = new StockPriceResult(LocalDate.now(), new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"), new BigDecimal("2505"), new BigDecimal("2505"), 1000000L, null, null, null, null, null);
         given(loadBenchmarkPort.loadBenchmarkPrices(eq("KOSPI"), any(), any())).willReturn(List.of(benchmark));
 
         // when

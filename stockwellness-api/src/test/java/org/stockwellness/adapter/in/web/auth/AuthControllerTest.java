@@ -57,7 +57,8 @@ class AuthControllerTest extends RestDocsSupport {
                     fieldWithPath("data.refreshToken").description("리프레시 토큰"),
                     fieldWithPath("data.memberId").description("회원 ID"),
                     fieldWithPath("data.email").description("이메일"),
-                    fieldWithPath("data.nickname").description("닉네임")
+                    fieldWithPath("data.nickname").description("닉네임"),
+                    fieldWithPath("data.joinedDate").description("가입 일자")
             ));
 
             // when & then

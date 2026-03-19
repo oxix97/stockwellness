@@ -40,8 +40,8 @@ class SimulationDataProviderTest {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
 
-        StockPriceResult aaplPrice = new StockPriceResult(start, BigDecimal.valueOf(100), BigDecimal.valueOf(105), BigDecimal.valueOf(95), BigDecimal.valueOf(102), BigDecimal.valueOf(102), 1000L);
-        StockPriceResult benchmarkPrice = new StockPriceResult(start, BigDecimal.valueOf(2500), BigDecimal.valueOf(2550), BigDecimal.valueOf(2450), BigDecimal.valueOf(2520), BigDecimal.valueOf(2520), 1000000L);
+        StockPriceResult aaplPrice = new StockPriceResult(start, BigDecimal.valueOf(100), BigDecimal.valueOf(105), BigDecimal.valueOf(95), BigDecimal.valueOf(102), BigDecimal.valueOf(102), 1000L, null, null, null, null, null);
+        StockPriceResult benchmarkPrice = new StockPriceResult(start, BigDecimal.valueOf(2500), BigDecimal.valueOf(2550), BigDecimal.valueOf(2450), BigDecimal.valueOf(2520), BigDecimal.valueOf(2520), 1000000L, null, null, null, null, null);
 
         given(stockPricePort.loadPricesByTickers(symbols, start, end))
                 .willReturn(Map.of("AAPL", List.of(aaplPrice)));
