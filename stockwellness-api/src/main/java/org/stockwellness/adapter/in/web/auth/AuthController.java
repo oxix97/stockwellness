@@ -35,7 +35,8 @@ public class AuthController {
             result.refreshToken(),
             result.memberId(),
             result.email(),
-            result.nickname()
+            result.nickname(),
+            result.joinedDate()
         );
         return ApiResponse.success(response);
     }

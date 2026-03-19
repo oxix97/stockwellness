@@ -65,7 +65,14 @@ public class AuthService implements AuthUseCase {
         RefreshToken rt = RefreshToken.create(member.getId(), refreshToken, expiredAt);
         refreshTokenPort.save(rt);
 
-        return new LoginResult(accessToken, refreshToken, member.getId(), member.getEmail().getAddress(), member.getNickname());
+        return new LoginResult(
+                accessToken,
+                refreshToken,
+                member.getId(),
+                member.getEmail().getAddress(),
+                member.getNickname(),
+                member.getCreatedAt().toLocalDate()
+        );
     }
 
     @Override
