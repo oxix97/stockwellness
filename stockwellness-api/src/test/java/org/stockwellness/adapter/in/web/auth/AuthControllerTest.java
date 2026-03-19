@@ -17,6 +17,7 @@ import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.support.RestDocsSupport;
 import org.springframework.restdocs.payload.FieldDescriptor;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +47,7 @@ class AuthControllerTest extends RestDocsSupport {
         void login_success() throws Exception {
             // given
             LoginRequest request = AuthFixture.createLoginRequest();
-            LoginResult result = new LoginResult(AuthFixture.ACCESS_TOKEN, AuthFixture.REFRESH_TOKEN, 1L, AuthFixture.EMAIL, AuthFixture.NICKNAME);
+            LoginResult result = new LoginResult(AuthFixture.ACCESS_TOKEN, AuthFixture.REFRESH_TOKEN, 1L, AuthFixture.EMAIL, AuthFixture.NICKNAME, LocalDate.now());
 
             given(authUseCase.login(any(LoginCommand.class))).willReturn(result);
 
