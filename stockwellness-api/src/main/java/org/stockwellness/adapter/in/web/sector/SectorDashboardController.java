@@ -68,7 +68,7 @@ public class SectorDashboardController {
     /**
      * [기능 30] 섹터 상세 및 진단 정보 조회
      */
-    @GetMapping("/{sectorCode}")
+    @GetMapping("/{sectorCode}/detail")
     public ApiResponse<SectorDetailResult> getSectorDetail(
             @PathVariable String sectorCode,
             @RequestParam(required = false) 
