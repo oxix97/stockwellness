@@ -133,7 +133,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                 .willReturn(result);
 
         // when & then
-        mockMvc.perform(get("/api/v1/sectors/{sectorCode}", "001")
+        mockMvc.perform(get("/api/v1/sectors/{sectorCode}/detail", "001")
                         .param("date", "2026-02-26"))
                 .andExpect(status().isOk())
                 .andDo(document("sector-detail",

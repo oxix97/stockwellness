@@ -130,7 +130,7 @@ class StockControllerTest extends RestDocsSupport {
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.add(fieldWithPath("data[]").description("인기 검색어 목록"));
 
-        mockMvc.perform(get("/api/v1/stocks/popular"))
+        mockMvc.perform(get("/api/v1/stocks/popular-search"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())

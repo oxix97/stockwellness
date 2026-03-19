@@ -103,7 +103,7 @@ public class StockController {
     /**
      * 인기 검색어 Top 10 조회
      */
-    @GetMapping("/popular")
+    @GetMapping("/popular-search")
     public ApiResponse<List<String>> getPopularSearches() {
         return ApiResponse.success(stockSearchUseCase.getPopularSearches());
     }
