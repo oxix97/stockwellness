@@ -33,7 +33,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
 
     @Override
     public String generateAccessToken(Member member) {
-        return generateAccessToken(member.getId(), member.getEmail().getAddress(), member.getLoginType(), member.getRole());
+        return generateAccessToken(member.getId(), member.getEmail().getAddress(), member.getNickname(), member.getLoginType(), member.getRole());
     }
 
     @Override
@@ -42,13 +42,14 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
     }
 
     @Override
-    public String generateAccessToken(Long id, String email, LoginType loginType, MemberRole role) {
+    public String generateAccessToken(Long id, String email, String nickname, LoginType loginType, MemberRole role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.accessTokenExpiryMs());
 
         return Jwts.builder()
                 .subject(id.toString())
                 .claim("email", email)
+                .claim("nickname", nickname)
                 .claim("loginType", loginType)
                 .claim("role", role.name())
                 .issuedAt(now)

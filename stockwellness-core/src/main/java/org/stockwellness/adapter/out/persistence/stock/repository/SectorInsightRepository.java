@@ -44,4 +44,7 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
     List<SectorInsight> findBySectorCodeInAndBaseDate(List<String> sectorCodes, LocalDate baseDate);
 
     List<SectorInsight> findBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(String sectorCode, LocalDate endDate, Pageable pageable);
+
+    @Query("SELECT MAX(s.baseDate) FROM SectorInsight s")
+    Optional<LocalDate> findMaxBaseDate();
 }
