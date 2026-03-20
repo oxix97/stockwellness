@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.in.web.watchlist;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.restdocs.payload.FieldDescriptor;
@@ -127,6 +128,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                         fieldWithPath("ticker").description("종목 티커"),
                                         fieldWithPath("note").description("투자 메모 (선택)")
                                 )
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
@@ -157,6 +159,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                 )
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
                                 .requestFields(fieldWithPath("note").description("수정할 메모 내용"))
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
@@ -182,6 +185,7 @@ class WatchlistControllerTest extends RestDocsSupport {
                                         parameterWithName("ticker").description("종목 티커")
                                 )
                                 .requestHeaders(headerWithName("Authorization").description("Bearer Access Token"))
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));

@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.in.web.stock;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.SliceImpl;
@@ -187,6 +188,7 @@ class StockControllerTest extends RestDocsSupport {
                                 .queryParameters(
                                         parameterWithName("keyword").description("삭제할 검색어")
                                 )
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
@@ -203,6 +205,7 @@ class StockControllerTest extends RestDocsSupport {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("최근 검색어 전체 삭제")
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
