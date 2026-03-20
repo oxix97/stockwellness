@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.command.UpdateMemberCommand;
+import org.stockwellness.application.port.in.member.command.UpdateNotificationCommand;
 import org.stockwellness.application.port.in.member.result.MemberResult;
+import org.stockwellness.application.port.in.member.result.NotificationSettingsResult;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.exception.MemberNotFoundException;
@@ -49,6 +51,21 @@ public class MemberService implements MemberUseCase {
     public void withdrawMember(Long memberId) {
         var member = findMember(memberId);
         member.deactivate();
+    }
+
+    @Override
+    public NotificationSettingsResult getNotificationSettings(Long memberId) {
+        var member = findMember(memberId);
+        return NotificationSettingsResult.from(member);
+    }
+
+    @Override
+    public void updateNotificationSettings(Long memberId, UpdateNotificationCommand command) {
+        var member = findMember(memberId);
+        if (!member.isActive()) {
+            throw new GlobalException(UNAUTHORIZED);
+        }
+        member.updateNotifications(command.rebalancing(), command.marketAlert(), command.newListing());
     }
 
     private Member findMember(Long memberId) {
