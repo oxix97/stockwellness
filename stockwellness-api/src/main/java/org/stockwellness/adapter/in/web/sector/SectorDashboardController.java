@@ -1,7 +1,6 @@
 package org.stockwellness.adapter.in.web.sector;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
@@ -16,7 +15,6 @@ import org.stockwellness.global.util.DateUtil;
 import java.time.LocalDate;
 import java.util.List;
 
-@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/sectors")
@@ -29,11 +27,10 @@ public class SectorDashboardController {
      */
     @GetMapping("/ranking/fluctuation")
     public ApiResponse<List<SectorRankingResult>> getTopSectorsByFluctuation(
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
-        
+
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ApiResponse.success(sectorInsightUseCase.getTopSectorsByFluctuation(targetDate, marketType, limit));
     }
@@ -47,7 +44,7 @@ public class SectorDashboardController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(defaultValue = "10") int limit) {
-        
+
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ApiResponse.success(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit));
     }
@@ -60,7 +57,7 @@ public class SectorDashboardController {
             @PathVariable String sectorCode,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        
+
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ApiResponse.success(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate));
     }
@@ -71,9 +68,9 @@ public class SectorDashboardController {
     @GetMapping("/{sectorCode}/detail")
     public ApiResponse<SectorDetailResult> getSectorDetail(
             @PathVariable String sectorCode,
-            @RequestParam(required = false) 
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        
+
         LocalDate targetDate = DateUtil.getTodayIfNull(date);
         return ApiResponse.success(sectorInsightUseCase.getSectorDetail(sectorCode, targetDate));
     }
