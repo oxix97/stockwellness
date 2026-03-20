@@ -57,7 +57,7 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : 100,
-                      "timestamp" : "2026-03-20T15:54:49.941036",
+                      "timestamp" : "2026-03-20T16:22:04.1755",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -91,7 +91,7 @@ paths:
                           "redis" : "UP"
                         }
                       },
-                      "timestamp" : "2026-03-20T15:54:37.540722",
+                      "timestamp" : "2026-03-20T16:21:53.707557",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -138,7 +138,7 @@ paths:
                         "nickname" : "tester",
                         "joinedDate" : "2026-03-20"
                       },
-                      "timestamp" : "2026-03-20T15:54:41.621349",
+                      "timestamp" : "2026-03-20T16:21:57.703026",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -163,7 +163,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 auth-logout:
                   value: |-
@@ -173,7 +173,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:41.459023",
+                      "timestamp" : "2026-03-20T16:21:57.538215",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -214,7 +214,7 @@ paths:
                         "accessToken" : "new.access.token",
                         "refreshToken" : "new.refresh.token"
                       },
-                      "timestamp" : "2026-03-20T15:54:41.559521",
+                      "timestamp" : "2026-03-20T16:21:57.647504",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -254,7 +254,7 @@ paths:
                         "totalPurchaseAmount" : 0,
                         "items" : [ ]
                       },
-                      "timestamp" : "2026-03-20T15:54:50.023236",
+                      "timestamp" : "2026-03-20T16:22:04.252499",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -287,7 +287,7 @@ paths:
                         "sectorName" : "기타",
                         "status" : "ACTIVE"
                       } ],
-                      "timestamp" : "2026-03-20T15:54:55.662706",
+                      "timestamp" : "2026-03-20T16:22:11.394437",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -314,7 +314,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : [ "삼성전자", "애플", "엔비디아" ],
-                      "timestamp" : "2026-03-20T15:54:55.455855",
+                      "timestamp" : "2026-03-20T16:22:11.19031",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -392,7 +392,7 @@ paths:
                         },
                         "empty" : false
                       },
-                      "timestamp" : "2026-03-20T15:54:55.501359",
+                      "timestamp" : "2026-03-20T16:22:11.245538",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -435,7 +435,7 @@ paths:
                         "name" : "테크주",
                         "itemCount" : 5
                       } ],
-                      "timestamp" : "2026-03-20T15:54:58.497998",
+                      "timestamp" : "2026-03-20T16:22:16.286683",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -480,7 +480,7 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : 10,
-                      "timestamp" : "2026-03-20T15:54:58.475207",
+                      "timestamp" : "2026-03-20T16:22:16.262509",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -538,7 +538,7 @@ paths:
                         "fluctuationRate" : -1.2,
                         "isOverheated" : true
                       } ],
-                      "timestamp" : "2026-03-20T15:54:52.651181",
+                      "timestamp" : "2026-03-20T16:22:07.794827",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -598,7 +598,7 @@ paths:
                         "foreignConsecutiveBuyDays" : 0,
                         "instConsecutiveBuyDays" : 2
                       } ],
-                      "timestamp" : "2026-03-20T15:54:52.614869",
+                      "timestamp" : "2026-03-20T16:22:07.722002",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -672,7 +672,7 @@ paths:
                           "transactionAmt" : 12000000000
                         } ]
                       },
-                      "timestamp" : "2026-03-20T15:54:52.68216",
+                      "timestamp" : "2026-03-20T16:22:07.836984",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -699,7 +699,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : [ ],
-                      "timestamp" : "2026-03-20T15:54:55.473246",
+                      "timestamp" : "2026-03-20T16:22:11.209144",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -730,7 +730,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 stock-search-history-delete:
                   value: |-
@@ -740,7 +740,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:55.384337",
+                      "timestamp" : "2026-03-20T16:22:10.983603",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -785,7 +785,7 @@ paths:
                         "stockReturnRate" : 15.5,
                         "benchmarkReturnRate" : 10.2
                       },
-                      "timestamp" : "2026-03-20T15:54:55.683356",
+                      "timestamp" : "2026-03-20T16:22:11.419595",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -821,9 +821,9 @@ paths:
                       "data" : {
                         "content" : "상세 조언 내용입니다.",
                         "action" : "REBALANCE",
-                        "createdAt" : "2026-03-20T15:54:49.971921"
+                        "createdAt" : "2026-03-20T16:22:04.20838"
                       },
-                      "timestamp" : "2026-03-20T15:54:49.973466",
+                      "timestamp" : "2026-03-20T16:22:04.21031",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -878,7 +878,7 @@ paths:
                           "benchmarkReturnRate" : 3
                         } ]
                       },
-                      "timestamp" : "2026-03-20T15:54:49.68348",
+                      "timestamp" : "2026-03-20T16:22:03.823127",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -921,7 +921,7 @@ paths:
                           "AAPL" : 1
                         }
                       },
-                      "timestamp" : "2026-03-20T15:54:49.601224",
+                      "timestamp" : "2026-03-20T16:22:03.714439",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -969,7 +969,7 @@ paths:
                           "value" : 100
                         } ]
                       },
-                      "timestamp" : "2026-03-20T15:54:49.639249",
+                      "timestamp" : "2026-03-20T16:22:03.76445",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1015,7 +1015,7 @@ paths:
                           "expectedTradeAmount" : 1800000
                         } ]
                       },
-                      "timestamp" : "2026-03-20T15:54:49.716549",
+                      "timestamp" : "2026-03-20T16:22:03.860112",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1059,7 +1059,7 @@ paths:
                         "sharpeRatio" : 0,
                         "beta" : 0
                       },
-                      "timestamp" : "2026-03-20T15:54:49.751083",
+                      "timestamp" : "2026-03-20T16:22:03.90561",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1076,7 +1076,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 stock-search-history-clear:
                   value: |-
@@ -1086,7 +1086,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:55.64565",
+                      "timestamp" : "2026-03-20T16:22:11.375947",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1157,7 +1157,7 @@ paths:
                         } ],
                         "benchmarks" : [ ]
                       },
-                      "timestamp" : "2026-03-20T15:54:55.605839",
+                      "timestamp" : "2026-03-20T16:22:11.333869",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1210,7 +1210,7 @@ paths:
                           "aiInsight" : "AI 요약 내용..."
                         } ]
                       },
-                      "timestamp" : "2026-03-20T15:54:58.549692",
+                      "timestamp" : "2026-03-20T16:22:16.336976",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1252,7 +1252,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 watchlist-item-add:
                   value: |-
@@ -1262,7 +1262,7 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:58.440136",
+                      "timestamp" : "2026-03-20T16:22:16.221129",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1299,7 +1299,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 watchlist-item-remove:
                   value: |-
@@ -1309,7 +1309,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:58.52654",
+                      "timestamp" : "2026-03-20T16:22:16.315049",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1357,7 +1357,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-auth-logout653085325"
+                $ref: "#/components/schemas/EmptyDataResponse"
               examples:
                 watchlist-item-note-update:
                   value: |-
@@ -1367,7 +1367,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-03-20T15:54:58.593906",
+                      "timestamp" : "2026-03-20T16:22:16.37709",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1602,6 +1602,41 @@ components:
             empty:
               type: boolean
               description: 결과 비어있음 여부
+        success:
+          type: boolean
+          description: 성공 여부
+        message:
+          type: string
+          description: 결과 메시지
+        errors:
+          type: array
+          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
+          nullable: true
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        timestamp:
+          type: string
+          description: 응답 시간
+        status:
+          type: number
+          description: HTTP 상태 코드
+    EmptyDataResponse:
+      title: EmptyDataResponse
+      required:
+      - code
+      - message
+      - status
+      - success
+      - timestamp
+      type: object
+      properties:
+        code:
+          type: string
+          description: 비즈니스 상세 코드
         success:
           type: boolean
           description: 성공 여부
@@ -1965,40 +2000,6 @@ components:
             refreshToken:
               type: string
               description: 리프레시 토큰
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 결과 메시지
-        errors:
-          type: array
-          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
-          nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        timestamp:
-          type: string
-          description: 응답 시간
-        status:
-          type: number
-          description: HTTP 상태 코드
-    api-v1-auth-logout653085325:
-      required:
-      - code
-      - message
-      - status
-      - success
-      - timestamp
-      type: object
-      properties:
-        code:
-          type: string
-          description: 비즈니스 상세 코드
         success:
           type: boolean
           description: 성공 여부
@@ -2516,6 +2517,44 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
+    api-v1-portfolios-1624336831:
+      required:
+      - code
+      - data
+      - message
+      - status
+      - success
+      - timestamp
+      type: object
+      properties:
+        code:
+          type: string
+          description: 비즈니스 상세 코드
+        data:
+          type: number
+          description: 생성된 포트폴리오 ID
+        success:
+          type: boolean
+          description: 성공 여부
+        message:
+          type: string
+          description: 결과 메시지
+        errors:
+          type: array
+          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
+          nullable: true
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        timestamp:
+          type: string
+          description: 응답 시간
+        status:
+          type: number
+          description: HTTP 상태 코드
     api-v1-watchlist-groups-groupId-items104135515:
       required:
       - code
@@ -2574,44 +2613,6 @@ components:
                   rsiStatus:
                     type: string
                     description: RSI 상태
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 결과 메시지
-        errors:
-          type: array
-          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
-          nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        timestamp:
-          type: string
-          description: 응답 시간
-        status:
-          type: number
-          description: HTTP 상태 코드
-    api-v1-portfolios-1624336831:
-      required:
-      - code
-      - data
-      - message
-      - status
-      - success
-      - timestamp
-      type: object
-      properties:
-        code:
-          type: string
-          description: 비즈니스 상세 코드
-        data:
-          type: number
-          description: 생성된 포트폴리오 ID
         success:
           type: boolean
           description: 성공 여부

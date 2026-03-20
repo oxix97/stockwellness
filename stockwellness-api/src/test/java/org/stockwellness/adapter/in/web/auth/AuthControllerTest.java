@@ -146,6 +146,7 @@ class AuthControllerTest extends RestDocsSupport {
                                     .requestHeaders(
                                             headerWithName("Authorization").description("Bearer Access Token")
                                     )
+                                    .responseSchema(Schema.schema("EmptyDataResponse"))
                                     .responseFields(commonResponseFieldsWithNoData())
                                     .build())
                     ));
