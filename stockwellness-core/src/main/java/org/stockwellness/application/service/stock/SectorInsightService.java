@@ -41,7 +41,13 @@ public class SectorInsightService implements SectorInsightUseCase {
     @Override
     @Cacheable(cacheNames = "sectorRanking", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit")
     public List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
-        return sectorInsightPort.findTopSectorsByFluctuation(date, marketType, limit).stream()
+        List<SectorInsight> result = sectorInsightPort.findTopSectorsByFluctuation(date, marketType, limit);
+        if (result.isEmpty()) {
+            result = sectorInsightPort.findLatestDate()
+                    .map(latestDate -> sectorInsightPort.findTopSectorsByFluctuation(latestDate, marketType, limit))
+                    .orElse(List.of());
+        }
+        return result.stream()
                 .map(s -> new SectorRankingResult(s.getSectorCode(), s.getSectorName(), s.getSectorIndexCurrentPrice(), s.getAvgFluctuationRate(), s.isOverheated()))
                 .toList();
     }
@@ -49,7 +55,13 @@ public class SectorInsightService implements SectorInsightUseCase {
     @Override
     @Cacheable(cacheNames = "sectorSupply", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit")
     public List<SectorSupplyResult> getTopSectorsBySupply(LocalDate date, MarketType marketType, int limit) {
-        return sectorInsightPort.findTopSectorsBySupply(date, marketType, limit).stream()
+        List<SectorInsight> result = sectorInsightPort.findTopSectorsBySupply(date, marketType, limit);
+        if (result.isEmpty()) {
+            result = sectorInsightPort.findLatestDate()
+                    .map(latestDate -> sectorInsightPort.findTopSectorsBySupply(latestDate, marketType, limit))
+                    .orElse(List.of());
+        }
+        return result.stream()
                 .map(s -> new SectorSupplyResult(s.getSectorCode(), s.getSectorName(), s.getNetForeignBuyAmount(), s.getNetInstBuyAmount(), s.getForeignConsecutiveBuyDays(), s.getInstConsecutiveBuyDays()))
                 .toList();
     }

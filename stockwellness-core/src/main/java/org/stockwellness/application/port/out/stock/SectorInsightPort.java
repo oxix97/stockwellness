@@ -32,4 +32,9 @@ public interface SectorInsightPort {
      * 특정 기간 동안의 지수 이력을 리스트로 가져옵니다.
      */
     List<SectorInsight> findHistoryByCode(String code, LocalDate endDate, int limit);
+
+    /**
+     * DB에 저장된 가장 최근 base_date를 반환합니다.
+     */
+    Optional<LocalDate> findLatestDate();
 }
