@@ -1,6 +1,7 @@
 package org.stockwellness.domain.stock.price;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
@@ -65,12 +66,15 @@ public class TechnicalIndicators implements Serializable {
     @Column(name = "alignment_status", length = 20)
     private AlignmentStatus alignmentStatus;
 
+    @JsonProperty("isGoldenCross")
     @Column(name = "is_golden_cross")
     private Boolean isGoldenCross;
 
+    @JsonProperty("isDeadCross")
     @Column(name = "is_dead_cross")
     private Boolean isDeadCross;
 
+    @JsonProperty("isMacdCross")
     @Column(name = "is_macd_cross")
     private Boolean isMacdCross;
 
