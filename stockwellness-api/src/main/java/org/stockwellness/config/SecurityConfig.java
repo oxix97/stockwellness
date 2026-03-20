@@ -66,6 +66,7 @@ public class SecurityConfig {
     private String[] permitPatterns() {
         return new String[]{
                 "/api/v1/auth/**",          // 로그인, 재발급, 더미 로그인 등
+                "/api/v1/stocks/popular-search", // 인기 검색어 — 비로그인 공개
                 "/oauth2/**",               // 소셜 로그인 콜백
                 "/login/oauth2/**",         // 소셜 로그인 엔드포인트
                 "/actuator/**",
