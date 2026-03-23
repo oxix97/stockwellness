@@ -18,7 +18,7 @@ public class BacktestEngine {
                 .sorted()
                 .toList();
 
-        if (allDates.isEmpty()) return new BacktestResult(List.of());
+        if (allDates.isEmpty()) return BacktestCalculator.calculate(Collections.emptyList());
 
         // 최적화: 시계열 데이터를 배열로 사전 정렬 및 매핑 (O(1) 접근)
         Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data, allDates);
@@ -56,7 +56,7 @@ public class BacktestEngine {
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, initialAmount, returnRate, benchmarkReturnRate));
         }
 
-        return new BacktestResult(results);
+        return BacktestCalculator.calculate(results);
     }
 
     public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount) {
@@ -65,7 +65,7 @@ public class BacktestEngine {
                 .sorted()
                 .toList();
 
-        if (allDates.isEmpty()) return new BacktestResult(List.of());
+        if (allDates.isEmpty()) return BacktestCalculator.calculate(Collections.emptyList());
 
         Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data, allDates);
         BigDecimal[] benchmarkArray = extractClosePrices(data.benchmarkPrices(), allDates);
@@ -111,7 +111,7 @@ public class BacktestEngine {
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, totalInvested, returnRate, benchmarkReturnRate));
         }
 
-        return new BacktestResult(results);
+        return BacktestCalculator.calculate(results);
     }
 
     /**
