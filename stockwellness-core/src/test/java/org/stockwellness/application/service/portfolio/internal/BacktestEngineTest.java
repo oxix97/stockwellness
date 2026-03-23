@@ -36,7 +36,7 @@ class BacktestEngineTest {
         BigDecimal initialAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount);
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -66,7 +66,7 @@ class BacktestEngineTest {
         BigDecimal monthlyAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount);
+        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);

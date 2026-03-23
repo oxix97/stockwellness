@@ -176,7 +176,17 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         BacktestResult result = new BacktestResult(
                 List.of(new BacktestResult.DailyBacktestResult(
                         LocalDate.now(), BigDecimal.valueOf(1000000), BigDecimal.valueOf(1000000),
-                        BigDecimal.valueOf(5), BigDecimal.valueOf(3)))
+                        BigDecimal.valueOf(5), BigDecimal.valueOf(3))),
+                BigDecimal.valueOf(0.15), // cagr
+                BigDecimal.valueOf(-0.10), // mdd
+                BigDecimal.valueOf(1.5), // sharpeRatio
+                BigDecimal.valueOf(0.20), // totalReturnRate
+                BigDecimal.valueOf(0.12), // volatility
+                BigDecimal.valueOf(0.05), // alpha
+                BigDecimal.valueOf(1.0), // beta
+                BigDecimal.valueOf(0.25), // bestYearRate
+                BigDecimal.valueOf(-0.05), // worstYearRate
+                "AI 코멘트" // aiComment
         );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
 
@@ -187,7 +197,17 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.dailyResults[].totalValue").description("총 가치"),
                 fieldWithPath("data.dailyResults[].totalInvested").description("총 투자금"),
                 fieldWithPath("data.dailyResults[].returnRate").description("누적 수익률 (%)"),
-                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("벤치마크 수익률 (%)")
+                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("벤치마크 수익률 (%)"),
+                fieldWithPath("data.cagr").description("연평균 수익률 (CAGR)"),
+                fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
+                fieldWithPath("data.sharpeRatio").description("샤프 지수"),
+                fieldWithPath("data.totalReturnRate").description("총 수익률"),
+                fieldWithPath("data.volatility").description("변동성"),
+                fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"),
+                fieldWithPath("data.beta").description("시장 민감도 (Beta)"),
+                fieldWithPath("data.bestYearRate").description("최고의 해 수익률"),
+                fieldWithPath("data.worstYearRate").description("최악의 해 수익률"),
+                fieldWithPath("data.aiComment").description("AI 분석 코멘트").optional()
         ));
 
         mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)

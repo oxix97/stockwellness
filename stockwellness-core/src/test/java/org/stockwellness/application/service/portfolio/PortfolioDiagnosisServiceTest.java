@@ -59,11 +59,11 @@ class PortfolioDiagnosisServiceTest {
         given(dataLoader.load(portfolioId)).willReturn(diagnosisContext);
 
         Map<String, Integer> categories = new HashMap<>();
-        categories.put(DiagnosisCategory.DEFENSE.getKey(), 80);
-        categories.put(DiagnosisCategory.ATTACK.getKey(), 70);
-        categories.put(DiagnosisCategory.ENDURANCE.getKey(), 90);
-        categories.put(DiagnosisCategory.AGILITY.getKey(), 60);
-        categories.put(DiagnosisCategory.BALANCE.getKey(), 85);
+        categories.put(DiagnosisCategory.STABILITY.getKey(), 80);
+        categories.put(DiagnosisCategory.RETURN.getKey(), 70);
+        categories.put(DiagnosisCategory.AGILITY.getKey(), 90);
+        categories.put(DiagnosisCategory.DIVERSIFICATION.getKey(), 85);
+        categories.put(DiagnosisCategory.CASH.getKey(), 60);
         
         CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories);
         given(healthCalculator.calculate(diagnosisContext)).willReturn(calculatedHealth);
@@ -76,7 +76,7 @@ class PortfolioDiagnosisServiceTest {
 
         // Then
         assertThat(result.overallScore()).isEqualTo(77);
-        assertThat(result.categories().get(DiagnosisCategory.DEFENSE.getKey())).isEqualTo(80);
+        assertThat(result.categories().get(DiagnosisCategory.STABILITY.getKey())).isEqualTo(80);
         assertThat(result.summary()).isEqualTo("Summary");
     }
 }
