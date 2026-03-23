@@ -17,10 +17,14 @@ public class BacktestCalculator {
     private static final BigDecimal RF_RATE = new BigDecimal("0.02"); // 무위험 수익률 가정 (2%)
 
     public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults) {
+        return calculate(dailyResults, null);
+    }
+
+    public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults, String aiComment) {
         if (dailyResults == null || dailyResults.isEmpty()) {
             return new BacktestResult(Collections.emptyList(),
                     BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, aiComment);
         }
 
         BigDecimal firstValue = dailyResults.get(0).totalValue();
@@ -65,12 +69,12 @@ public class BacktestCalculator {
         Map<Integer, BigDecimal> yearlyReturns = dailyResults.stream()
                 .collect(Collectors.groupingBy(r -> r.date().getYear(),
                         Collectors.mapping(BacktestResult.DailyBacktestResult::returnRate, 
-                        Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)))); // 단순 합산 (실제는 기하수익률 권장하나 일단 단순화)
+                        Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))));
         
         BigDecimal bestYear = yearlyReturns.values().stream().max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
         BigDecimal worstYear = yearlyReturns.values().stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
 
-        // 7. Alpha/Beta (임시 0 처리, 필요 시 벤치마크 수익률과 공분산 계산 로직 추가 가능)
+        // 7. Alpha/Beta (임시 처리)
         BigDecimal alpha = BigDecimal.ZERO;
         BigDecimal beta = BigDecimal.ONE;
 
@@ -84,7 +88,8 @@ public class BacktestCalculator {
                 alpha,
                 beta,
                 bestYear,
-                worstYear
+                worstYear,
+                aiComment
         );
     }
 
