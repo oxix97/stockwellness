@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 @Component
 public class BacktestEngine {
 
-    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount) {
+    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount, String rebalancingPeriod) {
         List<LocalDate> allDates = data.benchmarkPrices().stream()
                 .map(StockPriceResult::baseDate)
                 .sorted()
@@ -41,9 +41,33 @@ public class BacktestEngine {
 
         BigDecimal initialBenchmarkPrice = benchmarkArray[0];
         List<BacktestResult.DailyBacktestResult> results = new ArrayList<>(allDates.size());
+        LocalDate lastRebalanceDate = allDates.get(0);
 
         for (int i = 0; i < allDates.size(); i++) {
             LocalDate date = allDates.get(i);
+            
+            // 리밸런싱 수행 (지정된 주기에 따라 비중 재조정)
+            if (i > 0 && isRebalanceDay(date, lastRebalanceDate, rebalancingPeriod)) {
+                BigDecimal dailyValue = BigDecimal.ZERO;
+                for (Map.Entry<String, BigDecimal> entry : shares.entrySet()) {
+                    BigDecimal price = priceArrays.get(entry.getKey())[i];
+                    dailyValue = dailyValue.add(entry.getValue().multiply(price));
+                }
+                
+                // 새로운 주식 수 산출
+                for (Map.Entry<String, BigDecimal> entry : weights.entrySet()) {
+                    String symbol = entry.getKey();
+                    BigDecimal weight = entry.getValue();
+                    BigDecimal targetValue = dailyValue.multiply(weight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    BigDecimal currentPrice = priceArrays.get(symbol)[i];
+                    
+                    if (currentPrice.compareTo(BigDecimal.ZERO) > 0) {
+                        shares.put(symbol, targetValue.divide(currentPrice, 8, RoundingMode.HALF_UP));
+                    }
+                }
+                lastRebalanceDate = date;
+            }
+
             BigDecimal dailyValue = BigDecimal.ZERO;
             for (Map.Entry<String, BigDecimal> entry : shares.entrySet()) {
                 BigDecimal price = priceArrays.get(entry.getKey())[i];
@@ -59,7 +83,7 @@ public class BacktestEngine {
         return BacktestCalculator.calculate(results);
     }
 
-    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount) {
+    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, String rebalancingPeriod) {
         List<LocalDate> allDates = data.benchmarkPrices().stream()
                 .map(StockPriceResult::baseDate)
                 .sorted()
@@ -78,6 +102,7 @@ public class BacktestEngine {
         List<BacktestResult.DailyBacktestResult> results = new ArrayList<>(allDates.size());
 
         LocalDate lastInvestMonth = null;
+        LocalDate lastRebalanceDate = allDates.get(0);
 
         for (int i = 0; i < allDates.size(); i++) {
             LocalDate date = allDates.get(i);
@@ -99,6 +124,27 @@ public class BacktestEngine {
                 lastInvestMonth = date;
             }
 
+            // 리밸런싱 수행 (DCA는 투자 직후 혹은 주기적으로 비중 재조정)
+            if (i > 0 && isRebalanceDay(date, lastRebalanceDate, rebalancingPeriod)) {
+                BigDecimal dailyValue = BigDecimal.ZERO;
+                for (Map.Entry<String, BigDecimal> entry : totalShares.entrySet()) {
+                    BigDecimal price = priceArrays.get(entry.getKey())[i];
+                    dailyValue = dailyValue.add(entry.getValue().multiply(price));
+                }
+                
+                for (Map.Entry<String, BigDecimal> entry : weights.entrySet()) {
+                    String symbol = entry.getKey();
+                    BigDecimal weight = entry.getValue();
+                    BigDecimal targetValue = dailyValue.multiply(weight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    BigDecimal currentPrice = priceArrays.get(symbol)[i];
+                    
+                    if (currentPrice.compareTo(BigDecimal.ZERO) > 0) {
+                        totalShares.put(symbol, targetValue.divide(currentPrice, 8, RoundingMode.HALF_UP));
+                    }
+                }
+                lastRebalanceDate = date;
+            }
+
             BigDecimal dailyValue = BigDecimal.ZERO;
             for (Map.Entry<String, BigDecimal> entry : totalShares.entrySet()) {
                 BigDecimal price = priceArrays.get(entry.getKey())[i];
@@ -113,6 +159,18 @@ public class BacktestEngine {
 
         return BacktestCalculator.calculate(results);
     }
+
+    private boolean isRebalanceDay(LocalDate currentDate, LocalDate lastDate, String period) {
+        if (period == null || period.equalsIgnoreCase("NONE")) return false;
+        
+        return switch (period.toUpperCase()) {
+            case "MONTHLY" -> currentDate.getMonthValue() != lastDate.getMonthValue();
+            case "QUARTERLY" -> (currentDate.getMonthValue() - 1) / 3 != (lastDate.getMonthValue() - 1) / 3;
+            case "YEARLY" -> currentDate.getYear() != lastDate.getYear();
+            default -> false;
+        };
+    }
+
 
     /**
      * 모든 종목의 시세를 벤치마크 날짜 리스트에 맞춰 정렬된 배열로 변환합니다. (중간에 빈 날짜는 이전 날짜 가격으로 채움)
