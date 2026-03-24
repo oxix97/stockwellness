@@ -3,6 +3,7 @@ package org.stockwellness.application.service.portfolio;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.PortfolioAnalysisUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
@@ -45,6 +46,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private final StockPricePort stockPricePort;
     private final BacktestEngine backtestEngine;
     private final PortfolioCorrelationCalculator correlationCalculator;
+    private final AiAdvisorUseCase aiAdvisorUseCase;
 
     /**
      * 포트폴리오의 실시간 평가 가치 및 수익률을 조회합니다.
@@ -111,40 +113,14 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod()) :
                 backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod());
         
-        // AI 코멘트 추가
-        String aiComment = generateBacktestComment(result, command.benchmarkTicker());
+        // AI 어드바이저를 통한 전문적인 투자 조언 생성 (고도화)
+        String aiComment = aiAdvisorUseCase.generateBacktestAdvice(result, command.strategy(), command.benchmarkTicker());
         
         return new BacktestResult(
                 result.dailyResults(), result.cagr(), result.mdd(), result.sharpeRatio(),
                 result.totalReturnRate(), result.volatility(), result.alpha(), result.beta(),
                 result.bestYearRate(), result.worstYearRate(), aiComment
         );
-    }
-
-    /**
-     * 백테스트 성과 지표를 분석하여 AI 인사이트 코멘트를 생성합니다.
-     */
-    private String generateBacktestComment(BacktestResult result, String benchmark) {
-        StringBuilder sb = new StringBuilder();
-        BigDecimal cagr = result.cagr().multiply(BigDecimal.valueOf(100));
-        BigDecimal mdd = result.mdd().multiply(BigDecimal.valueOf(100)).abs();
-        
-        sb.append(String.format("지난 2년간 이 전략의 연평균 수익률(CAGR)은 %.2f%%이며, 최대 낙폭(MDD)은 %.2f%%를 기록했습니다. ", 
-                cagr, mdd));
-        
-        if (cagr.compareTo(BigDecimal.valueOf(15)) > 0) {
-            sb.append("시장 평균을 상회하는 강력한 성장성을 보여주는 포트폴리오입니다. ");
-        } else if (cagr.compareTo(BigDecimal.ZERO) < 0) {
-            sb.append("과거 데이터상 수익률이 저조한 편입니다. 종목 구성이나 리밸런싱 주기를 점검해볼 필요가 있습니다. ");
-        }
-        
-        if (mdd.compareTo(BigDecimal.valueOf(20)) > 0) {
-            sb.append("다만 변동성이 커서 하락장에서의 심리적 압박이 있을 수 있으니, 변동성이 낮은 자산을 섞는 것을 고려해보세요.");
-        } else {
-            sb.append("안정적인 방어력을 보여주고 있어 장기 투자에 적합한 구성으로 판단됩니다.");
-        }
-        
-        return sb.toString();
     }
 
     /**

@@ -97,7 +97,8 @@ public class StockService implements StockUseCase {
 
     @Override
     public List<StockSearchResult> getNewListings() {
-        return stockRepository.findTop10ByOrderByCreatedAtDesc().stream()
+        LocalDate since = LocalDate.now().minusDays(30);
+        return stockRepository.findNewListings(since).stream()
                 .map(s -> new StockSearchResult(
                         s.getTicker(),
                         s.getName(),

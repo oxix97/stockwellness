@@ -24,8 +24,13 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+
+import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
+import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.fixture.PortfolioFixture;
 
 @ExtendWith(MockitoExtension.class)
 class PortfolioDiagnosisServiceTest {
@@ -78,5 +83,33 @@ class PortfolioDiagnosisServiceTest {
         assertThat(result.overallScore()).isEqualTo(77);
         assertThat(result.categories().get(DiagnosisCategory.STABILITY.getKey())).isEqualTo(80);
         assertThat(result.summary()).isEqualTo("Summary");
+    }
+
+    @Test
+    @DisplayName("실패: 다른 사용자의 포트폴리오를 진단하려고 하면 UNAUTHORIZED 예외가 발생한다")
+    void fail_unauthorized() {
+        // given
+        Long portfolioId = 1L;
+        Long otherMemberId = 999L;
+        given(portfolioPort.loadPortfolio(portfolioId, otherMemberId)).willReturn(Optional.empty());
+        given(portfolioPort.findById(portfolioId)).willReturn(Optional.of(PortfolioFixture.createEntity(portfolioId)));
+
+        // when & then
+        assertThatThrownBy(() -> portfolioDiagnosisService.diagnosePortfolio(otherMemberId, portfolioId))
+                .isInstanceOf(PortfolioAccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("실패: 존재하지 않는 포트폴리오를 진단하면 PORTFOLIO_NOT_FOUND 예외가 발생한다")
+    void fail_not_found() {
+        // given
+        Long portfolioId = 1L;
+        Long memberId = 1L;
+        given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.empty());
+        given(portfolioPort.findById(portfolioId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> portfolioDiagnosisService.diagnosePortfolio(memberId, portfolioId))
+                .isInstanceOf(PortfolioNotFoundException.class);
     }
 }

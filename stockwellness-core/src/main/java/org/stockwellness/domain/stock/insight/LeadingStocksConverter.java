@@ -7,6 +7,9 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
 
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.GlobalException;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +29,7 @@ public class LeadingStocksConverter implements AttributeConverter<List<LeadingSt
             return objectMapper.writeValueAsString(attribute);
         } catch (JsonProcessingException e) {
             log.error("Error converting LeadingStocks to JSON", e);
-            throw new RuntimeException("JSON writing error", e);
+            throw new GlobalException(ErrorCode.SECTOR_SYNC_ERROR);
         }
     }
 
@@ -39,7 +42,7 @@ public class LeadingStocksConverter implements AttributeConverter<List<LeadingSt
             return objectMapper.readValue(dbData, new TypeReference<List<LeadingStock>>() {});
         } catch (IOException e) {
             log.error("Error converting JSON to LeadingStocks", e);
-            throw new RuntimeException("JSON reading error", e);
+            throw new GlobalException(ErrorCode.SECTOR_SYNC_ERROR);
         }
     }
 }

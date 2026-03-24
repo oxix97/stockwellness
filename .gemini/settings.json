@@ -15,5 +15,8 @@
         "postgres://chan:o0o0@100.85.199.81:5432/mydatabase"
       ]
     }
+  },
+  "ide": {
+    "enabled": true
   }
 }
