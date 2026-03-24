@@ -73,6 +73,8 @@ class LoggingAspectContentTest {
         JsonNode jsonNode = objectMapper.readTree(logMessage);
 
         assertThat(jsonNode.get("methodName").asText()).isEqualTo("throwException");
+        assertThat(jsonNode.has("exceptionClass")).isTrue();
+        assertThat(jsonNode.get("exceptionClass").asText()).isEqualTo("RuntimeException");
         assertThat(jsonNode.has("exceptionMessage")).isTrue();
         assertThat(jsonNode.get("exceptionMessage").asText()).isEqualTo("Test Exception");
     }

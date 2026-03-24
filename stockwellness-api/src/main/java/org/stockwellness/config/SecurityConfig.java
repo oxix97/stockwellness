@@ -1,8 +1,8 @@
 package org.stockwellness.config;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +30,9 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
+    @Value("${app.frontend-redirect-url:http://localhost:5173/auth/callback}")
+    private String frontendRedirectUrl;
+
     @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
@@ -52,7 +55,7 @@ public class SecurityConfig {
                         .successHandler(oAuth2LoginSuccessHandler)
                         .failureHandler((request, response, exception) -> {
                             log.error("OAuth2 Login Failed: {}", exception.getMessage());
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 Login Failed");
+                            response.sendRedirect(frontendRedirectUrl + "?error=oauth2_failed");
                         })
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -66,6 +69,7 @@ public class SecurityConfig {
     private String[] permitPatterns() {
         return new String[]{
                 "/api/v1/auth/**",          // 로그인, 재발급, 더미 로그인 등
+                "/api/v1/stocks/popular-search", // 인기 검색어 — 비로그인 공개
                 "/oauth2/**",               // 소셜 로그인 콜백
                 "/login/oauth2/**",         // 소셜 로그인 엔드포인트
                 "/actuator/**",

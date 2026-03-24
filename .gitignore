@@ -272,3 +272,11 @@ conductor/config/private.*
 .claude/
 /deploy/.env.prod
 /.gemini/
+bin/
+logs/
+#/stockwellness-batch/bin/
+#/stockwellness-api/bin/
+
+#/stockwellness-api/logs/
+/.gemini/
+/docs/

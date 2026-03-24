@@ -23,7 +23,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     private final AuthUseCase authUseCase;
 
-    @Value("${app.frontend-redirect-url:http://localhost:5173/oauth/callback}")
+    @Value("${app.frontend-redirect-url:http://localhost:5173/auth/callback}")
     private String frontendRedirectUrl;
 
     @Override

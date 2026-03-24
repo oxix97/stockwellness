@@ -105,6 +105,11 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     }
 
     @Override
+    public Optional<LocalDate> findLatestDate() {
+        return sectorInsightRepository.findMaxBaseDate();
+    }
+
+    @Override
     public List<MarketIndex> findAll() {
         return marketIndexRepository.findAll();
     }

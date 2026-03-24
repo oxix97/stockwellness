@@ -1,5 +1,6 @@
 package org.stockwellness.domain.portfolio;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +21,7 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 public class PortfolioItem extends AbstractEntity {
 
+    @JsonIgnore
     @ToString.Exclude
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "portfolio_id")

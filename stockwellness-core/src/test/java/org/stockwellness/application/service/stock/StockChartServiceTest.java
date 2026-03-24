@@ -14,6 +14,8 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.ChartFrequency;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.exception.StockPriceException;
@@ -22,6 +24,7 @@ import org.stockwellness.global.error.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,6 +40,8 @@ class StockChartServiceTest {
     private LoadBenchmarkPort loadBenchmarkPort;
     @Mock
     private StockPort stockPort;
+    @Mock
+    private Stock mockStock;
 
     @InjectMocks
     private StockChartService stockChartService;
@@ -52,8 +57,10 @@ class StockChartServiceTest {
         void success() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, true);
-            given(stockPort.existsByTicker(ticker)).willReturn(true);
-            
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
+            given(mockStock.getName()).willReturn("애플");
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
+
             List<StockPriceResult> mockPrices = List.of(
                     createPrice("2024-01-01", 100),
                     createPrice("2024-01-02", 110)
@@ -81,7 +88,7 @@ class StockChartServiceTest {
         void failStockNotFound() {
             // given
             ChartQuery query = new ChartQuery("UNKNOWN", ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
-            given(stockPort.existsByTicker("UNKNOWN")).willReturn(false);
+            given(stockPort.loadStockByTicker("UNKNOWN")).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> stockChartService.loadChartData(query))
@@ -94,7 +101,7 @@ class StockChartServiceTest {
         void failNoPriceData() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
-            given(stockPort.existsByTicker(ticker)).willReturn(true);
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
             given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(List.of());
 
             // when & then
@@ -112,8 +119,9 @@ class StockChartServiceTest {
         @DisplayName("성공: 종목 및 벤치마크 수익률을 계산한다")
         void success() {
             // given
-            given(stockPort.existsByTicker(ticker)).willReturn(true);
-            
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
+
             List<StockPriceResult> mockPrices = List.of(
                     createPrice("2024-01-01", 100),
                     createPrice("2024-01-02", 150)
@@ -143,7 +151,8 @@ class StockChartServiceTest {
                 BigDecimal.valueOf(adjClose),
                 BigDecimal.valueOf(adjClose),
                 BigDecimal.valueOf(adjClose),
-                100L
+                100L,
+                null, null, null, null, null
         );
     }
 }

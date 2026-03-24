@@ -11,10 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
+import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.advisor.AdviceAction;
+import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
@@ -29,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
@@ -38,6 +42,8 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
@@ -156,6 +162,122 @@ class PortfolioControllerTest extends RestDocsSupport {
                                         add(fieldWithPath("data.action").description("핵심 조언 액션"));
                                         add(fieldWithPath("data.createdAt").description("생성 일시"));
                                     }})
+                                    .build())));
+        }
+
+        @Test
+        @MockMember(id = 1L)
+        @DisplayName("목록 조회: 내 포트폴리오 목록을 조회한다")
+        void get_my_portfolios() throws Exception {
+            // given
+            PortfolioResponse response = PortfolioResponse.from(PortfolioFixture.createEntity(100L));
+            given(portfolioFacade.getMyPortfolios(any())).willReturn(List.of(response));
+
+            mockMvc.perform(get("/api/v1/portfolios")
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .contentType(APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andDo(document("portfolio-list",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("내 포트폴리오 목록 조회")
+                                    .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                        add(fieldWithPath("data[].id").description("포트폴리오 ID"));
+                                        add(fieldWithPath("data[].name").description("이름"));
+                                        add(fieldWithPath("data[].description").description("설명"));
+                                        add(fieldWithPath("data[].totalPurchaseAmount").description("총 매수 금액"));
+                                        add(subsectionWithPath("data[].items").description("포트폴리오 구성 종목 목록"));
+                                    }})
+                                    .build())));
+        }
+
+        @Test
+        @MockMember(id = 1L)
+        @DisplayName("진단: 포트폴리오 건강 상태를 진단한다")
+        void diagnose_portfolio() throws Exception {
+            // given
+            Map<String, Integer> categories = Map.of(
+                    DiagnosisCategory.STABILITY.getKey(), 80,
+                    DiagnosisCategory.RETURN.getKey(), 70,
+                    DiagnosisCategory.AGILITY.getKey(), 90,
+                    DiagnosisCategory.DIVERSIFICATION.getKey(), 85,
+                    DiagnosisCategory.CASH.getKey(), 60
+            );
+            PortfolioHealthResult result = new PortfolioHealthResult(77, categories, List.of(), "Summary", "Insight", List.of("Step 1"));
+            given(portfolioFacade.diagnosePortfolio(any(), any())).willReturn(result);
+
+            mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/health", 100L)
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .contentType(APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andDo(document("portfolio-diagnose",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("포트폴리오 건강 진단")
+                                    .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
+                                    .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                        add(fieldWithPath("data.overallScore").description("종합 점수"));
+                                        add(subsectionWithPath("data.categories").description("카테고리별 점수 (Map)"));
+                                        add(subsectionWithPath("data.stockContributions").description("종목별 기여도 목록"));
+                                        add(fieldWithPath("data.summary").description("진단 요약"));
+                                        add(fieldWithPath("data.insight").description("상세 인사이트"));
+                                        add(fieldWithPath("data.nextSteps").description("향후 조치 단계"));
+                                    }})
+                                    .build())));
+        }
+
+        @Test
+        @MockMember(id = 1L)
+        @DisplayName("수정: 포트폴리오 구성을 수정한다")
+        void update_portfolio() throws Exception {
+            // given
+            PortfolioItemRequest itemRequest = new PortfolioItemRequest("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", AssetType.STOCK, BigDecimal.valueOf(100));
+            PortfolioUpdateRequest request = new PortfolioUpdateRequest("수정된 이름", "수정된 설명", List.of(itemRequest));
+
+            mockMvc.perform(put("/api/v1/portfolios/{portfolioId}", 100L)
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .with(csrf())
+                            .contentType(APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andDo(document("portfolio-update",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("포트폴리오 수정")
+                                    .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
+                                    .requestFields(
+                                            fieldWithPath("name").description("수정할 이름"),
+                                            fieldWithPath("description").description("수정할 설명"),
+                                            fieldWithPath("items[].symbol").description("종목 심볼"),
+                                            fieldWithPath("items[].quantity").description("보유 수량"),
+                                            fieldWithPath("items[].purchasePrice").description("평균 매수가"),
+                                            fieldWithPath("items[].currency").description("통화"),
+                                            fieldWithPath("items[].assetType").description("자산 타입"),
+                                            fieldWithPath("items[].targetWeight").description("목표 비중")
+                                    )
+                                    .responseFields(commonResponseFieldsWithNoData())
+                                    .build())));
+        }
+
+        @Test
+        @MockMember(id = 1L)
+        @DisplayName("삭제: 포트폴리오를 삭제한다")
+        void delete_portfolio() throws Exception {
+            mockMvc.perform(delete("/api/v1/portfolios/{portfolioId}", 100L)
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .with(csrf())
+                            .contentType(APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andDo(document("portfolio-delete",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("포트폴리오 삭제")
+                                    .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
+                                    .responseFields(commonResponseFieldsWithNoData())
                                     .build())));
         }
     }

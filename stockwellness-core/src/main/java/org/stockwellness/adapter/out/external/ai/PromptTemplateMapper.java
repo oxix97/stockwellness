@@ -172,11 +172,11 @@ public class PromptTemplateMapper {
         var categories = context.categories();
         return PORTFOLIO_PROMPT_TEMPLATE.formatted(
                 context.overallScore(),
-                categories.getOrDefault(DiagnosisCategory.DEFENSE.getKey(), 0),
-                categories.getOrDefault(DiagnosisCategory.ATTACK.getKey(), 0),
-                categories.getOrDefault(DiagnosisCategory.ENDURANCE.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.STABILITY.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.RETURN.getKey(), 0),
+                categories.getOrDefault(DiagnosisCategory.CASH.getKey(), 0),
                 categories.getOrDefault(DiagnosisCategory.AGILITY.getKey(), 0),
-                categories.getOrDefault(DiagnosisCategory.BALANCE.getKey(), 0)
+                categories.getOrDefault(DiagnosisCategory.DIVERSIFICATION.getKey(), 0)
         );
     }
 

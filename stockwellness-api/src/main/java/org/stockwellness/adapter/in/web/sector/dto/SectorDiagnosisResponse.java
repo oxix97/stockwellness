@@ -10,5 +10,6 @@ public record SectorDiagnosisResponse(
         BigDecimal rsi14,
         String rsiStatus,     // 예: "과열(Overbought)", "침체(Oversold)", "중립(Neutral)"
         BigDecimal ma20,      // 20일선 (단기 추세 확인용)
-        BigDecimal ma60       // 60일선 (중기 추세 확인용)
+        BigDecimal ma60,      // 60일선 (중기 추세 확인용)
+        String aiComment      // AI 한 줄 평 (추가)
 ) {}

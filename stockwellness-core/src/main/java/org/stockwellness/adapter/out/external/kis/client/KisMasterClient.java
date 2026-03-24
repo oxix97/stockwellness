@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -54,7 +56,7 @@ public class KisMasterClient {
             }
         } catch (Exception e) {
             log.error("마스터 파일 파싱 실패", e);
-            throw new RuntimeException("Master file download failed", e);
+            throw new GlobalException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
 
         log.info("총 {}개 라인 다운로드 완료.", lines.size());

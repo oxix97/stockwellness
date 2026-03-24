@@ -8,7 +8,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - postgresql_data:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
     networks:
       - stockwellness-net
 
@@ -58,72 +58,13 @@ services:
     networks:
       - stockwellness-net
 
-  stockwellness-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: stockwellness-api
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_BATCH_JDBC_INITIALIZE_SCHEMA=always
-      - DB_URL=jdbc:postgresql://postgres:5432/mydatabase
-      - DB_USERNAME=myuser
-      - DB_PASSWORD=secret
-      - REDIS_HOST=redis
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
-      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-      - KIS_APP_KEY=${KIS_APP_KEY}
-      - KIS_APP_SECRET=${KIS_APP_SECRET}
-      - REDIRECT_URL=http://localhost:3000
-      - APP_BASE_URL=http://localhost:8080
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-    networks:
-      - stockwellness-net
-
-  stockwellness-batch:
-    build:
-      context: .
-      dockerfile: Dockerfile.batch
-    container_name: stockwellness-batch
-    ports:
-      - "8081:8081"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_BATCH_JDBC_INITIALIZE_SCHEMA=always
-      - DB_URL=jdbc:postgresql://postgres:5432/mydatabase
-      - DB_USERNAME=myuser
-      - DB_PASSWORD=secret
-      - REDIS_HOST=redis
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - KIS_APP_KEY=${KIS_APP_KEY}
-      - KIS_APP_SECRET=${KIS_APP_SECRET}
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-    networks:
-      - stockwellness-net
-
 networks:
   stockwellness-net:
     driver: bridge
 
 volumes:
   postgresql_data:
-    driver: local
+    external: true
   redis_data:
     driver: local
   zookeeper_data:

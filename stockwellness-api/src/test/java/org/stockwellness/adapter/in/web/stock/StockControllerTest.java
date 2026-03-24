@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.in.web.stock;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.SliceImpl;
@@ -130,7 +131,7 @@ class StockControllerTest extends RestDocsSupport {
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.add(fieldWithPath("data[]").description("인기 검색어 목록"));
 
-        mockMvc.perform(get("/api/v1/stocks/popular"))
+        mockMvc.perform(get("/api/v1/stocks/popular-search"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
@@ -187,6 +188,7 @@ class StockControllerTest extends RestDocsSupport {
                                 .queryParameters(
                                         parameterWithName("keyword").description("삭제할 검색어")
                                 )
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
@@ -203,6 +205,7 @@ class StockControllerTest extends RestDocsSupport {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Discovery")
                                 .summary("최근 검색어 전체 삭제")
+                                .responseSchema(Schema.schema("EmptyDataResponse"))
                                 .responseFields(commonResponseFieldsWithNoData())
                                 .build())
                 ));
@@ -216,15 +219,22 @@ class StockControllerTest extends RestDocsSupport {
                 LocalDate.of(2024, 1, 1),
                 BigDecimal.valueOf(100), BigDecimal.valueOf(110),
                 BigDecimal.valueOf(90), BigDecimal.valueOf(105),
-                BigDecimal.valueOf(105), 1000L
+                BigDecimal.valueOf(105), 1000L,
+                BigDecimal.valueOf(100000), // transactionAmt
+                BigDecimal.valueOf(102.5), // ma5
+                BigDecimal.valueOf(101.2), // ma20
+                BigDecimal.valueOf(98.5),  // ma60
+                BigDecimal.valueOf(95.0)   // ma120
         );
-        ChartDataResponse response = new ChartDataResponse("AAPL", List.of(price), List.of());
+        ChartDataResponse response = new ChartDataResponse("AAPL", "애플", "S&P 500", List.of(price), List.of());
         given(stockPriceUseCase.loadChartData(any())).willReturn(response);
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
                 fieldWithPath("data.ticker").description("티커"),
+                fieldWithPath("data.stockName").description("종목명"),
+                fieldWithPath("data.benchmarkName").description("벤치마크 이름 (ex: KOSPI, S&P 500)"),
                 fieldWithPath("data.prices[].date").description("날짜"),
                 fieldWithPath("data.prices[].open").description("시가"),
                 fieldWithPath("data.prices[].high").description("고가"),
@@ -232,6 +242,11 @@ class StockControllerTest extends RestDocsSupport {
                 fieldWithPath("data.prices[].close").description("종가"),
                 fieldWithPath("data.prices[].adjClose").description("수정종가"),
                 fieldWithPath("data.prices[].volume").description("거래량"),
+                fieldWithPath("data.prices[].transactionAmt").description("거래대금").optional(),
+                fieldWithPath("data.prices[].ma5").description("5일 이동평균선").optional(),
+                fieldWithPath("data.prices[].ma20").description("20일 이동평균선").optional(),
+                fieldWithPath("data.prices[].ma60").description("60일 이동평균선").optional(),
+                fieldWithPath("data.prices[].ma120").description("120일 이동평균선").optional(),
                 fieldWithPath("data.benchmarks").description("벤치마크 데이터 목록")
         ));
 
@@ -241,6 +256,9 @@ class StockControllerTest extends RestDocsSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.ticker").value("AAPL"))
+                .andExpect(jsonPath("$.data.stockName").value("애플"))
+                .andExpect(jsonPath("$.data.benchmarkName").value("S&P 500"))
+                .andExpect(jsonPath("$.data.prices[0].transactionAmt").value(100000))
                 .andDo(document("stock-price-history",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Price")

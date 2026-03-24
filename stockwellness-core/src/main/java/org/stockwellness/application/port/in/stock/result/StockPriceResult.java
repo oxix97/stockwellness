@@ -13,6 +13,11 @@ public record StockPriceResult(
         BigDecimal lowPrice,
         BigDecimal closePrice,
         BigDecimal adjClosePrice,
-        Long volume
+        Long volume,
+        BigDecimal transactionAmt,
+        BigDecimal ma5,
+        BigDecimal ma20,
+        BigDecimal ma60,
+        BigDecimal ma120
 ) {
 }

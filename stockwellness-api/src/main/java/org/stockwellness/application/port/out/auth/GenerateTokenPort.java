@@ -9,6 +9,6 @@ public interface GenerateTokenPort {
     String generateRefreshToken(Member member);
     
     // Overloaded methods for MemberPrincipal usage
-    String generateAccessToken(Long id, String email, LoginType loginType, MemberRole role);
+    String generateAccessToken(Long id, String email, String nickname, LoginType loginType, MemberRole role);
     String generateRefreshToken(Long id);
 }

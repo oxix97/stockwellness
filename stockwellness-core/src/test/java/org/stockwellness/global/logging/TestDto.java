@@ -1,7 +1,5 @@
 package org.stockwellness.global.logging;
 
-import java.util.Map;
-
 public class TestDto {
     private final String username;
     private final String password;
@@ -17,6 +15,12 @@ public class TestDto {
         this.accessToken = accessToken;
         this.nested = nested;
     }
+
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
+    public String getEmail() { return email; }
+    public String getAccessToken() { return accessToken; }
+    public NestedDto getNested() { return nested; }
 
     public static Builder builder() {
         return new Builder();
@@ -45,6 +49,9 @@ public class TestDto {
             this.secretValue = secretValue;
             this.publicValue = publicValue;
         }
+
+        public String getSecretValue() { return secretValue; }
+        public String getPublicValue() { return publicValue; }
 
         public static Builder builder() {
             return new Builder();

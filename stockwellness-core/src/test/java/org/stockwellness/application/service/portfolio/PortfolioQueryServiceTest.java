@@ -14,6 +14,7 @@ import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedExcepti
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.fixture.PortfolioFixture;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +78,22 @@ class PortfolioQueryServiceTest {
             // when & then
             assertThatThrownBy(() -> portfolioQueryService.getPortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID))
                     .isInstanceOf(PortfolioNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("성공: 내 모든 포트폴리오 목록을 조회한다")
+        void read_all_success() {
+            // given
+            Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
+            given(portfolioPort.loadAllPortfolios(PortfolioFixture.MEMBER_ID))
+                    .willReturn(List.of(portfolio));
+
+            // when
+            List<PortfolioResponse> responses = portfolioQueryService.getMyPortfolios(PortfolioFixture.MEMBER_ID);
+
+            // then
+            assertThat(responses).hasSize(1);
+            assertThat(responses.get(0).id()).isEqualTo(PortfolioFixture.PORTFOLIO_ID);
         }
     }
 }

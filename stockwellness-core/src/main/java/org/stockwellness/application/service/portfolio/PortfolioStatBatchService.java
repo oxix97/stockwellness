@@ -90,7 +90,7 @@ public class PortfolioStatBatchService {
         // 전체 데이터 중 해당 포트폴리오의 종목 데이터만 추출하여 필터링된 SimulationData 생성
         SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
         
-        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000));
+        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), "NONE");
         
         List<BigDecimal> values = result.dailyResults().stream()
                 .map(BacktestResult.DailyBacktestResult::totalValue)

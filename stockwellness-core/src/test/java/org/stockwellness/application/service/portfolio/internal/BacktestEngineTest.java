@@ -23,8 +23,8 @@ class BacktestEngineTest {
         LocalDate day1 = LocalDate.of(2024, 1, 1);
         LocalDate day2 = LocalDate.of(2024, 1, 2);
         
-        StockPriceResult p1 = new StockPriceResult(day1, BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), 100L);
-        StockPriceResult p2 = new StockPriceResult(day2, BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), 100L);
+        StockPriceResult p1 = new StockPriceResult(day1, BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), 100L, null, null, null, null, null);
+        StockPriceResult p2 = new StockPriceResult(day2, BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), BigDecimal.valueOf(110), 100L, null, null, null, null, null);
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
@@ -36,7 +36,7 @@ class BacktestEngineTest {
         BigDecimal initialAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount);
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -54,8 +54,8 @@ class BacktestEngineTest {
         LocalDate month1 = LocalDate.of(2024, 1, 1);
         LocalDate month2 = LocalDate.of(2024, 2, 1);
         
-        StockPriceResult p1 = new StockPriceResult(month1, BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), 100L);
-        StockPriceResult p2 = new StockPriceResult(month2, BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), 100L);
+        StockPriceResult p1 = new StockPriceResult(month1, BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), 100L, null, null, null, null, null);
+        StockPriceResult p2 = new StockPriceResult(month2, BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), BigDecimal.valueOf(200), 100L, null, null, null, null, null);
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
@@ -66,7 +66,7 @@ class BacktestEngineTest {
         BigDecimal monthlyAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount);
+        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);

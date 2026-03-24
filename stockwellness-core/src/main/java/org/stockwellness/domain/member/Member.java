@@ -43,6 +43,15 @@ public class Member extends AbstractEntity {
     @Enumerated(STRING)
     private MemberStatus status;
 
+    @Column(nullable = false)
+    private boolean notificationRebalancing = true;
+
+    @Column(nullable = false)
+    private boolean notificationMarketAlert = false;
+
+    @Column(nullable = false)
+    private boolean notificationNewListing = false;
+
     @LastModifiedDate
     private LocalDateTime modifiedAt;
 
@@ -76,6 +85,12 @@ public class Member extends AbstractEntity {
         if (riskLevel != null) {
             this.riskLevel = riskLevel;
         }
+    }
+
+    public void updateNotifications(Boolean rebalancing, Boolean marketAlert, Boolean newListing) {
+        if (rebalancing != null) this.notificationRebalancing = rebalancing;
+        if (marketAlert != null) this.notificationMarketAlert = marketAlert;
+        if (newListing != null) this.notificationNewListing = newListing;
     }
 
     private static String validateNickname(String nickname) {

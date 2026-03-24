@@ -22,7 +22,9 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,6 +69,7 @@ class AuthServiceTest {
             // given
             LoginCommand command = AuthFixture.createLoginCommand();
             Member member = AuthFixture.createMember();
+            ReflectionTestUtils.setField(member, "createdAt", LocalDateTime.now());
             
             // Mocking: 회원 조회 성공
             given(loadMemberPort.loadMemberByEmailAndLoginType(any(), any()))
@@ -91,6 +94,7 @@ class AuthServiceTest {
             // given
             LoginCommand command = AuthFixture.createLoginCommand();
             Member newMember = AuthFixture.createMember();
+            ReflectionTestUtils.setField(newMember, "createdAt", LocalDateTime.now());
 
             // Mocking: 회원 없음 -> 저장
             given(loadMemberPort.loadMemberByEmailAndLoginType(any(), any()))

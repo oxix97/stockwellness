@@ -1,10 +1,7 @@
 package org.stockwellness.global.logging;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Builder;
-import lombok.Getter;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,34 +11,20 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.lang.reflect.Field;
-import java.util.*;
-import java.util.stream.Collectors;
-
 /**
- * Global logging aspect triggered by @LogExecution annotation.
- * Logs are output in structured JSON format with deep masking.
+ * 전역 로깅 Aspect.
+ * {@link LogExecution} 어노테이션 또는 네이밍 컨벤션으로 대상을 감지하고,
+ * 메서드 실행 정보를 구조화된 JSON으로 로깅합니다.
+ *
+ * <p>민감 데이터 마스킹은 {@link MaskingObjectMapper}에 위임합니다.</p>
  */
 @Aspect
 @Component
 public class LoggingAspect {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String MASKED_VALUE = "********";
-    private static final Set<String> SENSITIVE_KEYWORDS = new HashSet<>(Arrays.asList(
-            "password", "pwd", "accessToken", "refreshToken", "token", "secret", "authorization"
-    ));
+    private final ObjectMapper objectMapper = MaskingObjectMapper.create();
 
-    // Current thread's visited objects to prevent infinite recursion in deep masking
-    private final ThreadLocal<Set<Object>> visited = ThreadLocal.withInitial(() -> Collections.newSetFromMap(new IdentityHashMap<>()));
-
-    /**
-     * Targets classes marked with @LogExecution or methods marked with @LogExecution.
-     * Also targets Service, Controller, and Adapter layers by naming convention.
-     */
     @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
             "@annotation(org.stockwellness.global.logging.LogExecution) || " +
             "within(org.stockwellness..*Service) || " +
@@ -55,7 +38,6 @@ public class LoggingAspect {
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
-        Object[] args = joinPoint.getArgs();
 
         Object result = null;
         Throwable exception = null;
@@ -68,139 +50,29 @@ public class LoggingAspect {
             throw e;
         } finally {
             long executionTime = System.currentTimeMillis() - start;
-            LogEvent logEvent = LogEvent.builder()
-                    .traceId(MDC.get("traceId"))
-                    .className(className)
-                    .methodName(methodName)
-                    .args(maskSensitiveData(args))
-                    .result(maskSensitiveData(result))
-                    .executionTimeMs(executionTime)
-                    .exceptionMessage(exception != null ? exception.getMessage() : null)
-                    .stackTrace(exception != null ? getStackTrace(exception) : null)
-                    .build();
 
-            try {
-                if (log.isInfoEnabled()) {
-                    log.info(objectMapper.writeValueAsString(logEvent));
-                }
-            } catch (JsonProcessingException e) {
-                log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
-            } finally {
-                // Clear visited objects after logging to prevent memory leaks and ensure clean state for next call
-                visited.get().clear();
-            }
+            LogEvent event = new LogEvent(
+                    MDC.get("traceId"),
+                    className,
+                    methodName,
+                    joinPoint.getArgs(),
+                    exception == null ? result : null,
+                    executionTime,
+                    exception != null ? exception.getClass().getSimpleName() : null,
+                    exception != null ? exception.getMessage() : null
+            );
+
+            writeLog(event);
         }
     }
 
-        private Object maskSensitiveData (Object data){
-            if (data == null) return null;
-
-            if (data instanceof Object[] objects) {
-                return Arrays.stream(objects)
-                        .map(this::processObject)
-                        .collect(Collectors.toList());
+    private void writeLog(LogEvent event) {
+        try {
+            if (log.isInfoEnabled()) {
+                log.info(objectMapper.writeValueAsString(event));
             }
-
-            if (data instanceof Collection<?> collection) {
-                return collection.stream()
-                        .map(this::processObject)
-                        .collect(Collectors.toList());
-            }
-
-            if (data instanceof Map<?, ?> map) {
-                Map<Object, Object> maskedMap = new HashMap<>();
-                map.forEach((k, v) -> {
-                    if (k instanceof String key && isSensitiveKey(key)) {
-                        maskedMap.put(k, MASKED_VALUE);
-                    } else {
-                        maskedMap.put(k, processObject(v));
-                    }
-                });
-                return maskedMap;
-            }
-
-            return processObject(data);
-        }
-
-        private Object processObject (Object obj){
-            if (obj == null) return null;
-
-            if (isSimpleType(obj)) {
-                return obj;
-            }
-
-            if (obj.getClass().getName().startsWith("org.stockwellness")) {
-                return performDeepMasking(obj);
-            }
-
-            return obj;
-        }
-
-        private boolean isSimpleType (Object obj){
-            return obj instanceof String || obj instanceof Number || obj instanceof Boolean ||
-                    obj instanceof Character || obj.getClass().isPrimitive() || obj.getClass().isEnum();
-        }
-
-        private Object performDeepMasking (Object obj){
-            if (obj == null) return null;
-
-            // Prevent infinite recursion by checking if the object has already been visited in the current masking chain
-            if (!visited.get().add(obj)) {
-                return "[Circular Reference]";
-            }
-
-            try {
-                Map<String, Object> maskedFields = new HashMap<>();
-                Class<?> clazz = obj.getClass();
-
-                while (clazz != null && clazz != Object.class) {
-                    for (Field field : clazz.getDeclaredFields()) {
-                        field.setAccessible(true);
-                        String fieldName = field.getName();
-                        Object fieldValue = field.get(obj);
-
-                        if (field.isAnnotationPresent(Masked.class) || isSensitiveKey(fieldName)) {
-                            maskedFields.put(fieldName, MASKED_VALUE);
-                        } else if (fieldValue != null && field.getType().getName().startsWith("org.stockwellness")) {
-                            maskedFields.put(fieldName, processObject(fieldValue));
-                        } else {
-                            maskedFields.put(fieldName, fieldValue);
-                        }
-                    }
-                    clazz = clazz.getSuperclass();
-                }
-                return maskedFields;
-            } catch (Exception e) {
-                return "[Masking Error: " + e.getMessage() + "]";
-            } finally {
-                // Remove from visited after processing to allow the same object to be masked in different branches of the object tree
-                visited.get().remove(obj);
-            }
-        }
-
-        private boolean isSensitiveKey (String key){
-            String lower = key.toLowerCase();
-            return SENSITIVE_KEYWORDS.stream().anyMatch(lower::contains);
-        }
-
-        private String getStackTrace (Throwable throwable){
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            throwable.printStackTrace(pw);
-            return sw.toString();
-        }
-
-        @Getter
-        @Builder
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        private static class LogEvent {
-            private String traceId;
-            private String className;
-            private String methodName;
-            private Object args;
-            private Object result;
-            private Long executionTimeMs;
-            private String exceptionMessage;
-            private String stackTrace;
+        } catch (JsonProcessingException e) {
+            log.warn("로그 이벤트 JSON 직렬화 실패: {}", e.getMessage());
         }
     }
+}
