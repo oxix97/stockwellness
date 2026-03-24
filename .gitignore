@@ -278,3 +278,5 @@ logs/
 #/stockwellness-api/bin/
 
 #/stockwellness-api/logs/
+/.gemini/
+/docs/
