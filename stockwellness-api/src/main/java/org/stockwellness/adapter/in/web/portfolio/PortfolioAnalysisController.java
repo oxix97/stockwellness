@@ -91,7 +91,9 @@ public class PortfolioAnalysisController {
                 portfolioId,
                 request.strategy(),
                 request.amount(),
-                request.benchmarkTicker()
+                request.benchmarkTicker(),
+                request.rebalancingPeriod(),
+                request.weights()
         );
 
         BacktestResult result = portfolioFacade.runBacktest(command);

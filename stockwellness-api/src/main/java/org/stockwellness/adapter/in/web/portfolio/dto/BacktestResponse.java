@@ -16,7 +16,8 @@ public record BacktestResponse(
     BigDecimal alpha,
     BigDecimal beta,
     BigDecimal bestYearRate,
-    BigDecimal worstYearRate
+    BigDecimal worstYearRate,
+    String aiComment // 추가
 ) {
     public record DailyResult(
         LocalDate date,
@@ -39,7 +40,8 @@ public record BacktestResponse(
             result.alpha(),
             result.beta(),
             result.bestYearRate(),
-            result.worstYearRate()
+            result.worstYearRate(),
+            result.aiComment() // 추가
         );
     }
 }

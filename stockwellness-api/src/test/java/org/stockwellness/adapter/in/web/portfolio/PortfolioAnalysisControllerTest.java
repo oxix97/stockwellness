@@ -190,6 +190,14 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
 
+        BacktestRequest request = new BacktestRequest(
+                "LUMP_SUM",
+                BigDecimal.valueOf(1000000),
+                "^KS11",
+                "MONTHLY",
+                Map.of("005930", BigDecimal.valueOf(100))
+        );
+
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
@@ -212,7 +220,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
         mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
-                        .content("{\"strategy\":\"WEIGHTED\",\"amount\":1000000,\"benchmarkTicker\":\"SPY\"}")
+                        .content(objectMapper.writeValueAsString(request))
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -222,6 +230,13 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .summary("포트폴리오 과거 백테스팅")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("strategy").description("투자 전략 (LUMP_SUM, DCA)"),
+                                        fieldWithPath("amount").description("투자 금액"),
+                                        fieldWithPath("benchmarkTicker").description("벤치마크 티커 (예: ^KS11)"),
+                                        fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
+                                        subsectionWithPath("weights").description("커스텀 비중 설정 (Map<Ticker, Weight>)").optional()
                                 )
                                 .responseFields(responseFields)
                                 .build())
