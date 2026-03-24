@@ -14,7 +14,8 @@ public record BacktestResult(
     BigDecimal alpha,             // 초과 수익률 (vs Benchmark)
     BigDecimal beta,              // 시장 민감도
     BigDecimal bestYearRate,      // 최고의 해 수익률
-    BigDecimal worstYearRate      // 최악의 해 수익률
+    BigDecimal worstYearRate,     // 최악의 해 수익률
+    String aiComment              // 추가
 ) {
     public record DailyBacktestResult(
         LocalDate date,
