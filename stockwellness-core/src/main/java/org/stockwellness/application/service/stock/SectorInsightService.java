@@ -48,7 +48,14 @@ public class SectorInsightService implements SectorInsightUseCase {
                     .orElse(List.of());
         }
         return result.stream()
-                .map(s -> new SectorRankingResult(s.getSectorCode(), s.getSectorName(), s.getSectorIndexCurrentPrice(), s.getAvgFluctuationRate(), s.isOverheated()))
+                .map(s -> new SectorRankingResult(
+                        s.getSectorCode(), 
+                        s.getSectorName(), 
+                        s.getSectorIndexCurrentPrice(), 
+                        s.getAvgFluctuationRate(), 
+                        s.isOverheated(),
+                        generateDiagnosisMessage(s) // AI 의견 추가
+                ))
                 .toList();
     }
 

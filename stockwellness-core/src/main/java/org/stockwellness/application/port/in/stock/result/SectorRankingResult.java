@@ -10,5 +10,6 @@ public record SectorRankingResult(
     String sectorName,
     BigDecimal currentPrice,
     BigDecimal fluctuationRate,
-    boolean isOverheated
+    boolean isOverheated,
+    String aiComment // AI 한 줄 의견 (추가)
 ) implements Serializable {}

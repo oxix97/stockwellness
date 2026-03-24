@@ -127,6 +127,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
     }
 
     @Override
+    public Optional<StockPrice> findLatestByTicker(String ticker) {
+        return stockPriceRepository.findTopByStockTickerOrderByIdBaseDateDesc(ticker);
+    }
+
+    @Override
     public List<StockPrice> loadRecentHistories(String isinCode, int limit) {
         return List.of();
     }

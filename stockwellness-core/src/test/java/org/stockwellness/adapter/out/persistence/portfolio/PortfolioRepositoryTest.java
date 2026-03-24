@@ -1,83 +1,125 @@
 package org.stockwellness.adapter.out.persistence.portfolio;
 
-import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.stockwellness.TestCoreApplication;
-import org.stockwellness.config.JpaConfig;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.config.QueryDslConfig;
+import org.stockwellness.domain.member.LoginType;
+import org.stockwellness.domain.member.Member;
+import org.stockwellness.domain.member.MemberRole;
+import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.portfolio.advisor.AdviceAction;
-import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
+import org.stockwellness.domain.portfolio.PortfolioItem;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.main.allow-bean-definition-overriding=true")
-@Import({QueryDslConfig.class, JpaConfig.class})
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@DisplayName("PortfolioRepository 통합 테스트")
+@DataJpaTest
+@Import(QueryDslConfig.class)
 class PortfolioRepositoryTest {
 
     @Autowired
     private PortfolioRepository portfolioRepository;
 
     @Autowired
-    private AdvisorReportRepository advisorReportRepository;
+    private MemberRepository memberRepository;
 
-    @Autowired
-    private EntityManager entityManager;
+    private Long memberId;
 
-    @Test
-    @DisplayName("포트폴리오 조회 시 아이템과 함께 어드바이저 보고서도 Fetch Join으로 조회한다")
-    void findWithItems_with_advisor_reports_success() {
-        // given
-        Portfolio portfolio = Portfolio.create(1L, "테스트 포트폴리오", "설명");
-        portfolioRepository.save(portfolio);
+    @BeforeEach
+    void setUp() {
+        Member member = Member.register("test@test.com", "tester", LoginType.GOOGLE);
+        ReflectionTestUtils.setField(member, "role", MemberRole.USER);
+        ReflectionTestUtils.setField(member, "status", MemberStatus.ACTIVE);
+        ReflectionTestUtils.setField(member, "notificationRebalancing", true);
+        ReflectionTestUtils.setField(member, "notificationMarketAlert", false);
+        ReflectionTestUtils.setField(member, "notificationNewListing", false);
+        ReflectionTestUtils.setField(member, "createdAt", LocalDateTime.now());
         
-        AdvisorReport report = AdvisorReport.create(portfolio, "AI 조언", AdviceAction.REBALANCE);
-        advisorReportRepository.save(report);
-
-        entityManager.flush();
-        entityManager.clear();
-
-        // when
-        Optional<Portfolio> result = portfolioRepository.findWithItems(portfolio.getId(), 1L);
-
-        // then
-        assertThat(result).isPresent();
-        assertThat(result.get().getAdvisorReports()).hasSize(1);
+        memberId = memberRepository.save(member).getId();
+        memberRepository.flush();
     }
 
     @Test
-    @DisplayName("가장 최근의 어드바이저 보고서를 조회한다")
-    void loadLatestReport_success() throws InterruptedException {
+    @DisplayName("포트폴리오 저장 및 조회: 연관된 아이템들과 함께 정상적으로 조회된다")
+    void saveAndFindWithItems_Success() {
         // given
-        Portfolio portfolio = Portfolio.create(1L, "테스트 포트폴리오", "설명");
-        portfolioRepository.save(portfolio);
-
-        AdvisorReport oldReport = AdvisorReport.create(portfolio, "옛날 조언", AdviceAction.REBALANCE);
-        advisorReportRepository.save(oldReport);
+        Portfolio portfolio = Portfolio.create(memberId, "테스트 포트폴리오", "설명");
+        ReflectionTestUtils.setField(portfolio, "createdAt", LocalDateTime.now());
         
-        entityManager.flush();
-        Thread.sleep(100);
+        PortfolioItem item1 = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50));
+        ReflectionTestUtils.setField(item1, "createdAt", LocalDateTime.now());
+        
+        PortfolioItem item2 = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50));
+        ReflectionTestUtils.setField(item2, "createdAt", LocalDateTime.now());
+        
+        portfolio.updateItems(List.of(item1, item2));
 
-        AdvisorReport newReport = AdvisorReport.create(portfolio, "새 조언", AdviceAction.RISK_MANAGEMENT);
-        advisorReportRepository.save(newReport);
-
-        entityManager.flush();
-        entityManager.clear();
+        Portfolio saved = portfolioRepository.save(portfolio);
+        portfolioRepository.flush();
 
         // when
-        Optional<AdvisorReport> latest = advisorReportRepository.findFirstByPortfolioIdOrderByCreatedAtDesc(portfolio.getId());
+        Optional<Portfolio> found = portfolioRepository.findWithItems(saved.getId(), memberId);
 
         // then
-        assertThat(latest).isPresent();
-        assertThat(latest.get().getContent()).isEqualTo("새 조언");
+        assertThat(found).isPresent();
+        assertThat(found.get().getName()).isEqualTo("테스트 포트폴리오");
+        assertThat(found.get().getItems()).hasSize(2);
+        assertThat(found.get().getItems()).extracting(PortfolioItem::getSymbol)
+                .containsExactlyInAnyOrder("005930", "CASH");
+    }
+
+    @Test
+    @DisplayName("회원별 포트폴리오 목록 조회: 특정 회원의 모든 포트폴리오를 아이템과 함께 조회한다")
+    void findAllByMemberIdWithItems_Success() {
+        // given
+        Portfolio p1 = Portfolio.create(memberId, "포트1", "설명1");
+        ReflectionTestUtils.setField(p1, "createdAt", LocalDateTime.now());
+        p1.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100))));
+        p1.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
+        
+        Portfolio p2 = Portfolio.create(memberId, "포트2", "설명2");
+        ReflectionTestUtils.setField(p2, "createdAt", LocalDateTime.now());
+        p2.updateItems(List.of(PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(100))));
+        p2.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
+        
+        portfolioRepository.saveAll(List.of(p1, p2));
+        portfolioRepository.flush();
+
+        // when
+        List<Portfolio> portfolios = portfolioRepository.findAllByMemberIdWithItems(memberId);
+
+        // then
+        assertThat(portfolios).hasSize(2);
+        assertThat(portfolios).extracting(Portfolio::getName).containsExactlyInAnyOrder("포트1", "포트2");
+    }
+
+    @Test
+    @DisplayName("Cascade Delete: 포트폴리오 삭제 시 연관된 아이템들도 함께 삭제된다")
+    void deletePortfolio_CascadeItems() {
+        // given
+        Portfolio portfolio = Portfolio.create(memberId, "삭제 테스트", "설명");
+        ReflectionTestUtils.setField(portfolio, "createdAt", LocalDateTime.now());
+        portfolio.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100))));
+        portfolio.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
+        
+        Portfolio saved = portfolioRepository.save(portfolio);
+        portfolioRepository.flush();
+
+        // when
+        portfolioRepository.delete(saved);
+        portfolioRepository.flush();
+
+        // then
+        assertThat(portfolioRepository.findById(saved.getId())).isEmpty();
     }
 }

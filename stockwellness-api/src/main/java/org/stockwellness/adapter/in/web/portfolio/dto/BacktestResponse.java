@@ -7,7 +7,17 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record BacktestResponse(
-    List<DailyResult> dailyResults
+    List<DailyResult> dailyResults,
+    BigDecimal cagr,
+    BigDecimal mdd,
+    BigDecimal sharpeRatio,
+    BigDecimal totalReturnRate,
+    BigDecimal volatility,
+    BigDecimal alpha,
+    BigDecimal beta,
+    BigDecimal bestYearRate,
+    BigDecimal worstYearRate,
+    String aiComment // 추가
 ) {
     public record DailyResult(
         LocalDate date,
@@ -21,7 +31,17 @@ public record BacktestResponse(
         return new BacktestResponse(
             result.dailyResults().stream()
                 .map(r -> new DailyResult(r.date(), r.totalValue(), r.totalInvested(), r.returnRate(), r.benchmarkReturnRate()))
-                .toList()
+                .toList(),
+            result.cagr(),
+            result.mdd(),
+            result.sharpeRatio(),
+            result.totalReturnRate(),
+            result.volatility(),
+            result.alpha(),
+            result.beta(),
+            result.bestYearRate(),
+            result.worstYearRate(),
+            result.aiComment() // 추가
         );
     }
 }

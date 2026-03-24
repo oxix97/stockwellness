@@ -1,0 +1,219 @@
+package org.stockwellness.application.service.portfolio;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
+import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
+import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.service.portfolio.internal.*;
+import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.stock.Country;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.fixture.StockFixture;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+
+@ExtendWith(MockitoExtension.class)
+class PortfolioAnalysisServiceTest {
+
+    @InjectMocks
+    private PortfolioAnalysisService portfolioAnalysisService;
+
+    @Mock
+    private PortfolioAnalysisDataLoader dataLoader;
+
+    @Mock
+    private SimulationDataProvider simulationDataProvider;
+
+    @Mock
+    private StockPricePort stockPricePort;
+
+    @Mock
+    private BacktestEngine backtestEngine;
+
+    @Mock
+    private PortfolioCorrelationCalculator correlationCalculator;
+
+    @Mock
+    private AiAdvisorUseCase aiAdvisorUseCase;
+
+    private static final Long MEMBER_ID = 1L;
+    private static final Long PORTFOLIO_ID = 100L;
+
+    @Test
+    @DisplayName("포트폴리오 가치 평가: 주식과 현금이 포함된 포트폴리오의 총 평가액 및 수익률을 계산한다")
+    void getValuation_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
+        
+        // 목표 비중 합계를 100%로 맞춤 (또는 모두 0%)
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100));
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(100000), "KRW", BigDecimal.ZERO);
+        portfolio.updateItems(List.of(samsung, cash));
+
+        StockPrice samsungPrice = createStockPrice("005930", 60000, 58000);
+        AnalysisContext context = new AnalysisContext(
+                portfolio,
+                Map.of(),
+                Map.of("005930", List.of(samsungPrice)),
+                PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(10), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1))
+        );
+
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+
+        // when
+        PortfolioValuationResult result = portfolioAnalysisService.getValuation(MEMBER_ID, PORTFOLIO_ID);
+
+        // then
+        assertThat(result.totalPurchaseAmount()).isEqualByComparingTo("600000");
+        assertThat(result.currentTotalValue()).isEqualByComparingTo("700000");
+        assertThat(result.totalProfitLoss()).isEqualByComparingTo("100000");
+        assertThat(result.dailyProfitLoss()).isEqualByComparingTo("20000");
+    }
+
+    @Test
+    @DisplayName("포트폴리오 분산도 분석: 자산군, 업종, 국가별 비중을 계산한다")
+    void getDiversification_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
+        // 비중 합계 100% (50 + 50)
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50));
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50));
+        portfolio.updateItems(List.of(samsung, cash));
+
+        StockPrice samsungPrice = createStockPrice("005930", 50000, 50000);
+        AnalysisContext context = new AnalysisContext(
+                portfolio,
+                Map.of("005930", StockFixture.createSamsung()),
+                Map.of("005930", List.of(samsungPrice)),
+                null
+        );
+
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+
+        // when
+        PortfolioDiversificationResult result = portfolioAnalysisService.getDiversification(MEMBER_ID, PORTFOLIO_ID);
+
+        // then
+        assertThat(result.totalValue()).isEqualByComparingTo("1000000");
+        assertThat(result.assetRatios().get("STOCK")).isEqualByComparingTo("50");
+        assertThat(result.assetRatios().get("CASH")).isEqualByComparingTo("50");
+        assertThat(result.countryRatios().get("KR")).isEqualByComparingTo("100");
+        assertThat(result.sectorRatios().get("전기전자")).isEqualByComparingTo("50");
+    }
+
+    @Test
+    @DisplayName("리밸런싱 가이드: 목표 비중과 현재가를 기준으로 추천 매매 수량을 산출한다")
+    void getRebalancingGuide_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
+        // 비중 합계 100% (60 + 40)
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(60));
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(40));
+        portfolio.updateItems(List.of(samsung, cash));
+
+        StockPrice samsungPrice = createStockPrice("005930", 50000, 50000);
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of("005930", List.of(samsungPrice)), null);
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+
+        // when
+        PortfolioRebalancingResult result = portfolioAnalysisService.getRebalancingGuide(MEMBER_ID, PORTFOLIO_ID);
+
+        // then
+        PortfolioRebalancingResult.RebalancingItem samsungGuide = result.items().stream()
+                .filter(i -> i.symbol().equals("005930"))
+                .findFirst().orElseThrow();
+        
+        assertThat(samsungGuide.recommendedQuantity()).isEqualByComparingTo("2");
+        assertThat(samsungGuide.currentWeight()).isEqualByComparingTo("50");
+        assertThat(samsungGuide.targetWeight()).isEqualByComparingTo("60");
+    }
+
+    @Test
+    @DisplayName("백테스팅 실행: 선택한 전략에 따라 백테스팅 엔진을 호출하고 결과를 반환한다")
+    void runBacktest_Success() {
+        // given
+        // LUMPSUM -> LUMP_SUM
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), "005930", "MONTHLY", Map.of());
+        
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
+        portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100))));
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
+        
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), List.of()));
+        
+        BacktestResult mockEngineResult = new BacktestResult(Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ZERO, null);
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), anyString())).willReturn(mockEngineResult);
+        given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
+
+        // when
+        BacktestResult result = portfolioAnalysisService.runBacktest(command);
+
+        // then
+        assertThat(result.aiComment()).isEqualTo("AI 조언입니다.");
+        assertThat(result.cagr()).isEqualByComparingTo("10");
+    }
+
+    @Test
+    @DisplayName("상관계수 행렬: 종목이 2개 이상일 때 상관관계 계산기를 호출한다")
+    void getCorrelationMatrix_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
+        // 비중 합계 100% (50 + 50)
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50)),
+                PortfolioItem.createStock("000660", BigDecimal.ONE, BigDecimal.valueOf(100000), "KRW", BigDecimal.valueOf(50))
+        ));
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
+        
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of("005930", List.of(), "000660", List.of()), List.of()));
+        given(correlationCalculator.calculateMatrix(anyMap())).willReturn(Map.of("005930", Map.of("000660", BigDecimal.valueOf(0.8))));
+
+        // when
+        Map<String, Map<String, BigDecimal>> matrix = portfolioAnalysisService.getCorrelationMatrix(MEMBER_ID, PORTFOLIO_ID);
+
+        // then
+        assertThat(matrix.get("005930").get("000660")).isEqualByComparingTo("0.8");
+    }
+
+    private StockPrice createStockPrice(String symbol, long close, long prevClose) {
+        Stock stock = mock(Stock.class);
+        given(stock.getId()).willReturn(1L);
+        return StockPrice.of(
+                stock,
+                LocalDate.now(),
+                BigDecimal.valueOf(close),
+                BigDecimal.valueOf(close),
+                BigDecimal.valueOf(close),
+                BigDecimal.valueOf(close),
+                BigDecimal.valueOf(close),
+                BigDecimal.valueOf(prevClose),
+                100L,
+                BigDecimal.valueOf(10000),
+                null
+        );
+    }
+}

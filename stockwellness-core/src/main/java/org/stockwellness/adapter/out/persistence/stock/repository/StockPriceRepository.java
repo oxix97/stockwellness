@@ -39,4 +39,9 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
 
     @Query("SELECT s FROM StockPrice s WHERE s.stock.ticker IN :tickers AND s.id.baseDate <= :date ORDER BY s.id.baseDate DESC")
     List<StockPrice> findRecentPricesByTickers(@Param("tickers") Collection<String> tickers, @Param("date") LocalDate date);
+
+    /**
+     * 특정 종목의 가장 최신 시세 엔티티를 조회합니다.
+     */
+    java.util.Optional<StockPrice> findTopByStockTickerOrderByIdBaseDateDesc(String ticker);
 }

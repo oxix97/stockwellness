@@ -39,8 +39,8 @@ class SectorDashboardControllerTest extends RestDocsSupport {
     void getSectorRanking_docs() throws Exception {
         // given
         List<SectorRankingResult> result = List.of(
-                new SectorRankingResult("001", "종합", new BigDecimal("2500.50"), new BigDecimal("3.45"), false),
-                new SectorRankingResult("002", "반도체", new BigDecimal("1200.30"), new BigDecimal("-1.20"), true)
+                new SectorRankingResult("001", "종합", new BigDecimal("2500.50"), new BigDecimal("3.45"), false, null),
+                new SectorRankingResult("002", "반도체", new BigDecimal("1200.30"), new BigDecimal("-1.20"), true, null)
         );
 
         given(sectorInsightUseCase.getTopSectorsByFluctuation(any(), any(), anyInt()))
@@ -70,6 +70,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data[].currentPrice").description("현재 지수"));
                                     add(fieldWithPath("data[].fluctuationRate").description("평균 등락률"));
                                     add(fieldWithPath("data[].isOverheated").description("과열 여부"));
+                                    add(fieldWithPath("data[].aiComment").description("AI 한 줄 의견").optional());
                                 }})
                                 .build())
                 ));
