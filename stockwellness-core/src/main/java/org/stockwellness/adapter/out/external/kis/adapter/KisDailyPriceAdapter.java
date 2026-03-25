@@ -66,25 +66,41 @@ public class KisDailyPriceAdapter {
      */
     @Retry(name = "kisRetry")
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
-        KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
-                        .queryParam("FID_COND_MRKT_DIV_CODE", "J")
-                        .queryParam("FID_INPUT_ISCD", stock.getTicker())
-                        .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
-                        .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
-                        .queryParam("FID_PERIOD_DIV_CODE", "D")
-                        .queryParam("FID_ORG_ADJ_PRC", "1")
-                        .build())
-                .header("tr_id", "FHKST03010100")
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+        return fetchPricesInternal("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice", "J", stock.getTicker(), startDate, endDate, "FHKST03010100");
+    }
 
-        if (response == null || response.output2() == null) {
+    /**
+     * 지수 기간별 시세(일/주/월/년)
+     */
+    @Retry(name = "kisRetry")
+    public List<KisDailyPriceDetail> fetchIndexDailyPrices(String ticker, LocalDate startDate, LocalDate endDate) {
+        return fetchPricesInternal("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice", "U", ticker, startDate, endDate, "FHKST03010200");
+    }
+
+    private List<KisDailyPriceDetail> fetchPricesInternal(String path, String marketDiv, String ticker, LocalDate startDate, LocalDate endDate, String trId) {
+        try {
+            KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("FID_COND_MRKT_DIV_CODE", marketDiv)
+                            .queryParam("FID_INPUT_ISCD", ticker)
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .build())
+                    .header("tr_id", trId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.output2() == null) {
+                return Collections.emptyList();
+            }
+            return response.output2();
+        } catch (Exception e) {
+            log.error("시세 조회 실패 (ticker: {}, path: {}): {}", ticker, path, e.getMessage());
             return Collections.emptyList();
         }
-
-        return response.output2();
     }
 }
