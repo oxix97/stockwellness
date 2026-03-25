@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.domain.member.LoginType;
@@ -72,6 +73,11 @@ class PortfolioIntegrationTest {
         Stock samsung = StockFixture.createSamsung();
         ReflectionTestUtils.setField(samsung, "createdAt", LocalDateTime.now());
         stockRepository.save(samsung);
+
+        // 테스트용 벤치마크 지수 생성 (KOSPI)
+        Stock kospi = Stock.ofIndex("KOSPI", "코스피");
+        ReflectionTestUtils.setField(kospi, "createdAt", LocalDateTime.now());
+        stockRepository.save(kospi);
     }
 
     @Test
@@ -116,8 +122,8 @@ class PortfolioIntegrationTest {
         Long portfolioId = objectMapper.readTree(createResponse).get("data").asLong();
 
         // [Given] 2. 백테스트 요청 데이터
-        org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest backtestRequest = new org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest(
-                "LUMP_SUM", BigDecimal.valueOf(10000000), "^KS11", "MONTHLY", null
+        BacktestRequest backtestRequest = new BacktestRequest(
+                "LUMP_SUM", BigDecimal.valueOf(10000000), "KOSPI", "MONTHLY", null
         );
 
         // [When] 3. 백테스트 실행
