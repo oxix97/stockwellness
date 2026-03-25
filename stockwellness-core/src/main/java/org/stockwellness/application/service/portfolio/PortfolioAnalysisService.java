@@ -105,7 +105,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         // 최근 2년치 데이터 로딩 및 시뮬레이션 실행
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData data = simulationDataProvider.loadData(symbols, command.benchmarkTicker(), start, end);
+        SimulationData data = simulationDataProvider.loadData(symbols, start, end);
 
         BacktestStrategy strategy = BacktestStrategy.valueOf(command.strategy().toUpperCase());
 
@@ -119,7 +119,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         return new BacktestResult(
                 result.dailyResults(), result.cagr(), result.mdd(), result.sharpeRatio(),
                 result.totalReturnRate(), result.volatility(), result.alpha(), result.beta(),
-                result.bestYearRate(), result.worstYearRate(), aiComment
+                result.bestYearRate(), result.worstYearRate(), result.comparisons(), aiComment
         );
     }
 
@@ -135,7 +135,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         // 과거 2년 수익률 기반으로 상관계수 계산
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData data = simulationDataProvider.loadData(symbols, BenchmarkType.KOSPI.getTicker(), start, end);
+        SimulationData data = simulationDataProvider.loadData(symbols, start, end);
 
         Map<String, List<BigDecimal>> returnsMap = new HashMap<>();
         for (String symbol : symbols) {
