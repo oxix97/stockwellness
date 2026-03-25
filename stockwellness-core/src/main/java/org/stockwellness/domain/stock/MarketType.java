@@ -11,7 +11,8 @@ public enum MarketType {
     KOSDAQ("코스닥"),
     NASDAQ("나스닥"),
     NYSE("뉴욕"),
-    AMEX("아멕스");
+    AMEX("아멕스"),
+    INDEX("지수");
 
     private final String description;
 }
