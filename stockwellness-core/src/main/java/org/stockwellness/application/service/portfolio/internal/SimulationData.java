@@ -7,5 +7,9 @@ import java.util.Map;
 
 public record SimulationData(
     Map<String, List<StockPriceResult>> stockPrices,
-    List<StockPriceResult> benchmarkPrices
-) {}
+    Map<String, List<StockPriceResult>> benchmarkPrices // Ticker -> Prices (KOSPI, KOSDAQ, etc.)
+) {
+    public List<StockPriceResult> getBenchmarkPrices(String ticker) {
+        return benchmarkPrices.getOrDefault(ticker, java.util.Collections.emptyList());
+    }
+}
