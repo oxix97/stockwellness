@@ -69,7 +69,7 @@ public class PortfolioStatBatchService {
 
         for (int i = 0; i < symbolList.size(); i += MAX_SYMBOLS_PER_LOAD) {
             List<String> partition = symbolList.subList(i, Math.min(i + MAX_SYMBOLS_PER_LOAD, symbolList.size()));
-            SimulationData partData = simulationDataProvider.loadData(partition, start, end);
+            SimulationData partData = simulationDataProvider.loadData(partition, null, start, end);
             allStockPrices.putAll(partData.stockPrices());
             if (benchmarkPrices == null) {
                 benchmarkPrices = partData.benchmarkPrices();
