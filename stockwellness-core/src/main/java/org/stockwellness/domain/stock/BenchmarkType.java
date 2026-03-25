@@ -8,8 +8,9 @@ import java.util.Arrays;
 @Getter
 @RequiredArgsConstructor
 public enum BenchmarkType {
-    KOSPI("KOSPI", "코스피"),
-    KOSDAQ("KOSDAQ", "코스닥"),
+    KOSPI("0001", "코스피"),
+    KOSDAQ("1001", "코스닥"),
+    KOSPI_200("2001", "코스피 200"),
     S_AND_P_500("SPX", "S&P 500"),
     NASDAQ("IXIC", "나스닥");
 
