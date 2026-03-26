@@ -27,6 +27,14 @@ public class KafkaBatchResultAdapter implements BatchResultEventPort {
     @Override
     public void send(BatchResultEvent event) {
         log.info("Sending batch result event to Kafka: {}", event);
-        kafkaTemplate.send(topicName, event);
+        kafkaTemplate.send(topicName, event)
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("Successfully sent batch result event for job [{}]", event.batchName());
+                    } else {
+                        log.error("Failed to send batch result event for job [{}]: {}", 
+                                 event.batchName(), ex.getMessage());
+                    }
+                });
     }
 }
