@@ -60,7 +60,7 @@ class PortfolioDiagnosisServiceTest {
         
         given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.of(portfolio));
         
-        DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of());
+        DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of(), null);
         given(dataLoader.load(portfolioId)).willReturn(diagnosisContext);
 
         Map<String, Integer> categories = new HashMap<>();

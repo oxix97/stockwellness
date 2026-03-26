@@ -38,6 +38,6 @@ public class PortfolioDiagnosisDataLoader {
 
         Map<String, List<StockPrice>> stockPriceMap = stockPricePort.loadRecentHistoriesBatch(symbols, 5);
 
-        return new DiagnosisContext(portfolio, stockMap, stockPriceMap);
+        return new DiagnosisContext(portfolio, stockMap, stockPriceMap, null); // 임시로 null 주입
     }
 }
