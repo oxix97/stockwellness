@@ -58,3 +58,7 @@ management:
       enabled: true
 
 app.frontend-redirect-url: ${REDIRECT_URL}
+
+slack:
+  alert:
+    webhook-url: ${SLACK_WEBHOOK_URL_API}
