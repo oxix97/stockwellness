@@ -1,5 +1,6 @@
 package org.stockwellness.domain.portfolio.advisor;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -16,6 +17,7 @@ import org.stockwellness.domain.shared.AbstractEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AdvisorReport extends AbstractEntity {
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "portfolio_id", nullable = false)
     private Portfolio portfolio;

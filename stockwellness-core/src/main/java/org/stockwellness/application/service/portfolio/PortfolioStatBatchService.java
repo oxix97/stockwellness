@@ -11,6 +11,7 @@ import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.stock.BenchmarkType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,7 +41,6 @@ public class PortfolioStatBatchService {
     public void updatePortfolioStatsBatch(List<? extends Portfolio> portfolios) {
         if (portfolios.isEmpty()) return;
 
-        // 1. 청크 내 모든 종목 합집합 추출
         Set<String> allSymbols = portfolios.stream()
                 .flatMap(p -> p.getItems().stream())
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
@@ -49,12 +49,10 @@ public class PortfolioStatBatchService {
 
         if (allSymbols.isEmpty()) return;
 
-        // 2. 청크 전체 시세 데이터 분할 벌크 로딩 (메모리 보호)
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData chunkSharedData = loadPartitionedData(allSymbols, "KOSPI", start, end);
+        SimulationData chunkSharedData = loadPartitionedData(allSymbols, start, end);
 
-        // 3. 각 포트폴리오별 통계 계산 (로딩된 데이터 재사용)
         for (Portfolio portfolio : portfolios) {
             try {
                 processSinglePortfolio(portfolio, chunkSharedData, end);
@@ -64,21 +62,21 @@ public class PortfolioStatBatchService {
         }
     }
 
-    private SimulationData loadPartitionedData(Set<String> allSymbols, String benchmark, LocalDate start, LocalDate end) {
+    private SimulationData loadPartitionedData(Set<String> allSymbols, LocalDate start, LocalDate end) {
         List<String> symbolList = new ArrayList<>(allSymbols);
         Map<String, List<StockPriceResult>> allStockPrices = new HashMap<>();
-        List<StockPriceResult> benchmarkPrices = null;
+        Map<String, List<StockPriceResult>> benchmarkPrices = null;
 
         for (int i = 0; i < symbolList.size(); i += MAX_SYMBOLS_PER_LOAD) {
             List<String> partition = symbolList.subList(i, Math.min(i + MAX_SYMBOLS_PER_LOAD, symbolList.size()));
-            SimulationData partData = simulationDataProvider.loadData(partition, benchmark, start, end);
+            SimulationData partData = simulationDataProvider.loadData(partition, null, start, end);
             allStockPrices.putAll(partData.stockPrices());
             if (benchmarkPrices == null) {
                 benchmarkPrices = partData.benchmarkPrices();
             }
         }
 
-        return new SimulationData(allStockPrices, benchmarkPrices);
+        return new SimulationData(allStockPrices, benchmarkPrices != null ? benchmarkPrices : Map.of());
     }
 
     private void processSinglePortfolio(Portfolio portfolio, SimulationData sharedData, LocalDate baseDate) {
@@ -87,10 +85,8 @@ public class PortfolioStatBatchService {
 
         if (weights.isEmpty()) return;
 
-        // 전체 데이터 중 해당 포트폴리오의 종목 데이터만 추출하여 필터링된 SimulationData 생성
         SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
-        
-        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000));
+        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), "NONE");
         
         List<BigDecimal> values = result.dailyResults().stream()
                 .map(BacktestResult.DailyBacktestResult::totalValue)
@@ -98,8 +94,10 @@ public class PortfolioStatBatchService {
         List<BigDecimal> pReturns = result.dailyResults().stream()
                 .map(BacktestResult.DailyBacktestResult::returnRate)
                 .toList();
+        
+        // 통계 계산용 메인 벤치마크(KOSPI) 수익률 추출
         List<BigDecimal> mReturns = result.dailyResults().stream()
-                .map(BacktestResult.DailyBacktestResult::benchmarkReturnRate)
+                .map(r -> r.benchmarkReturnRates().getOrDefault(BenchmarkType.KOSPI.getTicker(), BigDecimal.ZERO))
                 .toList();
 
         BigDecimal mdd = statCalculator.calculateMDD(values);

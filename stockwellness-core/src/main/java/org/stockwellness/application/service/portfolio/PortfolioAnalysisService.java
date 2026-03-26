@@ -3,6 +3,7 @@ package org.stockwellness.application.service.portfolio;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.PortfolioAnalysisUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
@@ -45,6 +46,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private final StockPricePort stockPricePort;
     private final BacktestEngine backtestEngine;
     private final PortfolioCorrelationCalculator correlationCalculator;
+    private final AiAdvisorUseCase aiAdvisorUseCase;
 
     /**
      * 포트폴리오의 실시간 평가 가치 및 수익률을 조회합니다.
@@ -92,9 +94,12 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     public BacktestResult runBacktest(BacktestPortfolioCommand command) {
         AnalysisContext context = dataLoader.loadContext(command.portfolioId(), command.memberId());
         
-        // 종목별 목표 비중 추출
-        Map<String, BigDecimal> weights = context.portfolio().getItems().stream()
-                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
+        // 종목별 목표 비중 추출 (커스텀 비중이 있으면 사용, 없으면 포트폴리오 비중 사용)
+        Map<String, BigDecimal> weights = (command.weights() != null && !command.weights().isEmpty()) ?
+                command.weights() :
+                context.portfolio().getItems().stream()
+                        .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
+        
         List<String> symbols = new ArrayList<>(weights.keySet());
 
         // 최근 2년치 데이터 로딩 및 시뮬레이션 실행
@@ -104,9 +109,18 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
         BacktestStrategy strategy = BacktestStrategy.valueOf(command.strategy().toUpperCase());
 
-        return strategy == BacktestStrategy.DCA ? 
-                backtestEngine.runDCA(data, weights, command.amount()) : 
-                backtestEngine.runLumpSum(data, weights, command.amount());
+        BacktestResult result = (strategy == BacktestStrategy.DCA) ?
+                backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod()) :
+                backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod());
+        
+        // AI 어드바이저를 통한 전문적인 투자 조언 생성 (고도화)
+        String aiComment = aiAdvisorUseCase.generateBacktestAdvice(result, command.strategy(), command.benchmarkTicker());
+        
+        return new BacktestResult(
+                result.dailyResults(), result.cagr(), result.mdd(), result.sharpeRatio(),
+                result.totalReturnRate(), result.volatility(), result.alpha(), result.beta(),
+                result.bestYearRate(), result.worstYearRate(), result.comparisons(), aiComment
+        );
     }
 
     /**
@@ -121,7 +135,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         // 과거 2년 수익률 기반으로 상관계수 계산
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData data = simulationDataProvider.loadData(symbols, BenchmarkType.KOSPI.getTicker(), start, end);
+        SimulationData data = simulationDataProvider.loadData(symbols, null, start, end);
 
         Map<String, List<BigDecimal>> returnsMap = new HashMap<>();
         for (String symbol : symbols) {

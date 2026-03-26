@@ -91,13 +91,15 @@ public class StockService implements StockUseCase {
                 (latestPrice != null) ? latestPrice.getTransactionAmt() : BigDecimal.ZERO,
                 BigDecimal.ZERO, // marketCap (필요 시 추가 계산)
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getRsi14() : null,
-                (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getMa20() : null
+                (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getMa20() : null,
+                (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getAiInsight() : "데이터 집계 중입니다."
         );
     }
 
     @Override
     public List<StockSearchResult> getNewListings() {
-        return stockRepository.findTop10ByOrderByCreatedAtDesc().stream()
+        LocalDate since = LocalDate.now().minusDays(30);
+        return stockRepository.findNewListings(since).stream()
                 .map(s -> new StockSearchResult(
                         s.getTicker(),
                         s.getName(),

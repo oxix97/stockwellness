@@ -1,36 +1,25 @@
-# Technology Stack
+# 🛠️ StockWellness Tech Stack
 
-## 1. Core Platform
-- **Language:** Java 21 (leveraging Virtual Threads for high-concurrency portfolio simulations)
-- **Framework:** Spring Boot 3.4.1
-- **Architecture:** Multi-Module Gradle structure implementing Pragmatic Hexagonal Architecture (Core, API, Batch)
+이 문서는 StockWellness 시스템을 구동하는 핵심 기술 스택을 정의합니다.
 
-## 2. Data & Persistence
-- **Primary Database:** PostgreSQL
-- **Caching:** Redis (for session management, technical indicators, and hierarchical price data caching)
-- **Query Engine:** QueryDSL (for type-safe dynamic queries)
-- **In-Memory Database:** H2 (for integration and repository testing)
-- **Data Utilities:** QueryTypeUtil (custom utility for explicit SQL type casting to ensure PostgreSQL/H2 compatibility)
+## Language
+- **Java 21**: 최신 LTS 버전으로, Virtual Threads를 적극 활용하여 EOD 데이터 수집 및 외부 API 호출 시의 성능을 극대화합니다.
 
-## 3. Specialized Engines
-- **Batch Processing:** Spring Batch (leveraging JdbcBatchItemWriter for high-performance bulk data ingestion)
-- **Price Aggregation:** Java 21 Stream API (for high-performance in-memory weekly/monthly aggregation)
-- **Quantitative Analysis:** ta4j (technical indicator calculation: RSI, MACD, etc.)
-- **Portfolio Analysis Engine:** In-memory valuation and simulation engine (Backtest, Rebalancing) supporting professional-grade risk metrics (MDD, Sharpe, Beta).
-- **Design Patterns:** Facade Pattern (PortfolioFacade for unified orchestration), Domain Utility Pattern (FinanceCalculationUtil, PortfolioMapperUtil).
-- **AI Integration:** Spring AI (OpenAI integration for report generation and insights)
+## Frameworks
+- **Spring Boot 3.4.1**: 코어 애플리케이션 및 REST API 개발을 위한 메인 웹 프레임워크.
+- **Spring Batch**: 대량의 금융 데이터 정기 수집(EOD) 및 정산 작업을 위한 배치 프레임워크.
+- **Spring Security**: OAuth2 소셜 로그인 및 JWT 기반의 안전한 인증/인가 처리.
 
-## 4. Security & Integration
-- **Security:** Spring Security & JWT (token-based authentication)
-- **API Documentation:** Spring REST Docs (test-driven) & Swagger/OpenAPI 3 (interactive UI)
-- **API Communication:** **Standardized ApiResponse<T> & ErrorResponse** using Java 21 records, ensuring consistent JSON wrapping and machine-readable error codes.
-- **Observability:** P6Spy (SQL query monitoring) and **Spring AOP based structured JSON logging** for system-wide traceability.
-- **Health & Monitoring:** Spring Boot Actuator (standard metrics and health probes)
+## Database & Persistence
+- **PostgreSQL**: 포트폴리오, 사용자 정보 등 강력한 트랜잭션과 정합성이 요구되는 메인 관계형 데이터베이스.
+- **Redis**: API 응답 캐싱, 사용자 세션, JWT 관리를 위한 In-memory 데이터 스토어.
+- **JPA & QueryDSL**: 객체 중심의 데이터 접근과 타입 안정성이 보장된 복잡한 동적 쿼리 작성.
 
-## 5. Infrastructure & Devops
-- **Containerization:** Docker & Docker Compose (local development environment), n8n 커스텀 이미지(배포 오케스트레이터)
-- **CI/CD:** GitHub Actions (Automated build, test, and containerization)
-- **Registry:** GitHub Container Registry (GHCR)
-- **Messaging:** Apache Kafka & Spring Kafka (Event-driven architecture for decoupling Batch and API, ensuring data consistency via cache invalidation events)
-- **Deployment Visibility:** Slack 실시간 상세 진단 리포팅 및 배포 이력 기록 로직 도입
-- **Deployment Target:** Kubernetes (AWS EKS) for high availability and scalability
+## Infrastructure & Messaging
+- **Apache Kafka**: Transactional 초 Outbox 패턴과 결합하여 분산 시스템 환경에서 서비스 간 안정적인 비동기 이벤트 전달 보장.
+
+## AI & Third-Party
+- **OpenAI (GPT-4o-mini)**: Spring AI와 연동하여 사용자 포트폴리오 데이터를 분석하고 지능형 투자 조언(Rebalancing Advisor)을 생성.
+
+## Build Tool
+- **Gradle (Kotlin DSL)**: 멀티 모듈 프로젝트의 의존성 및 빌드 라이프사이클 관리.

@@ -10,6 +10,7 @@ import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.insight.LeadingStock;
+import org.stockwellness.domain.stock.insight.SectorAiOpinion;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.support.RestDocsSupport;
 import org.springframework.restdocs.payload.FieldDescriptor;
@@ -39,8 +40,8 @@ class SectorDashboardControllerTest extends RestDocsSupport {
     void getSectorRanking_docs() throws Exception {
         // given
         List<SectorRankingResult> result = List.of(
-                new SectorRankingResult("001", "종합", new BigDecimal("2500.50"), new BigDecimal("3.45"), false),
-                new SectorRankingResult("002", "반도체", new BigDecimal("1200.30"), new BigDecimal("-1.20"), true)
+                new SectorRankingResult("001", "종합", new BigDecimal("2500.50"), new BigDecimal("3.45"), false, null),
+                new SectorRankingResult("002", "반도체", new BigDecimal("1200.30"), new BigDecimal("-1.20"), true, null)
         );
 
         given(sectorInsightUseCase.getTopSectorsByFluctuation(any(), any(), anyInt()))
@@ -70,6 +71,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data[].currentPrice").description("현재 지수"));
                                     add(fieldWithPath("data[].fluctuationRate").description("평균 등락률"));
                                     add(fieldWithPath("data[].isOverheated").description("과열 여부"));
+                                    add(fieldWithPath("data[].aiComment").description("AI 한 줄 의견").optional());
                                 }})
                                 .build())
                 ));
@@ -124,9 +126,10 @@ class SectorDashboardControllerTest extends RestDocsSupport {
         SectorDetailResult result = new SectorDetailResult(
                 "001", "조선/해운", LocalDate.of(2026, 2, 26),
                 new BigDecimal("2500.50"), new BigDecimal("3.45"),
-                new TechnicalIndicators(new BigDecimal("2400.00"), new BigDecimal("2350.00"), null, null, new BigDecimal("65.5"), null, null, null, null, null, null, null, null, null, null, null, null),
+                new TechnicalIndicators(new BigDecimal("2400.00"), new BigDecimal("2350.00"), null, null, new BigDecimal("65.5"), null, null, null, null, null, null, null, null, null, null, null, null, null),
                 true, "현재 섹터는 과열 구간에 진입했습니다. 과매수 상태입니다.",
-                List.of(new LeadingStock("삼성중공업", "010140", new BigDecimal("5.2"), 1500000L, new BigDecimal("12000000000")))
+                List.of(new LeadingStock("삼성중공업", "010140", new BigDecimal("5.2"), 1500000L, new BigDecimal("12000000000"))),
+                SectorAiOpinion.empty()
         );
 
         given(sectorInsightUseCase.getSectorDetail(anyString(), any()))
@@ -172,6 +175,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data.technicalIndicators.isGoldenCross").description("골든 크로스 여부").optional());
                                     add(fieldWithPath("data.technicalIndicators.isDeadCross").description("데드 크로스 여부").optional());
                                     add(fieldWithPath("data.technicalIndicators.isMacdCross").description("MACD 크로스 여부").optional());
+                                    add(fieldWithPath("data.technicalIndicators.aiInsight").description("AI 기술적 통찰").optional());
                                     add(fieldWithPath("data.isOverheated").description("과열 진단 여부"));
                                     add(fieldWithPath("data.diagnosisMessage").description("상세 진단 메시지"));
                                     add(fieldWithPath("data.leadingStocks[]").description("주도주 리스트"));
@@ -180,6 +184,12 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data.leadingStocks[].fluctuationRate").description("주도주 등락률"));
                                     add(fieldWithPath("data.leadingStocks[].tradeVolume").description("주도주 거래량"));
                                     add(fieldWithPath("data.leadingStocks[].transactionAmt").description("주도주 거래대금"));
+                                    add(fieldWithPath("data.aiOpinion").description("AI 투자 의견 리포트").optional());
+                                    add(fieldWithPath("data.aiOpinion.decision").description("투자 결정 (BUY, HOLD, SELL)").optional());
+                                    add(fieldWithPath("data.aiOpinion.confidenceScore").description("AI 확신 점수").optional());
+                                    add(fieldWithPath("data.aiOpinion.title").description("리포트 제목").optional());
+                                    add(fieldWithPath("data.aiOpinion.keyReasons").description("핵심 근거 리스트").optional());
+                                    add(fieldWithPath("data.aiOpinion.detailedAnalysis").description("상세 분석 본문").optional());
                                 }})
                                 .build())
                 ));

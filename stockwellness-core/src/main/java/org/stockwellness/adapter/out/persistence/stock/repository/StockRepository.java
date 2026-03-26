@@ -9,6 +9,7 @@ import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +48,21 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
      */
     List<Stock> findBySector_MediumCodeAndStatus(String mediumCode, StockStatus status);
 
-    /** 신규 상장 종목 조회 (최근 등록 순 10개)
+    /**
+     * 신규 상장 종목 조회
+     * - groupCode = 'ST' (주식만, ETF/ETN/ELW 제외)
+     * - listingDate >= 기준일 (30일 이내)
+     * - status = ACTIVE
+     * - 상장일 내림차순
      */
-    List<Stock> findTop10ByOrderByCreatedAtDesc();
+    @Query("""
+        SELECT s FROM Stock s
+        WHERE s.groupCode = 'ST'
+          AND s.listingDate >= :since
+          AND s.status = 'ACTIVE'
+        ORDER BY s.listingDate DESC
+        """)
+    List<Stock> findNewListings(@Param("since") LocalDate since);
 
     @Query("SELECT s.ticker FROM Stock s")
     List<String> findAllByTicker();

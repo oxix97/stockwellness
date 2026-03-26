@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.stockwellness.domain.stock.BenchmarkType;
+
 @Component
 @RequiredArgsConstructor
 public class SimulationDataProvider {
@@ -20,7 +22,23 @@ public class SimulationDataProvider {
 
     public SimulationData loadData(List<String> symbols, String benchmarkTicker, LocalDate start, LocalDate end) {
         Map<String, List<StockPriceResult>> stockPrices = stockPricePort.loadPricesByTickers(symbols, start, end);
-        List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
+        
+        // 주요 지수(KOSPI, KOSDAQ, KOSPI_200 등) 모두 로드
+        Map<String, List<StockPriceResult>> benchmarkPrices = new HashMap<>();
+        for (BenchmarkType type : BenchmarkType.values()) {
+            List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
+            if (!prices.isEmpty()) {
+                benchmarkPrices.put(type.getTicker(), prices);
+            }
+        }
+
+        // 요청된 benchmarkTicker가 로드되지 않았을 경우 추가 로드 시도
+        if (benchmarkTicker != null && !benchmarkPrices.containsKey(benchmarkTicker)) {
+            List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkTicker, start, end);
+            if (!prices.isEmpty()) {
+                benchmarkPrices.put(benchmarkTicker, prices);
+            }
+        }
 
         return new SimulationData(stockPrices, benchmarkPrices);
     }

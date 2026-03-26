@@ -175,33 +175,74 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         // given
         BacktestResult result = new BacktestResult(
                 List.of(new BacktestResult.DailyBacktestResult(
-                        LocalDate.now(), BigDecimal.valueOf(1000000), BigDecimal.valueOf(1000000),
-                        BigDecimal.valueOf(5), BigDecimal.valueOf(3)))
+                        LocalDate.of(2024, 1, 1), BigDecimal.valueOf(1000000), BigDecimal.valueOf(1000000),
+                        BigDecimal.valueOf(5), Map.of("KOSPI", BigDecimal.valueOf(3)))),
+                BigDecimal.valueOf(0.15), // cagr
+                BigDecimal.valueOf(-0.10), // mdd
+                BigDecimal.valueOf(1.5), // sharpeRatio
+                BigDecimal.valueOf(0.20), // totalReturnRate
+                BigDecimal.valueOf(0.12), // volatility
+                BigDecimal.valueOf(0.05), // alpha
+                BigDecimal.valueOf(1.0), // beta
+                BigDecimal.valueOf(0.25), // bestYearRate
+                BigDecimal.valueOf(-0.05), // worstYearRate
+                List.of(new BacktestResult.IndexComparison("코스피", "KOSPI", BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0))),
+                "현재 포트폴리오는 시장 지수 대비 안정적인 수익을 보여주고 있습니다." // aiComment
         );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
 
-        // when & then
+        BacktestRequest request = new BacktestRequest(
+                "LUMP_SUM",
+                BigDecimal.valueOf(1000000),
+                "^KS11",
+                "MONTHLY",
+                Map.of("005930", BigDecimal.valueOf(100))
+        );
+
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
-                fieldWithPath("data.dailyResults[].date").description("날짜"),
-                fieldWithPath("data.dailyResults[].totalValue").description("총 가치"),
-                fieldWithPath("data.dailyResults[].totalInvested").description("총 투자금"),
-                fieldWithPath("data.dailyResults[].returnRate").description("누적 수익률 (%)"),
-                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("벤치마크 수익률 (%)")
+                fieldWithPath("data.dailyResults[].date").description("시뮬레이션 일자"),
+                fieldWithPath("data.dailyResults[].totalValue").description("해당 일자 총 자산 가치"),
+                fieldWithPath("data.dailyResults[].totalInvested").description("해당 일자 총 누적 투자금"),
+                fieldWithPath("data.dailyResults[].returnRate").description("해당 일자 누적 수익률 (%)"),
+                subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("벤치마크 지수별 해당 일자 수익률 (Map<Ticker, Rate>)"),
+                fieldWithPath("data.cagr").description("연평균 복리 수익률 (CAGR)"),
+                fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
+                fieldWithPath("data.sharpeRatio").description("위험 대비 수익 지수 (샤프 지수)"),
+                fieldWithPath("data.totalReturnRate").description("전체 기간 총 수익률"),
+                fieldWithPath("data.volatility").description("수익률 표준편차 (변동성)"),
+                fieldWithPath("data.alpha").description("벤치마크 대비 초과 수익률 (Alpha)"),
+                fieldWithPath("data.beta").description("시장 지수 변동성 대비 민감도 (Beta)"),
+                fieldWithPath("data.bestYearRate").description("최고 수익을 기록한 해의 수익률"),
+                fieldWithPath("data.worstYearRate").description("최저 수익을 기록한 해의 수익률"),
+                fieldWithPath("data.comparisons[].indexName").description("비교 지수 명칭 (예: 코스피, 나스닥)"),
+                fieldWithPath("data.comparisons[].ticker").description("비교 지수 티커"),
+                fieldWithPath("data.comparisons[].totalReturn").description("비교 지수의 전체 기간 총 수익률"),
+                fieldWithPath("data.comparisons[].alpha").description("지수 대비 해당 포트폴리오의 초과 수익"),
+                fieldWithPath("data.comparisons[].beta").description("지수 대비 해당 포트폴리오의 베타"),
+                fieldWithPath("data.aiComment").description("AI 엔진이 생성한 백테스트 분석 코멘트").optional()
         ));
 
         mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
-                        .content("{\"strategy\":\"WEIGHTED\",\"amount\":1000000,\"benchmarkTicker\":\"SPY\"}")
+                        .content(objectMapper.writeValueAsString(request))
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.aiComment").exists())
                 .andDo(document("portfolio-analysis-backtest",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 과거 백테스팅")
+                                .summary("포트폴리오 과거 시뮬레이션(백테스팅) 실행")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("strategy").description("투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"),
+                                        fieldWithPath("amount").description("초기 투자 금액 (또는 월간 적립액)"),
+                                        fieldWithPath("benchmarkTicker").description("비교 대상 벤치마크 티커 (예: ^KS11, ^KQ11, ^GSPC)"),
+                                        fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
+                                        subsectionWithPath("weights").description("사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)").optional()
                                 )
                                 .responseFields(responseFields)
                                 .build())

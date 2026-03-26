@@ -5,12 +5,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.data.domain.PageRequest;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
+import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 
@@ -21,12 +24,23 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
+public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, BenchmarkPricePort {
 
     private final StockPriceRepository stockPriceRepository;
     private final BenchmarkRepository benchmarkRepository;
+    private final BenchmarkPriceRepository benchmarkPriceRepository;
     private final StockPriceCacheAdapter stockPriceCacheAdapter;
     private final KisDailyPriceAdapter kisAdapter;
+
+    @Override
+    public Optional<BenchmarkPrice> findByTickerAndBaseDate(String ticker, LocalDate baseDate) {
+        return benchmarkPriceRepository.findByTickerAndBaseDate(ticker, baseDate);
+    }
+
+    @Override
+    public void save(BenchmarkPrice benchmarkPrice) {
+        benchmarkPriceRepository.save(benchmarkPrice);
+    }
 
     @Override
     public List<StockPrice> findFilteredStocksByIndicators(

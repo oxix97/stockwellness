@@ -1,37 +1,20 @@
-# Initial Concept
+# 🍏 StockWellness Product Guide
 
-Side-project
+## 1. Product Vision
+개인 투자자가 감정에 휘둘리지 않고 **데이터 기반의 객체관적인 의사결정**을 내릴 수 있도록 돕는 지능형 자산 배분 플랫폼입니다. 복잡한 시장 데이터를 AI가 해석하여 사용자 맞춤형 포트폴리오 건강 진단과 전략적 조언을 제공합니다.
 
-# Product Definition
+## 2. Target Users
+- **Individual Investors (Novice)**: 어려운 투자 지표 대신 직관적인 레이더 차트와 AI 조언으로 포트폴리오를 관리하려는 입문자.
+- **Experienced Investors (Quants)**: 백테스트 데이터와 기술적 지표(RSI, MACD)를 바탕으로 정밀한 분석을 원하는 숙련된 투자자.
+- **Asset Allocators**: 장기적인 관점에서 자산군별 비중 조정을 통한 리밸런싱 전략이 필요한 자산 배분 투자자.
 
-## 1. Vision
-Stockwellness is an asset allocation simulator and AI-powered prediction service designed to empower individual retail investors. It aims to replace emotional trading with data-driven decision-making by providing sophisticated simulation tools and objective AI insights based on technical analysis. The platform is built with engineering excellence at its core, ensuring high reliability, scalability, and maintainability.
+## 3. Core Values
+- **Data-Driven Decisions**: 과거 백테스트 결과를 토대로 감정적 매매를 배제한 투자 신뢰성 확보.
+- **AI-Powered Insights**: OpenAI GPT-4o-mini 기반의 정교한 분석으로 포트폴리오의 약점과 기회를 포착.
+- **Risk-Adjusted Performance**: 단순 수익률이 아닌 MDD, Sharpe ratio 등 위험 대비 성과 지표를 중심으로 한 건강 진단.
 
-## 2. Target Audience
-- **Individual Retail Investors:** Users seeking disciplined, data-driven approaches to portfolio management and asset allocation.
-
-## 3. Core Problems Solved
-- **Complexity in Strategy:** Simplifies the implementation and backtesting of diverse asset allocation strategies.
-- **Interpretation Barrier:** Lowers the barrier to understanding technical indicators and market trends without needing professional expertise.
-- **Lack of Actionable Insights:** Provides accessible, AI-driven insights to predict stock performance and identify market conditions.
-
-## 4. Key Features
-- **Automated Data Pipeline:** Daily stock price fetching and management using Spring Batch (integrating with KIS). Orchestrated event-driven coordination via **Kafka** ensures API caches and AI insights are automatically invalidated and refreshed upon successful data sync.
-- **High-Performance Price Engine:** Optimized EOD price retrieval and return rate calculation using hierarchical Redis caching and in-memory aggregation.
-- **AI-Powered Analysis:** Generation of market reports and stock analysis based on pre-calculated technical indicators (RSI, MACD, etc.).
-- **Portfolio Analysis:** Real-time performance tracking (Daily P/L, Total Return) and diversification analysis (Sector, Country, Asset Type) based on accurate unit-based asset management.
-- **Advanced Portfolio Simulation:** In-depth backtesting (DCA/Lump-sum) and **AI-driven rebalancing advisor** providing personalized adjustment advice based on target weights and technical trends.
-- **Quantitative Risk Metrics:** Automated daily calculation of MDD, Sharpe Ratio, and Beta to provide professional-grade risk assessment.
-- **Robust Admin & Monitoring:** Comprehensive system health check (DB, Redis, Kafka), batch integrity monitoring, and **global structured logging via Spring AOP** to ensure financial data accuracy and system reliability.
-
-## 5. Unique Value Proposition & Strategic Pillars
-- **Sophisticated Asset Allocation Simulation:**
-    - Goes beyond simple return tracking to simulate how a user's target asset weight (100% basis) changes with market fluctuations.
-    - Focuses on identifying optimal rebalancing timing and managing volatility risk.
-    - Utilizes **Java 21 Virtual Threads** to efficiently handle complex portfolio calculations for a large user base.
-- **Data-Driven Rational Decision Support:**
-    - Automates the collection and pre-calculation of key technical indicators (RSI, MACD) via Spring Batch.
-    - AI leverages this refined data to provide objective insights, helping users avoid emotional "impulse trading."
-- **Engineering Excellence:**
-    - **Multi-Module Hexagonal Architecture:** Enforces strict boundaries between core domain logic, web adapters (API), and batch processors via a multi-module Gradle structure to maximize maintainability and failure isolation.
-    - **Scalability & Reliability:** Adopts an event-driven design using **Kafka** to ensure data consistency and leverages **Kubernetes (EKS)** for high availability, laying a solid foundation for future traffic spikes or MSA transition.
+## 4. Key Features (MVP)
+- **Portfolio Health Diagnosis**: 수익성, 안전성, 분산, 민첩성, 현금 비중 5대 차원 기반 레이더 차트 및 진단.
+- **AI Rebalancing Advisor**: 현재 포트폴리오 상태에 따른 최적의 리밸런싱 가이드 및 조언 생성.
+- **Sector & Market Insights**: 섹터별 수급 분석 및 기술적 지표를 통한 시장 주도 섹터 탐색.
+- **Advanced Backtesting (Phase 2)**: 거치식/적립식(DCA) 등 다양한 전략 기반의 역사적 수익률 및 성과 시뮬레이션.

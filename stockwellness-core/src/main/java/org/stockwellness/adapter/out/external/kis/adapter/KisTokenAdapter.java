@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.GlobalException;
 
 import java.time.Duration;
 
@@ -65,7 +67,7 @@ public class KisTokenAdapter {
                 .body(KisTokenResponse.class);
 
         if (response == null || response.accessToken() == null) {
-            throw new RuntimeException("KIS API 토큰 발급 실패: 응답이 비어있습니다.");
+            throw new GlobalException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
 
         // 4. Redis 저장

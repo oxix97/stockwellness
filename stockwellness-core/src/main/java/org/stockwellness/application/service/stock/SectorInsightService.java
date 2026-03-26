@@ -83,7 +83,8 @@ public class SectorInsightService implements SectorInsightUseCase {
                 insight.getSectorCode(), insight.getSectorName(), insight.getBaseDate(),
                 insight.getSectorIndexCurrentPrice(), insight.getAvgFluctuationRate(),
                 insight.getTechnicalIndicators(), insight.isOverheated(),
-                generateDiagnosisMessage(insight), insight.getLeadingStocks()
+                generateDiagnosisMessage(insight), insight.getLeadingStocks(),
+                insight.getAiOpinion()
         );
     }
 

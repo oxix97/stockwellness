@@ -28,7 +28,7 @@ class BacktestEngineTest {
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
-            List.of(p1, p2) // Benchmark is same for simplicity
+            Map.of("KOSPI", List.of(p1, p2)) // Benchmark is same for simplicity
         );
         
         // Portfolio: AAPL 100%
@@ -36,7 +36,7 @@ class BacktestEngineTest {
         BigDecimal initialAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount);
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -59,14 +59,14 @@ class BacktestEngineTest {
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
-            List.of(p1, p2)
+            Map.of("KOSPI", List.of(p1, p2))
         );
         
         Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));
         BigDecimal monthlyAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount);
+        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, "NONE");
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
