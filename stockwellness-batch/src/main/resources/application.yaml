@@ -8,6 +8,16 @@ spring:
     job:
       enabled: false
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    template:
+      default-topic: price-indicator-batch-result
+
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
