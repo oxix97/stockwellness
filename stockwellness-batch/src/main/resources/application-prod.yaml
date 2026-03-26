@@ -42,6 +42,9 @@ logging:
     org.springframework.batch: INFO
     org.springframework.transaction: WARN
 
+slack:
+  webhook.url: ${SLACK_WEB_HOOK_URL_BATCH}
+
 management:
   endpoints:
     web:

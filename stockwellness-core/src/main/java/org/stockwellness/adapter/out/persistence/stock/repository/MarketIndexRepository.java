@@ -4,9 +4,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public interface MarketIndexRepository extends JpaRepository<MarketIndex, Long> {
+
+    Optional<MarketIndex> findByIndexCode(String indexCode);
 
     /**
      * 활성 지수 전체를 {@code Map<indexCode, MarketIndex>}로 반환.
