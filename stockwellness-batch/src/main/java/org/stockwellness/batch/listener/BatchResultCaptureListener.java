@@ -43,8 +43,14 @@ public class BatchResultCaptureListener implements JobExecutionListener {
         long failedCount = stepExecutions.stream().mapToLong(StepExecution::getProcessSkipCount).sum() 
                 + stepExecutions.stream().mapToLong(StepExecution::getWriteSkipCount).sum();
 
-        // 실패 데이터 ID 수집은 다음 태스크에서 보완 예정
-        List<String> failedIdList = List.of(); 
+        // 실패 데이터 ID 수집
+        List<String> failedIdList = stepExecutions.stream()
+                .map(stepExecution -> stepExecution.getExecutionContext().get(BatchFailureItemListener.FAILED_ITEM_IDS))
+                .filter(Objects::nonNull)
+                .map(obj -> (List<String>) obj)
+                .flatMap(List::stream)
+                .distinct()
+                .collect(Collectors.toList());
         
         String errorMessage = null;
         if (!isSuccess) {
@@ -52,7 +58,9 @@ public class BatchResultCaptureListener implements JobExecutionListener {
                     .map(Throwable::getMessage)
                     .filter(Objects::nonNull)
                     .collect(Collectors.joining(", "));
-            if (errorMessage.isEmpty() && !jobExecution.getExitStatus().getExitDescription().isEmpty()) {
+            
+            if (errorMessage.isEmpty() && jobExecution.getExitStatus() != null 
+                && !jobExecution.getExitStatus().getExitDescription().isEmpty()) {
                 errorMessage = jobExecution.getExitStatus().getExitDescription();
             }
         }
