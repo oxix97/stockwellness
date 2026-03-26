@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
+import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
@@ -29,7 +29,7 @@ import java.util.List;
 public class BenchmarkPriceSyncJobConfig {
 
     private final KisDailyPriceAdapter kisAdapter;
-    private final BenchmarkPriceRepository benchmarkPriceRepository;
+    private final BenchmarkPricePort benchmarkPricePort;
 
     @Bean
     public Job benchmarkPriceSyncJob(JobRepository jobRepository, Step benchmarkPriceSyncStep) {
@@ -49,34 +49,49 @@ public class BenchmarkPriceSyncJobConfig {
     public Tasklet benchmarkPriceSyncTasklet() {
         return (contribution, chunkContext) -> {
             LocalDate today = LocalDate.now();
-            LocalDate startDate = today.minusYears(2);
+            // 파라미터가 없으면 2년 전부터 수집 (초기 데이터 구축용)
+            String startDateParam = (String) chunkContext.getStepContext().getJobParameters().get("startDate");
+            LocalDate startDate = startDateParam != null ? LocalDate.parse(startDateParam) : today.minusYears(2);
 
             for (BenchmarkType type : BenchmarkType.values()) {
-                String ticker = type.getTicker();
-                log.info("[Benchmark] 시세 수집 시작: {} ({})", type.getDescription(), ticker);
-                
-                List<KisDailyPriceDetail> details = kisAdapter.fetchIndexDailyPrices(ticker, startDate, today);
-                
-                for (KisDailyPriceDetail detail : details) {
-                    saveBenchmarkPrice(ticker, detail);
+                String systemTicker = type.getTicker();
+                String apiTicker = type.getApiTicker();
+                log.info("[Benchmark] 시세 수집 시작: {} (System: {}, API: {}, StartDate: {})", 
+                        type.getDescription(), systemTicker, apiTicker, startDate);
+
+                try {
+                    List<BenchmarkPriceData> details;
+                    if (type.isOverseas()) {
+                        details = kisAdapter.fetchOverseasIndexDailyPrices(apiTicker, startDate);
+                    } else {
+                        details = kisAdapter.fetchIndexDailyPrices(apiTicker, startDate);
+                    }
+
+                    int count = 0;
+                    for (BenchmarkPriceData detail : details) {
+                        saveBenchmarkPrice(systemTicker, detail);
+                        count++;
+                    }
+                    log.info("[Benchmark] 시세 수집 완료: {} ({}건 저장/업데이트)", type.getDescription(), count);
+                } catch (Exception e) {
+                    log.error("[Benchmark] 시세 수집 중 오류 발생: {} ({}) - {}", 
+                            type.getDescription(), systemTicker, e.getMessage());
                 }
-                log.info("[Benchmark] 시세 수집 완료: {} ({}건)", type.getDescription(), details.size());
             }
             return RepeatStatus.FINISHED;
         };
     }
 
-    private void saveBenchmarkPrice(String ticker, KisDailyPriceDetail detail) {
+    private void saveBenchmarkPrice(String ticker, BenchmarkPriceData detail) {
         LocalDate date = detail.baseDate();
-        BigDecimal close = detail.closePrice();
-        
-        // 등락률 계산 (전일대비 / (종가 - 전일대비) * 100)
-        BigDecimal prdyVrss = detail.prdyVrss() != null ? detail.prdyVrss() : BigDecimal.ZERO;
-        BigDecimal prevClose = close.subtract(prdyVrss);
-        BigDecimal changeRate = prevClose.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
-                prdyVrss.divide(prevClose, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        if (date == null) return;
 
-        benchmarkPriceRepository.findByTickerAndBaseDate(ticker, date)
+        final BigDecimal close = detail.closePrice();
+        if (close == null || close.compareTo(BigDecimal.ZERO) <= 0) return;
+
+        final BigDecimal changeRate = calculateChangeRate(detail, close);
+
+        benchmarkPricePort.findByTickerAndBaseDate(ticker, date)
                 .ifPresentOrElse(
                     existing -> existing.updatePrices(
                         detail.openPrice(), detail.highPrice(), detail.lowPrice(), 
@@ -88,8 +103,23 @@ public class BenchmarkPriceSyncJobConfig {
                             detail.openPrice(), detail.highPrice(), detail.lowPrice(), 
                             close, changeRate, detail.volume()
                         );
-                        benchmarkPriceRepository.save(bp);
+                        benchmarkPricePort.save(bp);
                     }
                 );
     }
+
+    private BigDecimal calculateChangeRate(BenchmarkPriceData detail, BigDecimal close) {
+        BigDecimal changeRate = detail.prdyCtrt();
+
+        // 만약 API에서 등락률을 제공하지 않는 경우 직접 계산 (안전장치)
+        if (changeRate == null || changeRate.compareTo(BigDecimal.ZERO) == 0) {
+            BigDecimal prdyVrss = detail.prdyVrss() != null ? detail.prdyVrss() : BigDecimal.ZERO;
+            BigDecimal prevClose = close.subtract(prdyVrss);
+            return prevClose.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
+                    prdyVrss.divide(prevClose, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        }
+
+        return changeRate;
+    }
+
 }
