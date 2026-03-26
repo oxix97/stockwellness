@@ -108,7 +108,7 @@ public class StockChartService implements StockPriceUseCase {
 
     private BenchmarkInfo resolveBenchmark(MarketType marketType) {
         return switch (marketType) {
-            case KOSPI -> new BenchmarkInfo("^KS11", "KOSPI");
+            case KOSPI, INDEX -> new BenchmarkInfo("^KS11", "KOSPI");
             case KOSDAQ -> new BenchmarkInfo("^KQ11", "KOSDAQ");
             case NASDAQ, NYSE, AMEX -> new BenchmarkInfo("^GSPC", "S&P 500");
         };

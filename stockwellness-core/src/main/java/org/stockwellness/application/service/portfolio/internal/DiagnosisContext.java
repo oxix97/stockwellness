@@ -13,6 +13,7 @@ import java.util.Map;
 public record DiagnosisContext(
         Portfolio portfolio,
         Map<String, Stock> stockMap,
-        Map<String, List<StockPrice>> stockPriceMap
+        Map<String, List<StockPrice>> stockPriceMap,
+        BacktestResult backtestResult // 추가
 ) {
 }

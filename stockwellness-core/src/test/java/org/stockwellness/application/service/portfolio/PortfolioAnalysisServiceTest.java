@@ -162,9 +162,9 @@ class PortfolioAnalysisServiceTest {
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
         
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
-        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), List.of()));
+        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), Map.of()));
         
-        BacktestResult mockEngineResult = new BacktestResult(Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ZERO, null);
+        BacktestResult mockEngineResult = new BacktestResult(Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ZERO, null, "AI 조언입니다.");
         given(backtestEngine.runLumpSum(any(), anyMap(), any(), anyString())).willReturn(mockEngineResult);
         given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
 
@@ -189,7 +189,7 @@ class PortfolioAnalysisServiceTest {
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
         
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
-        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of("005930", List.of(), "000660", List.of()), List.of()));
+        given(simulationDataProvider.loadData(anyList(), any(), any(), any())).willReturn(new SimulationData(Map.of("005930", List.of(), "000660", List.of()), Map.of()));
         given(correlationCalculator.calculateMatrix(anyMap())).willReturn(Map.of("005930", Map.of("000660", BigDecimal.valueOf(0.8))));
 
         // when

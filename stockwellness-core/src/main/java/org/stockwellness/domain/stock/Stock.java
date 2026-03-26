@@ -159,6 +159,24 @@ public class Stock extends AbstractEntity {
     }
 
     /**
+     * 지수(Benchmark) 종목 생성
+     */
+    public static Stock ofIndex(String ticker, String name) {
+        Stock s = new Stock();
+        s.ticker = ticker;
+        s.name = name;
+        s.marketType = MarketType.INDEX;
+        s.currency = Currency.KRW;
+        s.status = StockStatus.ACTIVE;
+        s.isPremiumTracking = false;
+        s.isPreferred = false;
+        s.tradingStatus = StockTradingStatus.defaultValue();
+        s.warningStatus = StockWarningStatus.defaultValue();
+        s.overheatStatus = StockOverheatStatus.defaultValue();
+        return s;
+    }
+
+    /**
      * 코스피 종목 생성
      */
     public static Stock ofKospi(KospiItem item, StockSector sector) {

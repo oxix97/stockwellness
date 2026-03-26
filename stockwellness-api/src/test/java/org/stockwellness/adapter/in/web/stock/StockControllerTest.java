@@ -13,6 +13,7 @@ import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.in.stock.StockUseCase;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
+import org.stockwellness.application.port.in.stock.result.StockDetailResult;
 import org.stockwellness.application.port.in.stock.result.StockSearchResult;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
@@ -269,6 +270,61 @@ class StockControllerTest extends RestDocsSupport {
                                         parameterWithName("frequency").description("데이터 주기 (DAILY, WEEKLY, MONTHLY)").optional(),
                                         parameterWithName("includeBenchmark").description("벤치마크 포함 여부").optional()
                                 )
+                                .responseFields(responseFields)
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("종목 상세 정보 조회 API")
+    void getStockDetail() throws Exception {
+        // given
+        StockDetailResult result = new StockDetailResult(
+                "KR7005930003", "005930", "삼성전자", "KOSPI", 5969782550L,
+                LocalDate.of(2024, 1, 1), BigDecimal.valueOf(75000),
+                BigDecimal.valueOf(1000), BigDecimal.valueOf(1.35),
+                BigDecimal.valueOf(74000), BigDecimal.valueOf(76000),
+                BigDecimal.valueOf(73500), 15000000L,
+                BigDecimal.valueOf(1125000000000L), BigDecimal.valueOf(447733000000000L),
+                BigDecimal.valueOf(65.5), BigDecimal.valueOf(72000),
+                "현재 삼성전자는 강력한 반도체 업황 개선 기대감으로 단기 상승 추세에 있습니다."
+        );
+        given(stockUseCase.getStockDetail(eq("005930"))).willReturn(result);
+
+        // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.isinCode").description("ISIN 코드"),
+                fieldWithPath("data.ticker").description("티커"),
+                fieldWithPath("data.name").description("종목명"),
+                fieldWithPath("data.marketType").description("마켓 타입"),
+                fieldWithPath("data.totalShares").description("상장 주식 수"),
+                fieldWithPath("data.baseDate").description("기준 날짜"),
+                fieldWithPath("data.closePrice").description("종가"),
+                fieldWithPath("data.priceChange").description("대비"),
+                fieldWithPath("data.fluctuationRate").description("등락률 (%)"),
+                fieldWithPath("data.openPrice").description("시가"),
+                fieldWithPath("data.highPrice").description("고가"),
+                fieldWithPath("data.lowPrice").description("저가"),
+                fieldWithPath("data.volume").description("거래량"),
+                fieldWithPath("data.tradingValue").description("거래대금"),
+                fieldWithPath("data.marketCap").description("시가총액"),
+                fieldWithPath("data.rsi14").description("RSI(14) 지표").optional(),
+                fieldWithPath("data.ma20").description("20일 이동평균선").optional(),
+                fieldWithPath("data.aiInsight").description("AI 기술적 인사이트")
+        ));
+
+        mockMvc.perform(get("/api/v1/stocks/{ticker}", "005930")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.ticker").value("005930"))
+                .andExpect(jsonPath("$.data.aiInsight").exists())
+                .andDo(document("stock-get-detail",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Discovery")
+                                .summary("종목 상세 정보 조회")
+                                .pathParameters(parameterWithName("ticker").description("종목 티커"))
                                 .responseFields(responseFields)
                                 .build())
                 ));
