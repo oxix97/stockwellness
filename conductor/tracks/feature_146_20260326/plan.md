@@ -6,11 +6,11 @@
 - [x] Task: 백테스트 API 응답 DTO에 성과 지표 필드 추가 및 연동 fe25edb
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 3d88697
 
-## Phase 2: 건강 진단 5대 차원 데이터 정밀화
-- [x] Task: 5대 차원(수익, 안전, 분산, 민첩, 현금) 점수 계산 도메인 로직 단위 테스트 작성 0afc11c
-- [x] Task: 점수 계산 로직 구현 및 Health 진단 UseCase에 적용 0afc11c
-- [x] Task: 건강 진단 API 응답 DTO 변경 및 통합 테스트 수정 0afc11c
-- [~] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+## Phase 2: 건강 진단 5대 차원 데이터 정밀화 [checkpoint: baebb41]
+- [x] Task: 5대 차원(수익, 안전, 분산, 민첩, 현금) 점수 계산 도메인 로직 단위 테스트 작성 3163147
+- [x] Task: 점수 계산 로직 구현 및 Health 진단 UseCase에 적용 3163147
+- [x] Task: 건강 진단 API 응답 DTO 변경 및 통합 테스트 수정 3163147
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) baebb41
 
 ## Phase 3: 섹터 및 종목 상세 데이터 완결성 확보
 - [ ] Task: 섹터 대시보드 및 종목 상세 API의 누락된 AI 인사이트/지표 확인
