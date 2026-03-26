@@ -6,6 +6,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
@@ -17,6 +18,7 @@ import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.stockwellness.config.KafkaTopicConfig;
+import org.stockwellness.config.TestNotificationConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
 
 import java.util.List;
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import(TestNotificationConfig.class)
 @EmbeddedKafka(partitions = 1, topics = {KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC})
 class KafkaEventPublisherTest {
 
