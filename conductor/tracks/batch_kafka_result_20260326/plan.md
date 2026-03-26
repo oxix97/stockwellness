@@ -16,8 +16,8 @@
     - [x] Implement: `JobExecutionListener`를 확장하여 성공/실패 정보 및 소요 시간 캡처 로직 구현
 - [x] Task: 실패 데이터(ID) 수집 로직 추가 0473c92
     - [x] `Price/Indicator Calculation` 배치 내 ItemWriteListener 등을 활용하여 실패한 종목 ID 수집
-- [ ] Task: 배치 종료 시 Kafka 이벤트 발행 연동
-    - [ ] 배치 Job 설정에 Listener 등록 및 Kafka Port 호출 로직 연결
+- [x] Task: 배치 종료 시 Kafka 이벤트 발행 연동 a1e581e
+    - [x] 배치 Job 설정에 Listener 등록 및 Kafka Port 호출 로직 연결
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: 안정성 확보 및 외부 알림 연동
