@@ -10,7 +10,7 @@
     - [x] Implement: `KafkaBatchResultAdapter` 구현
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 5ff933a
 
-## Phase 2: 배치 결과 수집 및 이벤트 발행 연동
+## Phase 2: 배치 결과 수집 및 이벤트 발행 연동 [checkpoint: 0caa760]
 - [x] Task: 배치 결과 수집을 위한 Listener 구현 95efbfa
     - [x] Write Tests: `BatchResultCaptureListener` 테스트 작성
     - [x] Implement: `JobExecutionListener`를 확장하여 성공/실패 정보 및 소요 시간 캡처 로직 구현
@@ -18,7 +18,7 @@
     - [x] `Price/Indicator Calculation` 배치 내 ItemWriteListener 등을 활용하여 실패한 종목 ID 수집
 - [x] Task: 배치 종료 시 Kafka 이벤트 발행 연동 a1e581e
     - [x] 배치 Job 설정에 Listener 등록 및 Kafka Port 호출 로직 연결
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 0caa760
 
 ## Phase 3: 안정성 확보 및 외부 알림 연동
 - [~] Task: Kafka 발행 재시도 및 에러 핸들링
