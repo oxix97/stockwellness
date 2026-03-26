@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.stockwellness.global.alert.SlackAlertService;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.GlobalExceptionHandler;
 import org.stockwellness.global.error.exception.GlobalException;
@@ -17,6 +18,11 @@ import org.stockwellness.global.error.exception.GlobalException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -24,8 +30,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class GlobalExceptionHandlerTest {
 
+    private final SlackAlertService slackAlertService = mock(SlackAlertService.class);
+
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
-            .setControllerAdvice(new GlobalExceptionHandler())
+            .setControllerAdvice(new GlobalExceptionHandler(slackAlertService))
             .build();
 
     @Test
@@ -57,11 +65,37 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.errors[0].reason").exists());
     }
 
+    @Test
+    @DisplayName("예상치 못한 500 에러 발생 시 Slack 알림을 트리거한다")
+    void handleUnexpectedException_sendsSlackAlert() throws Exception {
+        mockMvc.perform(get("/test/unexpected")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("G004"));
+
+        verify(slackAlertService).sendInternalServerErrorAlert(anyString(), any(Exception.class));
+    }
+
+    @Test
+    @DisplayName("4xx BusinessException 발생 시 Slack 알림을 전송하지 않는다")
+    void handleBusinessException_doesNotSendSlackAlert() throws Exception {
+        mockMvc.perform(get("/test/exception")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+
+        verify(slackAlertService, never()).sendInternalServerErrorAlert(anyString(), any());
+    }
+
     @RestController
     static class TestController {
         @GetMapping("/test/exception")
-        public void throwException() {
+        public void throwBusinessException() {
             throw new GlobalException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        @GetMapping("/test/unexpected")
+        public void throwUnexpectedException() {
+            throw new RuntimeException("예상치 못한 오류");
         }
 
         @PostMapping("/test/validation")
