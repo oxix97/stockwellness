@@ -28,7 +28,7 @@ class BacktestEngineTest {
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
-            List.of(p1, p2) // Benchmark is same for simplicity
+            Map.of("KOSPI", List.of(p1, p2)) // Benchmark is same for simplicity
         );
         
         // Portfolio: AAPL 100%
@@ -59,7 +59,7 @@ class BacktestEngineTest {
         
         SimulationData data = new SimulationData(
             Map.of("AAPL", List.of(p1, p2)),
-            List.of(p1, p2)
+            Map.of("KOSPI", List.of(p1, p2))
         );
         
         Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));

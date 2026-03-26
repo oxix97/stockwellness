@@ -14,3 +14,7 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+slack:
+  alert:
+    webhook-url: ""   # 로컬: 비어있으면 알림 스킵

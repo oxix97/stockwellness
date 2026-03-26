@@ -9,8 +9,7 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.stockwellness.domain.stock.QStock.stock;
-import static org.stockwellness.domain.stock.price.QStockPrice.stockPrice;
+import static org.stockwellness.domain.stock.price.QBenchmarkPrice.benchmarkPrice;
 
 @Repository
 @RequiredArgsConstructor
@@ -22,26 +21,25 @@ public class BenchmarkRepositoryImpl implements BenchmarkRepository {
     public List<StockPriceResult> findBenchmarkPrices(String ticker, LocalDate start, LocalDate end) {
         return queryFactory
                 .select(Projections.constructor(StockPriceResult.class,
-                        stockPrice.id.baseDate,
-                        stockPrice.openPrice,
-                        stockPrice.highPrice,
-                        stockPrice.lowPrice,
-                        stockPrice.closePrice,
-                        stockPrice.adjClosePrice,
-                        stockPrice.volume,
-                        stockPrice.transactionAmt,
-                        stockPrice.indicators.ma5,
-                        stockPrice.indicators.ma20,
-                        stockPrice.indicators.ma60,
-                        stockPrice.indicators.ma120
+                        benchmarkPrice.baseDate,
+                        benchmarkPrice.openPrice,
+                        benchmarkPrice.highPrice,
+                        benchmarkPrice.lowPrice,
+                        benchmarkPrice.closePrice,
+                        benchmarkPrice.closePrice.as("adjClosePrice"), // 지수는 수정종가 개념이 없으므로 종가 사용
+                        benchmarkPrice.volume,
+                        benchmarkPrice.closePrice.multiply(benchmarkPrice.volume).as("transactionAmt"), // 간이 계산
+                        benchmarkPrice.closePrice.as("ma5"), // 필요 시 연산 추가 가능하나 현재는 기본값
+                        benchmarkPrice.closePrice.as("ma20"),
+                        benchmarkPrice.closePrice.as("ma60"),
+                        benchmarkPrice.closePrice.as("ma120")
                 ))
-                .from(stockPrice)
-                .join(stockPrice.stock, stock)
+                .from(benchmarkPrice)
                 .where(
-                        stock.ticker.eq(ticker),
-                        stockPrice.id.baseDate.between(start, end)
+                        benchmarkPrice.ticker.eq(ticker),
+                        benchmarkPrice.baseDate.between(start, end)
                 )
-                .orderBy(stockPrice.id.baseDate.asc())
+                .orderBy(benchmarkPrice.baseDate.asc())
                 .fetch();
     }
 }

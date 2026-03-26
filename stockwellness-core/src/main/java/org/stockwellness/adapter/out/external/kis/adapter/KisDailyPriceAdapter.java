@@ -6,13 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
-import org.stockwellness.adapter.out.external.kis.dto.KisPriceResponse;
-import org.stockwellness.adapter.out.external.kis.dto.KisStockInfo;
+import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.domain.stock.Stock;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -66,25 +64,94 @@ public class KisDailyPriceAdapter {
      */
     @Retry(name = "kisRetry")
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
-        KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
-                        .queryParam("FID_COND_MRKT_DIV_CODE", "J")
-                        .queryParam("FID_INPUT_ISCD", stock.getTicker())
-                        .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
-                        .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
-                        .queryParam("FID_PERIOD_DIV_CODE", "D")
-                        .queryParam("FID_ORG_ADJ_PRC", "1")
-                        .build())
-                .header("tr_id", "FHKST03010100")
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+        String path = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice";
+        String ticker = stock.getTicker();
+        try {
+            KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", ticker)
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .build())
+                    .header("tr_id", "FHKST03010100")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
-        if (response == null || response.output2() == null) {
+            if (response == null || response.output2() == null) {
+                return Collections.emptyList();
+            }
+            return response.output2();
+        } catch (Exception e) {
+            log.error("시세 조회 실패 (ticker: {}, path: {}): {}", ticker, path, e.getMessage());
             return Collections.emptyList();
         }
+    }
 
-        return response.output2();
+    /**
+     * 국내업종 일자별 지수 최대 100개
+     */
+    @Retry(name = "kisRetry")
+    public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate) {
+        try {
+            KisPriceResponse<SectorIndexSummary, List<SectorDailyPrice>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .build())
+                    .header("tr_id", "FHPUP02120000")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.output2() == null) {
+                return Collections.emptyList();
+            }
+            return new ArrayList<>(response.output2());
+        } catch (Exception e) {
+            log.error("국내 지수 시세 조회 실패 (indexCode: {}): {}", indexCode, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 해외 지수 일자별 지수 조회
+     */
+    @Retry(name = "kisRetry")
+    public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate) {
+        try {
+            KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/overseas-stock/v1/quotations/inquire-index-dailyprice")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .build())
+                    .header("tr_id", "FHKST03030100")
+                    .header("custtype", "P")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.output2() == null) {
+                return Collections.emptyList();
+            }
+
+            // startDate 이후 데이터만 필터링
+            return response.output2().stream()
+                    .filter(d -> !d.baseDate().isBefore(startDate))
+                    .map(d -> (BenchmarkPriceData) d)
+                    .toList();
+        } catch (Exception e) {
+            log.error("해외 지수 시세 조회 실패 (indexCode: {}): {}", indexCode, e.getMessage());
+            return Collections.emptyList();
+        }
     }
 }

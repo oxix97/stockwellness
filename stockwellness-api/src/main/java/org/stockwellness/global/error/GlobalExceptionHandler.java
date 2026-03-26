@@ -2,6 +2,7 @@ package org.stockwellness.global.error;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.stockwellness.global.alert.SlackAlertService;
 import org.stockwellness.global.error.exception.BusinessException;
 
 import org.stockwellness.global.common.response.ApiResponse;
@@ -17,8 +19,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Slf4j
+@RequiredArgsConstructor
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private final SlackAlertService slackAlertService;
 
     /**
      * 표준 예외 처리 통합 핸들러
@@ -57,6 +62,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception e, String traceId) {
         log.error("[{}] Unexpected Exception: ", traceId, e);
+        slackAlertService.sendInternalServerErrorAlert(traceId, e);
         return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, traceId);
     }
 

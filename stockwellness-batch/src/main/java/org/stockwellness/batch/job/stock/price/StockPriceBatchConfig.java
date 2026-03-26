@@ -32,6 +32,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.StringUtils;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.listener.BatchFailureItemListener;
+import org.stockwellness.batch.listener.BatchResultCaptureListener;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
@@ -57,6 +59,7 @@ public class StockPriceBatchConfig {
     private final StockPriceProgressListener progressListener;
     private final StockPriceSyncEventListener eventListener;
     private final BatchMdcListener mdcListener;
+    private final BatchResultCaptureListener resultCaptureListener;
     private final JdbcTemplate jdbcTemplate;
     private final TaskExecutor kisBatchExecutor;
 
@@ -76,6 +79,7 @@ public class StockPriceBatchConfig {
                 .start(stockPriceStep)
                 .listener(mdcListener)
                 .listener(eventListener)
+                .listener(resultCaptureListener)
                 .build();
     }
 
@@ -83,7 +87,8 @@ public class StockPriceBatchConfig {
     public Step stockPriceStep(
             ItemReader<List<Stock>> stockListReader,
             ItemProcessor<List<Stock>, List<StockPrice>> stockPriceProcessor,
-            ItemWriter<List<StockPrice>> stockPriceListWriter
+            ItemWriter<List<StockPrice>> stockPriceListWriter,
+            BatchFailureItemListener<List<StockPrice>> stockPriceFailureListener
     ) {
         return new StepBuilder("stockPriceStep", jobRepository)
                 .<List<Stock>, List<StockPrice>>chunk(1, transactionManager)
@@ -94,12 +99,22 @@ public class StockPriceBatchConfig {
                 .listener(mdcListener)
                 .listener(progressListener)
                 .listener(eventListener)
+                .listener(stockPriceFailureListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
                 .retry(org.springframework.web.client.RestClientException.class) // API 에러 리트라이 추가
                 .build();
+    }
+
+    @Bean
+    public BatchFailureItemListener<List<StockPrice>> stockPriceFailureListener() {
+        return new BatchFailureItemListener<>(list ->
+                list.stream()
+                        .map(item -> item.getId().getStockId().toString())
+                        .toList()
+        );
     }
 
     @Bean

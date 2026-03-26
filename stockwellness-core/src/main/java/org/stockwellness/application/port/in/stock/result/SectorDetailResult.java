@@ -1,6 +1,7 @@
 package org.stockwellness.application.port.in.stock.result;
 
 import org.stockwellness.domain.stock.insight.LeadingStock;
+import org.stockwellness.domain.stock.insight.SectorAiOpinion;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
@@ -16,5 +17,6 @@ public record SectorDetailResult(
     TechnicalIndicators technicalIndicators,
     boolean isOverheated,
     String diagnosisMessage,
-    List<LeadingStock> leadingStocks
+    List<LeadingStock> leadingStocks,
+    SectorAiOpinion aiOpinion // 추가
 ) {}
