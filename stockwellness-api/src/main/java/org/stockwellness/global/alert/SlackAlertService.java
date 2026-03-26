@@ -1,10 +1,12 @@
 package org.stockwellness.global.alert;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,9 +25,9 @@ public class SlackAlertService {
     private final SlackAlertProperties properties;
     private final RestClient restClient;
 
-    public SlackAlertService(SlackAlertProperties properties, RestClient.Builder builder) {
+    public SlackAlertService(SlackAlertProperties properties, @Qualifier("slackRestClient") RestClient restClient) {
         this.properties = properties;
-        this.restClient = builder.build();
+        this.restClient = restClient;
     }
 
     @Async("alertExecutor")
@@ -38,7 +40,7 @@ public class SlackAlertService {
         try {
             String message = buildMessage(traceId, e);
             restClient.post()
-                    .uri(properties.webhookUrl())
+                    .uri(URI.create(properties.webhookUrl()))
                     .body(Map.of("text", message))
                     .retrieve()
                     .toBodilessEntity();
