@@ -13,7 +13,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) baebb41
 
 ## Phase 3: 섹터 및 종목 상세 데이터 완결성 확보
-- [ ] Task: 섹터 대시보드 및 종목 상세 API의 누락된 AI 인사이트/지표 확인
-- [ ] Task: 관련 Repository/Adapter 계층 데이터 조회 로직 보완
-- [ ] Task: 응답 데이터 완결성에 대한 통합 테스트 작성 및 검증
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: 섹터 대시보드 및 종목 상세 API의 누락된 AI 인사이트/지표 확인 91cb9e0
+- [x] Task: 관련 Repository/Adapter 계층 데이터 조회 로직 보완 91cb9e0
+- [x] Task: 응답 데이터 완결성에 대한 통합 테스트 작성 및 검증 91cb9e0
+- [~] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
