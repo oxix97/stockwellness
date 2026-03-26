@@ -5,9 +5,9 @@
     - [x] application.yaml에 Kafka 설정 추가 (Producer)
     - [x] `stockwellness-core`에 `BatchResultEvent` record 정의 (DTO)
     - [x] Kafka 발행을 위한 Outgoing Port 인터페이스 정의
-- [ ] Task: Kafka Producer 어댑터 구현 (TDD)
-    - [ ] Write Tests: `KafkaBatchResultAdapter` 단위 테스트 작성
-    - [ ] Implement: `KafkaBatchResultAdapter` 구현
+- [x] Task: Kafka Producer 어댑터 구현 (TDD) 6bde6a8
+    - [x] Write Tests: `KafkaBatchResultAdapter` 단위 테스트 작성
+    - [x] Implement: `KafkaBatchResultAdapter` 구현
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: 배치 결과 수집 및 이벤트 발행 연동
