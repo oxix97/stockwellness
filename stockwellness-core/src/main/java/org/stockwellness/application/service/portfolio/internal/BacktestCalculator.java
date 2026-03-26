@@ -39,8 +39,8 @@ public class BacktestCalculator {
         for (BacktestResult.DailyBacktestResult res : dailyResults) {
             if (res.totalValue().compareTo(peak) > 0) peak = res.totalValue();
             if (peak.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal drawdown = peak.subtract(res.totalValue()).divide(peak, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
-                if (drawdown.compareTo(maxMDD) > 0) maxMDD = drawdown;
+                BigDecimal drawdown = peak.subtract(res.totalValue()).divide(peak, 8, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+                if (drawdown.compareTo(maxMDD) > 0) maxMDD = drawdown.setScale(4, RoundingMode.HALF_UP);
             }
         }
 
@@ -48,24 +48,62 @@ public class BacktestCalculator {
         List<BigDecimal> dailyReturns = dailyResults.stream()
                 .map(BacktestResult.DailyBacktestResult::returnRate)
                 .toList();
-        BigDecimal volatility = calculateStandardDeviation(dailyReturns);
+        BigDecimal dailyVolatility = calculateStandardDeviation(dailyReturns);
+        BigDecimal annualizedVolatility = dailyVolatility.multiply(BigDecimal.valueOf(Math.sqrt(252))).setScale(4, RoundingMode.HALF_UP);
 
         // 4. CAGR (연평균 수익률)
         double years = dailyResults.size() / 252.0; // 영업일 기준 약 252일
         BigDecimal cagr = calculateCAGR(first.totalInvested(), last.totalValue(), years);
 
-        // 5. 다중 지수 비교 결과 산출
+        // 5. Sharpe Ratio (무위험 수익률 3% 가정)
+        BigDecimal riskFreeRate = BigDecimal.valueOf(3.0);
+        BigDecimal sharpeRatio = BigDecimal.ZERO;
+        if (annualizedVolatility.compareTo(BigDecimal.ZERO) > 0) {
+            sharpeRatio = cagr.subtract(riskFreeRate).divide(annualizedVolatility, 4, RoundingMode.HALF_UP);
+        }
+
+        // 6. Best/Worst Year Rate
+        Map<Integer, List<BacktestResult.DailyBacktestResult>> resultsByYear = dailyResults.stream()
+                .collect(Collectors.groupingBy(res -> res.date().getYear()));
+
+        BigDecimal bestYearRate = BigDecimal.valueOf(-Double.MAX_VALUE);
+        BigDecimal worstYearRate = BigDecimal.valueOf(Double.MAX_VALUE);
+
+        for (List<BacktestResult.DailyBacktestResult> yearResults : resultsByYear.values()) {
+            if (yearResults.isEmpty()) continue;
+
+            BacktestResult.DailyBacktestResult yearFirst = yearResults.get(0);
+            BacktestResult.DailyBacktestResult yearLast = yearResults.get(yearResults.size() - 1);
+
+            // 연초 대비 연말 수익률: (연말 가치 / 연초 투자금액 - 1) * 100
+            // 여기서는 이미 dailyResult에 누적 수익률이 있으므로, 연도 내의 절대적 수익률 변화를 계산
+            // (YearEndValue / YearStartValue - 1) * 100
+            BigDecimal yearRate = BigDecimal.ZERO;
+            if (yearFirst.totalValue().compareTo(BigDecimal.ZERO) > 0) {
+                yearRate = yearLast.totalValue().subtract(yearFirst.totalValue())
+                        .divide(yearFirst.totalValue(), 8, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(4, RoundingMode.HALF_UP);
+            }
+
+            if (yearRate.compareTo(bestYearRate) > 0) bestYearRate = yearRate;
+            if (yearRate.compareTo(worstYearRate) < 0) worstYearRate = yearRate;
+        }
+        if (bestYearRate.doubleValue() == -Double.MAX_VALUE) bestYearRate = BigDecimal.ZERO;
+        if (worstYearRate.doubleValue() == Double.MAX_VALUE) worstYearRate = BigDecimal.ZERO;
+
+        // 7. 다중 지수 비교 결과 산출
         List<BacktestResult.IndexComparison> comparisons = new ArrayList<>();
         Map<String, BigDecimal> lastBenchmarkReturns = last.benchmarkReturnRates();
-        
+
         for (Map.Entry<String, BigDecimal> entry : lastBenchmarkReturns.entrySet()) {
             String ticker = entry.getKey();
             BigDecimal indexReturn = entry.getValue();
-            
-            // Alpha, Beta 간이 계산 (Beta는 수익률 상관관계로 계산하는 것이 정석이나 여기선 단순화)
+
+            // Alpha, Beta 간이 계산
             BigDecimal alpha = totalReturnRate.subtract(indexReturn);
             BigDecimal beta = calculateSimpleBeta(dailyResults, ticker);
-            
+
             comparisons.add(new BacktestResult.IndexComparison(
                 BenchmarkType.fromTicker(ticker).getDescription(),
                 ticker,
@@ -75,7 +113,7 @@ public class BacktestCalculator {
             ));
         }
 
-        // 6. 메인 지표 (기본적으로 KOSPI 기준 혹은 첫 번째 지수 기준)
+        // 8. 메인 지표
         BigDecimal primaryAlpha = comparisons.isEmpty() ? BigDecimal.ZERO : comparisons.get(0).alpha();
         BigDecimal primaryBeta = comparisons.isEmpty() ? BigDecimal.ONE : comparisons.get(0).beta();
 
@@ -83,12 +121,13 @@ public class BacktestCalculator {
                 dailyResults,
                 cagr,
                 maxMDD,
-                BigDecimal.ZERO, // Sharpe Ratio (추후 고도화)
+                sharpeRatio,
                 totalReturnRate,
-                volatility,
+                annualizedVolatility,
                 primaryAlpha,
                 primaryBeta,
-                BigDecimal.ZERO, BigDecimal.ZERO, // Best/Worst Year
+                bestYearRate,
+                worstYearRate,
                 comparisons,
                 aiComment
         );
