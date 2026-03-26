@@ -37,3 +37,6 @@
     - [x] Kafka 이벤트 명세서 및 장애 조치 가이드 문서 업데이트
 - [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md) c988f07
 
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 74581b9
+
