@@ -8,6 +8,7 @@ import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.batch.BatchResultEventPort;
+import org.stockwellness.application.port.out.notification.NotificationPort;
 import org.stockwellness.domain.shared.event.BatchResultEvent;
 
 import java.time.Duration;
@@ -22,9 +23,11 @@ public class BatchResultCaptureListener implements JobExecutionListener {
     private static final Logger log = LoggerFactory.getLogger(BatchResultCaptureListener.class);
 
     private final BatchResultEventPort batchResultEventPort;
+    private final NotificationPort notificationPort;
 
-    public BatchResultCaptureListener(BatchResultEventPort batchResultEventPort) {
+    public BatchResultCaptureListener(BatchResultEventPort batchResultEventPort, NotificationPort notificationPort) {
         this.batchResultEventPort = batchResultEventPort;
+        this.notificationPort = notificationPort;
     }
 
     @Override
@@ -44,6 +47,7 @@ public class BatchResultCaptureListener implements JobExecutionListener {
                 + stepExecutions.stream().mapToLong(StepExecution::getWriteSkipCount).sum();
 
         // 실패 데이터 ID 수집
+        @SuppressWarnings("unchecked")
         List<String> failedIdList = stepExecutions.stream()
                 .map(stepExecution -> stepExecution.getExecutionContext().get(BatchFailureItemListener.FAILED_ITEM_IDS))
                 .filter(Objects::nonNull)
@@ -80,5 +84,16 @@ public class BatchResultCaptureListener implements JobExecutionListener {
                  jobName, isSuccess, processedCount, failedCount);
         
         batchResultEventPort.send(event);
+
+        if (!isSuccess) {
+            sendFailureNotification(jobName, jobExecution.getStatus(), processedCount, failedCount, errorMessage);
+        }
+    }
+
+    private void sendFailureNotification(String jobName, BatchStatus status, long processedCount, long failedCount, String errorMessage) {
+        String title = String.format("Batch Job Failed: %s", jobName);
+        String content = String.format("Status: %s\nProcessed: %d\nFailed: %d\nError: %s", 
+                status, processedCount, failedCount, errorMessage);
+        notificationPort.send(title, content);
     }
 }

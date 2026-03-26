@@ -10,15 +10,16 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.StepExecution;
-import org.stockwellness.application.port.out.batch.BatchResultEventPort;
-import org.stockwellness.domain.shared.event.BatchResultEvent;
-
 import org.springframework.batch.item.ExecutionContext;
+import org.stockwellness.application.port.out.batch.BatchResultEventPort;
+import org.stockwellness.application.port.out.notification.NotificationPort;
+import org.stockwellness.domain.shared.event.BatchResultEvent;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -29,6 +30,9 @@ class BatchResultCaptureListenerTest {
 
     @Mock
     private BatchResultEventPort batchResultEventPort;
+
+    @Mock
+    private NotificationPort notificationPort;
 
     @InjectMocks
     private BatchResultCaptureListener batchResultCaptureListener;
@@ -80,5 +84,26 @@ class BatchResultCaptureListenerTest {
             event.failedIdList().containsAll(List.of("ID1", "ID2")) &&
             !event.isSuccess()
         ));
+    }
+
+    @Test
+    @DisplayName("배치 실패 시 외부 알림을 전송한다")
+    void afterJobFailureNotification() {
+        // given
+        JobExecution jobExecution = mock(JobExecution.class);
+        JobInstance jobInstance = mock(JobInstance.class);
+        
+        when(jobExecution.getJobInstance()).thenReturn(jobInstance);
+        when(jobInstance.getJobName()).thenReturn("test-job");
+        when(jobExecution.getStatus()).thenReturn(BatchStatus.FAILED);
+        when(jobExecution.getStartTime()).thenReturn(LocalDateTime.now().minusSeconds(10));
+        when(jobExecution.getEndTime()).thenReturn(LocalDateTime.now());
+        when(jobExecution.getStepExecutions()).thenReturn(List.of());
+
+        // when
+        batchResultCaptureListener.afterJob(jobExecution);
+
+        // then
+        verify(notificationPort).send(anyString(), anyString());
     }
 }
