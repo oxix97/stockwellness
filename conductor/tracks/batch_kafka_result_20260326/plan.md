@@ -31,9 +31,9 @@
     - [x] 실패 데이터 재처리를 위한 로그 기록 및 알림 연동 완료
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) 9dd2412
 
-## Phase 4: 전체 검증 및 문서화
-- [~] Task: 통합 테스트 및 최종 검증
+## Phase 4: 전체 검증 및 문서화 [checkpoint: c988f07]
+- [x] Task: 통합 테스트 및 최종 검증
     - [x] 전체 배치 실행 후 Kafka 메시지 수신 및 알림 발생 여부 확인 (기존 테스트 통과 확인 완료)
-    - [ ] Kafka 이벤트 명세서 및 장애 조치 가이드 문서 업데이트
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+    - [x] Kafka 이벤트 명세서 및 장애 조치 가이드 문서 업데이트
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md) c988f07
 
