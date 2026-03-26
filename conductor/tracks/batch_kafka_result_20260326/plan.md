@@ -21,7 +21,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: 안정성 확보 및 외부 알림 연동
-- [ ] Task: Kafka 발행 재시도 및 에러 핸들링
+- [~] Task: Kafka 발행 재시도 및 에러 핸들링
     - [ ] Spring Retry 또는 Kafka Producer 설정을 통한 재시도 구현
 - [ ] Task: 외부 알림(Slack 등) 연동 어댑터 구현
     - [ ] Write Tests: 알림 송신 테스트 작성
