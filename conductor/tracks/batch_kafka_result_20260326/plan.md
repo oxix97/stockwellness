@@ -23,10 +23,10 @@
 ## Phase 3: 안정성 확보 및 외부 알림 연동
 - [x] Task: Kafka 발행 재시도 및 에러 핸들링 1b28a60
     - [x] Spring Retry 또는 Kafka Producer 설정을 통한 재시도 구현
-- [~] Task: 외부 알림(Slack 등) 연동 어댑터 구현
-    - [ ] Write Tests: 알림 송신 테스트 작성
-    - [ ] Implement: 알림 시스템 연동 (기존 인프라 확인 후 구현)
-- [ ] Task: DLQ 또는 상태 업데이트 처리
+- [x] Task: 외부 알림(Slack 등) 연동 어댑터 구현 2077589
+    - [x] Write Tests: 알림 송신 테스트 작성
+    - [x] Implement: 알림 시스템 연동 (기존 인프라 확인 후 구현)
+- [~] Task: DLQ 또는 상태 업데이트 처리
     - [ ] 실패 데이터 재처리를 위한 DB 상태 업데이트 로직 구현
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
