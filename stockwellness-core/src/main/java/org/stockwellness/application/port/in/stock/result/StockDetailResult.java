@@ -20,6 +20,7 @@ public record StockDetailResult(
         BigDecimal tradingValue,
         BigDecimal marketCap,
         BigDecimal rsi14,
-        BigDecimal ma20
+        BigDecimal ma20,
+        String aiInsight
 ) {
 }

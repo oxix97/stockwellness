@@ -78,8 +78,11 @@ public class TechnicalIndicators implements Serializable {
     @Column(name = "is_macd_cross")
     private Boolean isMacdCross;
 
+    @Column(name = "ai_insight", columnDefinition = "TEXT")
+    private String aiInsight;
+
     public static TechnicalIndicators empty() {
         return new TechnicalIndicators(null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null);
     }
 }

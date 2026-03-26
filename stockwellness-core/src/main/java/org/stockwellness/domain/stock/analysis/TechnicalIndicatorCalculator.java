@@ -128,7 +128,8 @@ public class TechnicalIndicatorCalculator {
                     alignment, // 이 값이 null이 되지 않도록 보장
                     isGolden,
                     isDead,
-                    isMacdCross(macd, macdSignal, i)
+                    isMacdCross(macd, macdSignal, i),
+                    null // aiInsight
             ));
         }
 
