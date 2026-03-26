@@ -16,10 +16,11 @@
 - **JPA & QueryDSL**: 객체 중심의 데이터 접근과 타입 안정성이 보장된 복잡한 동적 쿼리 작성.
 
 ## Infrastructure & Messaging
-- **Apache Kafka**: Transactional 초 Outbox 패턴과 결합하여 분산 시스템 환경에서 서비스 간 안정적인 비동기 이벤트 전달 보장.
+- **Apache Kafka**: Transactional Outbox 패턴과 결합하여 배치 작업 결과 발행 등 분산 시스템 환경에서 안정적인 비동기 이벤트 전달 보장.
 
 ## AI & Third-Party
 - **OpenAI (GPT-4o-mini)**: Spring AI와 연동하여 사용자 포트폴리오 데이터를 분석하고 지능형 투자 조언(Rebalancing Advisor)을 생성.
+- **Slack Webhook**: 배치 작업 실패 시 실시간 모니터링 알림을 위해 연동.
 
 ## Build Tool
 - **Gradle (Kotlin DSL)**: 멀티 모듈 프로젝트의 의존성 및 빌드 라이프사이클 관리.

@@ -17,4 +17,5 @@
 - **Portfolio Health Diagnosis**: 수익성, 안전성, 분산, 민첩성, 현금 비중 5대 차원 기반 레이더 차트 및 진단.
 - **AI Rebalancing Advisor**: 현재 포트폴리오 상태에 따른 최적의 리밸런싱 가이드 및 조언 생성.
 - **Sector & Market Insights**: 섹터별 수급 분석 및 기술적 지표를 통한 시장 주도 섹터 탐색.
-- **Advanced Backtesting (Phase 2)**: 거치식/적립식(DCA) 등 다양한 전략 기반의 역사적 수익률 및 성과 시뮬레이션.
+- **Batch Monitoring & Automation**: 주가 및 지표 계산 배치의 결과를 Kafka 이벤트로 발행하여 시스템 가시성을 확보하고 실패 시 자동 알림을 제공합니다.
+- **Advanced Backtesting (Phase 2)**: 거치식/적립식(DCA) 등 다양한 전략 기반의 역사적 수익률 및 성과 시 뮬레이션.
