@@ -59,7 +59,7 @@ class StockTechnicalDataAdapterTest {
         TechnicalIndicators indicators = new TechnicalIndicators(
                 new BigDecimal("145.00"), new BigDecimal("140.00"), new BigDecimal("130.00"), new BigDecimal("120.00"),
                 new BigDecimal("65.0"), new BigDecimal("2.5"), new BigDecimal("2.0"),
-                null, null, null, null, null, null, null, null, null, null
+                null, null, null, null, null, null, null, null, null, null, null
         );
         given(price.getIndicators()).willReturn(indicators);
         

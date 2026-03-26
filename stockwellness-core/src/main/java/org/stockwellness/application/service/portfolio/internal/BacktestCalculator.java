@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
  */
 public class BacktestCalculator {
 
+    private static final BigDecimal DEFAULT_RISK_FREE_RATE = BigDecimal.valueOf(3.0); // 무위험 수익률 3% 가정
+
     public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults) {
         return calculate(dailyResults, null);
     }
@@ -55,11 +57,10 @@ public class BacktestCalculator {
         double years = dailyResults.size() / 252.0; // 영업일 기준 약 252일
         BigDecimal cagr = calculateCAGR(first.totalInvested(), last.totalValue(), years);
 
-        // 5. Sharpe Ratio (무위험 수익률 3% 가정)
-        BigDecimal riskFreeRate = BigDecimal.valueOf(3.0);
+        // 5. Sharpe Ratio
         BigDecimal sharpeRatio = BigDecimal.ZERO;
         if (annualizedVolatility.compareTo(BigDecimal.ZERO) > 0) {
-            sharpeRatio = cagr.subtract(riskFreeRate).divide(annualizedVolatility, 4, RoundingMode.HALF_UP);
+            sharpeRatio = cagr.subtract(DEFAULT_RISK_FREE_RATE).divide(annualizedVolatility, 4, RoundingMode.HALF_UP);
         }
 
         // 6. Best/Worst Year Rate
