@@ -1,10 +1,10 @@
 # Implementation Plan: 배치 작업 결과 Kafka 이벤트 발행
 
 ## Phase 1: 기반 인프라 및 공통 도메인 설정
-- [ ] Task: Kafka 연동 설정 및 공통 이벤트 모델 정의
-    - [ ] application.yaml에 Kafka 설정 추가 (Producer)
-    - [ ] `stockwellness-core`에 `BatchResultEvent` record 정의 (DTO)
-    - [ ] Kafka 발행을 위한 Outgoing Port 인터페이스 정의
+- [x] Task: Kafka 연동 설정 및 공통 이벤트 모델 정의 cf09da8
+    - [x] application.yaml에 Kafka 설정 추가 (Producer)
+    - [x] `stockwellness-core`에 `BatchResultEvent` record 정의 (DTO)
+    - [x] Kafka 발행을 위한 Outgoing Port 인터페이스 정의
 - [ ] Task: Kafka Producer 어댑터 구현 (TDD)
     - [ ] Write Tests: `KafkaBatchResultAdapter` 단위 테스트 작성
     - [ ] Implement: `KafkaBatchResultAdapter` 구현
