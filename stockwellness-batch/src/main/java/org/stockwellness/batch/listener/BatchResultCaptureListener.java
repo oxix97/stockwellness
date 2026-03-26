@@ -1,7 +1,6 @@
 package org.stockwellness.batch.listener;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
@@ -17,10 +16,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * 배치 작업(Job) 종료 시 결과를 캡처하여 Kafka 이벤트 발행 및 알림을 수행하는 리스너
+ */
+@Slf4j
 @Component
 public class BatchResultCaptureListener implements JobExecutionListener {
-
-    private static final Logger log = LoggerFactory.getLogger(BatchResultCaptureListener.class);
 
     private final BatchResultEventPort batchResultEventPort;
     private final NotificationPort notificationPort;
@@ -46,7 +47,7 @@ public class BatchResultCaptureListener implements JobExecutionListener {
         long failedCount = stepExecutions.stream().mapToLong(StepExecution::getProcessSkipCount).sum() 
                 + stepExecutions.stream().mapToLong(StepExecution::getWriteSkipCount).sum();
 
-        // 실패 데이터 ID 수집
+        // 실패 데이터 ID 수집 (StepExecutionContext 활용)
         @SuppressWarnings("unchecked")
         List<String> failedIdList = stepExecutions.stream()
                 .map(stepExecution -> stepExecution.getExecutionContext().get(BatchFailureItemListener.FAILED_ITEM_IDS))
@@ -80,7 +81,7 @@ public class BatchResultCaptureListener implements JobExecutionListener {
             errorMessage
         );
 
-        log.info("Batch result captured for job [{}]: success={}, processed={}, failed={}", 
+        log.info("배치 결과 캡처 완료 - 작업명: [{}], 성공여부: {}, 처리건수: {}, 실패건수: {}", 
                  jobName, isSuccess, processedCount, failedCount);
         
         batchResultEventPort.send(event);
@@ -91,8 +92,8 @@ public class BatchResultCaptureListener implements JobExecutionListener {
     }
 
     private void sendFailureNotification(String jobName, BatchStatus status, long processedCount, long failedCount, String errorMessage) {
-        String title = String.format("Batch Job Failed: %s", jobName);
-        String content = String.format("Status: %s\nProcessed: %d\nFailed: %d\nError: %s", 
+        String title = String.format("배치 작업 실패: %s", jobName);
+        String content = String.format("상태: %s\n처리건수: %d\n실패건수: %d\n에러메시지: %s", 
                 status, processedCount, failedCount, errorMessage);
         notificationPort.send(title, content);
     }

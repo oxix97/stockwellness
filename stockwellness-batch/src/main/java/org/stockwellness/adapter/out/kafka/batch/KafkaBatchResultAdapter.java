@@ -1,17 +1,18 @@
 package org.stockwellness.adapter.out.kafka.batch;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.batch.BatchResultEventPort;
 import org.stockwellness.domain.shared.event.BatchResultEvent;
 
+/**
+ * 배치 작업 결과를 Kafka 토픽으로 발행하는 어댑터
+ */
+@Slf4j
 @Component
 public class KafkaBatchResultAdapter implements BatchResultEventPort {
-
-    private static final Logger log = LoggerFactory.getLogger(KafkaBatchResultAdapter.class);
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final String topicName;
@@ -26,13 +27,13 @@ public class KafkaBatchResultAdapter implements BatchResultEventPort {
 
     @Override
     public void send(BatchResultEvent event) {
-        log.info("Sending batch result event to Kafka: {}", event);
+        log.info("배치 결과 이벤트를 Kafka로 전송 중: {}", event);
         kafkaTemplate.send(topicName, event)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
-                        log.info("Successfully sent batch result event for job [{}]", event.batchName());
+                        log.info("배치 결과 이벤트 전송 성공 - 작업명: [{}]", event.batchName());
                     } else {
-                        log.error("Failed to send batch result event for job [{}]: {}", 
+                        log.error("배치 결과 이벤트 전송 실패 - 작업명: [{}], 사유: {}", 
                                  event.batchName(), ex.getMessage());
                     }
                 });
