@@ -1,10 +1,10 @@
 # Implementation Plan: 와이어프레임 기반 포트폴리오 및 백테스트 API 기능 완성
 
-## Phase 1: 백테스트 성과 지표 산출 로직 구현
+## Phase 1: 백테스트 성과 지표 산출 로직 구현 [checkpoint: 3d88697]
 - [x] Task: CAGR, MDD, Sharpe Ratio 산출을 위한 도메인 로직(Core) 설계 및 테스트 코드 작성 b4fb8bb
 - [x] Task: 성과 지표 산출 도메인 로직 구현 b4fb8bb
 - [x] Task: 백테스트 API 응답 DTO에 성과 지표 필드 추가 및 연동 fe25edb
-- [~] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 3d88697
 
 ## Phase 2: 건강 진단 5대 차원 데이터 정밀화
 - [ ] Task: 5대 차원(수익, 안전, 분산, 민첩, 현금) 점수 계산 도메인 로직 단위 테스트 작성
