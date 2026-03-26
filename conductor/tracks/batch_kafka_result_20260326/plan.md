@@ -1,6 +1,6 @@
 # Implementation Plan: 배치 작업 결과 Kafka 이벤트 발행
 
-## Phase 1: 기반 인프라 및 공통 도메인 설정
+## Phase 1: 기반 인프라 및 공통 도메인 설정 [checkpoint: 5ff933a]
 - [x] Task: Kafka 연동 설정 및 공통 이벤트 모델 정의 cf09da8
     - [x] application.yaml에 Kafka 설정 추가 (Producer)
     - [x] `stockwellness-core`에 `BatchResultEvent` record 정의 (DTO)
@@ -8,7 +8,7 @@
 - [x] Task: Kafka Producer 어댑터 구현 (TDD) 6bde6a8
     - [x] Write Tests: `KafkaBatchResultAdapter` 단위 테스트 작성
     - [x] Implement: `KafkaBatchResultAdapter` 구현
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 5ff933a
 
 ## Phase 2: 배치 결과 수집 및 이벤트 발행 연동
 - [ ] Task: 배치 결과 수집을 위한 Listener 구현
