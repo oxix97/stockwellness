@@ -62,22 +62,19 @@ class StockControllerTest extends RestDocsSupport {
                 fieldWithPath("data.content[].marketType").description("마켓 타입"),
                 fieldWithPath("data.content[].sectorName").description("섹터명"),
                 fieldWithPath("data.content[].status").description("종목 상태"),
-                fieldWithPath("data.pageable").description("페이징 정보"),
-                fieldWithPath("data.last").description("마지막 페이지 여부"),
-                fieldWithPath("data.numberOfElements").description("현재 페이지 엘리먼트 수"),
+                fieldWithPath("data.number").description("현재 페이지 번호 (0-based)"),
+                fieldWithPath("data.size").description("페이지 크기"),
+                fieldWithPath("data.numberOfElements").description("현재 페이지 항목 수"),
                 fieldWithPath("data.first").description("첫 번째 페이지 여부"),
-                fieldWithPath("data.size").description("페이지 사이즈"),
-                fieldWithPath("data.number").description("현재 페이지 번호"),
-                fieldWithPath("data.sort.empty").description("정렬 정보 비어있음 여부"),
-                fieldWithPath("data.sort.sorted").description("정렬 여부"),
-                fieldWithPath("data.sort.unsorted").description("미정렬 여부"),
-                fieldWithPath("data.empty").description("결과 비어있음 여부")
+                fieldWithPath("data.last").description("마지막 페이지 여부"),
+                fieldWithPath("data.hasNext").description("다음 페이지 존재 여부"),
+                fieldWithPath("data.empty").description("결과 없음 여부")
         ));
 
         mockMvc.perform(get("/api/v1/stocks/search")
                         .param("keyword", "삼성")
                         .param("page", "0")
-                        .param("size", "10")
+                        .param("size", "20")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
