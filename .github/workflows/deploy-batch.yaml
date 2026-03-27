@@ -65,7 +65,7 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:github-actions
 
-      - name: Trigger n8n webhook
+      - name: Trigger n8n webhook (배포 완료 대기)
         env:
           MSG: ${{ github.event.head_commit.message }}
         run: |
@@ -77,11 +77,26 @@ jobs:
             --arg author "${{ github.actor }}" \
             '{image: $img, tag: $tag, commit: $commit, message: $msg, author: $author}')
 
-          curl -f -X POST \
+          RESPONSE=$(curl -f \
+            --max-time 300 \
+            --connect-timeout 30 \
+            -X POST \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Token: ${{ secrets.N8N_DEPLOY_TOKEN }}" \
             -d "$JSON_DATA" \
-            "${{ secrets.N8N_WEBHOOK_BATCH_URL }}"
+            -w "\nHTTP_STATUS:%{http_code}" \
+            "${{ secrets.N8N_WEBHOOK_BATCH_URL }}")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
+
+          echo "n8n 응답 코드: ${HTTP_STATUS}"
+          echo "n8n 응답 내용: ${BODY}"
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ 배포 실패 (HTTP ${HTTP_STATUS})"
+            exit 1
+          fi
 
       - name: Done
-        run: echo "✅ Batch 배포 트리거 완료 → ${{ env.IMAGE_BATCH }}:${{ github.ref_name }}"
+        run: echo "✅ Batch 배포 완료 → ${{ env.IMAGE_BATCH }}:${{ github.ref_name }}"
