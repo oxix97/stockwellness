@@ -65,11 +65,12 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:github-actions
-
       - name: Trigger n8n webhook (배포 완료 대기)
-        env:
-          MSG: ${{ github.event.head_commit.message }}
         run: |
+          # 태그 푸시 이벤트 환경에 맞춰 git 명령어로 가장 최근 커밋 메시지를 안전하게 가져오거나, 
+          # 실패 시 기본값을 할당합니다.
+          MSG=$(git log -1 --pretty=%B || echo "Release: ${{ github.ref_name }}")
+
           JSON_DATA=$(jq -n \
             --arg img "${{ env.IMAGE_BATCH }}" \
             --arg tag "${{ github.ref_name }}" \
@@ -78,7 +79,9 @@ jobs:
             --arg author "${{ github.actor }}" \
             '{image: $img, tag: $tag, commit: $commit, message: $msg, author: $author}')
 
-          RESPONSE=$(curl -f \
+          # -f 옵션을 제거하고 -s(silent), -S(show-error)를 사용하여 
+          # 500 에러가 나더라도 죽지 않고 응답 코드를 받아오도록 수정합니다.
+          RESPONSE=$(curl -s -S \
             --max-time 300 \
             --connect-timeout 30 \
             -X POST \
@@ -88,6 +91,7 @@ jobs:
             -w "\nHTTP_STATUS:%{http_code}" \
             "${{ secrets.N8N_WEBHOOK_BATCH_URL }}")
 
+          # 마지막 줄의 HTTP 상태 코드와 그 앞의 응답 본문을 분리
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
           BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:")
 
@@ -98,6 +102,3 @@ jobs:
             echo "❌ 배포 실패 (HTTP ${HTTP_STATUS})"
             exit 1
           fi
-
-      - name: Done
-        run: echo "✅ Batch 배포 완료 → ${{ env.IMAGE_BATCH }}:${{ github.ref_name }}"
