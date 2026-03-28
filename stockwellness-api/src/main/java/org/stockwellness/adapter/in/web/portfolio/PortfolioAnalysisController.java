@@ -97,7 +97,7 @@ public class PortfolioAnalysisController {
         );
 
         BacktestResult result = portfolioFacade.runBacktest(command);
-        return ApiResponse.success(BacktestResponse.from(result));
+        return ApiResponse.success(BacktestResponse.from(result, request.benchmarkTicker()));
     }
 
     /**

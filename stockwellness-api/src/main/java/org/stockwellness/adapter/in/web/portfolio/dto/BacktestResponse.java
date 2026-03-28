@@ -26,6 +26,7 @@ public record BacktestResponse(
         BigDecimal totalValue,
         BigDecimal totalInvested,
         BigDecimal returnRate,
+        BigDecimal benchmarkReturnRate, // 주요 벤치마크 수익률 (FE 호환용 스칼라)
         Map<String, BigDecimal> benchmarkReturnRates // 다중 지수 수익률
     ) {}
 
@@ -37,10 +38,14 @@ public record BacktestResponse(
         BigDecimal beta
     ) {}
 
-    public static BacktestResponse from(BacktestResult result) {
+    public static BacktestResponse from(BacktestResult result, String primaryBenchmarkTicker) {
         return new BacktestResponse(
             result.dailyResults().stream()
-                .map(r -> new DailyResult(r.date(), r.totalValue(), r.totalInvested(), r.returnRate(), r.benchmarkReturnRates()))
+                .map(r -> new DailyResult(
+                    r.date(), r.totalValue(), r.totalInvested(), r.returnRate(),
+                    r.benchmarkReturnRates().getOrDefault(primaryBenchmarkTicker, BigDecimal.ZERO),
+                    r.benchmarkReturnRates()
+                ))
                 .toList(),
             result.cagr(),
             result.mdd(),
