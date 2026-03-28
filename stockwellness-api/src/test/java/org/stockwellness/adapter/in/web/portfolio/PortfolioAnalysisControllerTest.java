@@ -194,7 +194,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         BacktestRequest request = new BacktestRequest(
                 "LUMP_SUM",
                 BigDecimal.valueOf(1000000),
-                "^KS11",
+                "KOSPI",
                 "MONTHLY",
                 Map.of("005930", BigDecimal.valueOf(100))
         );
@@ -205,6 +205,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.dailyResults[].totalValue").description("해당 일자 총 자산 가치"),
                 fieldWithPath("data.dailyResults[].totalInvested").description("해당 일자 총 누적 투자금"),
                 fieldWithPath("data.dailyResults[].returnRate").description("해당 일자 누적 수익률 (%)"),
+                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("주요 벤치마크 누적 수익률 (%) — 요청한 benchmarkTicker 기준 스칼라"),
                 subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("벤치마크 지수별 해당 일자 수익률 (Map<Ticker, Rate>)"),
                 fieldWithPath("data.cagr").description("연평균 복리 수익률 (CAGR)"),
                 fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
