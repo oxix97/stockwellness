@@ -77,6 +77,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     @Cacheable(cacheNames = "sectorDetail", key = "#sectorCode + '_' + #date.toString()")
     public SectorDetailResult getSectorDetail(String sectorCode, LocalDate date) {
         SectorInsight insight = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
+                .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 
         return new SectorDetailResult(
@@ -92,18 +93,20 @@ public class SectorInsightService implements SectorInsightUseCase {
     @Cacheable(cacheNames = "sectorComparison", key = "#sectorCode + '_' + #date.toString()")
     public SectorComparisonResult compareWithMarket(String sectorCode, LocalDate date) {
         SectorInsight sector = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
+                .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 
+        LocalDate effectiveDate = sector.getBaseDate();
         String marketCode = (sector.getMarketType() == MarketType.KOSDAQ) ? "1001" : "0001";
-        Map<String, SectorInsight> todayData = sectorInsightPort.findByCodesAndDate(List.of(sectorCode, marketCode), date).stream()
+        Map<String, SectorInsight> todayData = sectorInsightPort.findByCodesAndDate(List.of(sectorCode, marketCode), effectiveDate).stream()
                 .collect(Collectors.toMap(SectorInsight::getSectorCode, s -> s));
 
         SectorInsight market = todayData.get(marketCode);
         if (market == null) throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
 
         BigDecimal rs = sector.getAvgFluctuationRate().subtract(market.getAvgFluctuationRate());
-        List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, date, 5);
-        List<SectorInsight> marketHistory = sectorInsightPort.findHistoryByCode(marketCode, date, 5);
+        List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, effectiveDate, 5);
+        List<SectorInsight> marketHistory = sectorInsightPort.findHistoryByCode(marketCode, effectiveDate, 5);
         
         List<SectorComparisonResult.HistoricalRS> history = calculateHistoricalRS(sectorHistory, marketHistory);
 
