@@ -3,6 +3,8 @@ package org.stockwellness.domain.stock.price;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import org.stockwellness.domain.stock.exception.InvalidPeriodException;
+
 import java.time.LocalDate;
 import java.util.function.Function;
 
@@ -33,6 +35,6 @@ public enum ChartPeriod {
                 return period;
             }
         }
-        return ONE_YEAR; // 기본값
+        throw new InvalidPeriodException(label);
     }
 }
