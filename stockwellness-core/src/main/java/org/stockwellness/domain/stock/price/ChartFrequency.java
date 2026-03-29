@@ -1,5 +1,7 @@
 package org.stockwellness.domain.stock.price;
 
+import org.stockwellness.domain.stock.exception.InvalidPeriodException;
+
 /**
  * 차트 데이터 집계 주기 (일, 주, 월)
  */
@@ -12,7 +14,7 @@ public enum ChartFrequency {
         try {
             return valueOf(frequency.toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
-            return DAILY;
+            throw new InvalidPeriodException(frequency);
         }
     }
 }

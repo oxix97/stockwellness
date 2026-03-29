@@ -3,6 +3,7 @@ package org.stockwellness.adapter.in.web.stock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
+import org.stockwellness.global.common.response.SliceResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
@@ -41,13 +42,13 @@ public class StockController {
      * 통합 종목 검색
      */
     @GetMapping("/search")
-    public ApiResponse<Slice<StockSearchResult>> searchStocks(
+    public ApiResponse<SliceResponse<StockSearchResult>> searchStocks(
             @AuthenticationPrincipal MemberPrincipal member,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(required = false) StockStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "20") int size
     ) {
         SearchStockQuery query = new SearchStockQuery(keyword, marketType, status, page, size);
         Slice<StockSearchResult> result = stockUseCase.searchStocks(query);
@@ -57,7 +58,7 @@ public class StockController {
             stockSearchUseCase.saveSearchHistory(member.id(), keyword);
         }
 
-        return ApiResponse.success(result);
+        return ApiResponse.success(SliceResponse.from(result));
     }
 
     /**
