@@ -2,6 +2,8 @@ name: CD - API
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'api-v*.*.*'     # 예: api-v1.0.0
       - 'release-v*.*.*'
