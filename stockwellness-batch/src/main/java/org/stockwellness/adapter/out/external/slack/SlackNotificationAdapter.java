@@ -2,8 +2,9 @@ package org.stockwellness.adapter.out.external.slack;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.stockwellness.application.port.out.notification.NotificationPort;
 
 import java.util.Map;
@@ -15,14 +16,14 @@ import java.util.Map;
 @Component
 public class SlackNotificationAdapter implements NotificationPort {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String webhookUrl;
 
     public SlackNotificationAdapter(
-        RestTemplate restTemplate,
+        RestClient.Builder restClientBuilder,
         @Value("${slack.webhook.url:}") String webhookUrl
     ) {
-        this.restTemplate = restTemplate;
+        this.restClient = restClientBuilder.build();
         this.webhookUrl = webhookUrl;
     }
 
@@ -37,7 +38,13 @@ public class SlackNotificationAdapter implements NotificationPort {
             String message = String.format("*[%s]*\n%s", title, content);
             Map<String, String> payload = Map.of("text", message);
             
-            restTemplate.postForEntity(webhookUrl, payload, String.class);
+            restClient.post()
+                    .uri(webhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+            
             log.info("Slack 알림 전송 성공: {}", title);
         } catch (Exception e) {
             log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
