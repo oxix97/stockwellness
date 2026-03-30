@@ -150,6 +150,7 @@ services:
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET}
+      SLACK_WEBHOOK_URL_API: ${SLACK_WEBHOOK_URL_API}
       TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
@@ -188,6 +189,7 @@ services:
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET}
+      SLACK_WEBHOOK_URL_API: ${SLACK_WEBHOOK_URL_API}
       TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
@@ -224,6 +226,7 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SLACK_WEBHOOK_URL_BATCH: ${SLACK_WEBHOOK_URL_BATCH}
       TZ: Asia/Seoul
     depends_on:
       postgres: { condition: service_healthy }
