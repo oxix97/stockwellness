@@ -105,8 +105,8 @@ public class SectorInsightService implements SectorInsightUseCase {
         if (market == null) throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
 
         BigDecimal rs = sector.getAvgFluctuationRate().subtract(market.getAvgFluctuationRate());
-        List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, effectiveDate, 5);
-        List<SectorInsight> marketHistory = sectorInsightPort.findHistoryByCode(marketCode, effectiveDate, 5);
+        List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, effectiveDate, 30);
+        List<SectorInsight> marketHistory = sectorInsightPort.findHistoryByCode(marketCode, effectiveDate, 30);
         
         List<SectorComparisonResult.HistoricalRS> history = calculateHistoricalRS(sectorHistory, marketHistory);
 
@@ -123,9 +123,9 @@ public class SectorInsightService implements SectorInsightUseCase {
 
         return sectorHistory.stream()
                 .map(s -> {
-                    BigDecimal mRate = marketMap.get(s.getBaseDate());
-                    BigDecimal rs = (mRate != null) ? s.getAvgFluctuationRate().subtract(mRate) : BigDecimal.ZERO;
-                    return new SectorComparisonResult.HistoricalRS(s.getBaseDate(), rs);
+                    BigDecimal mRate = marketMap.getOrDefault(s.getBaseDate(), BigDecimal.ZERO);
+                    BigDecimal rs = s.getAvgFluctuationRate().subtract(mRate);
+                    return new SectorComparisonResult.HistoricalRS(s.getBaseDate(), s.getAvgFluctuationRate(), mRate, rs);
                 })
                 .sorted(Comparator.comparing(SectorComparisonResult.HistoricalRS::date))
                 .toList();
