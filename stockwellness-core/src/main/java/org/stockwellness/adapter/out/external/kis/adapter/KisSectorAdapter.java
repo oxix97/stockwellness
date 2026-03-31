@@ -134,17 +134,33 @@ public class KisSectorAdapter implements SectorDataPort {
         try {
             KisPriceResponse<KisSectorPriceDetail, List<KisSectorPriceSummary>> response = fetchAllSectorPrices(iscd, mrktCls);
             if (response != null && response.output2() != null) {
-                response.output2().forEach(s -> result.add(new SectorApiDto(
-                        s.bstpClsCode(),
+                response.output2().forEach(s -> {
+                    String sectorCode = s.bstpClsCode();
+                    
+                    // 수급 데이터 추가 조회 (외인/기관 순매수 금액)
+                    List<InvestorTradingDaily> trading = fetchInvestorTradingDaily(sectorCode, today, 1);
+                    long netForeign = 0L;
+                    long netInst = 0L;
+                    
+                    if (!trading.isEmpty()) {
+                        InvestorTradingDaily latest = trading.get(0);
+                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) : 0L;
+                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) : 0L;
+                    }
+
+                    result.add(new SectorApiDto(
+                        sectorCode,
                         s.htsKorIsnm(),
                         today,
                         new BigDecimal(s.bstpNmixPrpr() != null ? s.bstpNmixPrpr() : "0"),
                         new BigDecimal(s.bstpNmixPrdyCtrt() != null ? s.bstpNmixPrdyCtrt() : "0"),
-                        0L, 0L
-                )));
+                        netForeign,
+                        netInst
+                    ));
+                });
             }
         } catch (Exception e) {
-            log.error("섹터 시세 조회 실패 (업종코드: {}): {}", iscd, e.getMessage());
+            log.error("섹터 시세 및 수급 조회 실패 (업종코드: {}): {}", iscd, e.getMessage());
         }
     }
 
