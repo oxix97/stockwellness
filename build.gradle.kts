@@ -44,6 +44,9 @@ subprojects {
     }
 
     dependencies {
+        //json
+        implementation("org.springframework.boot:spring-boot-starter-json")
+
         // lombok
         compileOnly("org.projectlombok:lombok")
         annotationProcessor("org.projectlombok:lombok")
