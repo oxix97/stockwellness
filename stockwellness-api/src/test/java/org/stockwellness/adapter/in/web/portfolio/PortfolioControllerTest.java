@@ -31,6 +31,7 @@ import org.stockwellness.support.annotation.MockMember;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -116,7 +117,7 @@ class PortfolioControllerTest extends RestDocsSupport {
         @DisplayName("조회: 포트폴리오 상세 정보를 조회한다")
         void get_portfolio() throws Exception {
             // given
-            given(portfolioFacade.getPortfolio(any(), eq(100L))).willReturn(PortfolioResponse.from(PortfolioFixture.createEntity(100L)));
+            given(portfolioFacade.getPortfolio(any(), eq(100L))).willReturn(PortfolioResponse.from(PortfolioFixture.createEntity(100L), Collections.emptyMap()));
 
             mockMvc.perform(get("/api/v1/portfolios/{portfolioId}", 100L)
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
@@ -133,6 +134,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                                         add(fieldWithPath("data.name").description("이름"));
                                         add(fieldWithPath("data.description").description("설명"));
                                         add(fieldWithPath("data.totalPurchaseAmount").description("총 매수 금액"));
+                                        add(fieldWithPath("data.currentTotalValue").description("총 평가 금액"));
+                                        add(fieldWithPath("data.totalReturnRate").description("총 수익률"));
                                         add(subsectionWithPath("data.items").description("포트폴리오 구성 종목 목록"));
                                     }})
                                     .build())));
@@ -170,7 +173,7 @@ class PortfolioControllerTest extends RestDocsSupport {
         @DisplayName("목록 조회: 내 포트폴리오 목록을 조회한다")
         void get_my_portfolios() throws Exception {
             // given
-            PortfolioResponse response = PortfolioResponse.from(PortfolioFixture.createEntity(100L));
+            PortfolioResponse response = PortfolioResponse.from(PortfolioFixture.createEntity(100L), Collections.emptyMap());
             given(portfolioFacade.getMyPortfolios(any())).willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/portfolios")
@@ -187,6 +190,8 @@ class PortfolioControllerTest extends RestDocsSupport {
                                         add(fieldWithPath("data[].name").description("이름"));
                                         add(fieldWithPath("data[].description").description("설명"));
                                         add(fieldWithPath("data[].totalPurchaseAmount").description("총 매수 금액"));
+                                        add(fieldWithPath("data[].currentTotalValue").description("총 평가 금액"));
+                                        add(fieldWithPath("data[].totalReturnRate").description("총 수익률"));
                                         add(subsectionWithPath("data[].items").description("포트폴리오 구성 종목 목록"));
                                     }})
                                     .build())));
