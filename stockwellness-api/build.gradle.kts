@@ -14,7 +14,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     // kafka
     implementation("org.springframework.kafka:spring-kafka")
