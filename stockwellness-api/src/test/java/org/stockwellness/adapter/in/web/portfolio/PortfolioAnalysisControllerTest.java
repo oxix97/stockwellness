@@ -195,7 +195,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 "LUMP_SUM",
                 BigDecimal.valueOf(1000000),
                 "KOSPI",
-                "MONTHLY",
+                org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
         );
 

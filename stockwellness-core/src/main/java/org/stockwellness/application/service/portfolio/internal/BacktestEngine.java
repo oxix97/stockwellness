@@ -2,6 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -12,7 +13,7 @@ import java.util.stream.Collectors;
 @Component
 public class BacktestEngine {
 
-    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount, String rebalancingPeriod) {
+    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount, RebalancingPeriod rebalancingPeriod) {
         // 모든 벤치마크 날짜의 합집합을 기준일로 설정 (합집합 정렬)
         List<LocalDate> allDates = data.benchmarkPrices().values().stream()
                 .flatMap(List::stream)
@@ -83,7 +84,7 @@ public class BacktestEngine {
         return BacktestCalculator.calculate(results);
     }
 
-    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, String rebalancingPeriod) {
+    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, RebalancingPeriod rebalancingPeriod) {
         List<LocalDate> allDates = data.benchmarkPrices().values().stream()
                 .flatMap(List::stream)
                 .map(StockPriceResult::baseDate)
@@ -161,12 +162,12 @@ public class BacktestEngine {
         return value;
     }
 
-    private boolean isRebalanceDay(LocalDate currentDate, LocalDate lastDate, String period) {
-        if (period == null || period.equalsIgnoreCase("NONE")) return false;
-        return switch (period.toUpperCase()) {
-            case "MONTHLY" -> currentDate.getMonthValue() != lastDate.getMonthValue();
-            case "QUARTERLY" -> (currentDate.getMonthValue() - 1) / 3 != (lastDate.getMonthValue() - 1) / 3;
-            case "YEARLY" -> currentDate.getYear() != lastDate.getYear();
+    private boolean isRebalanceDay(LocalDate currentDate, LocalDate lastDate, RebalancingPeriod period) {
+        if (period == null || period == RebalancingPeriod.NONE) return false;
+        return switch (period) {
+            case MONTHLY -> currentDate.getMonthValue() != lastDate.getMonthValue();
+            case QUARTERLY -> (currentDate.getMonthValue() - 1) / 3 != (lastDate.getMonthValue() - 1) / 3;
+            case YEARLY -> currentDate.getYear() != lastDate.getYear();
             default -> false;
         };
     }

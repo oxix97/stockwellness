@@ -11,6 +11,7 @@ import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.BenchmarkType;
 
 import java.math.BigDecimal;
@@ -86,7 +87,7 @@ public class PortfolioStatBatchService {
         if (weights.isEmpty()) return;
 
         SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
-        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), "NONE");
+        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), RebalancingPeriod.NONE);
         
         List<BigDecimal> values = result.dailyResults().stream()
                 .map(BacktestResult.DailyBacktestResult::totalValue)
