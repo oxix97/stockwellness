@@ -31,9 +31,10 @@ public class MarketIndexService implements MarketIndexUseCase {
     private record IndexDef(String name, String ticker) {}
 
     private static final List<IndexDef> INDEXES = List.of(
-            new IndexDef("KOSPI", "^KS11"),
-            new IndexDef("KOSDAQ", "^KQ11"),
-            new IndexDef("S&P500", "^GSPC")
+            new IndexDef("KOSPI", "0001"),
+            new IndexDef("KOSDAQ", "1001"),
+            new IndexDef("KOSPI 200", "2001"),
+            new IndexDef("S&P 500", "SPX")
     );
 
     @Override
