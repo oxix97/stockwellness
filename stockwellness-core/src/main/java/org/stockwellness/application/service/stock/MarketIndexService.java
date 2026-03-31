@@ -63,12 +63,14 @@ public class MarketIndexService implements MarketIndexUseCase {
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
         BigDecimal fluctuationRate = BigDecimal.ZERO;
+        BigDecimal fluctuationAmount = BigDecimal.ZERO;
 
         if (prices.size() >= 2) {
             StockPriceResult prev = prices.get(prices.size() - 2);
             BigDecimal prevClose = prev.closePrice();
             if (prevClose != null && prevClose.compareTo(BigDecimal.ZERO) > 0) {
-                fluctuationRate = currentPrice.subtract(prevClose)
+                fluctuationAmount = currentPrice.subtract(prevClose);
+                fluctuationRate = fluctuationAmount
                         .divide(prevClose, 4, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
                         .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
@@ -79,10 +81,10 @@ public class MarketIndexService implements MarketIndexUseCase {
                 .map(p -> new HistoryPoint(p.baseDate(), p.closePrice()))
                 .toList();
 
-        return new MarketIndexResult(name, currentPrice, fluctuationRate, history);
+        return new MarketIndexResult(name, currentPrice, fluctuationRate, fluctuationAmount, history);
     }
 
     private MarketIndexResult emptyResult(String name) {
-        return new MarketIndexResult(name, BigDecimal.ZERO, BigDecimal.ZERO, Collections.emptyList());
+        return new MarketIndexResult(name, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, Collections.emptyList());
     }
 }

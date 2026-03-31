@@ -8,6 +8,7 @@ public record MarketIndexResult(
         String name,
         BigDecimal currentPrice,
         BigDecimal fluctuationRate,
+        BigDecimal fluctuationAmount,
         List<HistoryPoint> history
 ) {
     public record HistoryPoint(
