@@ -3,6 +3,7 @@ name: CD - API
 on:
   push:
     tags:
+      - 'v*.*.*'
       - 'api-v*.*.*'     # 예: api-v1.0.0
       - 'release-v*.*.*'
 
