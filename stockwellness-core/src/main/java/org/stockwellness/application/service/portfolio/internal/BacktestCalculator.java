@@ -55,7 +55,7 @@ public class BacktestCalculator {
 
         // 4. CAGR (연평균 수익률)
         double years = dailyResults.size() / 252.0; // 영업일 기준 약 252일
-        BigDecimal cagr = calculateCAGR(first.totalInvested(), last.totalValue(), years);
+        BigDecimal cagr = calculateCAGR(last.totalInvested(), last.totalValue(), years);
 
         // 5. Sharpe Ratio
         BigDecimal sharpeRatio = BigDecimal.ZERO;

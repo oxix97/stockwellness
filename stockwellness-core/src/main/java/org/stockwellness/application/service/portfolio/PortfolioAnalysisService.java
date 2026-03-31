@@ -14,6 +14,7 @@ import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.BacktestStrategy;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.Country;
 import org.stockwellness.domain.stock.MarketType;
@@ -96,7 +97,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         
         // 종목별 목표 비중 추출 (커스텀 비중이 있으면 사용, 없으면 포트폴리오 비중 사용)
         Map<String, BigDecimal> weights = (command.weights() != null && !command.weights().isEmpty()) ?
-                command.weights() :
+                normalizeWeights(command.weights()) :
                 context.portfolio().getItems().stream()
                         .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
         
@@ -291,6 +292,27 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                     targetWeight.subtract(currentWeight), item.getQuantity(), recommendedQuantity, currentPrice));
         }
         return new PortfolioRebalancingResult(totalValue, items);
+    }
+
+    /**
+     * 입력된 가중치의 합계가 100%가 아닐 경우, 각 가중치의 상대적 비율을 유지하면서 100%가 되도록 정규화합니다.
+     */
+    private Map<String, BigDecimal> normalizeWeights(Map<String, BigDecimal> weights) {
+        BigDecimal totalWeight = weights.values().stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 합계가 0이거나 100%인 경우 그대로 반환
+        if (totalWeight.compareTo(BigDecimal.ZERO) == 0 || 
+            totalWeight.setScale(2, RoundingMode.HALF_UP).compareTo(BigDecimal.valueOf(100).setScale(2, RoundingMode.HALF_UP)) == 0) {
+            return weights;
+        }
+
+        Map<String, BigDecimal> normalized = new HashMap<>();
+        for (Map.Entry<String, BigDecimal> entry : weights.entrySet()) {
+            BigDecimal ratio = entry.getValue().divide(totalWeight, 8, RoundingMode.HALF_UP);
+            normalized.put(entry.getKey(), ratio.multiply(BigDecimal.valueOf(100)).setScale(4, RoundingMode.HALF_UP));
+        }
+        return normalized;
     }
 
     // ── 기초 조회 유틸리티 ────────────────────────────────────────────────────────

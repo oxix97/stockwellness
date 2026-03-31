@@ -3,6 +3,7 @@ package org.stockwellness.application.service.portfolio.internal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,7 +37,7 @@ class BacktestEngineTest {
         BigDecimal initialAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, "NONE");
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, RebalancingPeriod.NONE);
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -66,7 +67,7 @@ class BacktestEngineTest {
         BigDecimal monthlyAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, "NONE");
+        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, RebalancingPeriod.NONE);
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
