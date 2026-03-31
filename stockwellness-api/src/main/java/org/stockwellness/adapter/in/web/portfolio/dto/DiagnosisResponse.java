@@ -7,16 +7,20 @@ import java.util.Map;
 
 public record DiagnosisResponse(
         int overallScore,
-        Map<String, Integer> categories,
+        List<ChartData> categories,
         List<StockContributionResponse> stockContributions,
         String summary,
         String insight,
         List<String> nextSteps
 ) {
+    public record ChartData(String name, int value) {}
+
     public static DiagnosisResponse from(PortfolioHealthResult health) {
         return new DiagnosisResponse(
                 health.overallScore(),
-                health.categories(),
+                health.categories().entrySet().stream()
+                        .map(e -> new ChartData(e.getKey(), e.getValue()))
+                        .toList(),
                 health.stockContributions().stream()
                         .map(StockContributionResponse::from)
                         .toList(),

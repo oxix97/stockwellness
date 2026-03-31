@@ -16,6 +16,8 @@ public record SectorComparisonResult(
 ) {
     public record HistoricalRS(
         LocalDate date,
+        BigDecimal sectorRate,
+        BigDecimal marketRate,
         BigDecimal relativeStrength
     ) {}
 }
