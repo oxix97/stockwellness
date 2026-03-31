@@ -18,7 +18,7 @@ public record MemberResult(
         LocalDateTime modifiedAt,
         PortfolioSummaryResult portfolioSummary
 ) {
-    public static MemberResult from(Member member) {
+    public static MemberResult from(Member member, PortfolioSummaryResult summary) {
         return new MemberResult(
                 member.getId(),
                 member.getEmail().getAddress(),
@@ -28,7 +28,7 @@ public record MemberResult(
                 member.getStatus(),
                 member.getCreatedAt(),
                 member.getModifiedAt(),
-                PortfolioSummaryResult.empty() // 현재는 빈 객체 반환
+                summary
         );
     }
 
