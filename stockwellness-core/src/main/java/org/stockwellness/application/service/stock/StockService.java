@@ -78,6 +78,7 @@ public class StockService implements StockUseCase {
                 stock.getStandardCode(),
                 stock.getTicker(),
                 stock.getName(),
+                stock.getSector().getSectorName(),
                 stock.getMarketType().name(),
                 stock.getParValue(), // totalShares 대용
                 (latestPrice != null) ? latestPrice.getId().getBaseDate() : today,
@@ -92,7 +93,8 @@ public class StockService implements StockUseCase {
                 BigDecimal.ZERO, // marketCap (필요 시 추가 계산)
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getRsi14() : null,
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getMa20() : null,
-                (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getAiInsight() : "데이터 집계 중입니다."
+                (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getAiInsight() : "데이터 집계 중입니다.",
+                org.stockwellness.global.util.DateUtil.isMarketOpen()
         );
     }
 

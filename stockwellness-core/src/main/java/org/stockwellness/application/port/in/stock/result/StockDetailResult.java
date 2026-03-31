@@ -7,10 +7,11 @@ public record StockDetailResult(
         String isinCode,
         String ticker,
         String name,
+        String sectorName,
         String marketType,
         Long totalShares,
         LocalDate baseDate,
-        BigDecimal closePrice,
+        BigDecimal currentPrice,
         BigDecimal priceChange,
         BigDecimal fluctuationRate,
         BigDecimal openPrice,
@@ -21,6 +22,7 @@ public record StockDetailResult(
         BigDecimal marketCap,
         BigDecimal rsi14,
         BigDecimal ma20,
-        String aiInsight
+        String aiInsight,
+        boolean isMarketOpen
 ) {
 }

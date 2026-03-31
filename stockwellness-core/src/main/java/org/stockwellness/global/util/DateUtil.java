@@ -123,4 +123,17 @@ public class DateUtil {
         if (expiredAt == null) return true;
         return now().isAfter(expiredAt);
     }
+
+    /**
+     * 한국 주식 시장 개장 여부를 확인합니다. (평일 09:00 ~ 15:30)
+     */
+    public static boolean isMarketOpen() {
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        java.time.DayOfWeek dayOfWeek = now.getDayOfWeek();
+        if (dayOfWeek == java.time.DayOfWeek.SATURDAY || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+            return false;
+        }
+        java.time.LocalTime time = now.toLocalTime();
+        return !time.isBefore(java.time.LocalTime.of(9, 0)) && !time.isAfter(java.time.LocalTime.of(15, 30));
+    }
 }
