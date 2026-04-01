@@ -53,7 +53,7 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
         return new PortfolioHealthResult(
                 health.overallScore(),
                 health.categories(),
-                List.of(), // TODO: Stock Contributions
+                health.stockContributions(),
                 aiResult.summary(),
                 aiResult.insight(),
                 aiResult.nextSteps()

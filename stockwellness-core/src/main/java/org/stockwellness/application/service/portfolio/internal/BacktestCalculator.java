@@ -18,15 +18,19 @@ public class BacktestCalculator {
     private static final BigDecimal DEFAULT_RISK_FREE_RATE = BigDecimal.valueOf(3.0); // 무위험 수익률 3% 가정
 
     public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults) {
-        return calculate(dailyResults, null);
+        return calculate(dailyResults, null, Collections.emptyMap());
     }
 
     public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults, String aiComment) {
+        return calculate(dailyResults, aiComment, Collections.emptyMap());
+    }
+
+    public static BacktestResult calculate(List<BacktestResult.DailyBacktestResult> dailyResults, String aiComment, Map<String, BigDecimal> itemReturns) {
         if (dailyResults == null || dailyResults.isEmpty()) {
             return new BacktestResult(Collections.emptyList(), 
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
-                BigDecimal.ZERO, BigDecimal.ZERO, Collections.emptyList(), aiComment);
+                BigDecimal.ZERO, BigDecimal.ZERO, itemReturns, Collections.emptyList(), aiComment);
         }
 
         BacktestResult.DailyBacktestResult first = dailyResults.get(0);
@@ -129,6 +133,7 @@ public class BacktestCalculator {
                 primaryBeta,
                 bestYearRate,
                 worstYearRate,
+                itemReturns,
                 comparisons,
                 aiComment
         );

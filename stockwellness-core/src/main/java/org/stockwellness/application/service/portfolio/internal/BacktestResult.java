@@ -16,6 +16,7 @@ public record BacktestResult(
     BigDecimal beta,              // 시장 민감도
     BigDecimal bestYearRate,      // 최고의 해 수익률
     BigDecimal worstYearRate,     // 최악의 해 수익률
+    Map<String, BigDecimal> itemReturns, // 종목별 수익률 (기여도 산출용)
     List<IndexComparison> comparisons, // 다중 지수 비교 결과 추가
     String aiComment
 ) {

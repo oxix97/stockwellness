@@ -164,7 +164,10 @@ class PortfolioAnalysisServiceTest {
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
         given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), Map.of()));
         
-        BacktestResult mockEngineResult = new BacktestResult(Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ZERO, null, "AI 조언입니다.");
+        BacktestResult mockEngineResult = new BacktestResult(
+                Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.TEN, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "AI 조언입니다.");
         given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class))).willReturn(mockEngineResult);
         given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
 
@@ -219,8 +222,8 @@ class PortfolioAnalysisServiceTest {
                 .willReturn(new SimulationData(Map.of(), Map.of()));
 
         BacktestResult mockPerf = new BacktestResult(List.of(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(5.2), BigDecimal.ONE,
-                BigDecimal.valueOf(12.0), BigDecimal.valueOf(8.4), BigDecimal.valueOf(3.2), BigDecimal.ONE,
-                BigDecimal.TEN, BigDecimal.ZERO, List.of(), "AI Comment");
+                BigDecimal.valueOf(20.0), BigDecimal.valueOf(8.4), BigDecimal.valueOf(3.2), BigDecimal.ONE,
+                BigDecimal.valueOf(15.5), BigDecimal.ZERO, Map.of(), List.of(), "Advice");
         
         given(backtestEngine.runLumpSum(any(), anyMap(), any(), any())).willReturn(mockPerf);
 

@@ -2,6 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.in.portfolio.result.StockContributionResult;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -24,7 +25,7 @@ public class PortfolioHealthCalculator {
 
         BigDecimal totalValue = portfolio.calculateTotalPurchaseAmount();
         if (totalValue.compareTo(BigDecimal.ZERO) == 0) {
-            return new CalculatedHealth(0, Collections.emptyMap());
+            return new CalculatedHealth(0, Collections.emptyMap(), Collections.emptyList());
         }
 
         // 1. 기초 데이터 집계
@@ -85,12 +86,53 @@ public class PortfolioHealthCalculator {
         int cashScore = Math.min(100, cashWeight.multiply(BigDecimal.valueOf(3.33)).intValue());
         categories.put(DiagnosisCategory.CASH.getKey(), cashScore);
 
-        // 3. 종합 점수 산출
+        // 3. 종목별 기여도 산출
+        List<StockContributionResult> stockContributions = new ArrayList<>();
+        if (backtestResult != null && backtestResult.itemReturns() != null) {
+            Map<String, BigDecimal> itemReturns = backtestResult.itemReturns();
+            
+            // 수익률 기준 정렬 (내림차순)
+            List<Map.Entry<String, BigDecimal>> sortedReturns = itemReturns.entrySet().stream()
+                    .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                    .toList();
+
+            for (int i = 0; i < sortedReturns.size(); i++) {
+                Map.Entry<String, BigDecimal> entry = sortedReturns.get(i);
+                String symbol = entry.getKey();
+                BigDecimal returnValue = entry.getValue();
+                Stock stock = stockMap.get(symbol);
+                String name = (stock != null) ? stock.getName() : symbol;
+
+                String mainContribution;
+                int score;
+                String reason;
+
+                if (returnValue.compareTo(BigDecimal.ZERO) > 0) {
+                    if (i < 3) {
+                        mainContribution = "주요 수익원";
+                        score = Math.min(100, 80 + returnValue.intValue());
+                        reason = String.format("포트폴리오 수익률에 %s%% 기여하며 성장을 견인하고 있습니다.", returnValue);
+                    } else {
+                        mainContribution = "보조 수익원";
+                        score = Math.min(90, 70 + returnValue.intValue());
+                        reason = "안정적인 수익을 유지하며 포트폴리오를 지지하고 있습니다.";
+                    }
+                } else {
+                    mainContribution = "수익성 개선 필요";
+                    score = Math.max(0, 50 + returnValue.intValue());
+                    reason = String.format("최근 수익률이 %s%%로 저조하여 비중 조절이나 정밀 진단이 필요합니다.", returnValue);
+                }
+
+                stockContributions.add(new StockContributionResult(name, mainContribution, score, reason));
+            }
+        }
+
+        // 4. 종합 점수 산출
         double average = categories.values().stream()
                 .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
 
-        return new CalculatedHealth((int) Math.round(average), categories);
+        return new CalculatedHealth((int) Math.round(average), categories, stockContributions);
     }
 }

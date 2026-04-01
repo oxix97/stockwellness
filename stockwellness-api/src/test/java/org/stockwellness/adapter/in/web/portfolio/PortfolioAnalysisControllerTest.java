@@ -246,6 +246,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1.0), // beta
                 BigDecimal.valueOf(0.25), // bestYearRate
                 BigDecimal.valueOf(-0.05), // worstYearRate
+                Map.of(),
                 List.of(new BacktestResult.IndexComparison("코스피", "KOSPI", BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0))),
                 "현재 포트폴리오는 시장 지수 대비 안정적인 수익을 보여주고 있습니다." // aiComment
         );

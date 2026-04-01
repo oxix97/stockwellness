@@ -81,7 +81,21 @@ public class BacktestEngine {
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, initialAmount, returnRate, benchmarkReturnRates));
         }
 
-        return BacktestCalculator.calculate(results);
+        // 종목별 수익률 (기여도) 계산
+        Map<String, BigDecimal> itemReturns = new HashMap<>();
+        int lastIdx = allDates.size() - 1;
+        for (String symbol : weights.keySet()) {
+            BigDecimal share = shares.getOrDefault(symbol, BigDecimal.ZERO);
+            BigDecimal currentPrice = priceArrays.getOrDefault(symbol, new BigDecimal[]{BigDecimal.ZERO})[lastIdx];
+            BigDecimal currentValue = share.multiply(currentPrice);
+            BigDecimal initialAllocated = initialAmount.multiply(weights.get(symbol)).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+            
+            // 기여도 = (현재 가치 - 초기 투자금) / 초기 전체 금액 * 100
+            BigDecimal profitLoss = currentValue.subtract(initialAllocated);
+            itemReturns.put(symbol, calculateRate(profitLoss, initialAmount));
+        }
+
+        return BacktestCalculator.calculate(results, null, itemReturns);
     }
 
     public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, RebalancingPeriod rebalancingPeriod) {
@@ -150,7 +164,23 @@ public class BacktestEngine {
             results.add(new BacktestResult.DailyBacktestResult(date, dailyValue, totalInvested, returnRate, benchmarkReturnRates));
         }
 
-        return BacktestCalculator.calculate(results);
+        // 종목별 수익률 (기여도) 계산
+        Map<String, BigDecimal> itemReturns = new HashMap<>();
+        int lastIdx = allDates.size() - 1;
+        BigDecimal finalTotalInvested = totalInvested;
+        for (String symbol : weights.keySet()) {
+            BigDecimal share = totalShares.getOrDefault(symbol, BigDecimal.ZERO);
+            BigDecimal currentPrice = priceArrays.getOrDefault(symbol, new BigDecimal[]{BigDecimal.ZERO})[lastIdx];
+            BigDecimal currentValue = share.multiply(currentPrice);
+            
+            // DCA에서의 기여도 계산: (종목 현재 가치 - 해당 종목 총 투자액) / 전체 투자액 * 100
+            // 단순화를 위해 (현재 비중 * 총 가치 - 초기 비중 * 총 투자액) 기반으로 기여도 산출
+            BigDecimal initialAllocated = finalTotalInvested.multiply(weights.get(symbol)).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+            BigDecimal profitLoss = currentValue.subtract(initialAllocated);
+            itemReturns.put(symbol, calculateRate(profitLoss, finalTotalInvested));
+        }
+
+        return BacktestCalculator.calculate(results, null, itemReturns);
     }
 
     private BigDecimal calculateDailyValue(Map<String, BigDecimal> shares, Map<String, BigDecimal[]> priceArrays, int index) {

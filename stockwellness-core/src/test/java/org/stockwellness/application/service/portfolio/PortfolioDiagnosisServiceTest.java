@@ -70,7 +70,7 @@ class PortfolioDiagnosisServiceTest {
         categories.put(DiagnosisCategory.DIVERSIFICATION.getKey(), 85);
         categories.put(DiagnosisCategory.CASH.getKey(), 60);
         
-        CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories);
+        CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories, List.of());
         given(healthCalculator.calculate(diagnosisContext)).willReturn(calculatedHealth);
 
         given(loadPortfolioAiPort.generatePortfolioInsight(any(PortfolioAiContext.class)))

@@ -153,7 +153,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         return new BacktestResult(
                 result.dailyResults(), result.cagr(), result.mdd(), result.sharpeRatio(),
                 result.totalReturnRate(), result.volatility(), result.alpha(), result.beta(),
-                result.bestYearRate(), result.worstYearRate(), result.comparisons(), aiComment
+                result.bestYearRate(), result.worstYearRate(), result.itemReturns(), result.comparisons(), aiComment
         );
     }
 
