@@ -129,9 +129,11 @@ public class KisDailyPriceAdapter {
         try {
             KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/overseas-stock/v1/quotations/inquire-index-dailyprice")
-                            .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .path("/uapi/overseas-price/v1/quotations/inquire-daily-chartprice")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "N")
                             .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_INPUT_DATE_1", "D")
+                            .queryParam("FID_INPUT_DATE_2", "D")
                             .queryParam("FID_PERIOD_DIV_CODE", "D")
                             .build())
                     .header("tr_id", "FHKST03030100")
