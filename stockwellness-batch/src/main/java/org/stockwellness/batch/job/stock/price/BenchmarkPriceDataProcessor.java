@@ -38,8 +38,8 @@ public class BenchmarkPriceDataProcessor implements ItemProcessor<BenchmarkPrice
         // 1. 해당 지수의 전일 종가(T-1) 확보 시도
         BigDecimal prevClose = prevCloseMap.get(ticker);
 
-        // 2. 데이터가 해외 지수(isOverseas == true)인 경우에만 수동 계산(가공) 로직 수행
-        if (type.isOverseas()) {
+        // 2. 해외 지수이거나, 등락률 데이터가 누락(null 또는 0)된 경우 수동 계산(가공) 로직 수행
+        if (type.isOverseas() || changeRate == null || changeRate.compareTo(BigDecimal.ZERO) == 0) {
             // 전일 종가가 메모리(Map)에 없으면 DB에서 가장 최근 일자 데이터를 조회
             if (prevClose == null) {
                 prevClose = benchmarkPricePort.findLatestBefore(ticker, detail.baseDate())
