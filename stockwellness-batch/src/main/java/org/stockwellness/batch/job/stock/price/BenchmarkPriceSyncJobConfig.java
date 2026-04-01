@@ -65,11 +65,12 @@ public class BenchmarkPriceSyncJobConfig {
     @Bean
     @StepScope
     public ItemProcessor<BenchmarkType, List<BenchmarkPrice>> benchmarkPriceProcessor(
-            @Value("#{jobParameters['startDate']}") String startDateParam) {
+            @Value("#{jobParameters['startDate']}") String startDateParam,
+            @Value("#{jobParameters['endDate']}") String endDateParam) {
         return type -> {
             LocalDate today = LocalDate.now();
             LocalDate startDate = startDateParam != null ? LocalDate.parse(startDateParam) : today.minusYears(2);
-            LocalDate endDate = today; // [버그 수정] 미정의되었던 endDate 설정
+            LocalDate endDate = endDateParam != null ? LocalDate.parse(endDateParam) : today;
 
             log.info("[지수 동기화] 시세 수집 시작: {} (API: {}, 기간: {} ~ {})",
                     type.getDescription(), type.getApiTicker(), startDate, endDate);

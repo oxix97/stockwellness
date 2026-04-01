@@ -35,24 +35,22 @@ public class BatchAdminController {
     /**
      * 지수 시세 동기화 배치 수동 실행
      * @param startDate 수집 시작일 (yyyy-MM-dd, 선택 사항)
+     * @param endDate 수집 종료일 (yyyy-MM-dd, 선택 사항)
      */
     @PostMapping("/benchmark-sync")
-    public ResponseEntity<String> syncBenchmarkPrice(@RequestParam(required = false) String startDate) {
-        log.info("[Batch Admin] 지수 시세 동기화 수동 실행 요청 수신 (시작일: {})", startDate);
+    public ResponseEntity<String> syncBenchmarkPrice(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        log.info("[Batch Admin] 지수 시세 동기화 수동 실행 요청 수신 (시작일: {}, 종료일: {})", startDate, endDate);
 
         // 날짜 형식 유효성 검증
-        if (startDate != null) {
-            try {
-                LocalDate.parse(startDate);
-            } catch (DateTimeParseException e) {
-                log.warn("[Batch Admin] 잘못된 날짜 형식 요청: {}", startDate);
-                throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
-            }
-        }
+        validateDateFormat(startDate, "시작일");
+        validateDateFormat(endDate, "종료일");
 
         final JobParameters params = new JobParametersBuilder()
                 .addString("startDate", startDate)
-                .addLong("timestamp", System.currentTimeMillis()) // 매 실행마다 고유한 파라미터 부여하여 중복 실행 방지
+                .addString("endDate", endDate)
+                .addLong("timestamp", System.currentTimeMillis()) // 매 실행마다 고유한 파라미터 부여
                 .toJobParameters();
 
         // 긴 실행 시간으로 인한 타임아웃 방지를 위해 비동기(Async) 실행
@@ -66,10 +64,20 @@ public class BatchAdminController {
                 log.error("[Batch Admin] 배치 실행 실패 (파라미터 오류 또는 이미 실행 중): {}", e.getMessage());
             } catch (Exception e) {
                 log.error("[Batch Admin] 배치 실행 중 예기치 않은 서버 오류 발생: {}", e.getMessage());
-                // 비동기 작업 내에서의 예외는 별도 로깅 후 필요시 알림 처리
             }
         });
 
-        return ResponseEntity.accepted().body("지수 시세 동기화 배치가 비동기로 시작되었습니다. 진행 상황은 로그를 통해 확인하세요.");
+        return ResponseEntity.accepted().body("지수 시세 동기화 배치가 비동기로 시작되었습니다. 진행 상황은 로그를 확인하세요.");
+    }
+
+    private void validateDateFormat(String dateStr, String fieldName) {
+        if (dateStr != null) {
+            try {
+                LocalDate.parse(dateStr);
+            } catch (DateTimeParseException e) {
+                log.warn("[Batch Admin] 잘못된 {} 형식 요청: {}", fieldName, dateStr);
+                throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+        }
     }
 }
