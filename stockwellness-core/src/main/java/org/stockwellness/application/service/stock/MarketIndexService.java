@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.global.error.exception.GlobalException;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,13 +31,12 @@ public class MarketIndexService implements MarketIndexUseCase {
     private static final int HISTORY_DAYS = 30;
     private static final int DISPLAY_SCALE = 2;
 
-    private record IndexDef(String name, String ticker) {}
-
-    private static final List<IndexDef> INDEXES = List.of(
-            new IndexDef("KOSPI", "0001"),
-            new IndexDef("KOSDAQ", "1001"),
-            new IndexDef("KOSPI 200", "2001"),
-            new IndexDef("S&P 500", "SPX")
+    // 도메인 지수 정의를 BenchmarkType Enum으로 관리하여 외부 API 의존성 제거
+    private static final List<BenchmarkType> TARGET_INDEXES = List.of(
+            BenchmarkType.KOSPI,
+            BenchmarkType.KOSDAQ,
+            BenchmarkType.KOSPI_200,
+            BenchmarkType.S_AND_P_500
     );
 
     @Override
@@ -43,13 +45,17 @@ public class MarketIndexService implements MarketIndexUseCase {
         LocalDate start = end.minusDays(HISTORY_DAYS);
 
         List<MarketIndexResult> results = new ArrayList<>();
-        for (IndexDef index : INDEXES) {
+        for (BenchmarkType type : TARGET_INDEXES) {
             try {
-                List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(index.ticker(), start, end);
-                results.add(toResult(index.name(), prices));
+                // BenchmarkType의 ticker()를 식별자로 사용하여 데이터 로드
+                List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
+                results.add(toResult(type.getDescription(), prices));
+            } catch (GlobalException e) {
+                log.warn("[지수 서비스] 시장 지수 조회 실패: {} - {}", type.getDescription(), e.getMessage());
+                results.add(emptyResult(type.getDescription()));
             } catch (Exception e) {
-                log.warn("시장 지수 조회 실패: {}", index.name(), e);
-                results.add(emptyResult(index.name()));
+                log.error("[지수 서비스] 시장 지수 조회 중 예기치 않은 오류 발생: {} - {}", type.getDescription(), e.getMessage());
+                results.add(emptyResult(type.getDescription()));
             }
         }
         return results;
