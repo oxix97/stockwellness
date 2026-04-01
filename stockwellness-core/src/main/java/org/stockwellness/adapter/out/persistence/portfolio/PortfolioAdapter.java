@@ -34,6 +34,18 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
     }
 
     @Override
+    public List<Long> findPortfolioIdsBySymbols(List<String> symbols) {
+        return portfolioRepository.findPortfolioIdsBySymbols(symbols);
+    }
+
+    @Override
+    public List<Long> findAllIds(int offset, int limit) {
+        // offset/limit 기반 페이징 처리 (PageRequest 사용)
+        int page = offset / limit;
+        return portfolioRepository.findAllIds(org.springframework.data.domain.PageRequest.of(page, limit));
+    }
+
+    @Override
     public boolean existsPortfolioName(Long memberId, String name) {
         return portfolioRepository.existsByMemberIdAndName(memberId, name);
     }

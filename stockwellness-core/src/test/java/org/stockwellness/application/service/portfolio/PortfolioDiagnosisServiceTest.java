@@ -11,10 +11,7 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthRes
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.service.portfolio.internal.CalculatedHealth;
-import org.stockwellness.application.service.portfolio.internal.DiagnosisContext;
-import org.stockwellness.application.service.portfolio.internal.PortfolioDiagnosisDataLoader;
-import org.stockwellness.application.service.portfolio.internal.PortfolioHealthCalculator;
+import org.stockwellness.application.service.portfolio.internal.*;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 
@@ -50,6 +47,9 @@ class PortfolioDiagnosisServiceTest {
     @Mock
     private LoadPortfolioAiPort loadPortfolioAiPort;
 
+    @Mock
+    private PortfolioCorrelationCalculator correlationCalculator;
+
     @Test
     @DisplayName("성공: 포트폴리오 진단 프로세스가 정상적으로 오케스트레이션 된다")
     void diagnose_success() {
@@ -60,8 +60,9 @@ class PortfolioDiagnosisServiceTest {
         
         given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.of(portfolio));
         
-        DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of(), null);
+        DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of(), null, Map.of());
         given(dataLoader.load(portfolioId)).willReturn(diagnosisContext);
+        given(correlationCalculator.calculateMatrix(any())).willReturn(Map.of());
 
         Map<String, Integer> categories = new HashMap<>();
         categories.put(DiagnosisCategory.STABILITY.getKey(), 80);
@@ -71,7 +72,7 @@ class PortfolioDiagnosisServiceTest {
         categories.put(DiagnosisCategory.CASH.getKey(), 60);
         
         CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories, List.of());
-        given(healthCalculator.calculate(diagnosisContext)).willReturn(calculatedHealth);
+        given(healthCalculator.calculate(any(DiagnosisContext.class))).willReturn(calculatedHealth);
 
         given(loadPortfolioAiPort.generatePortfolioInsight(any(PortfolioAiContext.class)))
                 .willReturn(new PortfolioAiResult("Summary", "Insight", List.of("Step 1")));

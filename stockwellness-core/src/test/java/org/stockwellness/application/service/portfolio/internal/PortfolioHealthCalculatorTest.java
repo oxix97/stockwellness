@@ -66,7 +66,7 @@ class PortfolioHealthCalculatorTest {
         when(backtestResult.cagr()).thenReturn(BigDecimal.valueOf(15.0)); // 15% 수익률
         when(backtestResult.mdd()).thenReturn(BigDecimal.valueOf(10.0)); // 10% 낙폭
         
-        DiagnosisContext context = new DiagnosisContext(portfolio, stockMap, Collections.emptyMap(), backtestResult);
+        DiagnosisContext context = new DiagnosisContext(portfolio, stockMap, Collections.emptyMap(), backtestResult, Collections.emptyMap());
 
         // when
         CalculatedHealth health = calculator.calculate(context);

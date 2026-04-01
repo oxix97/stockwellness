@@ -24,6 +24,8 @@ public class AdvisorOrchestrator {
     private final AiAdviceProviderPort aiAdviceProviderPort;
     private final SaveAdvisorPort saveAdvisorPort;
 
+    private static final int BATCH_SIZE = 100;
+
     /**
      * 특정 포트폴리오에 대해 AI 조언을 생성하고 저장한다.
      */
@@ -56,17 +58,31 @@ public class AdvisorOrchestrator {
      * 모든 사용자의 포트폴리오에 대해 AI 조언을 생성한다. (스케줄러용)
      */
     public void runAllPortfolios() {
-        // TODO: 페이징 처리 필요 (포트폴리오가 많아질 경우)
-        List<Portfolio> allPortfolios = portfolioPort.loadAllPortfolios(null);
-        log.info("📢 Starting AI Advisor Orchestration for {} portfolios", allPortfolios.size());
+        log.info("📢 Starting AI Advisor Orchestration in batches (size: {})", BATCH_SIZE);
 
-        allPortfolios.forEach(p -> {
-            try {
-                generateAndSaveAdvice(p.getId());
-            } catch (Exception e) {
-                // Individual failures shouldn't stop the whole process
-                log.error("⚠️ Error processing portfolio {}: {}", p.getId(), e.getMessage());
+        int offset = 0;
+        int totalProcessed = 0;
+
+        while (true) {
+            List<Long> portfolioIds = portfolioPort.findAllIds(offset, BATCH_SIZE);
+            if (portfolioIds.isEmpty()) {
+                break;
             }
-        });
+
+            log.info("Processing batch: offset={}, size={}", offset, portfolioIds.size());
+
+            for (Long id : portfolioIds) {
+                try {
+                    generateAndSaveAdvice(id);
+                    totalProcessed++;
+                } catch (Exception e) {
+                    log.error("⚠️ Error processing portfolio {}: {}", id, e.getMessage());
+                }
+            }
+
+            offset += BATCH_SIZE;
+        }
+
+        log.info("✅ Completed AI Advisor Orchestration. Total processed: {}", totalProcessed);
     }
 }

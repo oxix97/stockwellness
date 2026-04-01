@@ -14,4 +14,10 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long>, Por
     Optional<Portfolio> findByIdAndMemberId(Long id, Long memberId);
 
     boolean existsByMemberIdAndName(Long memberId, String name);
+
+    @Query("SELECT DISTINCT p.id FROM Portfolio p JOIN p.items i WHERE i.symbol IN :symbols")
+    List<Long> findPortfolioIdsBySymbols(@Param("symbols") List<String> symbols);
+
+    @Query("SELECT p.id FROM Portfolio p")
+    List<Long> findAllIds(org.springframework.data.domain.Pageable pageable);
 }

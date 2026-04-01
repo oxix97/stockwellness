@@ -63,12 +63,16 @@ public class PortfolioHealthCalculator {
         int stabilityScore = Math.max(0, 100 - mdd.multiply(BigDecimal.valueOf(2.5)).intValue());
         categories.put(DiagnosisCategory.STABILITY.getKey(), stabilityScore);
 
-        // [분산] - HHI(Herfindahl-Hirschman Index) 역산 + 시장 다양성
+        // [분산] - HHI(Herfindahl-Hirschman Index) 역산 + 시장 다양성 + 상관관계 분석
         // HHI = sum(w^2). HHI가 낮을수록 분산이 잘 된 것. (완전분산 0.1, 집중투자 1.0)
         double hhi = assetWeights.values().stream().mapToDouble(w -> Math.pow(w.doubleValue(), 2)).sum();
-        int divScoreFromHhi = Math.max(0, 100 - (int)(hhi * 80)); 
+        int divScoreFromHhi = Math.max(0, 100 - (int) (hhi * 80));
         int marketBonus = Math.min(20, marketTypes.size() * 7);
-        int diversificationScore = Math.min(100, divScoreFromHhi + marketBonus + (Math.min(5, stockCount) * 4));
+
+        // 상관관계 보너스/패널티 산출
+        int correlationAdjustment = calculateCorrelationAdjustment(context.correlationMatrix());
+
+        int diversificationScore = Math.min(100, divScoreFromHhi + marketBonus + (Math.min(5, stockCount) * 4) + correlationAdjustment);
         categories.put(DiagnosisCategory.DIVERSIFICATION.getKey(), diversificationScore);
 
         // [민첩] - 현금 비중 기반 (10~25% 사이가 최적 100점, 0%면 40점, 50% 이상이면 60점)
@@ -134,5 +138,30 @@ public class PortfolioHealthCalculator {
                 .orElse(0.0);
 
         return new CalculatedHealth((int) Math.round(average), categories, stockContributions);
+    }
+
+    private int calculateCorrelationAdjustment(Map<String, Map<String, BigDecimal>> matrix) {
+        if (matrix == null || matrix.size() < 2) return 0;
+
+        double sum = 0;
+        int count = 0;
+        for (String s1 : matrix.keySet()) {
+            for (String s2 : matrix.get(s1).keySet()) {
+                if (!s1.equals(s2)) {
+                    sum += matrix.get(s1).get(s2).doubleValue();
+                    count++;
+                }
+            }
+        }
+
+        if (count == 0) return 0;
+        double avgCorr = sum / count;
+
+        // 평균 상관계수 기반 점수 조정 (-10 ~ +10점)
+        if (avgCorr < 0.2) return 10;
+        if (avgCorr < 0.4) return 5;
+        if (avgCorr > 0.7) return -10;
+        if (avgCorr > 0.6) return -5;
+        return 0;
     }
 }

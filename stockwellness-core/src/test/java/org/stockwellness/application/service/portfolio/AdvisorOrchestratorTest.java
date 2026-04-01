@@ -68,19 +68,30 @@ class AdvisorOrchestratorTest {
     @DisplayName("모든 포트폴리오에 대해 조언 생성 루프가 실행된다")
     void runAllPortfolios_success() {
         // given
+        Long id1 = 1L;
+        Long id2 = 2L;
+        
+        given(portfolioPort.findAllIds(0, 100)).willReturn(List.of(id1, id2));
+        given(portfolioPort.findAllIds(100, 100)).willReturn(List.of());
+        
         Portfolio p1 = mock(Portfolio.class);
         Portfolio p2 = mock(Portfolio.class);
-        given(p1.getId()).willReturn(1L);
-        given(p2.getId()).willReturn(2L);
-        given(portfolioPort.loadAllPortfolios(null)).willReturn(List.of(p1, p2));
+        lenient().when(p1.getId()).thenReturn(id1);
+        lenient().when(p2.getId()).thenReturn(id2);
         
-        given(portfolioPort.findById(1L)).willReturn(Optional.of(p1));
-        given(portfolioPort.findById(2L)).willReturn(Optional.of(p2));
+        given(portfolioPort.findById(id1)).willReturn(Optional.of(p1));
+        given(portfolioPort.findById(id2)).willReturn(Optional.of(p2));
+
+        // 데이터 로더와 조언 제공자 Stubbing (generateAndSaveAdvice 내부용)
+        lenient().when(dataLoader.loadContext(anyLong())).thenReturn(mock(org.stockwellness.application.port.out.portfolio.AdvisorAiContext.class));
+        lenient().when(aiAdviceProviderPort.getRebalancingAdvice(any())).thenReturn(new AiAdviceProviderPort.AdvisorAiResult("", "", "", "내용", AdviceAction.REBALANCE));
         
         // when
         orchestrator.runAllPortfolios();
 
         // then
+        verify(portfolioPort, times(1)).findById(id1);
+        verify(portfolioPort, times(1)).findById(id2);
         verify(aiAdviceProviderPort, times(2)).getRebalancingAdvice(any());
     }
 }

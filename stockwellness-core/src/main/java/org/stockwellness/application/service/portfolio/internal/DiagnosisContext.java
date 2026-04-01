@@ -4,6 +4,7 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +15,7 @@ public record DiagnosisContext(
         Portfolio portfolio,
         Map<String, Stock> stockMap,
         Map<String, List<StockPrice>> stockPriceMap,
-        BacktestResult backtestResult // 추가
+        BacktestResult backtestResult,
+        Map<String, Map<String, BigDecimal>> correlationMatrix // 추가
 ) {
 }

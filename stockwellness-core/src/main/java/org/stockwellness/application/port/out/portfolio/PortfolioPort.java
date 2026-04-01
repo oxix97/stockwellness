@@ -10,6 +10,8 @@ public interface PortfolioPort {
     Optional<Portfolio> findById(Long id);
     Optional<Portfolio> loadPortfolio(Long id, Long memberId);
     List<Portfolio> loadAllPortfolios(Long memberId);
+    List<Long> findPortfolioIdsBySymbols(List<String> symbols);
+    List<Long> findAllIds(int offset, int limit);
     boolean existsPortfolioName(Long memberId, String name);
 
     // Save methods
