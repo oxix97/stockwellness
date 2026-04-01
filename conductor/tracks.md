@@ -5,4 +5,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: 해외 지수 시세 조회 로직 업데이트 (Update overseas index price fetching logic)**
-  *Link: [./tracks/overseas_index_update_20260401/](./tracks/overseas_index_update_20260401/)*
+  *Link: [./tracks/overseas_index_update_20260401/](./tracks/overseas_index_update_20260401/)*\n- [x] **Track: 배치 실행 제어 레이어 구현 (Batch control layer implementation)**\n  *Link: [./tracks/batch_control_layer_20260401/](./tracks/batch_control_layer_20260401/)*
