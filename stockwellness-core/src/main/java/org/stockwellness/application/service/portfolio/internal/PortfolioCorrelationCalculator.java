@@ -3,6 +3,7 @@ package org.stockwellness.application.service.portfolio.internal;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
@@ -11,33 +12,41 @@ import java.util.Map;
 @Component
 public class PortfolioCorrelationCalculator {
 
+    private static final MathContext MC = MathContext.DECIMAL64;
+
     public BigDecimal calculateCorrelation(List<BigDecimal> returnsA, List<BigDecimal> returnsB) {
         if (returnsA == null || returnsB == null || returnsA.size() != returnsB.size() || returnsA.isEmpty()) {
             return BigDecimal.ZERO;
         }
 
-        double[] a = returnsA.stream().mapToDouble(BigDecimal::doubleValue).toArray();
-        double[] b = returnsB.stream().mapToDouble(BigDecimal::doubleValue).toArray();
+        BigDecimal aMean = calculateMean(returnsA);
+        BigDecimal bMean = calculateMean(returnsB);
 
-        double aMean = calculateMean(a);
-        double bMean = calculateMean(b);
+        BigDecimal covariance = BigDecimal.ZERO;
+        BigDecimal aVariance = BigDecimal.ZERO;
+        BigDecimal bVariance = BigDecimal.ZERO;
 
-        double covariance = 0;
-        double aVariance = 0;
-        double bVariance = 0;
-
-        for (int i = 0; i < a.length; i++) {
-            double aDiff = a[i] - aMean;
-            double bDiff = b[i] - bMean;
-            covariance += aDiff * bDiff;
-            aVariance += Math.pow(aDiff, 2);
-            bVariance += Math.pow(bDiff, 2);
+        for (int i = 0; i < returnsA.size(); i++) {
+            BigDecimal aDiff = returnsA.get(i).subtract(aMean);
+            BigDecimal bDiff = returnsB.get(i).subtract(bMean);
+            
+            covariance = covariance.add(aDiff.multiply(bDiff, MC));
+            aVariance = aVariance.add(aDiff.pow(2, MC));
+            bVariance = bVariance.add(bDiff.pow(2, MC));
         }
 
-        double denominator = Math.sqrt(aVariance * bVariance);
-        if (denominator == 0) return BigDecimal.ZERO;
+        BigDecimal varianceProduct = aVariance.multiply(bVariance, MC);
+        if (varianceProduct.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
 
-        return BigDecimal.valueOf(covariance / denominator).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal denominator = varianceProduct.sqrt(MC);
+        
+        if (denominator.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return covariance.divide(denominator, 4, RoundingMode.HALF_UP);
     }
 
     public Map<String, Map<String, BigDecimal>> calculateMatrix(Map<String, List<BigDecimal>> returnsMap) {
@@ -60,9 +69,8 @@ public class PortfolioCorrelationCalculator {
         return matrix;
     }
 
-    private double calculateMean(double[] data) {
-        double sum = 0;
-        for (double d : data) sum += d;
-        return sum / data.length;
+    private BigDecimal calculateMean(List<BigDecimal> data) {
+        BigDecimal sum = data.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        return sum.divide(BigDecimal.valueOf(data.size()), MC);
     }
 }
