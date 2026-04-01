@@ -15,6 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.GlobalException;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.batch.core.JobParametersInvalidException;
+import java.util.concurrent.CompletableFuture;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/admin/batch")
@@ -30,29 +38,38 @@ public class BatchAdminController {
      */
     @PostMapping("/benchmark-sync")
     public ResponseEntity<String> syncBenchmarkPrice(@RequestParam(required = false) String startDate) {
-        log.info("[Batch Admin] 지수 시세 동기화 수동 실행 요청 (startDate: {})", startDate);
+        log.info("[Batch Admin] 지수 시세 동기화 수동 실행 요청 수신 (시작일: {})", startDate);
 
         // 날짜 형식 유효성 검증
         if (startDate != null) {
             try {
                 LocalDate.parse(startDate);
             } catch (DateTimeParseException e) {
-                return ResponseEntity.badRequest().body("Invalid startDate format. Use yyyy-MM-dd");
+                log.warn("[Batch Admin] 잘못된 날짜 형식 요청: {}", startDate);
+                throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
             }
         }
 
-        try {
-            JobParameters params = new JobParametersBuilder()
-                    .addString("startDate", startDate)
-                    .addLong("timestamp", System.currentTimeMillis()) // 중복 실행 방지 및 매번 새로운 실행 보장
-                    .toJobParameters();
+        final JobParameters params = new JobParametersBuilder()
+                .addString("startDate", startDate)
+                .addLong("timestamp", System.currentTimeMillis()) // 매 실행마다 고유한 파라미터 부여하여 중복 실행 방지
+                .toJobParameters();
 
-            jobLauncher.run(benchmarkPriceSyncJob, params);
-            return ResponseEntity.ok("Benchmark price sync job started successfully");
+        // 긴 실행 시간으로 인한 타임아웃 방지를 위해 비동기(Async) 실행
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("[Batch Admin] 지수 시세 동기화 배치 비동기 실행 시작");
+                jobLauncher.run(benchmarkPriceSyncJob, params);
+                log.info("[Batch Admin] 지수 시세 동기화 배치 비동기 실행 완료");
+            } catch (JobExecutionAlreadyRunningException | JobRestartException |
+                     JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
+                log.error("[Batch Admin] 배치 실행 실패 (파라미터 오류 또는 이미 실행 중): {}", e.getMessage());
+            } catch (Exception e) {
+                log.error("[Batch Admin] 배치 실행 중 예기치 않은 서버 오류 발생: {}", e.getMessage());
+                // 비동기 작업 내에서의 예외는 별도 로깅 후 필요시 알림 처리
+            }
+        });
 
-        } catch (Exception e) {
-            log.error("[Batch Admin] 배치 실행 중 오류 발생: {}", e.getMessage());
-            return ResponseEntity.internalServerError().body("Failed to start batch job: " + e.getMessage());
-        }
+        return ResponseEntity.accepted().body("지수 시세 동기화 배치가 비동기로 시작되었습니다. 진행 상황은 로그를 통해 확인하세요.");
     }
 }
