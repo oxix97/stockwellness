@@ -27,7 +27,7 @@ public class MarketIndexService implements MarketIndexUseCase {
 
     private final LoadBenchmarkPort loadBenchmarkPort;
 
-    private static final int HISTORY_DAYS = 30;
+    private static final int HISTORY_DAYS = 7; // 최근 데이터 1개만 반환하므로 DB 조회 기간도 휴일 고려하여 최소한으로 축소
     private static final int DISPLAY_SCALE = 2;
 
     @Override
@@ -76,9 +76,8 @@ public class MarketIndexService implements MarketIndexUseCase {
             }
         }
 
-        List<HistoryPoint> history = prices.stream()
-                .map(p -> new HistoryPoint(p.baseDate(), p.closePrice()))
-                .toList();
+        // 전체 날짜 대신 가장 최근 날짜의 시세만 배열에 담아 반환 (페이로드 최적화)
+        List<HistoryPoint> history = List.of(new HistoryPoint(latest.baseDate(), latest.closePrice()));
 
         return new MarketIndexResult(name, currentPrice, fluctuationRate, fluctuationAmount, history);
     }
