@@ -32,28 +32,27 @@ class BenchmarkPriceDataProcessorTest {
     private BenchmarkPricePort benchmarkPricePort;
 
     @Test
-    @DisplayName("국내 지수(KOSPI)의 API 등락률이 0인 경우 전일 종가를 기반으로 수동 계산한다")
-    void process_domesticIndexWithZeroChangeRate_calculatesManually() {
+    @DisplayName("해외 지수(S&P 500)인 경우 전일 종가를 기반으로 수동 계산한다")
+    void process_overseasIndex_calculatesManually() {
         // given
-        BenchmarkType type = BenchmarkType.KOSPI;
+        BenchmarkType type = BenchmarkType.S_P_500;
         LocalDate today = LocalDate.of(2026, 4, 2);
         
-        // 오늘 KOSPI 데이터: 등락률이 0으로 들어옴
+        // 오늘 S&P 500 데이터 (해외 지수는 API에서 등락률을 안 준다고 가정)
         BenchmarkPriceData data = mock(BenchmarkPriceData.class);
         given(data.baseDate()).willReturn(today);
-        given(data.openPrice()).willReturn(BigDecimal.valueOf(2500));
-        given(data.highPrice()).willReturn(BigDecimal.valueOf(2550));
-        given(data.lowPrice()).willReturn(BigDecimal.valueOf(2480));
-        given(data.closePrice()).willReturn(BigDecimal.valueOf(2525));
-        given(data.prdyCtrt()).willReturn(BigDecimal.ZERO); // API에서 제공한 등락률 (오류 상황)
+        given(data.openPrice()).willReturn(BigDecimal.valueOf(5000));
+        given(data.highPrice()).willReturn(BigDecimal.valueOf(5100));
+        given(data.lowPrice()).willReturn(BigDecimal.valueOf(4980));
+        given(data.closePrice()).willReturn(BigDecimal.valueOf(5050));
+        given(data.prdyCtrt()).willReturn(BigDecimal.ZERO); 
         given(data.volume()).willReturn(10000L);
 
         BenchmarkPriceDataWrapper wrapper = new BenchmarkPriceDataWrapper(type, data);
 
-        // 어제 KOSPI 종가 데이터 모킹 (2500원)
-        // 등락률 계산: (2525 - 2500) / 2500 * 100 = 1.00%
+        // 어제 종가 모킹 (5000원) -> 계산: (5050 - 5000) / 5000 * 100 = 1.00%
         BenchmarkPrice prevPrice = mock(BenchmarkPrice.class);
-        given(prevPrice.getClosePrice()).willReturn(BigDecimal.valueOf(2500));
+        given(prevPrice.getClosePrice()).willReturn(BigDecimal.valueOf(5000));
         given(benchmarkPricePort.findLatestBefore(eq(type.getTicker()), eq(today)))
                 .willReturn(Optional.of(prevPrice));
 
@@ -63,24 +62,22 @@ class BenchmarkPriceDataProcessorTest {
         // then
         assertThat(result).isNotNull();
         assertThat(result.getChangeRate()).isEqualByComparingTo("1.00");
-        assertThat(result.getClosePrice()).isEqualByComparingTo("2525");
     }
 
     @Test
-    @DisplayName("국내 지수의 API 등락률이 정상적인 경우 수동 계산을 건너뛰고 API 값을 신뢰한다")
-    void process_domesticIndexWithValidChangeRate_usesApiValue() {
+    @DisplayName("국내 지수(KOSPI)의 API 등락률이 0인 경우 API 값을 그대로 신뢰한다 (수동계산 X)")
+    void process_domesticIndexWithZeroChangeRate_usesApiValue() {
         // given
         BenchmarkType type = BenchmarkType.KOSPI;
         LocalDate today = LocalDate.of(2026, 4, 2);
         
-        // 정상적인 등락률(1.5%)이 포함된 데이터
         BenchmarkPriceData data = mock(BenchmarkPriceData.class);
         given(data.baseDate()).willReturn(today);
         given(data.openPrice()).willReturn(BigDecimal.valueOf(2500));
         given(data.highPrice()).willReturn(BigDecimal.valueOf(2550));
         given(data.lowPrice()).willReturn(BigDecimal.valueOf(2480));
         given(data.closePrice()).willReturn(BigDecimal.valueOf(2525));
-        given(data.prdyCtrt()).willReturn(BigDecimal.valueOf(1.5)); // 정상적인 등락률
+        given(data.prdyCtrt()).willReturn(BigDecimal.ZERO); // API가 0.0을 반환
         given(data.volume()).willReturn(10000L);
 
         BenchmarkPriceDataWrapper wrapper = new BenchmarkPriceDataWrapper(type, data);
@@ -90,6 +87,7 @@ class BenchmarkPriceDataProcessorTest {
 
         // then
         assertThat(result).isNotNull();
-        assertThat(result.getChangeRate()).isEqualByComparingTo("1.5");
+        // 국내 지수는 수동 계산을 타지 않으므로 API가 반환한 0.0을 그대로 사용해야 함
+        assertThat(result.getChangeRate()).isEqualByComparingTo("0.0");
     }
 }
