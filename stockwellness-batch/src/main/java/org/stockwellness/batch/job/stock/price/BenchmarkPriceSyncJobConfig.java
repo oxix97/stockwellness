@@ -3,7 +3,6 @@ package org.stockwellness.batch.job.stock.price;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -19,9 +18,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.batch.exception.BatchException;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-import org.stockwellness.batch.exception.BatchException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,7 +50,7 @@ public class BenchmarkPriceSyncJobConfig {
         return new StepBuilder("benchmarkPriceSyncStep", jobRepository)
                 .<BenchmarkType, List<BenchmarkPrice>>chunk(1, transactionManager) // 각 지수 타입별로 처리
                 .reader(benchmarkTypeReader())
-                .processor(benchmarkPriceProcessor(null))
+                .processor(benchmarkPriceProcessor(null, null))
                 .writer(benchmarkPriceWriter())
                 .build();
     }
