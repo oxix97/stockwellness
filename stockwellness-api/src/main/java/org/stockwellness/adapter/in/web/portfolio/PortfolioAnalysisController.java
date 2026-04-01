@@ -15,7 +15,9 @@ import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.security.MemberPrincipal;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
@@ -25,9 +27,6 @@ public class PortfolioAnalysisController {
 
     private final PortfolioFacade portfolioFacade;
 
-    /**
-     * 포트폴리오 성과 분석 (가치 및 수익률)
-     */
     @GetMapping("/valuation")
     public ApiResponse<PortfolioValuationResponse> getValuation(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
@@ -67,13 +66,16 @@ public class PortfolioAnalysisController {
     @GetMapping("/summary")
     public ApiResponse<PortfolioAnalysisSummaryResponse> getAnalysisSummary(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
-            @PathVariable Long portfolioId) {
+            @PathVariable Long portfolioId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        PortfolioAnalysisSummaryResult result = portfolioFacade.getAnalysisSummary(memberPrincipal.id(), portfolioId);
+        PortfolioAnalysisSummaryResult result = portfolioFacade.getAnalysisSummary(memberPrincipal.id(), portfolioId, startDate, endDate);
         return ApiResponse.success(new PortfolioAnalysisSummaryResponse(
                 PortfolioValuationResponse.from(result.valuation()),
                 PortfolioDiversificationResponse.from(result.diversification()),
-                PortfolioRebalancingResponse.from(result.rebalancing())
+                PortfolioRebalancingResponse.from(result.rebalancing()),
+                result.itemContributions()
         ));
     }
 

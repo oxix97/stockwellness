@@ -199,6 +199,41 @@ class PortfolioAnalysisServiceTest {
         assertThat(matrix.get("005930").get("000660")).isEqualByComparingTo("0.8");
     }
 
+    @Test
+    @DisplayName("통합 요약 분석: 지정된 기간 동안의 성과 지표와 수익 기여도를 계산한다")
+    void getAnalysisSummary_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100))
+        ));
+        
+        StockPrice samsungPrice = createStockPrice("005930", 60000, 58000);
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of("005930", List.of(samsungPrice)), null);
+        
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusMonths(12);
+
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+        given(simulationDataProvider.loadData(anyList(), anyString(), eq(start), eq(end)))
+                .willReturn(new SimulationData(Map.of(), Map.of()));
+
+        BacktestResult mockPerf = new BacktestResult(List.of(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(5.2), BigDecimal.ONE,
+                BigDecimal.valueOf(12.0), BigDecimal.valueOf(8.4), BigDecimal.valueOf(3.2), BigDecimal.ONE,
+                BigDecimal.TEN, BigDecimal.ZERO, List.of(), "AI Comment");
+        
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any())).willReturn(mockPerf);
+
+        // when
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        // then
+        assertThat(result.valuation().cagr()).isEqualByComparingTo("15.5");
+        assertThat(result.valuation().volatility()).isEqualByComparingTo("8.4");
+        assertThat(result.valuation().alpha()).isEqualByComparingTo("3.2");
+        assertThat(result.itemContributions().get("005930")).isNotNull();
+    }
+
     private StockPrice createStockPrice(String symbol, long close, long prevClose) {
         Stock stock = mock(Stock.class);
         given(stock.getId()).willReturn(1L);

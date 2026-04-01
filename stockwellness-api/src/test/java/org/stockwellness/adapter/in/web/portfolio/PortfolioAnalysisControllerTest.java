@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.in.web.portfolio.dto.*;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
@@ -47,6 +48,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         PortfolioValuationResult result = new PortfolioValuationResult(
                 BigDecimal.valueOf(1350000), BigDecimal.valueOf(1500000), BigDecimal.valueOf(150000),
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
@@ -60,6 +62,9 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.totalReturnRate").description("총 수익률 (%)"),
                 fieldWithPath("data.dailyProfitLoss").description("당일 평가 손익"),
                 fieldWithPath("data.dailyReturnRate").description("당일 수익률 (%)"),
+                fieldWithPath("data.cagr").description("연평균 성장률 (CAGR)"),
+                fieldWithPath("data.volatility").description("연간 변동성"),
+                fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"),
                 fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
                 fieldWithPath("data.sharpeRatio").description("샤프 지수"),
                 fieldWithPath("data.beta").description("베타 계수")
@@ -118,6 +123,61 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .summary("포트폴리오 자산 분산도 분석")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
+                                )
+                                .responseFields(responseFields)
+                                .build())
+                ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("요약분석: 가치, 분산, 리밸런싱 및 성과 지표를 통합 조회한다")
+    void get_summary() throws Exception {
+        // given
+        PortfolioValuationResult valuation = new PortfolioValuationResult(
+                BigDecimal.valueOf(1350000), BigDecimal.valueOf(1500000), BigDecimal.valueOf(150000),
+                BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
+                BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1)
+        );
+        PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
+                BigDecimal.valueOf(1500000), Map.of("STOCK", BigDecimal.valueOf(100)), Map.of("TECH", BigDecimal.valueOf(100)), Map.of("US", BigDecimal.valueOf(100))
+        );
+        PortfolioRebalancingResult rebalancing = new PortfolioRebalancingResult(
+                BigDecimal.valueOf(1500000), List.of()
+        );
+        PortfolioAnalysisSummaryResult result = new PortfolioAnalysisSummaryResult(
+                valuation, diversification, rebalancing, Map.of("AAPL", BigDecimal.valueOf(12.5))
+        );
+
+        given(portfolioFacade.getAnalysisSummary(any(), any(), any(), any())).willReturn(result);
+
+        // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                subsectionWithPath("data.valuation").description("가치 평가 정보"),
+                subsectionWithPath("data.diversification").description("분산도 정보"),
+                subsectionWithPath("data.rebalancing").description("리밸런싱 정보"),
+                subsectionWithPath("data.itemContributions").description("종목별 수익 기여도 (Ticker -> Contribution)")
+        ));
+
+        mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/summary", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .param("startDate", "2023-01-01")
+                        .param("endDate", "2023-12-31")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("portfolio-analysis-summary",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Portfolio Analysis")
+                                .summary("포트폴리오 통합 분석 요약")
+                                .pathParameters(
+                                        parameterWithName("portfolioId").description("포트폴리오 ID")
+                                )
+                                .queryParameters(
+                                        parameterWithName("startDate").description("분석 시작일 (YYYY-MM-DD)").optional(),
+                                        parameterWithName("endDate").description("분석 종료일 (YYYY-MM-DD)").optional()
                                 )
                                 .responseFields(responseFields)
                                 .build())

@@ -1,9 +1,11 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.util.Map;
 
 public record PortfolioAnalysisSummaryResponse(
     PortfolioValuationResponse valuation,
     PortfolioDiversificationResponse diversification,
-    PortfolioRebalancingResponse rebalancing
+    PortfolioRebalancingResponse rebalancing,
+    Map<String, BigDecimal> itemContributions
 ) {}

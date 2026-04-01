@@ -150,7 +150,8 @@ public class KisDailyPriceAdapter {
             }
 
             return response.output2().stream()
-                    .sorted(Comparator.comparing(KisOverseasIndexDailyPrice::baseDate))
+                    .filter(price -> !price.baseDate().isBefore(startDate) && !price.baseDate().isAfter(endDate))
+                    .sorted(Comparator.comparing(KisOverseasIndexDailyPrice::baseDate).reversed())
                     .map(BenchmarkPriceData.class::cast)
                     .toList();
         } catch (RestClientException | IllegalStateException e) {

@@ -5,37 +5,39 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.stockwellness.batch.exception.BatchException;
+import org.stockwellness.global.error.ErrorCode;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-
-import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.batch.exception.BatchException;
-import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
-import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
-import org.springframework.batch.core.repository.JobRestartException;
-import org.springframework.batch.core.JobParametersInvalidException;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/admin/batch")
 @RequiredArgsConstructor
-public class BatchAdminController {
+public class BenchmarkController {
 
     private final JobLauncher jobLauncher;
     private final Job benchmarkPriceSyncJob;
 
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     /**
      * 지수 시세 동기화 배치 수동 실행
-     * @param startDate 수집 시작일 (yyyy-MM-dd, 선택 사항)
-     * @param endDate 수집 종료일 (yyyy-MM-dd, 선택 사항)
+     * @param startDate 수집 시작일 (yyyyMMdd, 선택 사항)
+     * @param endDate 수집 종료일 (yyyyMMdd, 선택 사항)
      */
     @PostMapping("/benchmark-sync")
     public ResponseEntity<String> syncBenchmarkPrice(
@@ -47,11 +49,12 @@ public class BatchAdminController {
         validateDateFormat(startDate, "시작일");
         validateDateFormat(endDate, "종료일");
 
-        final JobParameters params = new JobParametersBuilder()
-                .addString("startDate", startDate)
-                .addString("endDate", endDate)
-                .addLong("timestamp", System.currentTimeMillis()) // 매 실행마다 고유한 파라미터 부여
-                .toJobParameters();
+        JobParametersBuilder builder = new JobParametersBuilder();
+        if (startDate != null) builder.addString("startDate", startDate);
+        if (endDate != null) builder.addString("endDate", endDate);
+        builder.addLong("timestamp", System.currentTimeMillis()); // 매 실행마다 고유한 파라미터 부여
+
+        final JobParameters params = builder.toJobParameters();
 
         // 긴 실행 시간으로 인한 타임아웃 방지를 위해 비동기(Async) 실행
         CompletableFuture.runAsync(() -> {
@@ -73,7 +76,7 @@ public class BatchAdminController {
     private void validateDateFormat(String dateStr, String fieldName) {
         if (dateStr != null) {
             try {
-                LocalDate.parse(dateStr);
+                LocalDate.parse(dateStr, DATE_FORMATTER);
             } catch (DateTimeParseException e) {
                 log.warn("[Batch Admin] 잘못된 {} 형식 요청: {}", fieldName, dateStr);
                 throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);

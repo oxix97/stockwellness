@@ -8,6 +8,7 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioValuation
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 public interface PortfolioAnalysisUseCase {
@@ -18,5 +19,5 @@ public interface PortfolioAnalysisUseCase {
     Map<String, Map<String, BigDecimal>> getCorrelationMatrix(Long memberId, Long portfolioId);
 
     // 통합 요약 정보 조회
-    PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId);
+    PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate);
 }

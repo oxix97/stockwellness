@@ -9,6 +9,9 @@ public record PortfolioValuationResult(
     BigDecimal totalReturnRate,
     BigDecimal dailyProfitLoss,
     BigDecimal dailyReturnRate,
+    BigDecimal cagr,
+    BigDecimal volatility,
+    BigDecimal alpha,
     BigDecimal mdd,
     BigDecimal sharpeRatio,
     BigDecimal beta

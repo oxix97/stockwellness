@@ -54,7 +54,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
      */
     @Override
     public PortfolioValuationResult getValuation(Long memberId, Long portfolioId) {
-        return calculateValuation(dataLoader.loadContext(portfolioId, memberId));
+        return calculateValuation(dataLoader.loadContext(portfolioId, memberId), null);
     }
 
     /**
@@ -75,17 +75,50 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
     /**
      * 포트폴리오 분석의 핵심 지표(가치, 분산, 리밸런싱)를 통합 요약하여 조회합니다.
-     * 단일 Context 로딩을 통해 성능을 최적화합니다.
+     * 지정된 기간에 대한 성과 지표(CAGR, 변동성 등)를 동적으로 계산합니다.
      */
     @Override
-    public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId) {
+    public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
         AnalysisContext context = dataLoader.loadContext(portfolioId, memberId);
         
+        // 성과 지표 계산을 위한 과거 데이터 로드
+        List<String> symbols = context.getStockSymbols();
+        SimulationData data = simulationDataProvider.loadData(symbols, BenchmarkType.KOSPI.getTicker(), startDate, endDate);
+        
+        // 1. 성과 지표(CAGR, 변동성, 알파) 계산
+        Map<String, BigDecimal> weights = context.portfolio().getItems().stream()
+                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
+        
+        BacktestResult performanceResult = backtestEngine.runLumpSum(data, weights, BigDecimal.valueOf(10000000), RebalancingPeriod.NONE);
+        
+        // 2. 종목별 수익 기여도 계산
+        Map<String, BigDecimal> itemContributions = calculateItemContributions(context);
+
         return new PortfolioAnalysisSummaryResult(
-                calculateValuation(context),
+                calculateValuation(context, performanceResult),
                 calculateDiversification(context),
-                calculateRebalancing(context)
+                calculateRebalancing(context),
+                itemContributions
         );
+    }
+
+    private Map<String, BigDecimal> calculateItemContributions(AnalysisContext context) {
+        BigDecimal totalPurchaseAmount = context.portfolio().getItems().stream()
+                .map(PortfolioItem::calculatePurchaseAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalPurchaseAmount.compareTo(BigDecimal.ZERO) == 0) return Map.of();
+
+        Map<String, BigDecimal> contributions = new HashMap<>();
+        for (PortfolioItem item : context.portfolio().getItems()) {
+            BigDecimal currentPrice = getCurrentPrice(item, context.priceMap());
+            BigDecimal currentValue = item.getQuantity().multiply(currentPrice);
+            BigDecimal profitLoss = currentValue.subtract(item.calculatePurchaseAmount());
+            
+            // 기여도 = (개별 종목 손익 / 전체 매수 금액) * 100
+            contributions.put(item.getSymbol(), FinanceCalculationUtil.calculateRate(profitLoss, totalPurchaseAmount));
+        }
+        return contributions;
     }
 
     /**
@@ -151,7 +184,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     /**
      * 실시간 시세를 반영한 총 평가 금액 및 손익 지표 계산
      */
-    private PortfolioValuationResult calculateValuation(AnalysisContext context) {
+    private PortfolioValuationResult calculateValuation(AnalysisContext context, BacktestResult performanceResult) {
         BigDecimal totalPurchaseAmount = BigDecimal.ZERO;
         BigDecimal currentTotalValue = BigDecimal.ZERO;
         BigDecimal previousTotalValue = BigDecimal.ZERO;
@@ -186,6 +219,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             return new PortfolioValuationResult(
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 (stats != null) ? stats.getMdd() : BigDecimal.ZERO,
                 (stats != null) ? stats.getSharpeRatio() : BigDecimal.ZERO,
                 (stats != null) ? stats.getBeta() : BigDecimal.ZERO
@@ -199,6 +233,9 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 totalPurchaseAmount, currentTotalValue, totalProfitLoss, 
                 FinanceCalculationUtil.calculateRate(totalProfitLoss, totalPurchaseAmount),
                 dailyProfitLoss, FinanceCalculationUtil.calculateRate(dailyProfitLoss, previousTotalValue),
+                (performanceResult != null) ? performanceResult.cagr() : BigDecimal.ZERO,
+                (performanceResult != null) ? performanceResult.volatility() : BigDecimal.ZERO,
+                (performanceResult != null) ? performanceResult.alpha() : BigDecimal.ZERO,
                 (stats != null) ? stats.getMdd() : BigDecimal.ZERO,
                 (stats != null) ? stats.getSharpeRatio() : BigDecimal.ZERO,
                 (stats != null) ? stats.getBeta() : BigDecimal.ZERO

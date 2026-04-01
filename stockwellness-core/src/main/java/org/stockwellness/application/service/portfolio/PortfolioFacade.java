@@ -20,6 +20,7 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioValuation
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -76,8 +77,10 @@ public class PortfolioFacade {
         return portfolioAnalysisUseCase.getRebalancingGuide(memberId, portfolioId);
     }
 
-    public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId) {
-        return portfolioAnalysisUseCase.getAnalysisSummary(memberId, portfolioId);
+    public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
+        LocalDate end = (endDate != null) ? endDate : LocalDate.now();
+        LocalDate start = (startDate != null) ? startDate : end.minusMonths(12);
+        return portfolioAnalysisUseCase.getAnalysisSummary(memberId, portfolioId, start, end);
     }
 
     public BacktestResult runBacktest(BacktestPortfolioCommand command) {

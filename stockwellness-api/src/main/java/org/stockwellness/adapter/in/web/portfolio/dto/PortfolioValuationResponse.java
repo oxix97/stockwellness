@@ -11,6 +11,9 @@ public record PortfolioValuationResponse(
     BigDecimal totalReturnRate,
     BigDecimal dailyProfitLoss,
     BigDecimal dailyReturnRate,
+    BigDecimal cagr,
+    BigDecimal volatility,
+    BigDecimal alpha,
     BigDecimal mdd,
     BigDecimal sharpeRatio,
     BigDecimal beta
@@ -23,6 +26,9 @@ public record PortfolioValuationResponse(
             result.totalReturnRate(),
             result.dailyProfitLoss(),
             result.dailyReturnRate(),
+            result.cagr(),
+            result.volatility(),
+            result.alpha(),
             result.mdd(),
             result.sharpeRatio(),
             result.beta()

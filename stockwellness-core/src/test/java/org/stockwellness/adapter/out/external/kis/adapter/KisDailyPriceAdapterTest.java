@@ -81,7 +81,8 @@ class KisDailyPriceAdapterTest {
                 .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
 
         // when
-        List<BenchmarkPriceData> result = adapter.fetchOverseasIndexDailyPrices(indexCode, startDate);
+        LocalDate endDate = LocalDate.of(2026, 4, 1);
+        List<BenchmarkPriceData> result = adapter.fetchOverseasIndexDailyPrices(indexCode, startDate, endDate);
 
         // then
         assertThat(result).hasSize(2); // 3/30 이후인 4/1, 3/31 데이터만 포함되어야 함
