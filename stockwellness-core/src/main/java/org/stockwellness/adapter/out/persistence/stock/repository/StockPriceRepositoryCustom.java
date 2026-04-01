@@ -47,4 +47,9 @@ public interface StockPriceRepositoryCustom {
      * 여러 종목의 최근 가격 데이터를 한 번에 조회합니다. (QueryDSL)
      */
     List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date, int limit);
+
+    /**
+     * 여러 티커의 가장 최신 종가 데이터를 한 번에 조회합니다. (N+1 방지)
+     */
+    Map<String, BigDecimal> findLatestPricesByTickers(List<String> tickers);
 }

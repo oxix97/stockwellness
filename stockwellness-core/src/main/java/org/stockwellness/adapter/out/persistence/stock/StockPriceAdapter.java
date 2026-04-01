@@ -146,6 +146,12 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public Map<String, BigDecimal> findAllLatestByTickers(List<String> tickers) {
+        // [N+1 해결] 여러 티커의 최신 종가를 한 번의 QueryDSL 쿼리로 조회
+        return stockPriceRepository.findLatestPricesByTickers(tickers);
+    }
+
+    @Override
     public List<StockPrice> loadRecentHistories(String isinCode, int limit) {
         return List.of();
     }

@@ -144,4 +144,50 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                 .orderBy(stockPrice.id.baseDate.asc())
                 .fetch();
     }
+
+    @Override
+    public Map<String, BigDecimal> findLatestPricesByTickers(List<String> tickers) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Map.of();
+        }
+
+        // 1. 각 티커별 가장 최신 시세 날짜를 먼저 조회
+        List<Tuple> latestDates = queryFactory
+                .select(stockPrice.stock.ticker, stockPrice.id.baseDate.max())
+                .from(stockPrice)
+                .where(stockPrice.stock.ticker.in(tickers))
+                .groupBy(stockPrice.stock.ticker)
+                .fetch();
+
+        if (latestDates.isEmpty()) {
+            return Map.of();
+        }
+
+        // 2. 티커와 최신 날짜 조합으로 필터링하기 위한 조건 생성 (OR 결합)
+        BooleanExpression predicate = null;
+        for (Tuple row : latestDates) {
+            String t = row.get(stockPrice.stock.ticker);
+            LocalDate d = row.get(stockPrice.id.baseDate.max());
+            if (t != null && d != null) {
+                BooleanExpression current = stockPrice.stock.ticker.eq(t).and(stockPrice.id.baseDate.eq(d));
+                predicate = (predicate == null) ? current : predicate.or(current);
+            }
+        }
+
+        if (predicate == null) return Map.of();
+
+        // 3. 최종 시세(종가) 조회
+        List<Tuple> results = queryFactory
+                .select(stockPrice.stock.ticker, stockPrice.closePrice)
+                .from(stockPrice)
+                .where(predicate)
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        t -> t.get(stockPrice.stock.ticker),
+                        t -> t.get(stockPrice.closePrice) != null ? t.get(stockPrice.closePrice) : BigDecimal.ZERO,
+                        (existing, replacement) -> existing // 중복 방지 (이론상 발생 안함)
+                ));
+    }
 }
