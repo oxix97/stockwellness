@@ -44,9 +44,9 @@
 
 | 기능명 | 커스텀 훅 | API 함수 | 백엔드 엔드포인트 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **포트폴리오 요약** | `usePortfolioSummary` | `portfolioApi.getAnalysisSummary()` | `GET /api/v1/portfolios/{id}/analysis/summary` | 자산 가치, 수익률, CAGR, 변동성, 알파, 기여도 등 (`startDate`, `endDate` 파라미터 지원) |
-| **건강 진단** | `usePortfolioHealth` | `portfolioApi.getHealth()` | `GET /v1/portfolios/{id}/health` | 자산 배분 점수 및 레이더 차트 데이터 |
-| **보유 종목 조회** | `usePortfolioDetails` | `portfolioApi.getHoldings()` | `GET /v1/portfolios/{id}` | 현재 보유 중인 종목 리스트 및 수량 |
+| **포트폴리오 요약** | `usePortfolioSummary` | `portfolioApi.getAnalysisSummary()` | `GET /api/v1/portfolios/{id}/analysis/summary` | 자산 가치, 수익률 외 **CAGR, 변동성, 알파, 종목별 수익 기여도** 포함 (`startDate`, `endDate` 파라미터로 기간 한정 분석 지원) |
+| **건강 진단** | `usePortfolioHealth` | `portfolioApi.getHealth()` | `GET /api/v1/portfolios/{id}/health` | 자산 배분 점수, 레이더 차트 및 **종목별 건강 기여도(수익원/개선필요 분류)** 데이터 제공 |
+| **보유 종목 조회** | `usePortfolioDetails` | `portfolioApi.getHoldings()` | `GET /api/v1/portfolios/{id}` | 현재 보유 중인 종목 리스트, 수량 및 실시간 평가 금액 |
 | **AI 리밸런싱** | `usePortfolioAnalysis` | `portfolioApi.getRebalancing()` | `GET /v1/portfolios/{id}/analysis/rebalancing` | 현재 비중 vs 목표 비중 조정 제언 |
 | **포트폴리오 생성/수정** | `useCreatePortfolio`, `useUpdatePortfolio` | `portfolioApi.create()`, `portfolioApi.updatePortfolio()` | `POST /v1/portfolios`, `PUT /v1/portfolios/{id}` | 포트폴리오 이름 및 종목 구성 변경 |
 
@@ -89,6 +89,11 @@
 - **시장 지수 연동**: 인사말(맑음/비/흐림)은 KOSPI의 등락률 데이터를 기반으로 동적으로 결정됩니다.
 - **포트폴리오 요약**: `portfolioId`가 있는 경우(로그인 및 생성 완료)에만 노출되며, `AnalysisSummaryResponse` 타입을 통해 종합적인 자산 현황을 보여줍니다.
 - **섹터 상세 조회**: `useSector` 훅 내부에서 랭킹 조회 후 각 섹터의 `sectorCode`를 이용해 상세 정보(`getSectorDetail`)를 병렬로 추가 조회하여 진단 메시지를 결합합니다.
+
+### 포트폴리오 (Portfolio)
+- **분석 요약 기간 설정**: `startDate`와 `endDate` 파라미터를 통해 특정 기간의 성과(CAGR, 변동성 등)를 동적으로 백테스트하여 제공합니다.
+- **건강 진단 고도화**: 종목 간 **상관관계** 분석을 도입하여 분산 점수를 정교화했으며, 각 종목이 수익에 미치는 실질적 기여도(`stockContributions`)를 반환합니다.
+- **캐시 및 최적화**: 종목 시세 업데이트 시 관련된 포트폴리오의 분석 캐시만 선택적으로 정밀 무효화하여, 클라이언트에서 항상 최신의 정합성 높은 분석 결과를 빠르게 응답받을 수 있도록 구현되어 있습니다.
 
 ### 검색 탭 (Search)
 - **실시간 검색 최적화**: 검색어 입력 시 `useSearch` 무한 쿼리가 실행되며, `page` 파라미터를 통해 페이징 처리가 이루어집니다.
