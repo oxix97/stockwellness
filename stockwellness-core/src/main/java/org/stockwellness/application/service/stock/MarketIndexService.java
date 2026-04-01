@@ -9,6 +9,8 @@ import org.stockwellness.application.port.in.stock.result.MarketIndexResult;
 import org.stockwellness.application.port.in.stock.result.MarketIndexResult.HistoryPoint;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,9 +18,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.stockwellness.domain.stock.BenchmarkType;
-import org.stockwellness.domain.stock.exception.StockPriceException;
 
 @Slf4j
 @Service
@@ -31,31 +30,24 @@ public class MarketIndexService implements MarketIndexUseCase {
     private static final int HISTORY_DAYS = 30;
     private static final int DISPLAY_SCALE = 2;
 
-    // 도메인 지수 정의를 BenchmarkType Enum으로 관리하여 외부 API 의존성 제거
-    private static final List<BenchmarkType> TARGET_INDEXES = List.of(
-            BenchmarkType.KOSPI,
-            BenchmarkType.KOSDAQ,
-            BenchmarkType.KOSPI_200,
-            BenchmarkType.S_AND_P_500
-    );
-
     @Override
     public List<MarketIndexResult> getMarketIndexes() {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(HISTORY_DAYS);
 
         List<MarketIndexResult> results = new ArrayList<>();
-        for (BenchmarkType type : TARGET_INDEXES) {
+
+        for (BenchmarkType type : BenchmarkType.values()) {
             try {
                 // BenchmarkType의 ticker()를 식별자로 사용하여 데이터 로드
                 List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
-                results.add(toResult(type.getDescription(), prices));
+                results.add(toResult(type.getName(), prices));
             } catch (StockPriceException e) {
-                log.warn("[지수 서비스] 시장 지수 조회 실패: {} - {}", type.getDescription(), e.getMessage());
-                results.add(emptyResult(type.getDescription()));
+                log.warn("[지수 서비스] 시장 지수 조회 실패: {} - {}", type.getName(), e.getMessage());
+                results.add(emptyResult(type.getName()));
             } catch (Exception e) {
-                log.error("[지수 서비스] 시장 지수 조회 중 예기치 않은 오류 발생: {} - {}", type.getDescription(), e.getMessage());
-                results.add(emptyResult(type.getDescription()));
+                log.error("[지수 서비스] 시장 지수 조회 중 예기치 않은 오류 발생: {} - {}", type.getName(), e.getMessage());
+                results.add(emptyResult(type.getName()));
             }
         }
         return results;
@@ -68,18 +60,19 @@ public class MarketIndexService implements MarketIndexUseCase {
 
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
-        BigDecimal fluctuationRate = BigDecimal.ZERO;
+        BigDecimal fluctuationRate = latest.changeRate() != null ? 
+                latest.changeRate().setScale(DISPLAY_SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        
+        // fluctuationAmount = currentPrice - prevPrice
+        // prevPrice = currentPrice / (1 + fluctuationRate/100)
         BigDecimal fluctuationAmount = BigDecimal.ZERO;
-
-        if (prices.size() >= 2) {
-            StockPriceResult prev = prices.get(prices.size() - 2);
-            BigDecimal prevClose = prev.closePrice();
-            if (prevClose != null && prevClose.compareTo(BigDecimal.ZERO) > 0) {
-                fluctuationAmount = currentPrice.subtract(prevClose);
-                fluctuationRate = fluctuationAmount
-                        .divide(prevClose, 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                        .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
+        if (fluctuationRate.compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal rateMultiplier = fluctuationRate.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP);
+            BigDecimal divisor = BigDecimal.ONE.add(rateMultiplier);
+            
+            if (divisor.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal prevPrice = currentPrice.divide(divisor, 4, RoundingMode.HALF_UP);
+                fluctuationAmount = currentPrice.subtract(prevPrice);
             }
         }
 
