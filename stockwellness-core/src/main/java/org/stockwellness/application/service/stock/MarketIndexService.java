@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.stockwellness.domain.stock.BenchmarkType;
-import org.stockwellness.global.error.exception.GlobalException;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 
 @Slf4j
 @Service
@@ -50,7 +50,7 @@ public class MarketIndexService implements MarketIndexUseCase {
                 // BenchmarkType의 ticker()를 식별자로 사용하여 데이터 로드
                 List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
                 results.add(toResult(type.getDescription(), prices));
-            } catch (GlobalException e) {
+            } catch (StockPriceException e) {
                 log.warn("[지수 서비스] 시장 지수 조회 실패: {} - {}", type.getDescription(), e.getMessage());
                 results.add(emptyResult(type.getDescription()));
             } catch (Exception e) {

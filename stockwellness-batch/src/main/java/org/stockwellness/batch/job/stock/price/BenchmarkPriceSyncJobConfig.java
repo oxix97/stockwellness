@@ -21,7 +21,7 @@ import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-import org.stockwellness.global.error.exception.GlobalException;
+import org.stockwellness.batch.exception.BatchException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -96,7 +96,7 @@ public class BenchmarkPriceSyncJobConfig {
                 log.info("[지수 동기화] {} 지수 데이터 변환 완료: {}건", type.getDescription(), prices.size());
                 return prices;
 
-            } catch (GlobalException e) {
+            } catch (BatchException e) {
                 log.error("[지수 동기화] 비즈니스 오류 발생: {} - {}", type.getDescription(), e.getMessage());
                 return List.of(); 
             } catch (Exception e) {

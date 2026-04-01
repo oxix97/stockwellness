@@ -16,7 +16,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.GlobalException;
+import org.stockwellness.batch.exception.BatchException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobRestartException;
@@ -46,7 +46,7 @@ public class BatchAdminController {
                 LocalDate.parse(startDate);
             } catch (DateTimeParseException e) {
                 log.warn("[Batch Admin] 잘못된 날짜 형식 요청: {}", startDate);
-                throw new GlobalException(ErrorCode.INVALID_INPUT_VALUE);
+                throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
             }
         }
 

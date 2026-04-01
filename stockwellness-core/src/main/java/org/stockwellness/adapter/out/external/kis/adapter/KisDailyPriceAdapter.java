@@ -18,7 +18,6 @@ import java.util.List;
 import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.error.exception.GlobalException;
 
 @Slf4j
 @Component
