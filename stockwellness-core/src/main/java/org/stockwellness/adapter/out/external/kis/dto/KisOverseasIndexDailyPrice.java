@@ -81,13 +81,15 @@ public record KisOverseasIndexDailyPrice(
 
     @Override
     public BigDecimal prdyVrss() {
-        // 해외 지수 일별 시세(FHKST03030100) output2 에는 전일 대비 필드가 없음 (필요시 전일 종가와 비교 필요)
+        // [비즈니스 제약] KIS 해외 지수 일별 시세(FHKST03030100) output2 응답에는 '전일 대비' 필드가 제공되지 않습니다.
+        // TODO: 향후 시세 병합(Assimilation) 과정에서 이전 영업일 종가와 비교하여 직접 계산하는 로직 보완 필요
         return BigDecimal.ZERO;
     }
 
     @Override
     public BigDecimal prdyCtrt() {
-        // 해외 지수 일별 시세(FHKST03030100) output2 에는 전일 대비율 필드가 없음
+        // [비즈니스 제약] KIS 해외 지수 일별 시세(FHKST03030100) output2 응답에는 '전일 대비율' 필드가 제공되지 않습니다.
+        // TODO: 향후 시세 병합(Assimilation) 과정에서 (현재가 - 전일종가) / 전일종가 로 직접 계산하는 로직 보완 필요
         return BigDecimal.ZERO;
     }
 
