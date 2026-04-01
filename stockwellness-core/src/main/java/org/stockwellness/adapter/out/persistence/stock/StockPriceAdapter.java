@@ -38,6 +38,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public Optional<BenchmarkPrice> findLatestBefore(String ticker, LocalDate baseDate) {
+        return benchmarkPriceRepository.findTopByTickerAndBaseDateLessThanOrderByBaseDateDesc(ticker, baseDate);
+    }
+
+    @Override
     public void save(BenchmarkPrice benchmarkPrice) {
         benchmarkPriceRepository.save(benchmarkPrice);
     }
@@ -202,7 +207,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                                     indicators != null ? indicators.getMa5() : null,
                                     indicators != null ? indicators.getMa20() : null,
                                     indicators != null ? indicators.getMa60() : null,
-                                    indicators != null ? indicators.getMa120() : null
+                                    indicators != null ? indicators.getMa120() : null,
+                                    p.getFluctuationRate()
                             );
                         }, Collectors.toList())
                 ));
