@@ -10,7 +10,8 @@ public enum BenchmarkType {
     KOSDAQ("1001", "코스닥", false),
     KOSPI_200("2001", "코스피 200", false),
     S_AND_P_500("SPX", "S&P 500", true),
-    NASDAQ("IXIC", "나스닥", true);
+    NASDAQ("IXIC", "나스닥", true),
+    DOW_JONES("DJI", "다우 존스", true);
 
     private final String ticker;
     private final String description;
@@ -23,11 +24,10 @@ public enum BenchmarkType {
     }
 
     public String getApiTicker() {
-        return switch (this) {
-            case S_AND_P_500 -> "SND@SPX";
-            case NASDAQ -> "NAS@IXIC";
-            default -> ticker;
-        };
+        if (overseas) {
+            return "." + ticker; // 해외 지수의 경우 KIS API는 .SPX, .IXIC 형식을 사용함
+        }
+        return ticker;
     }
 
     public static BenchmarkType fromTicker(String ticker) {

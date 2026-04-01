@@ -82,18 +82,26 @@ public class BenchmarkPriceSyncJobConfig {
                     details = kisAdapter.fetchIndexDailyPrices(type.getApiTicker(), startDate);
                 }
 
-                return details.stream()
+                if (details == null || details.isEmpty()) {
+                    log.warn("[지수 동기화] 수집된 데이터가 없습니다: {}", type.getDescription());
+                    return List.of();
+                }
+
+                List<BenchmarkPrice> prices = details.stream()
                         .map(detail -> createBenchmarkPrice(type.getTicker(), detail))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
                         .collect(Collectors.toList());
+
+                log.info("[지수 동기화] {} 지수 데이터 변환 완료: {}건", type.getDescription(), prices.size());
+                return prices;
 
             } catch (GlobalException e) {
                 log.error("[지수 동기화] 비즈니스 오류 발생: {} - {}", type.getDescription(), e.getMessage());
                 return List.of(); 
             } catch (Exception e) {
                 log.error("[지수 동기화] 시세 수집 중 예기치 않은 시스템 오류 발생: {} - {}", type.getDescription(), e.getMessage());
-                return List.of(); // 해당 지수 건너뜀
+                return List.of();
             }
         };
     }
@@ -101,12 +109,14 @@ public class BenchmarkPriceSyncJobConfig {
     @Bean
     public ItemWriter<List<BenchmarkPrice>> benchmarkPriceWriter() {
         return lists -> {
+            int totalSaved = 0;
             for (List<BenchmarkPrice> prices : lists) {
                 for (BenchmarkPrice price : prices) {
                     saveOrUpdateBenchmarkPrice(price);
+                    totalSaved++;
                 }
-                log.info("[지수 동기화] {}건의 데이터 저장/업데이트 완료", prices.size());
             }
+            log.info("[지수 동기화] 총 {}건의 데이터 저장/업데이트 완료", totalSaved);
         };
     }
 
