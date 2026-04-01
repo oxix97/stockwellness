@@ -13,11 +13,10 @@ import org.stockwellness.domain.stock.Stock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
-
-import org.stockwellness.global.error.ErrorCode;
 
 @Slf4j
 @Component
@@ -28,8 +27,6 @@ public class KisDailyPriceAdapter {
 
     /**
      * 멀티 종목 시세 조회 (최대 30종목)
-     * @param tickers 종목 티커 리스트
-     * @return 종목별 상세 시세 리스트
      */
     @Retry(name = "kisRetry")
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
@@ -60,17 +57,12 @@ public class KisDailyPriceAdapter {
 
         } catch (RestClientException | IllegalStateException e) {
             log.error("[KIS 어댑터] 멀티 종목 시세 조회 실패 (종목: {}): {}", tickers, e.getMessage());
-            // 외부 API 통신 실패 시 비어있는 리스트를 반환하여 상위 로직(배치 등)이 계속 진행되도록 함
             return Collections.emptyList();
         }
     }
 
     /**
      * 주식 기간별 시세(일/주/월/년)
-     * @param stock 대상 종목
-     * @param startDate 시작일
-     * @param endDate 종료일
-     * @return 일별 시세 리스트
      */
     @Retry(name = "kisRetry")
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
@@ -103,23 +95,21 @@ public class KisDailyPriceAdapter {
     }
 
     /**
-     * 국내 업종/지수 일자별 시세 조회
-     * @param indexCode 지수/업종 코드
-     * @param startDate 시작일
-     * @return 지수 시세 데이터 리스트
+     * 국내 업종/지수 기간별 시세
      */
     @Retry(name = "kisRetry")
-    public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate) {
+    public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
         try {
             KisPriceResponse<SectorIndexSummary, List<SectorDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice")
                             .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_INPUT_ISCD", indexCode)
                             .queryParam("FID_PERIOD_DIV_CODE", "D")
-                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
                             .build())
-                    .header("tr_id", "FHPUP02120000")
+                    .header("tr_id", "FHKUP03500100")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
@@ -136,10 +126,6 @@ public class KisDailyPriceAdapter {
 
     /**
      * 해외 지수 일자별 시세 조회
-     * @param indexCode 지수 코드
-     * @param startDate 시작일
-     * @param endDate 종료일
-     * @return 지수 시세 데이터 리스트
      */
     @Retry(name = "kisRetry")
     public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
@@ -163,10 +149,9 @@ public class KisDailyPriceAdapter {
                 return Collections.emptyList();
             }
 
-            // 시작일 이후의 데이터만 필터링하여 반환
             return response.output2().stream()
-                    .filter(d -> d.baseDate() != null && !d.baseDate().isBefore(startDate))
-                    .map(d -> (BenchmarkPriceData) d)
+                    .sorted(Comparator.comparing(KisOverseasIndexDailyPrice::baseDate))
+                    .map(BenchmarkPriceData.class::cast)
                     .toList();
         } catch (RestClientException | IllegalStateException e) {
             log.error("[KIS 어댑터] 해외 지수 시세 조회 실패 (지수코드: {}): {}", indexCode, e.getMessage());
@@ -174,4 +159,3 @@ public class KisDailyPriceAdapter {
         }
     }
 }
-
