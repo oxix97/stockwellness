@@ -20,6 +20,10 @@ import org.stockwellness.global.security.MemberPrincipal;
 
 import java.util.List;
 
+/**
+ * 포트폴리오 관리 API 컨트롤러
+ * 사용자의 포트폴리오 생성, 조회, 수정, 삭제 및 진단/조언 관련 엔드포인트를 제공합니다.
+ */
 @RestController
 @LogExecution
 @RequestMapping("/api/v1/portfolios")
@@ -29,7 +33,12 @@ public class PortfolioController {
     private final PortfolioFacade portfolioFacade;
 
     /**
-     * 포트폴리오 생성
+     * 새로운 포트폴리오를 생성합니다.
+     * 포트폴리오 기본 정보와 초기 구성 종목(주식, 현금 등)을 입력받아 저장합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param request 포트폴리오 생성 요청 데이터
+     * @return 생성된 포트폴리오의 ID
      */
     @PostMapping
     public ApiResponse<Long> createPortfolio(
@@ -58,7 +67,10 @@ public class PortfolioController {
     }
 
     /**
-     * 내 포트폴리오 목록 조회
+     * 현재 로그인한 사용자의 모든 포트폴리오 목록을 요약 조회합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @return 포트폴리오 목록 리스트
      */
     @GetMapping
     public ApiResponse<List<PortfolioResponse>> getMyPortfolios(
@@ -69,7 +81,11 @@ public class PortfolioController {
     }
 
     /**
-     * 포트폴리오 상세 조회
+     * 특정 포트폴리오의 상세 정보(구성 종목 및 비중 등)를 조회합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param portfolioId 조회할 포트폴리오 ID
+     * @return 포트폴리오 상세 데이터
      */
     @GetMapping("/{portfolioId}")
     public ApiResponse<PortfolioResponse> getPortfolio(
@@ -81,7 +97,13 @@ public class PortfolioController {
     }
 
     /**
-     * 포트폴리오 수정 (구성 종목 변경)
+     * 포트폴리오의 기본 정보 및 구성 종목 리스트를 전체 수정합니다.
+     * 수정 시 종목의 추가, 삭제, 수량 변경 및 목표 비중 재설정이 가능합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param portfolioId 수정할 포트폴리오 ID
+     * @param request 수정 요청 데이터
+     * @return 성공 여부
      */
     @PutMapping("/{portfolioId}")
     public ApiResponse<Void> updatePortfolio(
@@ -111,7 +133,11 @@ public class PortfolioController {
     }
 
     /**
-     * 포트폴리오 삭제
+     * 특정 포트폴리오를 삭제합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param portfolioId 삭제할 포트폴리오 ID
+     * @return 성공 여부
      */
     @DeleteMapping("/{portfolioId}")
     public ApiResponse<Void> deletePortfolio(
@@ -123,7 +149,12 @@ public class PortfolioController {
     }
 
     /**
-     * 포트폴리오 건강 진단
+     * 포트폴리오의 건강 상태를 진단하여 오각형 지표 점수를 조회합니다.
+     * 내부적으로 수익성, 안정성, 분산도 등을 계산하여 결과를 반환합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param portfolioId 진단할 포트폴리오 ID
+     * @return 진단 결과 데이터 (오각형 점수, AI 분석 요약 등)
      */
     @GetMapping("/{portfolioId}/health")
     public ApiResponse<DiagnosisResponse> diagnosePortfolio(
@@ -135,7 +166,11 @@ public class PortfolioController {
     }
 
     /**
-     * 최신 AI 리밸런싱 조언 조회
+     * 해당 포트폴리오에 대해 AI 어드바이저가 생성한 가장 최신의 투자 조언(리밸런싱 등)을 조회합니다.
+     *
+     * @param memberPrincipal 인증된 사용자 정보
+     * @param portfolioId 포트폴리오 ID
+     * @return 최신 AI 조언 리포트
      */
     @GetMapping("/{portfolioId}/advice/latest")
     public ApiResponse<AdviceResponse> getLatestAdvice(

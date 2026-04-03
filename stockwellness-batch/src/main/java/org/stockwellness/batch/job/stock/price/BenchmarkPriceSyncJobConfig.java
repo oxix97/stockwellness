@@ -40,18 +40,24 @@ public class BenchmarkPriceSyncJobConfig {
     }
 
     @Bean
-    public Step benchmarkPriceSyncStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+    public Step benchmarkPriceSyncStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            BenchmarkPriceDataReader benchmarkPriceDataReader,
+            BenchmarkPriceDataProcessor benchmarkPriceDataProcessor,
+            BenchmarkPriceDataWriter benchmarkPriceDataWriter
+    ) {
         return new StepBuilder("benchmarkPriceSyncStep", jobRepository)
                 .<BenchmarkPriceDataWrapper, BenchmarkPrice>chunk(100, transactionManager)
-                .reader(benchmarkPriceDataReader(null, null))
-                .processor(benchmarkPriceProcessor())
-                .writer(benchmarkPriceWriter())
+                .reader(benchmarkPriceDataReader)
+                .processor(benchmarkPriceDataProcessor)
+                .writer(benchmarkPriceDataWriter)
                 .build();
     }
 
     @Bean
     @StepScope
-    public ItemReader<BenchmarkPriceDataWrapper> benchmarkPriceDataReader(
+    public BenchmarkPriceDataReader benchmarkPriceDataReader(
             @Value("#{jobParameters['startDate']}") String startDateParam,
             @Value("#{jobParameters['endDate']}") String endDateParam) {
 
@@ -63,12 +69,12 @@ public class BenchmarkPriceSyncJobConfig {
 
     @Bean
     @StepScope
-    public ItemProcessor<BenchmarkPriceDataWrapper, BenchmarkPrice> benchmarkPriceProcessor() {
+    public BenchmarkPriceDataProcessor benchmarkPriceProcessor() {
         return new BenchmarkPriceDataProcessor(benchmarkPricePort);
     }
 
     @Bean
-    public ItemWriter<BenchmarkPrice> benchmarkPriceWriter() {
+    public BenchmarkPriceDataWriter benchmarkPriceWriter() {
         return new BenchmarkPriceDataWriter(benchmarkPricePort);
     }
 }

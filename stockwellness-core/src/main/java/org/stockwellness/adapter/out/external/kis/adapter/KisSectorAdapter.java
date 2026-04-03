@@ -144,8 +144,9 @@ public class KisSectorAdapter implements SectorDataPort {
                     
                     if (!trading.isEmpty()) {
                         InvestorTradingDaily latest = trading.get(0);
-                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) : 0L;
-                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) : 0L;
+                        // KIS API의 수급 금액 단위는 '백만 원'이므로 시스템 표준인 '1원' 단위로 변환 (* 1,000,000)
+                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) * 1_000_000L : 0L;
+                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) * 1_000_000L : 0L;
                     }
 
                     result.add(new SectorApiDto(

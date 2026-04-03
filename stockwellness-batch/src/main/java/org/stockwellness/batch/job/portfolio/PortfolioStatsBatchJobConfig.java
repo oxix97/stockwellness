@@ -66,9 +66,17 @@ public class PortfolioStatsBatchJobConfig {
 
     @Bean
     @StepScope
-    public ItemWriter<Portfolio> portfolioStatsWriter() {
-        return chunk -> {
+    public PortfolioStatsWriter portfolioStatsWriter() {
+        return new PortfolioStatsWriter(portfolioStatBatchService);
+    }
+
+    @RequiredArgsConstructor
+    public static class PortfolioStatsWriter implements ItemWriter<Portfolio> {
+        private final PortfolioStatBatchService portfolioStatBatchService;
+
+        @Override
+        public void write(org.springframework.batch.item.Chunk<? extends Portfolio> chunk) {
             portfolioStatBatchService.updatePortfolioStatsBatch(chunk.getItems());
-        };
+        }
     }
 }

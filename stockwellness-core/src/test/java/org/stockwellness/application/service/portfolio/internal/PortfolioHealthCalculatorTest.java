@@ -63,8 +63,8 @@ class PortfolioHealthCalculatorTest {
 
         // 추가 컨텍스트 (백테스트 결과 등 정밀화에 필요한 데이터)
         BacktestResult backtestResult = mock(BacktestResult.class);
-        when(backtestResult.cagr()).thenReturn(BigDecimal.valueOf(15.0)); // 15% 수익률
-        when(backtestResult.mdd()).thenReturn(BigDecimal.valueOf(10.0)); // 10% 낙폭
+        when(backtestResult.alpha()).thenReturn(BigDecimal.valueOf(5.0)); // 5% 초과수익
+        when(backtestResult.relativeMdd()).thenReturn(BigDecimal.valueOf(2.0)); // 2%p 더 하락
         
         DiagnosisContext context = new DiagnosisContext(portfolio, stockMap, Collections.emptyMap(), backtestResult, Collections.emptyMap());
 
@@ -78,8 +78,7 @@ class PortfolioHealthCalculatorTest {
         assertThat(health.categories().get(DiagnosisCategory.AGILITY.getKey())).isBetween(0, 100);
         assertThat(health.categories().get(DiagnosisCategory.CASH.getKey())).isBetween(0, 100);
         
-        // 특정 값 검증 (정밀화된 로직 기대값)
-        // 수익: 15% 수익률 -> 약 75점 이상 기대
-        assertThat(health.categories().get(DiagnosisCategory.RETURN.getKey())).isGreaterThanOrEqualTo(70);
+        // 특정 값 검증 (Alpha 5% -> 5*3 + 70 = 85점)
+        assertThat(health.categories().get(DiagnosisCategory.RETURN.getKey())).isEqualTo(85);
     }
 }

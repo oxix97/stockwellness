@@ -16,6 +16,7 @@ import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedExcepti
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -84,9 +85,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
             if (!stockPort.existsByTicker(item.symbol())) {
                 throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
             }
-            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight());
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight(), LocalDate.now());
         } else {
-            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight());
+            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight(), LocalDate.now());
         }
     }
 
@@ -95,9 +96,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
             if (!stockPort.existsByTicker(item.symbol())) {
                 throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
             }
-            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight());
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight(), LocalDate.now());
         } else {
-            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight());
+            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight(), LocalDate.now());
         }
     }
 }

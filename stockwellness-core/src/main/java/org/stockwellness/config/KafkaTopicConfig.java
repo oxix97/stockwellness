@@ -9,10 +9,19 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     public static final String STOCK_PRICE_UPDATED_TOPIC = "stock-price-updated";
+    public static final String PORTFOLIO_ANALYSIS_COMPLETED_TOPIC = "portfolio-analysis-completed";
 
     @Bean
     public NewTopic stockPriceUpdatedTopic() {
         return TopicBuilder.name(STOCK_PRICE_UPDATED_TOPIC)
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic portfolioAnalysisCompletedTopic() {
+        return TopicBuilder.name(PORTFOLIO_ANALYSIS_COMPLETED_TOPIC)
                 .partitions(1)
                 .replicas(1)
                 .build();

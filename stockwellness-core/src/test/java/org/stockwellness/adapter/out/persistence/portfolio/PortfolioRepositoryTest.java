@@ -56,10 +56,10 @@ class PortfolioRepositoryTest {
         Portfolio portfolio = Portfolio.create(memberId, "테스트 포트폴리오", "설명");
         ReflectionTestUtils.setField(portfolio, "createdAt", LocalDateTime.now());
         
-        PortfolioItem item1 = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50));
+        PortfolioItem item1 = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50), java.time.LocalDate.now());
         ReflectionTestUtils.setField(item1, "createdAt", LocalDateTime.now());
         
-        PortfolioItem item2 = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50));
+        PortfolioItem item2 = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50), java.time.LocalDate.now());
         ReflectionTestUtils.setField(item2, "createdAt", LocalDateTime.now());
         
         portfolio.updateItems(List.of(item1, item2));
@@ -84,12 +84,12 @@ class PortfolioRepositoryTest {
         // given
         Portfolio p1 = Portfolio.create(memberId, "포트1", "설명1");
         ReflectionTestUtils.setField(p1, "createdAt", LocalDateTime.now());
-        p1.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100))));
+        p1.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100), java.time.LocalDate.now())));
         p1.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
         
         Portfolio p2 = Portfolio.create(memberId, "포트2", "설명2");
         ReflectionTestUtils.setField(p2, "createdAt", LocalDateTime.now());
-        p2.updateItems(List.of(PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(100))));
+        p2.updateItems(List.of(PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(100), java.time.LocalDate.now())));
         p2.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
         
         portfolioRepository.saveAll(List.of(p1, p2));
@@ -109,7 +109,7 @@ class PortfolioRepositoryTest {
         // given
         Portfolio portfolio = Portfolio.create(memberId, "삭제 테스트", "설명");
         ReflectionTestUtils.setField(portfolio, "createdAt", LocalDateTime.now());
-        portfolio.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100))));
+        portfolio.updateItems(List.of(PortfolioItem.createCash(BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100), java.time.LocalDate.now())));
         portfolio.getItems().forEach(item -> ReflectionTestUtils.setField(item, "createdAt", LocalDateTime.now()));
         
         Portfolio saved = portfolioRepository.save(portfolio);

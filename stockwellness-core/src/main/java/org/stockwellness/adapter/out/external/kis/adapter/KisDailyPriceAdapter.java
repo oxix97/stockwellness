@@ -95,6 +95,40 @@ public class KisDailyPriceAdapter {
     }
 
     /**
+     * 주식 일자별 투자자 매매 추이 (확정치)
+     */
+    @Retry(name = "kisRetry")
+    public List<KisInvestorPriceDetail> fetchInvestorPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
+        String path = "/uapi/domestic-stock/v1/quotations/inquire-investor";
+        String ticker = stock.getTicker();
+        try {
+            // 이 TR은 output1 에 리스트가 담겨 옵니다.
+            KisPriceResponse<List<KisInvestorPriceDetail>, Object> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", ticker)
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .build())
+                    .header("tr_id", "FHKST01010900")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.output1() == null) {
+                return Collections.emptyList();
+            }
+            return response.output1();
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 투자자 매매 추이 조회 실패 (티커: {}): {}", ticker, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
      * 국내 업종/지수 기간별 시세
      */
     @Retry(name = "kisRetry")

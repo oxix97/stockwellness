@@ -11,6 +11,7 @@ public record BacktestResponse(
     List<DailyResult> dailyResults,
     BigDecimal cagr,
     BigDecimal mdd,
+    BigDecimal relativeMdd,
     BigDecimal sharpeRatio,
     BigDecimal totalReturnRate,
     BigDecimal volatility,
@@ -18,6 +19,7 @@ public record BacktestResponse(
     BigDecimal beta,  // Primary Benchmark Beta
     BigDecimal bestYearRate,
     BigDecimal worstYearRate,
+    Map<String, BigDecimal> itemReturns,
     List<IndexComparisonResponse> comparisons, // 다중 지수 비교 추가
     String aiComment
 ) {
@@ -35,7 +37,9 @@ public record BacktestResponse(
         String ticker,
         BigDecimal totalReturn,
         BigDecimal alpha,
-        BigDecimal beta
+        BigDecimal beta,
+        BigDecimal mdd,
+        BigDecimal relativeMdd
     ) {}
 
     public static BacktestResponse from(BacktestResult result, String primaryBenchmarkTicker) {
@@ -49,6 +53,7 @@ public record BacktestResponse(
                 .toList(),
             result.cagr(),
             result.mdd(),
+            result.relativeMdd(),
             result.sharpeRatio(),
             result.totalReturnRate(),
             result.volatility(),
@@ -56,8 +61,9 @@ public record BacktestResponse(
             result.beta(),
             result.bestYearRate(),
             result.worstYearRate(),
+            result.itemReturns(),
             result.comparisons().stream()
-                .map(c -> new IndexComparisonResponse(c.indexName(), c.ticker(), c.totalReturn(), c.alpha(), c.beta()))
+                .map(c -> new IndexComparisonResponse(c.indexName(), c.ticker(), c.totalReturn(), c.alpha(), c.beta(), c.mdd(), c.relativeMdd()))
                 .toList(),
             result.aiComment()
         );

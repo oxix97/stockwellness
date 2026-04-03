@@ -18,6 +18,7 @@ import org.stockwellness.support.annotation.MockMember;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -49,7 +50,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1350000), BigDecimal.valueOf(1500000), BigDecimal.valueOf(150000),
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
+                BigDecimal.ZERO, BigDecimal.ZERO
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
 
@@ -67,7 +69,9 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"),
                 fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
                 fieldWithPath("data.sharpeRatio").description("샤프 지수"),
-                fieldWithPath("data.beta").description("베타 계수")
+                fieldWithPath("data.beta").description("베타 계수"),
+                fieldWithPath("data.totalInstitutionalNetBuying").description("총 기관 순매수 금액"),
+                fieldWithPath("data.totalForeignNetBuying").description("총 외국인 순매수 금액")
         ));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
@@ -138,7 +142,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1350000), BigDecimal.valueOf(1500000), BigDecimal.valueOf(150000),
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
-                BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1)
+                BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
+                BigDecimal.ZERO, BigDecimal.ZERO
         );
         PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
                 BigDecimal.valueOf(1500000), Map.of("STOCK", BigDecimal.valueOf(100)), Map.of("TECH", BigDecimal.valueOf(100)), Map.of("US", BigDecimal.valueOf(100))
@@ -239,6 +244,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                         BigDecimal.valueOf(5), Map.of("KOSPI", BigDecimal.valueOf(3)))),
                 BigDecimal.valueOf(0.15), // cagr
                 BigDecimal.valueOf(-0.10), // mdd
+                BigDecimal.valueOf(-0.05), // relativeMdd
                 BigDecimal.valueOf(1.5), // sharpeRatio
                 BigDecimal.valueOf(0.20), // totalReturnRate
                 BigDecimal.valueOf(0.12), // volatility
@@ -246,8 +252,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1.0), // beta
                 BigDecimal.valueOf(0.25), // bestYearRate
                 BigDecimal.valueOf(-0.05), // worstYearRate
-                Map.of(),
-                List.of(new BacktestResult.IndexComparison("코스피", "KOSPI", BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0))),
+                Map.of("005930", BigDecimal.valueOf(10.0)),
+                List.of(new BacktestResult.IndexComparison("코스피", "KOSPI", BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0), BigDecimal.valueOf(10.0), BigDecimal.valueOf(-5.0))),
                 "현재 포트폴리오는 시장 지수 대비 안정적인 수익을 보여주고 있습니다." // aiComment
         );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
@@ -270,6 +276,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("벤치마크 지수별 해당 일자 수익률 (Map<Ticker, Rate>)"),
                 fieldWithPath("data.cagr").description("연평균 복리 수익률 (CAGR)"),
                 fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
+                fieldWithPath("data.relativeMdd").description("벤치마크 대비 상대 낙폭"),
                 fieldWithPath("data.sharpeRatio").description("위험 대비 수익 지수 (샤프 지수)"),
                 fieldWithPath("data.totalReturnRate").description("전체 기간 총 수익률"),
                 fieldWithPath("data.volatility").description("수익률 표준편차 (변동성)"),
@@ -277,11 +284,14 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.beta").description("시장 지수 변동성 대비 민감도 (Beta)"),
                 fieldWithPath("data.bestYearRate").description("최고 수익을 기록한 해의 수익률"),
                 fieldWithPath("data.worstYearRate").description("최저 수익을 기록한 해의 수익률"),
+                subsectionWithPath("data.itemReturns").description("종목별 수익률 기여도"),
                 fieldWithPath("data.comparisons[].indexName").description("비교 지수 명칭 (예: 코스피, 나스닥)"),
                 fieldWithPath("data.comparisons[].ticker").description("비교 지수 티커"),
                 fieldWithPath("data.comparisons[].totalReturn").description("비교 지수의 전체 기간 총 수익률"),
                 fieldWithPath("data.comparisons[].alpha").description("지수 대비 해당 포트폴리오의 초과 수익"),
                 fieldWithPath("data.comparisons[].beta").description("지수 대비 해당 포트폴리오의 베타"),
+                fieldWithPath("data.comparisons[].mdd").description("비교 지수의 MDD"),
+                fieldWithPath("data.comparisons[].relativeMdd").description("지수 대비 해당 포트폴리오의 상대 낙폭"),
                 fieldWithPath("data.aiComment").description("AI 엔진이 생성한 백테스트 분석 코멘트").optional()
         ));
 

@@ -9,6 +9,7 @@ public record BacktestResult(
     List<DailyBacktestResult> dailyResults,
     BigDecimal cagr,              // 연평균 수익률
     BigDecimal mdd,               // 최대 낙폭
+    BigDecimal relativeMdd,       // 벤치마크 대비 상대 낙폭 (Portfolio MDD - Benchmark MDD)
     BigDecimal sharpeRatio,       // 샤프 지수
     BigDecimal totalReturnRate,   // 총 수익률
     BigDecimal volatility,        // 변동성 (표준편차)
@@ -20,6 +21,25 @@ public record BacktestResult(
     List<IndexComparison> comparisons, // 다중 지수 비교 결과 추가
     String aiComment
 ) {
+    public static BacktestResult empty() {
+        return new BacktestResult(
+            java.util.Collections.emptyList(),
+            BigDecimal.ZERO, // cagr
+            BigDecimal.ZERO, // mdd
+            BigDecimal.ZERO, // relativeMdd
+            BigDecimal.ZERO, // sharpeRatio
+            BigDecimal.ZERO, // totalReturnRate
+            BigDecimal.ZERO, // volatility
+            BigDecimal.ZERO, // alpha
+            BigDecimal.ZERO, // beta
+            BigDecimal.ZERO, // bestYearRate
+            BigDecimal.ZERO, // worstYearRate
+            java.util.Collections.emptyMap(),
+            java.util.Collections.emptyList(),
+            null
+        );
+    }
+
     public record DailyBacktestResult(
         LocalDate date,
         BigDecimal totalValue,
@@ -33,6 +53,8 @@ public record BacktestResult(
         String ticker,
         BigDecimal totalReturn,
         BigDecimal alpha,
-        BigDecimal beta
+        BigDecimal beta,
+        BigDecimal mdd,
+        BigDecimal relativeMdd
     ) {}
 }

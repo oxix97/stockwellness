@@ -7,9 +7,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
-import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.portfolio.internal.AnalysisContext;
 import org.stockwellness.application.service.portfolio.internal.PortfolioAnalysisDataLoader;
 import org.stockwellness.application.service.portfolio.internal.SimulationDataProvider;
@@ -18,9 +15,9 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -37,9 +34,6 @@ class PortfolioAnalysisRebalancingTest {
     private PortfolioAnalysisDataLoader dataLoader;
 
     @Mock
-    private StockPricePort stockPricePort;
-
-    @Mock
     private SimulationDataProvider simulationDataProvider;
 
     @Test
@@ -50,8 +44,8 @@ class PortfolioAnalysisRebalancingTest {
         Long portfolioId = 100L;
         Portfolio portfolio = Portfolio.create(memberId, "Rebalance Test", "");
 
-        PortfolioItem stockItem = PortfolioItem.createStock("AAPL", new BigDecimal("10"), new BigDecimal("150"), "USD", new BigDecimal("60"));
-        PortfolioItem cashItem = PortfolioItem.createCash(new BigDecimal("400"), "USD", new BigDecimal("40"));
+        PortfolioItem stockItem = PortfolioItem.createStock("AAPL", new BigDecimal("10"), new BigDecimal("150"), "USD", new BigDecimal("60"), LocalDate.now());
+        PortfolioItem cashItem = PortfolioItem.createCash(new BigDecimal("400"), "USD", new BigDecimal("40"), LocalDate.now());
         portfolio.updateItems(List.of(stockItem, cashItem));
 
         StockPrice aaplPrice = mock(StockPrice.class);

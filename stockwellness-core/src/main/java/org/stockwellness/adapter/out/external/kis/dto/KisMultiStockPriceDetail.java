@@ -38,5 +38,11 @@ public record KisMultiStockPriceDetail(
         @JsonProperty("acml_tr_pbmn") String accumulatedTradingValue,
 
         /** 전일 종가 */
-        @JsonProperty("inter2_prdy_clpr") String previousClosePrice
+        @JsonProperty("inter2_prdy_clpr") String previousClosePrice,
+
+        /** 기관 순매수 금액 */
+        @JsonProperty("ntby_amt") String netInstitutionalBuyingAmt,
+
+        /** 외국인 순매수 금액 */
+        @JsonProperty("frgn_ntby_amt") String netForeignBuyingAmt
 ) {}

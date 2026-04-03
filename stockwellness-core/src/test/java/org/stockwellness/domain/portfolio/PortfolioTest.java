@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,8 +39,8 @@ class PortfolioTest {
             // given
             Portfolio portfolio = Portfolio.create(1L, "비중 테스트", "");
             List<PortfolioItem> items = List.of(
-                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(60)),
-                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40))
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(60), LocalDate.now()),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40), LocalDate.now())
             );
 
             // when
@@ -60,8 +61,8 @@ class PortfolioTest {
             // given
             Portfolio portfolio = Portfolio.create(1L, "비중 실패 테스트", "");
             List<PortfolioItem> items = List.of(
-                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(50)),
-                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40)) // 합계 90
+                    PortfolioItem.createStock("AAPL", BigDecimal.ONE, BigDecimal.valueOf(150), "USD", BigDecimal.valueOf(50), LocalDate.now()),
+                    PortfolioItem.createCash(BigDecimal.valueOf(400), "USD", BigDecimal.valueOf(40), LocalDate.now()) // 합계 90
             );
 
             // when & then

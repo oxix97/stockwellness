@@ -16,7 +16,9 @@ public record PortfolioValuationResponse(
     BigDecimal alpha,
     BigDecimal mdd,
     BigDecimal sharpeRatio,
-    BigDecimal beta
+    BigDecimal beta,
+    BigDecimal totalInstitutionalNetBuying,
+    BigDecimal totalForeignNetBuying
 ) {
     public static PortfolioValuationResponse from(PortfolioValuationResult result) {
         return new PortfolioValuationResponse(
@@ -31,7 +33,9 @@ public record PortfolioValuationResponse(
             result.alpha(),
             result.mdd(),
             result.sharpeRatio(),
-            result.beta()
+            result.beta(),
+            result.totalInstitutionalNetBuying(),
+            result.totalForeignNetBuying()
         );
     }
 }
