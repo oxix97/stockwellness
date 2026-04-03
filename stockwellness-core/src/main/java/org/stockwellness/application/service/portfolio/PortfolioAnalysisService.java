@@ -140,17 +140,18 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         // 최근 2년치 시세 데이터 로딩 및 시뮬레이션 실행
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        SimulationData data = simulationDataProvider.loadData(symbols, command.benchmarkTicker(), start, end);
+        String primaryTicker = command.benchmarkTickers().get(0);
+        SimulationData data = simulationDataProvider.loadData(symbols, primaryTicker, start, end);
 
         BacktestStrategy strategy = BacktestStrategy.valueOf(command.strategy().toUpperCase());
 
         // 투자 방식에 따른 시뮬레이션 엔진 실행 (LumpSum: 거치식, DCA: 적립식)
         BacktestResult result = (strategy == BacktestStrategy.DCA) ?
-                backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod(), command.benchmarkTicker(), BigDecimal.valueOf(3.0)) :
-                backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod(), command.benchmarkTicker(), BigDecimal.valueOf(3.0));
+                backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0)) :
+                backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0));
         
         // AI 어드바이저가 백테스트 결과를 분석하여 조언 생성
-        String aiComment = aiAdvisorUseCase.generateBacktestAdvice(result, command.strategy(), command.benchmarkTicker());
+        String aiComment = aiAdvisorUseCase.generateBacktestAdvice(result, command.strategy(), primaryTicker);
         
         return new BacktestResult(
                 result.dailyResults(), result.cagr(), result.mdd(), result.relativeMdd(), result.sharpeRatio(),

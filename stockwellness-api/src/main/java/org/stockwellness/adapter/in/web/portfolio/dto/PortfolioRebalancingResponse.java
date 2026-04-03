@@ -3,6 +3,7 @@ package org.stockwellness.adapter.in.web.portfolio.dto;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 public record PortfolioRebalancingResponse(
@@ -22,17 +23,17 @@ public record PortfolioRebalancingResponse(
 
     public static PortfolioRebalancingResponse from(PortfolioRebalancingResult result) {
         return new PortfolioRebalancingResponse(
-            result.totalValue(),
+            result.totalValue().setScale(0, RoundingMode.HALF_UP),
             result.items().stream()
                 .map(i -> new RebalancingItemResponse(
                     i.symbol(),
-                    i.currentWeight(),
-                    i.targetWeight(),
-                    i.diffWeight(),
-                    i.currentQuantity(),
-                    i.recommendedQuantity(),
-                    i.currentPrice(),
-                    i.recommendedQuantity().multiply(i.currentPrice())
+                    i.currentWeight().setScale(4, RoundingMode.HALF_UP),
+                    i.targetWeight().setScale(4, RoundingMode.HALF_UP),
+                    i.diffWeight().setScale(4, RoundingMode.HALF_UP),
+                    i.currentQuantity().setScale(4, RoundingMode.HALF_UP), // Quantities can be fractional
+                    i.recommendedQuantity().setScale(4, RoundingMode.HALF_UP),
+                    i.currentPrice().setScale(0, RoundingMode.HALF_UP),
+                    i.recommendedQuantity().multiply(i.currentPrice()).setScale(0, RoundingMode.HALF_UP)
                 ))
                 .toList()
         );

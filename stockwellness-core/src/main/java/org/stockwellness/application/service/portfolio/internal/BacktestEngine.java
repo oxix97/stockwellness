@@ -210,15 +210,19 @@ public class BacktestEngine {
             benchmarkSeries.put(ticker, new ReturnSeries(bReturns));
         });
 
+        double years = totalDays / 252.0;
+        BigDecimal portfolioCagr = FinancialMath.calculateCAGR(initialAmount, finalAmount, years);
+
         IndicatorCalculator.IndicatorContext context = new IndicatorCalculator.IndicatorContext(
                 new ReturnSeries(dailyReturns),
                 dailyValues,
                 initialAmount,
                 finalAmount,
-                totalDays / 252.0,
+                years,
                 benchmarkSeries,
                 primaryBenchmarkTicker,
-                riskFreeRate
+                riskFreeRate,
+                portfolioCagr
         );
 
         return aggregator.aggregate(dailyResults, context, itemReturns, aiComment);

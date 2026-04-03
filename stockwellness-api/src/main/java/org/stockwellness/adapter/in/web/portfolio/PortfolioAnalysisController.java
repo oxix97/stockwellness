@@ -128,13 +128,15 @@ public class PortfolioAnalysisController {
                 portfolioId,
                 request.strategy(),
                 request.amount(),
-                request.benchmarkTicker(),
+                (request.benchmarkTickers() == null || request.benchmarkTickers().isEmpty()) ? 
+                    java.util.List.of(org.stockwellness.domain.stock.BenchmarkType.KOSPI.getTicker()) : request.benchmarkTickers(),
                 request.rebalancingPeriod(),
                 request.weights()
         );
 
         BacktestResult result = portfolioFacade.runBacktest(command);
-        return ApiResponse.success(BacktestResponse.from(result, request.benchmarkTicker()));
+        String primaryTicker = command.benchmarkTickers().get(0);
+        return ApiResponse.success(BacktestResponse.from(result, primaryTicker));
     }
 
     /**

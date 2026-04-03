@@ -83,7 +83,7 @@ public class StockPrice {
         }
 
         return closePrice.subtract(base)
-                .divide(base, 4, RoundingMode.HALF_UP)
+                .divide(base, new java.math.MathContext(16))
                 .multiply(BigDecimal.valueOf(100));
     }
 

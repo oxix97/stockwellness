@@ -261,7 +261,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         BacktestRequest request = new BacktestRequest(
                 "LUMP_SUM",
                 BigDecimal.valueOf(1000000),
-                "KOSPI",
+                List.of("KOSPI"),
                 org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
         );
@@ -272,7 +272,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.dailyResults[].totalValue").description("해당 일자 총 자산 가치"),
                 fieldWithPath("data.dailyResults[].totalInvested").description("해당 일자 총 누적 투자금"),
                 fieldWithPath("data.dailyResults[].returnRate").description("해당 일자 누적 수익률 (%)"),
-                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("주요 벤치마크 누적 수익률 (%) — 요청한 benchmarkTicker 기준 스칼라"),
+                fieldWithPath("data.dailyResults[].benchmarkReturnRate").description("주요 벤치마크 누적 수익률 (%) — 요청한 benchmarkTickers 리스트의 첫 번째 항목 기준"),
                 subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("벤치마크 지수별 해당 일자 수익률 (Map<Ticker, Rate>)"),
                 fieldWithPath("data.cagr").description("연평균 복리 수익률 (CAGR)"),
                 fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
@@ -312,7 +312,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .requestFields(
                                         fieldWithPath("strategy").description("투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"),
                                         fieldWithPath("amount").description("초기 투자 금액 (또는 월간 적립액)"),
-                                        fieldWithPath("benchmarkTicker").description("비교 대상 벤치마크 티커 (예: ^KS11, ^KQ11, ^GSPC)"),
+                                        fieldWithPath("benchmarkTickers").description("비교 대상 벤치마크 티커 리스트 (예: [0001, SPX])"),
                                         fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
                                         subsectionWithPath("weights").description("사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)").optional()
                                 )

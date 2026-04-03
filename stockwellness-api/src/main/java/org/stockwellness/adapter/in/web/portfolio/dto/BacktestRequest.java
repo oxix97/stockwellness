@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Positive;
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,9 +23,9 @@ public record BacktestRequest(
     @Positive BigDecimal amount,
     
     /**
-     * 성과 비교 기준이 될 벤치마크 지수 티커 (예: ^KS11)
+     * 성과 비교 기준이 될 벤치마크 지수 티커 리스트 (예: ["0001", "SPX"])
      */
-    @NotBlank String benchmarkTicker,
+    List<String> benchmarkTickers,
     
     /**
      * 자산 재배분(리밸런싱) 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)
