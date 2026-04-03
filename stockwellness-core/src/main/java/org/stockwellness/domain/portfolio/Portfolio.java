@@ -198,14 +198,4 @@ public class Portfolio extends AbstractEntity {
                 .min(LocalDate::compareTo)
                 .orElse(LocalDate.now());
     }
-
-    /**
-     * 포트폴리오 내 모든 종목의 총 보유 수량(조각 수)을 반환합니다.
-     * @deprecated 수량 중심 관리에서 금액/비중 중심 관리로 변경됨에 따라 사용을 권장하지 않습니다.
-     * @return 총 수량
-     */
-    @Deprecated
-    public int getTotalPieces() {
-        return items.stream().mapToInt(PortfolioItem::getPieceCount).sum();
-    }
 }

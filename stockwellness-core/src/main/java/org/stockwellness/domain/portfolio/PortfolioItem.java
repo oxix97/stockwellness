@@ -223,22 +223,4 @@ public class PortfolioItem extends AbstractEntity {
         BigDecimal profitLoss = calculateProfitLoss(currentPrice);
         return FinanceCalculationUtil.calculateRate(profitLoss, totalInvestment);
     }
-
-    /**
-     * ISIN 코드를 반환합니다.
-     * @deprecated symbol 필드 사용을 권장합니다.
-     */
-    @Deprecated
-    public String getIsinCode() {
-        return symbol;
-    }
-
-    /**
-     * 보유 수량을 정수형으로 반환합니다.
-     * @deprecated BigDecimal 타입의 quantity 필드 사용을 권장합니다.
-     */
-    @Deprecated
-    public Integer getPieceCount() {
-        return quantity.intValue();
-    }
 }
