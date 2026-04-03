@@ -50,9 +50,9 @@ public class MarketCorrelationCalculator implements IndicatorCalculator<Map<Stri
         BigDecimal cumulative = BigDecimal.ONE;
         for (BigDecimal r : series.getReturnsOnly()) {
             BigDecimal multiplier = BigDecimal.ONE.add(r.divide(BigDecimal.valueOf(100), 16, java.math.RoundingMode.HALF_UP));
-            cumulative = cumulative.multiply(multiplier);
+            cumulative = cumulative.multiply(multiplier, new java.math.MathContext(16));
         }
         
-        return cumulative.subtract(BigDecimal.ONE).multiply(BigDecimal.valueOf(100)).setScale(4, java.math.RoundingMode.HALF_UP);
+        return cumulative.subtract(BigDecimal.ONE).multiply(BigDecimal.valueOf(100));
     }
 }

@@ -48,6 +48,11 @@ public class PortfolioStatBatchService {
     public void updatePortfolioStatsBatch(List<? extends Portfolio> portfolios) {
         if (portfolios.isEmpty()) return;
 
+        long startTime = System.currentTimeMillis();
+        int totalCount = portfolios.size();
+        java.util.concurrent.atomic.AtomicInteger successCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger failureCount = new java.util.concurrent.atomic.AtomicInteger(0);
+
         Set<String> allSymbols = portfolios.stream()
                 .flatMap(p -> p.getItems().stream())
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
@@ -60,13 +65,25 @@ public class PortfolioStatBatchService {
         LocalDate start = end.minusYears(2);
         SimulationData chunkSharedData = loadPartitionedData(allSymbols, start, end);
 
-        for (Portfolio portfolio : portfolios) {
-            try {
-                processSinglePortfolio(portfolio, chunkSharedData, end);
-            } catch (Exception e) {
-                log.error("포트폴리오 {} 통계 업데이트 실패", portfolio.getId(), e);
-            }
-        }
+        // Virtual Thread 기반 병렬 처리 (spring.threads.virtual.enabled: true 전제)
+        List<java.util.concurrent.CompletableFuture<Void>> futures = portfolios.stream()
+                .map(portfolio -> java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        processSinglePortfolio(portfolio, chunkSharedData, end);
+                        successCount.incrementAndGet();
+                    } catch (Exception e) {
+                        log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());
+                        failureCount.incrementAndGet();
+                    }
+                }))
+                .toList();
+
+        // 모든 병렬 작업 완료 대기
+        java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("[배치 성능 모니터링] PortfolioStatsBatchJob Chunk 완료. 소요시간: {}ms, 성공: {}, 실패: {}, 총계: {}, 가상스레드사용: {}",
+                duration, successCount.get(), failureCount.get(), totalCount, Thread.currentThread().isVirtual());
     }
 
     private SimulationData loadPartitionedData(Set<String> allSymbols, LocalDate start, LocalDate end) {

@@ -62,11 +62,14 @@ public record ReturnSeries(Map<LocalDate, BigDecimal> dailyReturns) {
         for (BigDecimal value : dailyValues) {
             if (value.compareTo(peak) > 0) peak = value;
             if (peak.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal drawdown = peak.subtract(value).divide(peak, 8, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+                // (Peak - Value) / Peak * 100
+                BigDecimal drawdown = peak.subtract(value)
+                        .divide(peak, new java.math.MathContext(16))
+                        .multiply(BigDecimal.valueOf(100));
                 if (drawdown.compareTo(maxMDD) > 0) maxMDD = drawdown;
             }
         }
-        return maxMDD.setScale(4, RoundingMode.HALF_UP);
+        return maxMDD;
     }
     
     /**

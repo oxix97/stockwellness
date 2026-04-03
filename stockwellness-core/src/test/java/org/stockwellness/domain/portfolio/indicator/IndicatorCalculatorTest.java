@@ -37,15 +37,21 @@ class IndicatorCalculatorTest {
         kospiReturns.put(LocalDate.of(2026, 1, 2), BigDecimal.valueOf(0.5));
         benchmarkReturns.put("KOSPI", new ReturnSeries(kospiReturns));
 
+        BigDecimal initialAmount = BigDecimal.valueOf(100);
+        BigDecimal finalAmount = BigDecimal.valueOf(103.02);
+        double years = 2.0 / 252.0;
+        BigDecimal portfolioCagr = org.stockwellness.domain.portfolio.math.FinancialMath.calculateCAGR(initialAmount, finalAmount, years);
+
         context = new IndicatorCalculator.IndicatorContext(
             new ReturnSeries(portfolioReturns),
             dailyValues,
-            BigDecimal.valueOf(100),
-            BigDecimal.valueOf(103.02),
-            2.0 / 252.0, // very short period for test
+            initialAmount,
+            finalAmount,
+            years,
             benchmarkReturns,
             "KOSPI",
-            BigDecimal.valueOf(3.0)
+            BigDecimal.valueOf(3.0),
+            portfolioCagr
         );
     }
 

@@ -26,6 +26,7 @@ public interface IndicatorCalculator<T> {
         double years,
         Map<String, ReturnSeries> benchmarkReturns,
         String primaryBenchmarkTicker,
-        BigDecimal riskFreeRate
+        BigDecimal riskFreeRate,
+        BigDecimal portfolioCagr
     ) {}
 }

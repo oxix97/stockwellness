@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +22,7 @@ class FinancialMathTest {
         BigDecimal cagr = FinancialMath.calculateCAGR(start, end, years);
 
         // (121/100)^(1/2) - 1 = 1.1 - 1 = 0.1 -> 10%
-        assertThat(cagr.doubleValue()).isEqualTo(10.0);
+        assertThat(cagr.setScale(4, RoundingMode.HALF_UP).doubleValue()).isEqualTo(10.0);
     }
 
     @Test
@@ -38,8 +39,8 @@ class FinancialMathTest {
         // mean = 20
         // variance = ((10-20)^2 + (20-20)^2 + (30-20)^2) / 3 = (100 + 0 + 100) / 3 = 66.6666...
         // std = sqrt(66.6666...) = 8.1649658...
-        assertThat(std.doubleValue()).isEqualTo(8.1650);
-        }
+        assertThat(std.setScale(4, RoundingMode.HALF_UP).doubleValue()).isEqualTo(8.1650);
+    }
 
     @Test
     @DisplayName("변화율 계산 검증 (100 -> 110)")
@@ -49,6 +50,6 @@ class FinancialMathTest {
 
         BigDecimal rate = FinancialMath.calculateReturnRate(start, end);
 
-        assertThat(rate.doubleValue()).isEqualTo(10.0);
+        assertThat(rate.setScale(4, RoundingMode.HALF_UP).doubleValue()).isEqualTo(10.0);
     }
 }

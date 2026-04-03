@@ -38,7 +38,7 @@ public class FinancialMath {
      * 일일 변동성을 연환산 변동성으로 변환합니다 (252영업일 기준).
      */
     public static BigDecimal annualizeVolatility(BigDecimal dailyVolatility) {
-        return dailyVolatility.multiply(sqrt(BigDecimal.valueOf(252))).setScale(4, RoundingMode.HALF_UP);
+        return dailyVolatility.multiply(sqrt(BigDecimal.valueOf(252))).round(MC);
     }
 
     /**
@@ -50,7 +50,7 @@ public class FinancialMath {
         BigDecimal ratio = endValue.divide(startValue, MC);
         BigDecimal cagr = pow(ratio, 1.0 / years).subtract(BigDecimal.ONE).multiply(HUNDRED);
         
-        return cagr.setScale(4, RoundingMode.HALF_UP);
+        return cagr.round(MC);
     }
 
     /**
@@ -58,7 +58,7 @@ public class FinancialMath {
      */
     public static BigDecimal calculateReturnRate(BigDecimal start, BigDecimal end) {
         if (start.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
-        return end.subtract(start).divide(start, MC).multiply(HUNDRED).setScale(4, RoundingMode.HALF_UP);
+        return end.subtract(start).divide(start, MC).multiply(HUNDRED).round(MC);
     }
 
     /**
@@ -78,7 +78,7 @@ public class FinancialMath {
         }
         
         BigDecimal variance = varianceSum.divide(BigDecimal.valueOf(values.size()), MC);
-        return sqrt(variance).setScale(4, RoundingMode.HALF_UP);
+        return sqrt(variance).round(MC);
     }
 
     /**
@@ -106,7 +106,7 @@ public class FinancialMath {
             covSum = covSum.add(diff1.multiply(diff2));
         }
 
-        return covSum.divide(BigDecimal.valueOf(n), MC);
+        return covSum.divide(BigDecimal.valueOf(n), MC).round(MC);
     }
 
     /**
@@ -133,6 +133,6 @@ public class FinancialMath {
 
         if (variance.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ONE;
 
-        return covariance.divide(variance, 4, RoundingMode.HALF_UP);
+        return covariance.divide(variance, MC).round(MC);
     }
 }
