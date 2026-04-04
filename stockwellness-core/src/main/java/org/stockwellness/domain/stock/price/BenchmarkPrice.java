@@ -1,6 +1,9 @@
 package org.stockwellness.domain.stock.price;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
@@ -24,6 +27,9 @@ import static lombok.AccessLevel.PROTECTED;
         }
 )
 public class BenchmarkPrice extends AbstractEntity {
+
+    @Column(nullable = false, length = 30)
+    private String name;
 
     /**
      * 지수 티커 / 코드 (e.g. "KOSPI", "KOSDAQ", "2001")
@@ -73,8 +79,9 @@ public class BenchmarkPrice extends AbstractEntity {
     @Column
     private Long volume;
 
-    public static BenchmarkPrice of(String ticker, LocalDate baseDate, BigDecimal closePrice) {
+    public static BenchmarkPrice of(String name, String ticker, LocalDate baseDate, BigDecimal closePrice) {
         BenchmarkPrice bp = new BenchmarkPrice();
+        bp.name = name;
         bp.ticker = ticker;
         bp.baseDate = baseDate;
         bp.closePrice = closePrice;

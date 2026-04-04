@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 /**
  * 주식 일별 시세 상세 (output2)
+ * TR_ID: FHKST03010100 (주식 기간별 시세/차트)
  */
 public record KisDailyPriceDetail(
         /** 주식 영업 일자 (yyyyMMdd -> LocalDate 변환) */

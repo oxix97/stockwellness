@@ -36,24 +36,38 @@ public class PortfolioQueryService implements LoadPortfolioUseCase {
     @Override
     public List<PortfolioResponse> getMyPortfolios(Long memberId) {
         List<Portfolio> portfolios = portfolioPort.loadAllPortfolios(memberId);
+        
+        // [N+1 해결] 모든 포트폴리오의 종목 티커를 한 번에 수집하여 최신 시세 일괄 조회
+        List<String> allTickers = portfolios.stream()
+                .flatMap(p -> p.getItems().stream())
+                .map(PortfolioItem::getSymbol)
+                .distinct()
+                .toList();
+        
+        Map<String, BigDecimal> latestPriceMap = stockPricePort.findAllLatestByTickers(allTickers);
+
         return portfolios.stream()
                 .map(p -> {
-                    Map<String, BigDecimal> latestPrices = getLatestPrices(p);
+                    // 각 포트폴리오에 필요한 티커들만 추출하여 맵 생성
+                    Map<String, BigDecimal> latestPrices = p.getItems().stream()
+                            .map(PortfolioItem::getSymbol)
+                            .distinct()
+                            .collect(Collectors.toMap(
+                                    symbol -> symbol,
+                                    symbol -> latestPriceMap.getOrDefault(symbol, BigDecimal.ZERO)
+                            ));
                     return PortfolioResponse.from(p, latestPrices);
                 })
                 .toList();
     }
 
     private Map<String, BigDecimal> getLatestPrices(Portfolio portfolio) {
-        return portfolio.getItems().stream()
+        // [N+1 해결] 단일 포트폴리오 조회 시에도 배치를 사용하여 조회
+        List<String> tickers = portfolio.getItems().stream()
                 .map(PortfolioItem::getSymbol)
                 .distinct()
-                .collect(Collectors.toMap(
-                        symbol -> symbol,
-                        symbol -> stockPricePort.findLatestByTicker(symbol)
-                                .map(StockPrice::getClosePrice)
-                                .orElse(BigDecimal.ZERO)
-                ));
+                .toList();
+        return stockPricePort.findAllLatestByTickers(tickers);
     }
 
     private Portfolio loadOwnedPortfolio(Long portfolioId, Long memberId) {

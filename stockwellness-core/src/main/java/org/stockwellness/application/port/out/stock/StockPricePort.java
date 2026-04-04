@@ -41,6 +41,11 @@ public interface StockPricePort {
      */
     Optional<StockPrice> findLatestByTicker(String ticker);
 
+    /**
+     * 여러 종목의 가장 최신 시세 데이터를 한 번에 조회합니다. (티커 기준)
+     */
+    Map<String, BigDecimal> findAllLatestByTickers(List<String> tickers);
+
     List<StockPrice> loadRecentHistories(String isinCode, int limit);
 
     Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit);

@@ -47,7 +47,6 @@ public class SectorInsight extends AbstractEntity {
 
     // [주도주]
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     private List<LeadingStock> leadingStocks = new ArrayList<>();
 
     @Embedded

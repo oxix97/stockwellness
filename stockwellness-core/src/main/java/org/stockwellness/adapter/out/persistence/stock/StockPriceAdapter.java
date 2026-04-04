@@ -38,6 +38,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public Optional<BenchmarkPrice> findLatestBefore(String ticker, LocalDate baseDate) {
+        return benchmarkPriceRepository.findTopByTickerAndBaseDateLessThanOrderByBaseDateDesc(ticker, baseDate);
+    }
+
+    @Override
     public void save(BenchmarkPrice benchmarkPrice) {
         benchmarkPriceRepository.save(benchmarkPrice);
     }
@@ -146,13 +151,28 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public Map<String, BigDecimal> findAllLatestByTickers(List<String> tickers) {
+        // [N+1 해결] 여러 티커의 최신 종가를 한 번의 QueryDSL 쿼리로 조회
+        return stockPriceRepository.findLatestPricesByTickers(tickers);
+    }
+
+    @Override
     public List<StockPrice> loadRecentHistories(String isinCode, int limit) {
-        return List.of();
+        if (isinCode == null || isinCode.isBlank()) return List.of();
+        return stockPriceRepository.findRecentPrices(isinCode, LocalDate.now(), PageRequest.of(0, limit));
     }
 
     @Override
     public Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit) {
-        return Map.of();
+        if (isinCodes == null || isinCodes.isEmpty()) return Map.of();
+        Map<String, List<StockPrice>> result = new HashMap<>();
+        for (String ticker : isinCodes) {
+            List<StockPrice> prices = stockPriceRepository.findRecentPrices(ticker, LocalDate.now(), PageRequest.of(0, limit));
+            if (prices != null && !prices.isEmpty()) {
+                result.put(ticker, prices);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -196,7 +216,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                                     indicators != null ? indicators.getMa5() : null,
                                     indicators != null ? indicators.getMa20() : null,
                                     indicators != null ? indicators.getMa60() : null,
-                                    indicators != null ? indicators.getMa120() : null
+                                    indicators != null ? indicators.getMa120() : null,
+                                    p.getFluctuationRate()
                             );
                         }, Collectors.toList())
                 ));

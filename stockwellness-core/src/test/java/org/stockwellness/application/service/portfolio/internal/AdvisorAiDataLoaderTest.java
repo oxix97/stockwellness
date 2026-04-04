@@ -53,7 +53,7 @@ class AdvisorAiDataLoaderTest {
         // given
         Long portfolioId = 1L;
         Portfolio portfolio = Portfolio.create(1L, "테스트", "");
-        PortfolioItem item = PortfolioItem.createStock("AAPL", BigDecimal.TEN, new BigDecimal("150"), "USD", new BigDecimal("100"));
+        PortfolioItem item = PortfolioItem.createStock("AAPL", BigDecimal.TEN, new BigDecimal("150"), "USD", new BigDecimal("100"), java.time.LocalDate.now());
         portfolio.updateItems(List.of(item));
 
         given(portfolioPort.findById(portfolioId)).willReturn(Optional.of(portfolio));

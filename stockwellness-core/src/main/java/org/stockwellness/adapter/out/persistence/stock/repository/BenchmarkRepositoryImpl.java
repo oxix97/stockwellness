@@ -32,7 +32,8 @@ public class BenchmarkRepositoryImpl implements BenchmarkRepository {
                         benchmarkPrice.closePrice.as("ma5"), // 필요 시 연산 추가 가능하나 현재는 기본값
                         benchmarkPrice.closePrice.as("ma20"),
                         benchmarkPrice.closePrice.as("ma60"),
-                        benchmarkPrice.closePrice.as("ma120")
+                        benchmarkPrice.closePrice.as("ma120"),
+                        benchmarkPrice.changeRate
                 ))
                 .from(benchmarkPrice)
                 .where(

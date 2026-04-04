@@ -31,6 +31,9 @@ class PortfolioQueryServiceTest {
     @Mock
     private PortfolioPort portfolioPort;
 
+    @Mock
+    private org.stockwellness.application.port.out.stock.StockPricePort stockPricePort;
+
     @Nested
     @DisplayName("포트폴리오 조회 (Read)")
     class Read {
@@ -42,6 +45,8 @@ class PortfolioQueryServiceTest {
             Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
             given(portfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
                     .willReturn(Optional.of(portfolio));
+            given(stockPricePort.findAllLatestByTickers(org.mockito.ArgumentMatchers.anyList()))
+                    .willReturn(java.util.Map.of());
 
             // when
             PortfolioResponse response = portfolioQueryService.getPortfolio(PortfolioFixture.MEMBER_ID, PortfolioFixture.PORTFOLIO_ID);
@@ -87,6 +92,8 @@ class PortfolioQueryServiceTest {
             Portfolio portfolio = PortfolioFixture.createEntity(PortfolioFixture.PORTFOLIO_ID);
             given(portfolioPort.loadAllPortfolios(PortfolioFixture.MEMBER_ID))
                     .willReturn(List.of(portfolio));
+            given(stockPricePort.findAllLatestByTickers(org.mockito.ArgumentMatchers.anyList()))
+                    .willReturn(java.util.Map.of());
 
             // when
             List<PortfolioResponse> responses = portfolioQueryService.getMyPortfolios(PortfolioFixture.MEMBER_ID);

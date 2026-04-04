@@ -68,8 +68,8 @@ class PortfolioAnalysisServiceTest {
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
         
         // 목표 비중 합계를 100%로 맞춤 (또는 모두 0%)
-        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100));
-        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(100000), "KRW", BigDecimal.ZERO);
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now());
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(100000), "KRW", BigDecimal.ZERO, LocalDate.now());
         portfolio.updateItems(List.of(samsung, cash));
 
         StockPrice samsungPrice = createStockPrice("005930", 60000, 58000);
@@ -77,7 +77,7 @@ class PortfolioAnalysisServiceTest {
                 portfolio,
                 Map.of(),
                 Map.of("005930", List.of(samsungPrice)),
-                PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(10), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1))
+                PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(10), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1), BigDecimal.ZERO, BigDecimal.ZERO)
         );
 
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
@@ -98,8 +98,8 @@ class PortfolioAnalysisServiceTest {
         // given
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
         // 비중 합계 100% (50 + 50)
-        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50));
-        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50));
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50), LocalDate.now());
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(50), LocalDate.now());
         portfolio.updateItems(List.of(samsung, cash));
 
         StockPrice samsungPrice = createStockPrice("005930", 50000, 50000);
@@ -129,8 +129,8 @@ class PortfolioAnalysisServiceTest {
         // given
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트 포트폴리오", "설명");
         // 비중 합계 100% (60 + 40)
-        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(60));
-        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(40));
+        PortfolioItem samsung = PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(60), LocalDate.now());
+        PortfolioItem cash = PortfolioItem.createCash(BigDecimal.valueOf(500000), "KRW", BigDecimal.valueOf(40), LocalDate.now());
         portfolio.updateItems(List.of(samsung, cash));
 
         StockPrice samsungPrice = createStockPrice("005930", 50000, 50000);
@@ -154,18 +154,20 @@ class PortfolioAnalysisServiceTest {
     @DisplayName("백테스팅 실행: 선택한 전략에 따라 백테스팅 엔진을 호출하고 결과를 반환한다")
     void runBacktest_Success() {
         // given
-        // LUMPSUM -> LUMP_SUM
-        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), "005930", org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
         
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
-        portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100))));
+        portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())));
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
         
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
         given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), Map.of()));
         
-        BacktestResult mockEngineResult = new BacktestResult(Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.TEN, BigDecimal.ZERO, null, "AI 조언입니다.");
-        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class))).willReturn(mockEngineResult);
+        BacktestResult mockEngineResult = new BacktestResult(
+                Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
+                BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "AI 조언입니다.");
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class), anyString(), any())).willReturn(mockEngineResult);
         given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
 
         // when
@@ -183,8 +185,8 @@ class PortfolioAnalysisServiceTest {
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
         // 비중 합계 100% (50 + 50)
         portfolio.updateItems(List.of(
-                PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50)),
-                PortfolioItem.createStock("000660", BigDecimal.ONE, BigDecimal.valueOf(100000), "KRW", BigDecimal.valueOf(50))
+                PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(50), LocalDate.now()),
+                PortfolioItem.createStock("000660", BigDecimal.ONE, BigDecimal.valueOf(100000), "KRW", BigDecimal.valueOf(50), LocalDate.now())
         ));
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
         
@@ -197,6 +199,42 @@ class PortfolioAnalysisServiceTest {
 
         // then
         assertThat(matrix.get("005930").get("000660")).isEqualByComparingTo("0.8");
+    }
+
+    @Test
+    @DisplayName("통합 요약 분석: 지정된 기간 동안의 성과 지표와 수익 기여도를 계산한다")
+    void getAnalysisSummary_Success() {
+        // given
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())
+        ));
+        
+        StockPrice samsungPrice = createStockPrice("005930", 60000, 58000);
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of("005930", List.of(samsungPrice)), null);
+        
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusMonths(12);
+
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+        given(simulationDataProvider.loadData(anyList(), anyString(), eq(start), eq(end)))
+                .willReturn(new SimulationData(Map.of(), Map.of()));
+
+        BacktestResult mockPerf = new BacktestResult(
+                Collections.emptyList(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(5.2), BigDecimal.ONE,
+                BigDecimal.ONE, BigDecimal.valueOf(20.0), BigDecimal.valueOf(8.4), BigDecimal.valueOf(3.2),
+                BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "Advice");
+        
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any())).willReturn(mockPerf);
+
+        // when
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        // then
+        assertThat(result.valuation().cagr()).isEqualByComparingTo("15.5");
+        assertThat(result.valuation().volatility()).isEqualByComparingTo("8.4");
+        assertThat(result.valuation().alpha()).isEqualByComparingTo("3.2");
+        assertThat(result.itemContributions().get("005930")).isNotNull();
     }
 
     private StockPrice createStockPrice(String symbol, long close, long prevClose) {
@@ -213,6 +251,8 @@ class PortfolioAnalysisServiceTest {
                 BigDecimal.valueOf(prevClose),
                 100L,
                 BigDecimal.valueOf(10000),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
                 null
         );
     }

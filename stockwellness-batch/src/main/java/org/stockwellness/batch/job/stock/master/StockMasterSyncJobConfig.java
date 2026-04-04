@@ -8,7 +8,8 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.data.RepositoryItemWriter;
+import org.springframework.batch.item.data.builder.RepositoryItemWriterBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -149,7 +150,10 @@ public class StockMasterSyncJobConfig {
     // ── Writer ────────────────────────────────────────────────────────────────
 
     @Bean
-    public ItemWriter<Stock> stockItemWriter() {
-        return chunk -> stockRepository.saveAll(chunk.getItems());
+    public RepositoryItemWriter<Stock> stockItemWriter() {
+        return new RepositoryItemWriterBuilder<Stock>()
+                .repository(stockRepository)
+                .methodName("save")
+                .build();
     }
 }

@@ -1,6 +1,5 @@
 package org.stockwellness.domain.stock.price;
 
-import org.stockwellness.domain.stock.Stock;
 import com.querydsl.core.annotations.QueryTransient;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -8,9 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.stockwellness.domain.stock.Stock;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -53,9 +52,14 @@ public class StockPrice {
     @Column(name = "volume")
     private Long volume;
 
-    // [최종] DB 컬럼명과 Java 필드명을 완전히 일치시켜 QueryDSL/JPA 충돌 방지
     @Column(name = "transaction_amt", precision = 25, scale = 2)
     private BigDecimal transactionAmt;
+
+    @Column(name = "net_institutional_buying_amt", precision = 25, scale = 2)
+    private BigDecimal netInstitutionalBuyingAmt = BigDecimal.ZERO;
+
+    @Column(name = "net_foreign_buying_amt", precision = 25, scale = 2)
+    private BigDecimal netForeignBuyingAmt = BigDecimal.ZERO;
 
     @Embedded
     private TechnicalIndicators indicators;
@@ -78,15 +82,15 @@ public class StockPrice {
         }
 
         return closePrice.subtract(base)
-                .divide(base, 4, RoundingMode.HALF_UP)
+                .divide(base, new java.math.MathContext(16))
                 .multiply(BigDecimal.valueOf(100));
     }
 
     public static StockPrice of(Stock stock, LocalDate baseDate, BigDecimal open, BigDecimal high, BigDecimal low,
                                 BigDecimal close, BigDecimal adjClose, BigDecimal previousClose,
-                                Long volume, BigDecimal transactionAmt, TechnicalIndicators indicators) {
+                                Long volume, BigDecimal transactionAmt, BigDecimal netInstitutionalBuyingAmt,
+                                BigDecimal netForeignBuyingAmt, TechnicalIndicators indicators) {
         var entity = new StockPrice();
-        // [중요] StockPriceId 생성 시 baseDate 가 첫 번째 파라미터가 되도록 수정
         entity.id = new StockPriceId(baseDate, stock.getId());
         entity.stock = stock;
         entity.openPrice = open;
@@ -97,6 +101,8 @@ public class StockPrice {
         entity.previousClosePrice = previousClose;
         entity.volume = volume;
         entity.transactionAmt = transactionAmt;
+        entity.netInstitutionalBuyingAmt = (netInstitutionalBuyingAmt != null) ? netInstitutionalBuyingAmt : BigDecimal.ZERO;
+        entity.netForeignBuyingAmt = (netForeignBuyingAmt != null) ? netForeignBuyingAmt : BigDecimal.ZERO;
         entity.indicators = indicators;
         return entity;
     }

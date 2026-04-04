@@ -34,6 +34,7 @@ public enum ErrorCode {
     INVALID_ITEM_PIECE_COUNT(BAD_REQUEST, "P002", "각 종목은 최소 1조각 이상이어야 합니다."),
     DUPLICATE_PORTFOLIO_NAME(CONFLICT, "P003", "이미 사용 중인 포트폴리오 이름입니다."),
     PORTFOLIO_NOT_FOUND(NOT_FOUND, "P004", "포트폴리오를 찾을 수 없습니다."),
+    PORTFOLIO_ACCESS_DENIED(FORBIDDEN, "P005", "해당 포트폴리오에 대한 접근 권한이 없습니다."),
 
     // 관심 종목 (W)
     WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "W001", "관심 그룹은 최대 10개까지 생성할 수 있습니다."),

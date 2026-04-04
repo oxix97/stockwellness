@@ -1,13 +1,11 @@
 package org.stockwellness.application.port.in.portfolio;
 
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
+import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 public interface PortfolioAnalysisUseCase {
@@ -18,5 +16,8 @@ public interface PortfolioAnalysisUseCase {
     Map<String, Map<String, BigDecimal>> getCorrelationMatrix(Long memberId, Long portfolioId);
 
     // 통합 요약 정보 조회
-    PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId);
+    PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate);
+
+    // 포트폴리오 생성 시점 기준 성과 분석
+    PortfolioInceptionPerformanceResult getPerformanceSinceInception(Long memberId, Long portfolioId);
 }

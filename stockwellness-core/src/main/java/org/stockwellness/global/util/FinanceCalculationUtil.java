@@ -14,15 +14,14 @@ import java.util.List;
 public class FinanceCalculationUtil {
 
     /**
-     * 두 수의 비율(%)을 소수점 4자리까지 정밀 계산합니다.
+     * 두 수의 비율(%)을 고정밀(16자리)로 계산합니다.
      */
     public static BigDecimal calculateRate(BigDecimal numerator, BigDecimal denominator) {
         if (denominator == null || denominator.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return numerator.divide(denominator, 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(4, RoundingMode.HALF_UP);
+        return numerator.divide(denominator, new java.math.MathContext(16))
+                .multiply(BigDecimal.valueOf(100));
     }
 
     /**
@@ -41,7 +40,7 @@ public class FinanceCalculationUtil {
             BigDecimal prev = sorted.get(i - 1);
             if (prev.compareTo(BigDecimal.ZERO) > 0) {
                 returns.add(sorted.get(i).subtract(prev)
-                        .divide(prev, 6, RoundingMode.HALF_UP)
+                        .divide(prev, new java.math.MathContext(16))
                         .multiply(BigDecimal.valueOf(100)));
             }
         }

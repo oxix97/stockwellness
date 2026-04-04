@@ -16,7 +16,11 @@ import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedExcepti
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 
+import java.time.LocalDate;
 import java.util.List;
+
+import org.springframework.context.ApplicationEventPublisher;
+import org.stockwellness.domain.portfolio.event.PortfolioUpdatedEvent;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
 
     private final PortfolioPort portfolioPort;
     private final StockPort stockPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Long createPortfolio(CreatePortfolioCommand command) {
@@ -40,7 +45,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
 
         portfolio.updateItems(items);
 
-        return portfolioPort.savePortfolio(portfolio).getId();
+        Portfolio saved = portfolioPort.savePortfolio(portfolio);
+        eventPublisher.publishEvent(new PortfolioUpdatedEvent(command.memberId(), saved.getId()));
+        return saved.getId();
     }
 
     @Override
@@ -61,6 +68,8 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
                 .toList();
 
         portfolio.updateItems(newItems);
+        
+        eventPublisher.publishEvent(new PortfolioUpdatedEvent(command.memberId(), command.portfolioId()));
     }
 
     @Override
@@ -84,9 +93,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
             if (!stockPort.existsByTicker(item.symbol())) {
                 throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
             }
-            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight());
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight(), LocalDate.now());
         } else {
-            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight());
+            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight(), LocalDate.now());
         }
     }
 
@@ -95,9 +104,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
             if (!stockPort.existsByTicker(item.symbol())) {
                 throw new InvalidStockCodeException("Stock not found with symbol: " + item.symbol());
             }
-            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight());
+            return PortfolioItem.createStock(item.symbol(), item.quantity(), item.purchasePrice(), item.currency(), item.targetWeight(), LocalDate.now());
         } else {
-            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight());
+            return PortfolioItem.createCash(item.quantity(), item.currency(), item.targetWeight(), LocalDate.now());
         }
     }
 }

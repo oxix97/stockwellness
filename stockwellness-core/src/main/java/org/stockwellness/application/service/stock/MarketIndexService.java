@@ -9,6 +9,8 @@ import org.stockwellness.application.port.in.stock.result.MarketIndexResult;
 import org.stockwellness.application.port.in.stock.result.MarketIndexResult.HistoryPoint;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,17 +27,8 @@ public class MarketIndexService implements MarketIndexUseCase {
 
     private final LoadBenchmarkPort loadBenchmarkPort;
 
-    private static final int HISTORY_DAYS = 30;
+    private static final int HISTORY_DAYS = 7; // 최근 데이터 1개만 반환하므로 DB 조회 기간도 휴일 고려하여 최소한으로 축소
     private static final int DISPLAY_SCALE = 2;
-
-    private record IndexDef(String name, String ticker) {}
-
-    private static final List<IndexDef> INDEXES = List.of(
-            new IndexDef("KOSPI", "0001"),
-            new IndexDef("KOSDAQ", "1001"),
-            new IndexDef("KOSPI 200", "2001"),
-            new IndexDef("S&P 500", "SPX")
-    );
 
     @Override
     public List<MarketIndexResult> getMarketIndexes() {
@@ -43,13 +36,18 @@ public class MarketIndexService implements MarketIndexUseCase {
         LocalDate start = end.minusDays(HISTORY_DAYS);
 
         List<MarketIndexResult> results = new ArrayList<>();
-        for (IndexDef index : INDEXES) {
+
+        for (BenchmarkType type : BenchmarkType.values()) {
             try {
-                List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(index.ticker(), start, end);
-                results.add(toResult(index.name(), prices));
+                // BenchmarkType의 ticker()를 식별자로 사용하여 데이터 로드
+                List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
+                results.add(toResult(type.getName(), prices));
+            } catch (StockPriceException e) {
+                log.warn("[지수 서비스] 시장 지수 조회 실패: {} - {}", type.getName(), e.getMessage());
+                results.add(emptyResult(type.getName()));
             } catch (Exception e) {
-                log.warn("시장 지수 조회 실패: {}", index.name(), e);
-                results.add(emptyResult(index.name()));
+                log.error("[지수 서비스] 시장 지수 조회 중 예기치 않은 오류 발생: {} - {}", type.getName(), e.getMessage());
+                results.add(emptyResult(type.getName()));
             }
         }
         return results;
@@ -62,24 +60,24 @@ public class MarketIndexService implements MarketIndexUseCase {
 
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
-        BigDecimal fluctuationRate = BigDecimal.ZERO;
+        BigDecimal fluctuationRate = latest.changeRate() != null ? 
+                latest.changeRate().setScale(DISPLAY_SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        
+        // fluctuationAmount = currentPrice - prevPrice
+        // prevPrice = currentPrice / (1 + fluctuationRate/100)
         BigDecimal fluctuationAmount = BigDecimal.ZERO;
-
-        if (prices.size() >= 2) {
-            StockPriceResult prev = prices.get(prices.size() - 2);
-            BigDecimal prevClose = prev.closePrice();
-            if (prevClose != null && prevClose.compareTo(BigDecimal.ZERO) > 0) {
-                fluctuationAmount = currentPrice.subtract(prevClose);
-                fluctuationRate = fluctuationAmount
-                        .divide(prevClose, 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                        .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
+        if (fluctuationRate.compareTo(BigDecimal.ZERO) != 0) {
+            BigDecimal rateMultiplier = fluctuationRate.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP);
+            BigDecimal divisor = BigDecimal.ONE.add(rateMultiplier);
+            
+            if (divisor.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal prevPrice = currentPrice.divide(divisor, 4, RoundingMode.HALF_UP);
+                fluctuationAmount = currentPrice.subtract(prevPrice);
             }
         }
 
-        List<HistoryPoint> history = prices.stream()
-                .map(p -> new HistoryPoint(p.baseDate(), p.closePrice()))
-                .toList();
+        // 전체 날짜 대신 가장 최근 날짜의 시세만 배열에 담아 반환 (페이로드 최적화)
+        List<HistoryPoint> history = List.of(new HistoryPoint(latest.baseDate(), latest.closePrice()));
 
         return new MarketIndexResult(name, currentPrice, fluctuationRate, fluctuationAmount, history);
     }

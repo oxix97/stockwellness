@@ -5,12 +5,35 @@ import jakarta.validation.constraints.Positive;
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * 백테스트 시뮬레이션 요청 DTO
+ */
 public record BacktestRequest(
-    @NotBlank String strategy, // LUMP_SUM, DCA
+    /**
+     * 투자 전략 (LUMP_SUM: 거치식, DCA: 적립식)
+     */
+    @NotBlank String strategy, 
+    
+    /**
+     * 투자 금액 (거치식은 총액, 적립식은 월 입금액)
+     */
     @Positive BigDecimal amount,
-    @NotBlank String benchmarkTicker,
+    
+    /**
+     * 성과 비교 기준이 될 벤치마크 지수 티커 리스트 (예: ["0001", "SPX"])
+     */
+    List<String> benchmarkTickers,
+    
+    /**
+     * 자산 재배분(리밸런싱) 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)
+     */
     RebalancingPeriod rebalancingPeriod,
-    Map<String, BigDecimal> weights // { "ticker": weight_percent }
+    
+    /**
+     * 시뮬레이션 시 적용할 종목별 비중 (%) (비어있으면 현재 포트폴리오 비중 사용)
+     */
+    Map<String, BigDecimal> weights
 ) {}

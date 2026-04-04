@@ -6,12 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.domain.stock.Stock;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
@@ -53,8 +55,8 @@ public class KisDailyPriceAdapter {
 
             return response.output2();
 
-        } catch (Exception e) {
-            log.error("멀티 종목 시세 조회 실패 (종목: {}): {}", tickers, e.getMessage());
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 멀티 종목 시세 조회 실패 (종목: {}): {}", tickers, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -86,27 +88,62 @@ public class KisDailyPriceAdapter {
                 return Collections.emptyList();
             }
             return response.output2();
-        } catch (Exception e) {
-            log.error("시세 조회 실패 (ticker: {}, path: {}): {}", ticker, path, e.getMessage());
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 주식 시세 조회 실패 (티커: {}, 경로: {}): {}", ticker, path, e.getMessage());
             return Collections.emptyList();
         }
     }
 
     /**
-     * 국내업종 일자별 지수 최대 100개
+     * 주식 일자별 투자자 매매 추이 (확정치)
      */
     @Retry(name = "kisRetry")
-    public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate) {
+    public List<KisInvestorPriceDetail> fetchInvestorPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
+        String path = "/uapi/domestic-stock/v1/quotations/inquire-investor";
+        String ticker = stock.getTicker();
+        try {
+            // 이 TR은 output1 에 리스트가 담겨 옵니다.
+            KisPriceResponse<List<KisInvestorPriceDetail>, Object> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", ticker)
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .build())
+                    .header("tr_id", "FHKST01010900")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+
+            if (response == null || response.output1() == null) {
+                return Collections.emptyList();
+            }
+            return response.output1();
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 투자자 매매 추이 조회 실패 (티커: {}): {}", ticker, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 국내 업종/지수 기간별 시세
+     */
+    @Retry(name = "kisRetry")
+    public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
         try {
             KisPriceResponse<SectorIndexSummary, List<SectorDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice")
                             .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_INPUT_ISCD", indexCode)
                             .queryParam("FID_PERIOD_DIV_CODE", "D")
-                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
                             .build())
-                    .header("tr_id", "FHPUP02120000")
+                    .header("tr_id", "FHKUP03500100")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
@@ -115,23 +152,25 @@ public class KisDailyPriceAdapter {
                 return Collections.emptyList();
             }
             return new ArrayList<>(response.output2());
-        } catch (Exception e) {
-            log.error("국내 지수 시세 조회 실패 (indexCode: {}): {}", indexCode, e.getMessage());
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 국내 지수 시세 조회 실패 (지수코드: {}): {}", indexCode, e.getMessage());
             return Collections.emptyList();
         }
     }
 
     /**
-     * 해외 지수 일자별 지수 조회
+     * 해외 지수 일자별 시세 조회
      */
     @Retry(name = "kisRetry")
-    public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate) {
+    public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
         try {
             KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/overseas-stock/v1/quotations/inquire-index-dailyprice")
-                            .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .path("/uapi/overseas-price/v1/quotations/inquire-daily-chartprice")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "N")
                             .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_PERIOD_DIV_CODE", "D")
                             .build())
                     .header("tr_id", "FHKST03030100")
@@ -144,13 +183,13 @@ public class KisDailyPriceAdapter {
                 return Collections.emptyList();
             }
 
-            // startDate 이후 데이터만 필터링
             return response.output2().stream()
-                    .filter(d -> !d.baseDate().isBefore(startDate))
-                    .map(d -> (BenchmarkPriceData) d)
+                    .filter(price -> !price.baseDate().isBefore(startDate) && !price.baseDate().isAfter(endDate))
+                    .sorted(Comparator.comparing(KisOverseasIndexDailyPrice::baseDate).reversed())
+                    .map(BenchmarkPriceData.class::cast)
                     .toList();
-        } catch (Exception e) {
-            log.error("해외 지수 시세 조회 실패 (indexCode: {}): {}", indexCode, e.getMessage());
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("[KIS 어댑터] 해외 지수 시세 조회 실패 (지수코드: {}): {}", indexCode, e.getMessage());
             return Collections.emptyList();
         }
     }

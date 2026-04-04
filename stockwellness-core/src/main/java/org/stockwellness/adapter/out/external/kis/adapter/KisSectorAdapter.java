@@ -76,8 +76,8 @@ public class KisSectorAdapter implements SectorDataPort {
                         .queryParam("FID_INPUT_DATE_1", startDate)
                         .queryParam("FID_INPUT_DATE_2", endDate)
                         .queryParam("FID_INPUT_ISCD", indexCode)
-                        .queryParam("FID_INPUT_ISCD_1", "KSP")
-                        .queryParam("FID_INPUT_ISCD_2", "0001")
+                        .queryParam("FID_INPUT_ISCD_1", "")
+                        .queryParam("FID_INPUT_ISCD_2", "")
                         .build())
                 .header("tr_id", "FHPTJ04040000")
                 .retrieve()
@@ -144,8 +144,9 @@ public class KisSectorAdapter implements SectorDataPort {
                     
                     if (!trading.isEmpty()) {
                         InvestorTradingDaily latest = trading.get(0);
-                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) : 0L;
-                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) : 0L;
+                        // KIS API의 수급 금액 단위는 '백만 원'이므로 시스템 표준인 '1원' 단위로 변환 (* 1,000,000)
+                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) * 1_000_000L : 0L;
+                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) * 1_000_000L : 0L;
                     }
 
                     result.add(new SectorApiDto(

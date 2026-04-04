@@ -209,7 +209,11 @@ class PortfolioControllerTest extends RestDocsSupport {
                     DiagnosisCategory.DIVERSIFICATION.getKey(), 85,
                     DiagnosisCategory.CASH.getKey(), 60
             );
-            PortfolioHealthResult result = new PortfolioHealthResult(77, categories, List.of(), "Summary", "Insight", List.of("Step 1"));
+            PortfolioHealthResult result = new PortfolioHealthResult(
+                    77, categories, List.of(), 
+                    BigDecimal.valueOf(15.5), BigDecimal.valueOf(5.2), BigDecimal.valueOf(1.2), BigDecimal.valueOf(0.5),
+                    "Summary", "Insight", List.of("Step 1")
+            );
             given(portfolioFacade.diagnosePortfolio(any(), any())).willReturn(result);
 
             mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/health", 100L)
@@ -226,6 +230,10 @@ class PortfolioControllerTest extends RestDocsSupport {
                                         add(fieldWithPath("data.overallScore").description("종합 점수"));
                                         add(subsectionWithPath("data.categories").description("카테고리별 점수 (Map)"));
                                         add(subsectionWithPath("data.stockContributions").description("종목별 기여도 목록"));
+                                        add(fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"));
+                                        add(fieldWithPath("data.relativeMdd").description("벤치마크 대비 추가 하락폭"));
+                                        add(fieldWithPath("data.sharpeRatio").description("샤프 지수"));
+                                        add(fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"));
                                         add(fieldWithPath("data.summary").description("진단 요약"));
                                         add(fieldWithPath("data.insight").description("상세 인사이트"));
                                         add(fieldWithPath("data.nextSteps").description("향후 조치 단계"));

@@ -4,6 +4,6 @@ import org.stockwellness.global.error.ErrorCode;
 
 public class PortfolioAccessDeniedException extends PortfolioDomainException {
     public PortfolioAccessDeniedException() {
-        super(ErrorCode.ACCESS_DENIED);
+        super(ErrorCode.PORTFOLIO_ACCESS_DENIED);
     }
 }

@@ -6,11 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
-import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.portfolio.internal.AnalysisContext;
 import org.stockwellness.application.service.portfolio.internal.PortfolioAnalysisDataLoader;
 import org.stockwellness.application.service.portfolio.internal.SimulationDataProvider;
@@ -23,7 +19,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -40,9 +35,6 @@ class PortfolioAnalysisValuationTest {
     private PortfolioAnalysisDataLoader dataLoader;
 
     @Mock
-    private StockPricePort stockPricePort;
-
-    @Mock
     private SimulationDataProvider simulationDataProvider;
 
     @Test
@@ -53,8 +45,8 @@ class PortfolioAnalysisValuationTest {
         Long portfolioId = 100L;
         Portfolio portfolio = Portfolio.create(memberId, "My Portfolio", "Desc");
         
-        PortfolioItem stockItem = PortfolioItem.createStock("AAPL", new BigDecimal("10"), new BigDecimal("150"), "USD");
-        PortfolioItem cashItem = PortfolioItem.createCash(new BigDecimal("500"), "USD");
+        PortfolioItem stockItem = PortfolioItem.createStock("AAPL", new BigDecimal("10"), new BigDecimal("150"), "USD", BigDecimal.ZERO, LocalDate.now());
+        PortfolioItem cashItem = PortfolioItem.createCash(new BigDecimal("500"), "USD", BigDecimal.ZERO, LocalDate.now());
         portfolio.updateItems(List.of(stockItem, cashItem));
 
         StockPrice aaplPrice = mock(StockPrice.class);
@@ -62,7 +54,7 @@ class PortfolioAnalysisValuationTest {
         given(aaplPrice.getPreviousClosePrice()).willReturn(new BigDecimal("155"));
         
         Map<String, List<StockPrice>> priceMap = Map.of("AAPL", List.of(aaplPrice));
-        PortfolioStats mockStats = PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(1.2), BigDecimal.valueOf(0.95));
+        PortfolioStats mockStats = PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(1.2), BigDecimal.valueOf(0.95), BigDecimal.ZERO, BigDecimal.ZERO);
 
         // DataLoader 모킹 설정
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), priceMap, mockStats);

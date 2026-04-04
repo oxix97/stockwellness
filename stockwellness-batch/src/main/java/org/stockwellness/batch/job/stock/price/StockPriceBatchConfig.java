@@ -12,15 +12,11 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.Chunk;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -67,7 +63,7 @@ public class StockPriceBatchConfig {
     public RateLimiter kisRateLimiter() {
         RateLimiterConfig config = RateLimiterConfig.custom()
                 .limitRefreshPeriod(Duration.ofSeconds(1))
-                .limitForPeriod(19) // 10 -> 19로 상향 (최대 성능 모드)
+                .limitForPeriod(19)
                 .timeoutDuration(Duration.ofSeconds(20))
                 .build();
         return RateLimiterRegistry.of(config).rateLimiter("kisRateLimiter");
@@ -85,8 +81,8 @@ public class StockPriceBatchConfig {
 
     @Bean
     public Step stockPriceStep(
-            ItemReader<List<Stock>> stockListReader,
-            ItemProcessor<List<Stock>, List<StockPrice>> stockPriceProcessor,
+            StockListReader stockListReader,
+            StockPriceProcessor stockPriceProcessor,
             ItemWriter<List<StockPrice>> stockPriceListWriter,
             BatchFailureItemListener<List<StockPrice>> stockPriceFailureListener
     ) {
@@ -95,7 +91,7 @@ public class StockPriceBatchConfig {
                 .reader(stockListReader)
                 .processor(stockPriceProcessor)
                 .writer(stockPriceListWriter)
-                .taskExecutor(kisBatchExecutor) // 공용 배치 실행기 사용
+                .taskExecutor(kisBatchExecutor)
                 .listener(mdcListener)
                 .listener(progressListener)
                 .listener(eventListener)
@@ -104,7 +100,7 @@ public class StockPriceBatchConfig {
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
-                .retry(org.springframework.web.client.RestClientException.class) // API 에러 리트라이 추가
+                .retry(org.springframework.web.client.RestClientException.class)
                 .build();
     }
 
@@ -128,8 +124,6 @@ public class StockPriceBatchConfig {
     public JpaPagingItemReader<Stock> stockReader(
             @Value("#{jobParameters['targetTicker']}") String targetTicker
     ) {
-        // [개선] 6자리 숫자 티커만 필터링하기 위해 BETWEEN '000000' AND '999999' 사용
-        // 알파벳이 포함된 특수 종목(0002C0 등)을 효율적으로 제외하고 가독성 확보
         String query = "SELECT s FROM Stock s " +
                 "WHERE s.status = 'ACTIVE' " +
                 "AND s.marketType IN ('KOSPI', 'KOSDAQ') " +
@@ -156,7 +150,16 @@ public class StockPriceBatchConfig {
 
     @Bean
     public ItemWriter<List<StockPrice>> stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
-        return chunk -> {
+        return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
+    }
+
+    @RequiredArgsConstructor
+    public static class StockPriceListWriter implements ItemWriter<List<StockPrice>> {
+        private final JdbcTemplate jdbcTemplate;
+        private final JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter;
+
+        @Override
+        public void write(org.springframework.batch.item.Chunk<? extends List<StockPrice>> chunk) throws Exception {
             List<StockPrice> flatList = new ArrayList<>();
             for (List<StockPrice> list : chunk) {
                 if (list != null) flatList.addAll(list);
@@ -178,9 +181,9 @@ public class StockPriceBatchConfig {
                             }
                         }
                 );
-                stockPriceJdbcWriter.write(new Chunk<>(flatList));
+                stockPriceJdbcWriter.write(new org.springframework.batch.item.Chunk<>(flatList));
             }
-        };
+        }
     }
 
     @Bean
@@ -188,12 +191,14 @@ public class StockPriceBatchConfig {
         String sql = """
                 INSERT INTO stock_price (
                     base_date, stock_id, open_price, high_price, low_price, close_price, adj_close_price, prev_close_price, volume, transaction_amt,
+                    net_institutional_buying_amt, net_foreign_buying_amt,
                     ma5, ma20, ma60, ma120, rsi14, macd, macd_signal,
                     bollinger_upper, bollinger_mid, bollinger_lower, adx, plus_di, minus_di,
                     alignment_status, is_golden_cross, is_dead_cross, is_macd_cross,
                     created_at
                 ) VALUES (
                     CAST(? AS date), CAST(? AS bigint), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS bigint), CAST(? AS numeric), 
+                    CAST(? AS numeric), CAST(? AS numeric),
                     CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
                     CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
                     CAST(? AS varchar), CAST(? AS boolean), CAST(? AS boolean), CAST(? AS boolean), 
@@ -216,6 +221,8 @@ public class StockPriceBatchConfig {
                     ps.setBigDecimal(idx++, item.getPreviousClosePrice());
                     ps.setLong(idx++, item.getVolume());
                     ps.setBigDecimal(idx++, item.getTransactionAmt());
+                    ps.setBigDecimal(idx++, item.getNetInstitutionalBuyingAmt());
+                    ps.setBigDecimal(idx++, item.getNetForeignBuyingAmt());
 
                     var indicators = item.getIndicators();
                     if (indicators != null) {
