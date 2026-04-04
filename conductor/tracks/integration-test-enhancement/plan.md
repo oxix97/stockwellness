@@ -5,15 +5,16 @@
 
 ## 2. 작업 범위 (Scope)
 
-### Phase 1: Persistence 계층 통합 테스트 (`stockwellness-core`)
+### Phase 1: Persistence 계층 통합 테스트 (`stockwellness-core`) [COMPLETED]
 - **대상:** QueryDSL 및 복잡한 JPA 매핑이 포함된 Repository/Adapter
 - **작업 내용:**
-    - [ ] `MemberRepositoryTest` 작성 (`@DataJpaTest`)
-    - [ ] `StockRepositoryTest` 작성 (`@DataJpaTest`)
-    - [ ] `SectorRepositoryTest` 작성 (`@DataJpaTest`)
-    - [ ] `WatchlistRepositoryTest` 작성 (`@DataJpaTest`)
-    - [ ] `StockPriceAdapter` 및 `StockTechnicalDataAdapter` 통합 테스트 (QueryDSL 로직 검증)
-- **검증:** 실제 DB(H2/PostgreSQL) 환경에서 SQL 문법 오류, 매핑 설정, 복잡한 Join 쿼리 확인
+    - [x] `MemberRepositoryTest` 작성 (`@DataJpaTest`)
+    - [x] `StockRepositoryTest` 작성 (`@DataJpaTest`)
+    - [x] `SectorInsightRepositoryTest` 작성 (`@DataJpaTest`)
+    - [x] `WatchlistRepositoryTest` 작성 (`@DataJpaTest`)
+    - [x] `StockPriceRepositoryTest` 작성 (QueryDSL 로직 및 JSON 매핑 검증)
+- **현황:** 모든 Repository 테스트가 H2 환경에서 성공적으로 통과됨.
+- **검증:** 실제 DB(H2/PostgreSQL) 환경에서 SQL 문법 오류, 매핑 설정, 복잡한 Join 쿼리 확인 완료.
 
 ### Phase 2: API End-to-End 통합 테스트 (`stockwellness-api`)
 - **대상:** Controller부터 Service, DB까지 이어지는 전체 흐름

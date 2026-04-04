@@ -1,6 +1,5 @@
 package org.stockwellness.domain.stock.price;
 
-import org.stockwellness.domain.stock.Stock;
 import com.querydsl.core.annotations.QueryTransient;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -8,9 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.stockwellness.domain.stock.Stock;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 

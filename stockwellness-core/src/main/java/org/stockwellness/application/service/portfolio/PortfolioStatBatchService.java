@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.application.service.portfolio.internal.*;
@@ -42,10 +43,15 @@ public class PortfolioStatBatchService {
     private final JsonUtil jsonUtil;
     private final PortfolioAnalysisService portfolioAnalysisService; // 벤치마크 계산 로직 공유
 
+    private final PortfolioPort portfolioPort;
+
     private static final int MAX_SYMBOLS_PER_LOAD = 50; // 메모리 보호를 위한 임계치
 
     @Transactional
-    public void updatePortfolioStatsBatch(List<? extends Portfolio> portfolios) {
+    public void updatePortfolioStatsBatch(List<Long> portfolioIds) {
+        if (portfolioIds.isEmpty()) return;
+
+        List<Portfolio> portfolios = portfolioPort.loadAllWithItems(portfolioIds);
         if (portfolios.isEmpty()) return;
 
         long startTime = System.currentTimeMillis();
@@ -150,6 +156,6 @@ public class PortfolioStatBatchService {
     @Deprecated
     @Transactional
     public void updatePortfolioStats(Portfolio portfolio) {
-        updatePortfolioStatsBatch(List.of(portfolio));
+        updatePortfolioStatsBatch(List.of(portfolio.getId()));
     }
 }

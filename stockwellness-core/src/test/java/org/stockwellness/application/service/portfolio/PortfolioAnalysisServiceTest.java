@@ -154,7 +154,7 @@ class PortfolioAnalysisServiceTest {
     @DisplayName("백테스팅 실행: 선택한 전략에 따라 백테스팅 엔진을 호출하고 결과를 반환한다")
     void runBacktest_Success() {
         // given
-        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), "005930", org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
         
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
         portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())));

@@ -38,6 +38,8 @@ public final class MaskingObjectMapper {
     public static ObjectMapper create() {
         ObjectMapper mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
+                .registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module())
+                .registerModule(new com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module())
                 .disable(WRITE_DATES_AS_TIMESTAMPS)
                 .disable(FAIL_ON_EMPTY_BEANS);
 

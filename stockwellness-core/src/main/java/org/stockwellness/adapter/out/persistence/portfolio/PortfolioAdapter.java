@@ -34,6 +34,11 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
     }
 
     @Override
+    public List<Portfolio> loadAllWithItems(List<Long> ids) {
+        return portfolioRepository.findAllWithItemsByIdIn(ids);
+    }
+
+    @Override
     public List<Long> findPortfolioIdsBySymbols(List<String> symbols) {
         return portfolioRepository.findPortfolioIdsBySymbols(symbols);
     }

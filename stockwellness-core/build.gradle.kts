@@ -46,6 +46,13 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("com.h2database:h2")
 
+    // flyway
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-database-postgresql")
+
+    // jackson
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-hibernate6")
+
     // p6spy
     implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.11.0")
 

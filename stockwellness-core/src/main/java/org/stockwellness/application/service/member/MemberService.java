@@ -42,28 +42,24 @@ public class MemberService implements MemberUseCase {
     public MemberResult getMember(Long memberId) {
         var member = findMember(memberId);
         List<Portfolio> portfolios = portfolioPort.loadAllPortfolios(memberId);
-        
+
+        // 1. 모든 포트폴리오의 종목 심볼 추출 (N+1 방지)
+        List<String> allSymbols = portfolios.stream()
+                .flatMap(p -> p.getItems().stream())
+                .map(PortfolioItem::getSymbol)
+                .distinct()
+                .toList();
+
+        // 2. 모든 종목의 최신 시세 일괄 조회
+        Map<String, BigDecimal> latestPrices = stockPricePort.findAllLatestByTickers(allSymbols);
+
         BigDecimal totalPurchaseAmount = BigDecimal.ZERO;
         BigDecimal totalCurrentValue = BigDecimal.ZERO;
 
+        // 3. 포트폴리오별 합계 계산 (CASH는 Portfolio 도메인 로직에서 자동 처리됨)
         for (Portfolio portfolio : portfolios) {
             totalPurchaseAmount = totalPurchaseAmount.add(portfolio.calculateTotalPurchaseAmount());
-            
-            // 각 포트폴리오별 실시간 시세 반영 (최적화 여지 있으나 현재는 직관적으로 구현)
-            Map<String, BigDecimal> latestPrices = portfolio.getItems().stream()
-                    .map(PortfolioItem::getSymbol)
-                    .distinct()
-                    .collect(Collectors.toMap(
-                            symbol -> symbol,
-                            symbol -> stockPricePort.findLatestByTicker(symbol)
-                                    .map(StockPrice::getClosePrice)
-                                    .orElse(BigDecimal.ZERO)
-                    ));
-
-            for (PortfolioItem item : portfolio.getItems()) {
-                BigDecimal currentPrice = latestPrices.getOrDefault(item.getSymbol(), BigDecimal.ZERO);
-                totalCurrentValue = totalCurrentValue.add(currentPrice.multiply(item.getQuantity()));
-            }
+            totalCurrentValue = totalCurrentValue.add(portfolio.calculateTotalCurrentValue(latestPrices));
         }
 
         Double totalReturnRate = 0.0;

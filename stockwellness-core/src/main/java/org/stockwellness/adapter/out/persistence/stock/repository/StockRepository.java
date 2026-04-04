@@ -77,7 +77,7 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
     List<Stock> findAllByTickerIn(Collection<String> tickers);
 
     /** 마스터 파일에서 사라진 국내 종목 상장폐지 처리 */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE Stock s
         SET s.status = 'DELISTED', s.isPremiumTracking = false

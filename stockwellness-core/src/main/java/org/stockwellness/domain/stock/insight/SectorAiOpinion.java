@@ -34,7 +34,7 @@ public class SectorAiOpinion {
     private String title; // 한 줄 요약 (헤드라인)
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ai_key_reasons", columnDefinition = "jsonb")
+    @Column(name = "ai_key_reasons")
     private List<String> keyReasons = new ArrayList<>(); // 핵심 근거 3가지
 
     @Column(name = "ai_detailed_analysis", columnDefinition = "text")

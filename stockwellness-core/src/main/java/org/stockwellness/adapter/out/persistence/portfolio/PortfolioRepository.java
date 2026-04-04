@@ -20,4 +20,7 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long>, Por
 
     @Query("SELECT p.id FROM Portfolio p")
     List<Long> findAllIds(org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT DISTINCT p FROM Portfolio p LEFT JOIN FETCH p.items WHERE p.id IN :ids")
+    List<Portfolio> findAllWithItemsByIdIn(@Param("ids") List<Long> ids);
 }

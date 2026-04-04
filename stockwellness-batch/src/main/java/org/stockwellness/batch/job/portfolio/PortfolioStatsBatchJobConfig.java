@@ -20,6 +20,7 @@ import org.stockwellness.application.service.portfolio.PortfolioStatBatchService
 import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.domain.portfolio.Portfolio;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -76,7 +77,8 @@ public class PortfolioStatsBatchJobConfig {
 
         @Override
         public void write(org.springframework.batch.item.Chunk<? extends Portfolio> chunk) {
-            portfolioStatBatchService.updatePortfolioStatsBatch(chunk.getItems());
+            List<Long> ids = chunk.getItems().stream().map(Portfolio::getId).toList();
+            portfolioStatBatchService.updatePortfolioStatsBatch(ids);
         }
     }
 }

@@ -19,6 +19,9 @@ import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
+import org.stockwellness.domain.portfolio.event.PortfolioUpdatedEvent;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -26,6 +29,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
 
     private final PortfolioPort portfolioPort;
     private final StockPort stockPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Long createPortfolio(CreatePortfolioCommand command) {
@@ -41,7 +45,9 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
 
         portfolio.updateItems(items);
 
-        return portfolioPort.savePortfolio(portfolio).getId();
+        Portfolio saved = portfolioPort.savePortfolio(portfolio);
+        eventPublisher.publishEvent(new PortfolioUpdatedEvent(command.memberId(), saved.getId()));
+        return saved.getId();
     }
 
     @Override
@@ -62,6 +68,8 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
                 .toList();
 
         portfolio.updateItems(newItems);
+        
+        eventPublisher.publishEvent(new PortfolioUpdatedEvent(command.memberId(), command.portfolioId()));
     }
 
     @Override
