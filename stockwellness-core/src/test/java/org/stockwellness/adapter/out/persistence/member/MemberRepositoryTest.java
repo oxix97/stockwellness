@@ -17,7 +17,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataJpaTest(properties = "spring.flyway.enabled=false")
 @Import({QueryDslConfig.class, JpaConfig.class})
 @ActiveProfiles("test")
 @DisplayName("MemberRepository 통합 테스트")

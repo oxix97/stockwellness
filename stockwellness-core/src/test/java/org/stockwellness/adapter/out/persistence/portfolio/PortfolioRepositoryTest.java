@@ -23,8 +23,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataJpaTest(properties = "spring.flyway.enabled=false")
 @Import(QueryDslConfig.class)
+@org.springframework.test.context.ActiveProfiles("test")
 class PortfolioRepositoryTest {
 
     @Autowired

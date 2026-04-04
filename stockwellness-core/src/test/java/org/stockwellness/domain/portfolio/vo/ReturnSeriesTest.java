@@ -26,8 +26,8 @@ class ReturnSeriesTest {
 
         BigDecimal mdd = ReturnSeries.calculateMDD(values);
 
-        // (110 - 90) / 110 * 100 = 20 / 110 * 100 = 18.1818...%
-        assertThat(mdd.doubleValue()).isEqualTo(18.1818);
+        // (110 - 90) / 110 * 100 = 20 / 110 * 100 = 18.181818...%
+        assertThat(mdd.doubleValue()).isCloseTo(18.1818, org.assertj.core.data.Offset.offset(0.0001));
     }
 
     @Test

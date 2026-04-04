@@ -40,6 +40,9 @@ class PortfolioCommandServiceTest {
     @Mock
     private StockPort stockPort;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private static final Long MEMBER_ID = 1L;
     private static final Long PORTFOLIO_ID = 100L;
 
