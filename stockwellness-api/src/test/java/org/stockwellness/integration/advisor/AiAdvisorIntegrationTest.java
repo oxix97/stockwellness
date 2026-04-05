@@ -74,7 +74,7 @@ class AiAdvisorIntegrationTest extends RestDocsSupport {
                 "Target OK", "Technical Good", "Low Risk", "성공적인 통합 테스트 조언", AdviceAction.RISK_MANAGEMENT
         );
         
-        // Use the inherited @MockBean aiAdviceProviderPort
+        // Use the inherited @MockitoBean aiAdviceProviderPort
         given(aiAdviceProviderPort.getRebalancingAdvice(any())).willReturn(aiResult);
 
         // when

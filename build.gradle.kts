@@ -55,6 +55,7 @@ subprojects {
 
         // test
         testImplementation("org.springframework.boot:spring-boot-starter-test")
+        testImplementation("org.springframework.cloud:spring-cloud-contract-wiremock")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
         testImplementation("org.junit-pioneer:junit-pioneer:2.3.0")
         testImplementation("org.mockito:mockito-core:5.18.0")

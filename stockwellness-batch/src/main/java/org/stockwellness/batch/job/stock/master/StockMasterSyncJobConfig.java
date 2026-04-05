@@ -17,6 +17,7 @@ import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.MarketType;
@@ -38,6 +39,7 @@ public class StockMasterSyncJobConfig {
     private final StockRepository stockRepository;
     private final MarketIndexRepository marketIndexRepository;
     private final BatchMdcListener mdcListener;
+    private final JobFailureNotificationListener failureNotificationListener;
 
     private static final int CHUNK_SIZE = 500;
 
@@ -45,6 +47,7 @@ public class StockMasterSyncJobConfig {
     public Job stockMasterSyncJob() {
         return new JobBuilder("stockMasterSyncJob", jobRepository)
                 .listener(mdcListener)
+                .listener(failureNotificationListener)
                 .listener(new StockMasterJobExecutionListener())
                 .start(kospiUpsertStep())
                 .next(kospiDelistStep())

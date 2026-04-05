@@ -22,6 +22,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.batch.job.stock.sector.job.listener.SectorEodJobListener;
 import org.stockwellness.batch.job.stock.sector.job.step.*;
 import org.stockwellness.domain.stock.insight.SectorInsight;
@@ -39,6 +40,7 @@ public class SectorEodBatchConfig {
     private final PlatformTransactionManager transactionManager;
     private final SectorEodJobListener jobListener;
     private final BatchMdcListener mdcListener;
+    private final JobFailureNotificationListener failureNotificationListener;
     private final EntityManagerFactory entityManagerFactory;
 
     @Bean
@@ -47,6 +49,7 @@ public class SectorEodBatchConfig {
                 .start(syncSectorInsightStep)
                 .next(sectorAiAnalysisStep)
                 .listener(mdcListener)
+                .listener(failureNotificationListener)
                 .listener(jobListener)
                 .build();
     }

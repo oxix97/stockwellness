@@ -25,5 +25,8 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-ratelimiter:2.2.0")
     testImplementation("org.springframework.batch:spring-batch-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:kafka")
     testRuntimeOnly("com.h2database:h2")
 }

@@ -31,6 +31,7 @@
     - [ ] `BenchmarkPriceSyncJobIntegrationTest` 작성
     - [ ] `StockPriceSyncJobIntegrationTest` 작성
     - [ ] `PortfolioStatsBatchJobIntegrationTest` 작성
+    - [ ] **배치 실패 알림 리스너(JobExecutionListener) 구현 및 검증**
 - **검증:** `JobLauncherTestUtils`를 사용하여 전체 Job 성공 여부 및 DB 데이터 적재 결과 확인
 
 ### Phase 4: 외부 API 및 인프라 연동 테스트 (`stockwellness-core/api`)
@@ -39,9 +40,10 @@
     - [ ] `KisClientAdapter` 통합 테스트 (WireMock 활용)
     - [ ] `OpenAiAdapter` 통합 테스트 (WireMock 활용)
     - [ ] `StockPriceCacheAdapter` Redis 연동 테스트
+    - [ ] **Testcontainers를 활용한 실 인프라(Kafka, Redis) 통합 테스트 환경 구축**
 - **검증:** 외부 API 응답(JSON) 파싱 및 네트워크 장애 대응 로직 확인
 
 ## 3. 우선순위 (Prioritization)
-1. **높음(High):** Persistence 계층 (QueryDSL 사용 어댑터), 핵심 API 흐름 (Auth, Portfolio)
-2. **보통(Medium):** Batch Job (시세/지수 동기화), 기타 API 도메인 (Member, Stock)
+1. **높음(High):** Persistence 계층 (QueryDSL 사용 어댑터), 핵심 API 흐름 (Auth, Portfolio), **Testcontainers 기반 통합 테스트 환경 구축**
+2. **보통(Medium):** Batch Job (시세/지수 동기화), **배치 실패 알림 리스너**, 기타 API 도메인 (Member, Stock)
 3. **낮음(Low):** 외부 API (WireMock), 인프라 연동 (Redis/Kafka)

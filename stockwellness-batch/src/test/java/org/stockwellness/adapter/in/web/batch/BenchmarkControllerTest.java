@@ -7,7 +7,7 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.stockwellness.batch.exception.BatchException;
 
@@ -25,10 +25,10 @@ class BenchmarkControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private JobLauncher jobLauncher;
 
-    @MockBean(name = "benchmarkPriceSyncJob")
+    @MockitoBean(name = "benchmarkPriceSyncJob")
     private Job benchmarkPriceSyncJob;
 
     @Test

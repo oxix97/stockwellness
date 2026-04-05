@@ -7,7 +7,6 @@ import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.batch.BatchResultEventPort;
-import org.stockwellness.application.port.out.notification.NotificationPort;
 import org.stockwellness.domain.shared.event.BatchResultEvent;
 
 import java.time.Duration;
@@ -24,11 +23,9 @@ import java.util.stream.Collectors;
 public class BatchResultCaptureListener implements JobExecutionListener {
 
     private final BatchResultEventPort batchResultEventPort;
-    private final NotificationPort notificationPort;
 
-    public BatchResultCaptureListener(BatchResultEventPort batchResultEventPort, NotificationPort notificationPort) {
+    public BatchResultCaptureListener(BatchResultEventPort batchResultEventPort) {
         this.batchResultEventPort = batchResultEventPort;
-        this.notificationPort = notificationPort;
     }
 
     @Override
@@ -85,16 +82,5 @@ public class BatchResultCaptureListener implements JobExecutionListener {
                  jobName, isSuccess, processedCount, failedCount);
         
         batchResultEventPort.send(event);
-
-        if (!isSuccess) {
-            sendFailureNotification(jobName, jobExecution.getStatus(), processedCount, failedCount, errorMessage);
-        }
-    }
-
-    private void sendFailureNotification(String jobName, BatchStatus status, long processedCount, long failedCount, String errorMessage) {
-        String title = String.format("배치 작업 실패: %s", jobName);
-        String content = String.format("상태: %s\n처리건수: %d\n실패건수: %d\n에러메시지: %s", 
-                status, processedCount, failedCount, errorMessage);
-        notificationPort.send(title, content);
     }
 }
