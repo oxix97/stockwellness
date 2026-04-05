@@ -30,6 +30,7 @@ import org.springframework.util.StringUtils;
 import org.stockwellness.batch.common.BatchMdcListener;
 import org.stockwellness.batch.listener.BatchFailureItemListener;
 import org.stockwellness.batch.listener.BatchResultCaptureListener;
+import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
@@ -56,6 +57,7 @@ public class StockPriceBatchConfig {
     private final StockPriceSyncEventListener eventListener;
     private final BatchMdcListener mdcListener;
     private final BatchResultCaptureListener resultCaptureListener;
+    private final JobFailureNotificationListener failureNotificationListener;
     private final JdbcTemplate jdbcTemplate;
     private final TaskExecutor kisBatchExecutor;
 
@@ -74,6 +76,7 @@ public class StockPriceBatchConfig {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
                 .start(stockPriceStep)
                 .listener(mdcListener)
+                .listener(failureNotificationListener)
                 .listener(eventListener)
                 .listener(resultCaptureListener)
                 .build();

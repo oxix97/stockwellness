@@ -1,4 +1,6 @@
 spring:
+  cache:
+    type: none
   config:
     activate:
       on-profile: test
@@ -20,6 +22,16 @@ spring:
   h2:
     console:
       enabled: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      retries: 0
+    properties:
+      max.block.ms: 500 # 연결 대기 시간을 0.5초로 극단적으로 단축
+  data:
+    redis:
+      host: localhost
+      port: 6379
   ai:
     openai:
       api-key: "dummy-key"
@@ -66,3 +78,10 @@ kis:
   base-url: https://openapi.koreainvestment.com:9443
   app-key: "dummy-kis-service-key"
   app-secret: "dummy-kis-secret-key"
+
+management:
+  health:
+    redis:
+      enabled: false
+    kafka:
+      enabled: false

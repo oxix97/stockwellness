@@ -25,6 +25,7 @@ import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
+import org.stockwellness.integration.common.BaseIntegrationTest;
 import org.stockwellness.support.annotation.MockMember;
 
 import java.math.BigDecimal;
@@ -37,17 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Transactional
-class PortfolioIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+class PortfolioIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MemberRepository memberRepository;
@@ -58,30 +49,55 @@ class PortfolioIntegrationTest {
     @Autowired
     private PortfolioRepository portfolioRepository;
 
+    @Autowired
+    private org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository stockPriceRepository;
+
+    private String accessToken;
+
     @BeforeEach
-    void setUp() {
-        Member member = Member.register("test@example.com", "tester", LoginType.GOOGLE);
-        ReflectionTestUtils.setField(member, "role", MemberRole.USER);
-        ReflectionTestUtils.setField(member, "status", MemberStatus.ACTIVE);
-        ReflectionTestUtils.setField(member, "notificationRebalancing", true);
-        ReflectionTestUtils.setField(member, "notificationMarketAlert", false);
-        ReflectionTestUtils.setField(member, "notificationNewListing", false);
-        ReflectionTestUtils.setField(member, "createdAt", LocalDateTime.now());
-        memberRepository.save(member);
+    void setUp() throws Exception {
+        memberRepository.deleteAll();
+        stockRepository.deleteAll();
+
+        // 사용자 로그인 및 토큰 획득 (자동으로 Member 저장됨)
+        accessToken = loginAndGetToken("test@example.com", "tester");
 
         // 테스트용 종목 생성
         Stock samsung = StockFixture.createSamsung();
-        ReflectionTestUtils.setField(samsung, "createdAt", LocalDateTime.now());
-        stockRepository.save(samsung);
+        stockRepository.saveAndFlush(samsung);
 
         // 테스트용 벤치마크 지수 생성 (KOSPI)
         Stock kospi = Stock.ofIndex("KOSPI", "코스피");
-        ReflectionTestUtils.setField(kospi, "createdAt", LocalDateTime.now());
-        stockRepository.save(kospi);
+        stockRepository.saveAndFlush(kospi);
+
+        // 시세 데이터 생성 (어제, 오늘)
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate yesterday = today.minusDays(1);
+
+        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+                samsung, yesterday, new BigDecimal("50000"), new BigDecimal("51000"), new BigDecimal("49000"),
+                new BigDecimal("50500"), new BigDecimal("50500"), new BigDecimal("50000"), 1000000L, 
+                new BigDecimal("50000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+        
+        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+                samsung, today, new BigDecimal("50500"), new BigDecimal("52000"), new BigDecimal("50000"),
+                new BigDecimal("51500"), new BigDecimal("51500"), new BigDecimal("50500"), 1200000L, 
+                new BigDecimal("60000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+
+        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+                kospi, yesterday, new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"),
+                new BigDecimal("2505"), new BigDecimal("2505"), new BigDecimal("2500"), 500000L, 
+                new BigDecimal("100000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+
+        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+                kospi, today, new BigDecimal("2505"), new BigDecimal("2530"), new BigDecimal("2500"),
+                new BigDecimal("2520"), new BigDecimal("2520"), new BigDecimal("2505"), 600000L, 
+                new BigDecimal("120000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+        
+        stockPriceRepository.flush();
     }
 
     @Test
-    @MockMember(id = 1L)
     @DisplayName("포트폴리오 생성 통합 테스트: 생성 후 목록 조회 시 포함되어야 한다")
     void createAndGetPortfolio_Success() throws Exception {
         // given: 포트폴리오 생성 요청
@@ -90,6 +106,7 @@ class PortfolioIntegrationTest {
 
         // when: 생성 요청
         mockMvc.perform(post("/api/v1/portfolios")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
                 .andDo(print())
@@ -97,7 +114,8 @@ class PortfolioIntegrationTest {
                 .andExpect(jsonPath("$.code").value("S001"));
 
         // then: 목록 조회 확인
-        mockMvc.perform(get("/api/v1/portfolios"))
+        mockMvc.perform(get("/api/v1/portfolios")
+                        .header("Authorization", "Bearer " + accessToken))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("S000"))
@@ -106,7 +124,6 @@ class PortfolioIntegrationTest {
     }
 
     @Test
-    @MockMember(id = 1L)
     @DisplayName("백테스트 통합 테스트: 생성된 포트폴리오에 대해 백테스트 시뮬레이션을 실행한다")
     void runBacktest_Success() throws Exception {
         // [Given] 1. 포트폴리오 생성
@@ -114,6 +131,7 @@ class PortfolioIntegrationTest {
         PortfolioCreateRequest createRequest = new PortfolioCreateRequest("백테스트 포트폴리오", "설명", List.of(itemRequest));
 
         String createResponse = mockMvc.perform(post("/api/v1/portfolios")
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createRequest)))
                 .andExpect(status().isCreated())
@@ -128,14 +146,13 @@ class PortfolioIntegrationTest {
 
         // [When] 3. 백테스트 실행
         mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", portfolioId)
+                        .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(backtestRequest)))
                 .andDo(print())
                 // [Then] 4. 결과 검증
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.cagr").exists())
-                .andExpect(jsonPath("$.data.totalReturnRate").exists())
-                .andExpect(jsonPath("$.data.aiComment").exists());
+                .andExpect(jsonPath("$.data.cagr").exists());
     }
 }

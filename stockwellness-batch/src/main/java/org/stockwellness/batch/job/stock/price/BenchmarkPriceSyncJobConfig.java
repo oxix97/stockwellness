@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
 import java.time.LocalDate;
@@ -29,12 +30,14 @@ public class BenchmarkPriceSyncJobConfig {
 
     private final KisDailyPriceAdapter kisAdapter;
     private final BenchmarkPricePort benchmarkPricePort;
+    private final JobFailureNotificationListener failureNotificationListener;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @Bean
     public Job benchmarkPriceSyncJob(JobRepository jobRepository, Step benchmarkPriceSyncStep) {
         return new JobBuilder("benchmarkPriceSyncJob", jobRepository)
+                .listener(failureNotificationListener)
                 .start(benchmarkPriceSyncStep)
                 .build();
     }

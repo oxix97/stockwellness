@@ -46,6 +46,11 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("com.h2database:h2")
 
+    // testcontainers
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:kafka")
+
     // flyway
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
@@ -67,6 +72,9 @@ dependencies {
 dependencies {
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    testFixturesImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testFixturesImplementation("org.testcontainers:postgresql")
+    testFixturesImplementation("org.testcontainers:kafka")
 }
 // 3. JavaCompile 태스크 설정: Q클래스가 생성될 디렉토리 지정
 tasks.withType<JavaCompile>().configureEach {

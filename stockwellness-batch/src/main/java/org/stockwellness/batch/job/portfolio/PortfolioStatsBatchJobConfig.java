@@ -18,6 +18,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.application.service.portfolio.PortfolioStatBatchService;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.domain.portfolio.Portfolio;
 
 import java.util.List;
@@ -33,6 +34,7 @@ public class PortfolioStatsBatchJobConfig {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioStatBatchService portfolioStatBatchService;
     private final BatchMdcListener mdcListener;
+    private final JobFailureNotificationListener failureNotificationListener;
 
     private static final int CHUNK_SIZE = 10; // 통계 계산은 헤비하므로 작게 설정
 
@@ -40,6 +42,7 @@ public class PortfolioStatsBatchJobConfig {
     public Job portfolioStatsJob() {
         return new JobBuilder("portfolioStatsJob", jobRepository)
                 .listener(mdcListener)
+                .listener(failureNotificationListener)
                 .start(portfolioStatsStep())
                 .build();
     }
