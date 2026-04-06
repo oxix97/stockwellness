@@ -28,14 +28,23 @@ public class KafkaBatchResultAdapter implements BatchResultEventPort {
     @Override
     public void send(BatchResultEvent event) {
         log.info("배치 결과 이벤트를 Kafka로 전송 중: {}", event);
-        kafkaTemplate.send(topicName, event)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("배치 결과 이벤트 전송 성공 - 작업명: [{}]", event.batchName());
-                    } else {
-                        log.error("배치 결과 이벤트 전송 실패 - 작업명: [{}], 사유: {}", 
-                                 event.batchName(), ex.getMessage());
-                    }
-                });
+        try {
+            var future = kafkaTemplate.send(topicName, event);
+            if (future == null) {
+                log.error("배치 결과 이벤트 전송 실패 - 작업명: [{}], 사유: KafkaTemplate returned null future", event.batchName());
+                return;
+            }
+
+            future.whenComplete((result, ex) -> {
+                if (ex == null) {
+                    log.info("배치 결과 이벤트 전송 성공 - 작업명: [{}]", event.batchName());
+                } else {
+                    log.error("배치 결과 이벤트 전송 실패 - 작업명: [{}], 사유: {}",
+                            event.batchName(), ex.getMessage());
+                }
+            });
+        } catch (Exception exception) {
+            log.error("배치 결과 이벤트 전송 실패 - 작업명: [{}], 사유: {}", event.batchName(), exception.getMessage(), exception);
+        }
     }
 }
