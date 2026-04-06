@@ -17,6 +17,8 @@ import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.common.logging.CommonBatchJobLoggingListener;
+import org.stockwellness.batch.common.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
@@ -39,6 +41,8 @@ public class StockMasterSyncJobConfig {
     private final StockRepository stockRepository;
     private final MarketIndexRepository marketIndexRepository;
     private final BatchMdcListener mdcListener;
+    private final CommonBatchJobLoggingListener commonBatchJobLoggingListener;
+    private final CommonBatchStepLoggingListener commonBatchStepLoggingListener;
     private final JobFailureNotificationListener failureNotificationListener;
 
     private static final int CHUNK_SIZE = 500;
@@ -47,8 +51,8 @@ public class StockMasterSyncJobConfig {
     public Job stockMasterSyncJob() {
         return new JobBuilder("stockMasterSyncJob", jobRepository)
                 .listener(mdcListener)
+                .listener(commonBatchJobLoggingListener)
                 .listener(failureNotificationListener)
-                .listener(new StockMasterJobExecutionListener())
                 .start(kospiUpsertStep())
                 .next(kospiDelistStep())
                 .next(kosdaqUpsertStep())
@@ -66,7 +70,7 @@ public class StockMasterSyncJobConfig {
                 .processor(kospiItemProcessor())
                 .writer(stockItemWriter())
                 .listener(mdcListener)
-                .listener(new StockMasterStepExecutionListener("KOSPI-Upsert"))
+                .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .skip(Exception.class)
                 .skipLimit(50)
@@ -78,7 +82,7 @@ public class StockMasterSyncJobConfig {
         return new StepBuilder("kospiDelistStep", jobRepository)
                 .tasklet(new StockDelistTasklet(stockRepository, MarketType.KOSPI), txManager)
                 .listener(mdcListener)
-                .listener(new StockMasterStepExecutionListener("KOSPI-Delist"))
+                .listener(commonBatchStepLoggingListener)
                 .build();
     }
 
@@ -92,7 +96,7 @@ public class StockMasterSyncJobConfig {
                 .processor(kosdaqItemProcessor())
                 .writer(stockItemWriter())
                 .listener(mdcListener)
-                .listener(new StockMasterStepExecutionListener("KOSDAQ-Upsert"))
+                .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .skip(Exception.class)
                 .skipLimit(50)
@@ -104,7 +108,7 @@ public class StockMasterSyncJobConfig {
         return new StepBuilder("kosdaqDelistStep", jobRepository)
                 .tasklet(new StockDelistTasklet(stockRepository, MarketType.KOSDAQ), txManager)
                 .listener(mdcListener)
-                .listener(new StockMasterStepExecutionListener("KOSDAQ-Delist"))
+                .listener(commonBatchStepLoggingListener)
                 .build();
     }
 
