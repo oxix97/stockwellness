@@ -28,6 +28,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.StringUtils;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.common.logging.CommonBatchJobLoggingListener;
+import org.stockwellness.batch.common.logging.CommonBatchProgressLoggingListener;
+import org.stockwellness.batch.common.logging.CommonBatchStepLoggingListener;
+import org.stockwellness.batch.lifecycle.BatchLifecycleKafkaListener;
 import org.stockwellness.batch.listener.BatchFailureItemListener;
 import org.stockwellness.batch.listener.BatchResultCaptureListener;
 import org.stockwellness.batch.listener.JobFailureNotificationListener;
@@ -53,9 +57,12 @@ public class StockPriceBatchConfig {
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
-    private final StockPriceProgressListener progressListener;
     private final StockPriceSyncEventListener eventListener;
     private final BatchMdcListener mdcListener;
+    private final CommonBatchJobLoggingListener commonBatchJobLoggingListener;
+    private final CommonBatchStepLoggingListener commonBatchStepLoggingListener;
+    private final CommonBatchProgressLoggingListener commonBatchProgressLoggingListener;
+    private final BatchLifecycleKafkaListener batchLifecycleKafkaListener;
     private final BatchResultCaptureListener resultCaptureListener;
     private final JobFailureNotificationListener failureNotificationListener;
     private final JdbcTemplate jdbcTemplate;
@@ -76,6 +83,8 @@ public class StockPriceBatchConfig {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
                 .start(stockPriceStep)
                 .listener(mdcListener)
+                .listener(commonBatchJobLoggingListener)
+                .listener(batchLifecycleKafkaListener)
                 .listener(failureNotificationListener)
                 .listener(eventListener)
                 .listener(resultCaptureListener)
@@ -96,7 +105,8 @@ public class StockPriceBatchConfig {
                 .writer(stockPriceListWriter)
                 .taskExecutor(kisBatchExecutor)
                 .listener(mdcListener)
-                .listener(progressListener)
+                .listener(commonBatchStepLoggingListener)
+                .listener(commonBatchProgressLoggingListener)
                 .listener(eventListener)
                 .listener(stockPriceFailureListener)
                 .faultTolerant()
@@ -112,7 +122,13 @@ public class StockPriceBatchConfig {
         return new BatchFailureItemListener<>(list ->
                 list.stream()
                         .map(item -> item.getId().getStockId().toString())
-                        .toList()
+                        .toList(),
+                list -> list.stream()
+                        .map(StockPrice::getStock)
+                        .filter(java.util.Objects::nonNull)
+                        .map(org.stockwellness.domain.stock.Stock::getTicker)
+                        .reduce((first, second) -> second)
+                        .orElse(null)
         );
     }
 
@@ -127,19 +143,8 @@ public class StockPriceBatchConfig {
     public JpaPagingItemReader<Stock> stockReader(
             @Value("#{jobParameters['targetTicker']}") String targetTicker
     ) {
-        String query = "SELECT s FROM Stock s " +
-                "WHERE s.status = 'ACTIVE' " +
-                "AND s.marketType IN ('KOSPI', 'KOSDAQ') " +
-                "AND s.groupCode IN ('ST', 'EF', 'EN') " +
-                "AND s.ticker BETWEEN '000000' AND '999999'";
-
-        Map<String, Object> parameters = new HashMap<>();
-        if (StringUtils.hasText(targetTicker)) {
-            query += " AND s.ticker = :targetTicker";
-            parameters.put("targetTicker", targetTicker);
-        }
-
-        query += " ORDER BY s.id ASC";
+        String query = StockPriceBatchTargetQuery.selectQuery(targetTicker);
+        Map<String, Object> parameters = StockPriceBatchTargetQuery.parameters(targetTicker);
 
         return new JpaPagingItemReaderBuilder<Stock>()
                 .name("stockReader")

@@ -29,6 +29,7 @@ public class BatchMdcListener implements JobExecutionListener, StepExecutionList
         if (traceId == null || traceId.isEmpty()) {
             traceId = "batch-" + UUID.randomUUID().toString().substring(0, 8);
         }
+        jobExecution.getExecutionContext().put(TRACE_ID, traceId);
         MDC.put(TRACE_ID, traceId);
         MDC.put(JOB_NAME, jobExecution.getJobInstance().getJobName());
         MDC.put(JOB_EXECUTION_ID, String.valueOf(jobExecution.getId()));

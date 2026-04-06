@@ -22,6 +22,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
 import org.stockwellness.batch.common.BatchMdcListener;
+import org.stockwellness.batch.common.logging.CommonBatchJobLoggingListener;
+import org.stockwellness.batch.common.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.batch.listener.JobFailureNotificationListener;
 import org.stockwellness.batch.job.stock.sector.job.listener.SectorEodJobListener;
 import org.stockwellness.batch.job.stock.sector.job.step.*;
@@ -40,6 +42,8 @@ public class SectorEodBatchConfig {
     private final PlatformTransactionManager transactionManager;
     private final SectorEodJobListener jobListener;
     private final BatchMdcListener mdcListener;
+    private final CommonBatchJobLoggingListener commonBatchJobLoggingListener;
+    private final CommonBatchStepLoggingListener commonBatchStepLoggingListener;
     private final JobFailureNotificationListener failureNotificationListener;
     private final EntityManagerFactory entityManagerFactory;
 
@@ -49,6 +53,7 @@ public class SectorEodBatchConfig {
                 .start(syncSectorInsightStep)
                 .next(sectorAiAnalysisStep)
                 .listener(mdcListener)
+                .listener(commonBatchJobLoggingListener)
                 .listener(failureNotificationListener)
                 .listener(jobListener)
                 .build();
@@ -69,6 +74,7 @@ public class SectorEodBatchConfig {
                 .processor(processor)
                 .writer(writer)
                 .listener(mdcListener)
+                .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(Exception.class)
@@ -90,6 +96,7 @@ public class SectorEodBatchConfig {
                 .processor(asyncProcessor)
                 .writer(asyncWriter)
                 .listener(mdcListener)
+                .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .retryLimit(3)
                 .retry(Exception.class)

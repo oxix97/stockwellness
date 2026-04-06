@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -16,12 +17,20 @@ import java.util.function.Function;
 public class BatchFailureItemListener<T> implements ItemWriteListener<T> {
 
     public static final String FAILED_ITEM_IDS = "FAILED_ITEM_IDS";
-    
+    public static final String LAST_FAILED_ITEM_ID = "LAST_FAILED_ITEM_ID";
+    public static final String LAST_FAILED_ITEM_KEY = "LAST_FAILED_ITEM_KEY";
+
     private final Function<T, List<String>> idExtractor;
+    private final Function<T, String> keyExtractor;
     private StepExecution stepExecution;
 
     public BatchFailureItemListener(Function<T, List<String>> idExtractor) {
+        this(idExtractor, item -> null);
+    }
+
+    public BatchFailureItemListener(Function<T, List<String>> idExtractor, Function<T, String> keyExtractor) {
         this.idExtractor = idExtractor;
+        this.keyExtractor = keyExtractor;
     }
 
     @BeforeStep
@@ -49,5 +58,19 @@ public class BatchFailureItemListener<T> implements ItemWriteListener<T> {
         
         currentFailedIds.addAll(failedIds);
         stepExecution.getExecutionContext().put(FAILED_ITEM_IDS, currentFailedIds);
+
+        // 종료 로그와 lifecycle 이벤트에서 마지막 실패 대상을 바로 참조할 수 있게 별도 키로 남긴다.
+        String lastFailedId = failedIds.stream()
+                .filter(Objects::nonNull)
+                .reduce((first, second) -> second)
+                .orElse(null);
+        String lastFailedKey = items.getItems().stream()
+                .map(keyExtractor)
+                .filter(Objects::nonNull)
+                .reduce((first, second) -> second)
+                .orElse(null);
+
+        stepExecution.getExecutionContext().put(LAST_FAILED_ITEM_ID, lastFailedId);
+        stepExecution.getExecutionContext().put(LAST_FAILED_ITEM_KEY, lastFailedKey);
     }
 }

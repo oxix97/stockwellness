@@ -38,6 +38,7 @@ class BatchFailureItemListenerTest {
         // then
         List<String> storedIds = (List<String>) stepExecution.getExecutionContext().get(BatchFailureItemListener.FAILED_ITEM_IDS);
         assertThat(storedIds).containsExactlyInAnyOrder("ID1", "ID2");
+        assertThat(stepExecution.getExecutionContext().get(BatchFailureItemListener.LAST_FAILED_ITEM_ID)).isEqualTo("ID2");
     }
 
     @Test
