@@ -1,0 +1,234 @@
+package org.stockwellness.adapter.in.web.batch;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
+import org.stockwellness.application.port.in.batch.BatchControlUseCase;
+import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
+import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
+import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
+import org.stockwellness.adapter.in.web.batch.dto.DataIntegrityResponse;
+import org.stockwellness.batch.job.investortradedetail.support.StockInvestorTradeDetailSyncRequest;
+import org.stockwellness.batch.job.stockprice.sync.support.StockPriceSyncRequest;
+import org.stockwellness.global.common.response.ApiResponse;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/admin/batch")
+@RestController
+public class BatchAdminController {
+
+    private final BatchControlUseCase batchControlUseCase;
+    private final BatchMonitoringUseCase batchMonitoringUseCase;
+
+    /**
+     * 업종/지수 마스터(idxcode.mst) 동기화
+     */
+    @PostMapping("/sync-indices")
+    public ApiResponse<BatchExecutionResponse> runIndicesSync() {
+        var result = batchControlUseCase.syncIndices(new BatchControlUseCase.MarketIndexSyncCommand("idxcode.mst"));
+        return ApiResponse.success(new BatchExecutionResponse(result.executionId(), result.jobName(), result.statusUrl(), result.message()));
+    }
+
+    /**
+     * 특정 Job의 최근 실행 상태 조회
+     */
+    @GetMapping("/status/{jobName}")
+    public ApiResponse<List<BatchJobStatusResponse>> getJobStatus(@PathVariable String jobName) {
+        List<BatchJobStatusResponse> responses = batchMonitoringUseCase.getRecentJobStatuses(jobName, 10).stream()
+                .map(result -> new BatchJobStatusResponse(
+                        result.executionId(),
+                        result.jobName(),
+                        result.status(),
+                        result.startTime(),
+                        result.endTime(),
+                        result.exitCode()
+                ))
+                .toList();
+        return ApiResponse.success(responses);
+    }
+
+    /**
+     * 시세 데이터 정합성 체크 (누락 또는 0원 시세)
+     */
+    @GetMapping("/integrity-check")
+    public ApiResponse<DataIntegrityResponse> checkDataIntegrity(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        var result = batchMonitoringUseCase.checkDataIntegrity(startDate, endDate);
+        List<DataIntegrityResponse.InvalidPriceDetail> details = result.issues().stream()
+                .map(issue -> new DataIntegrityResponse.InvalidPriceDetail(
+                        issue.ticker(),
+                        issue.name(),
+                        issue.baseDate(),
+                        issue.issueType()
+                ))
+                .toList();
+        return ApiResponse.success(new DataIntegrityResponse(result.totalCount(), details));
+    }
+
+    /**
+     * 종목 마스터(KOSPI/KOSDAQ) 동기화 배치 실행
+     */
+    @PostMapping("/sync-master")
+    public ApiResponse<BatchExecutionResponse> runMasterSync() {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_MASTER_SYNC,
+                        null,
+                        null,
+                        null,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 섹터 인사이트 배치 실행
+     */
+    @PostMapping("/sync-sector")
+    public ApiResponse<BatchExecutionResponse> runSectorSync(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.SECTOR_EOD_SYNC,
+                        null,
+                        startDate,
+                        endDate,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 시세 수집 배치 실행 (전체 종목)
+     */
+    @PostMapping("/fetch-prices")
+    public ApiResponse<BatchExecutionResponse> runPriceFetch(
+            @RequestBody(required = false) StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC,
+                        null,
+                        request != null ? request.getStartDate() : null,
+                        request != null ? request.getEndDate() : null,
+                        publishEvent
+                )
+        )));
+    }
+
+    /**
+     * 시세 수집 배치 실행 (단건 종목)
+     */
+    @PostMapping("/fetch-prices/single")
+    public ApiResponse<BatchExecutionResponse> runSinglePriceFetch(
+            @RequestBody StockPriceSyncRequest request,
+            @RequestParam(defaultValue = "false") boolean publishEvent
+    ) {
+        if (request == null || !StringUtils.hasText(request.getTargetTicker())) {
+            throw new IllegalArgumentException("targetTicker는 필수입니다.");
+        }
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC,
+                        request.getTargetTicker(),
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        publishEvent
+                )
+        )));
+    }
+
+    /**
+     * 전일 종가 데이터 소급 보정 실행
+     */
+    @PostMapping("/sync-prev-close")
+    public ApiResponse<BatchExecutionResponse> runPrevCloseSync(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC,
+                        null,
+                        startDate,
+                        endDate,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 투자주체 순매수 금액 보정 배치 실행
+     */
+    @PostMapping("/sync-investor-trade-detail")
+    public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync(
+            @RequestBody(required = false) StockInvestorTradeDetailSyncRequest request
+    ) {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION,
+                        request != null ? request.getTargetTicker() : null,
+                        request != null ? request.getBaseDate() : null,
+                        null,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 특정 종목 단건 즉시 동기화 (보정 배치 활용)
+     */
+    @PostMapping("/sync-stock/{ticker}")
+    public ApiResponse<BatchExecutionResponse> syncSingleStock(
+            @PathVariable String ticker,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC,
+                        ticker,
+                        startDate,
+                        endDate,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 포트폴리오 통계 지표(MDD, Sharpe, Beta) 갱신 배치 실행
+     */
+    @PostMapping("/sync-portfolio-stats")
+    public ApiResponse<BatchExecutionResponse> runPortfolioStatsSync() {
+        return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
+                new BatchControlUseCase.BatchLaunchCommand(
+                        BatchControlUseCase.BatchJobType.PORTFOLIO_STATS_SYNC,
+                        null,
+                        null,
+                        null,
+                        false
+                )
+        )));
+    }
+
+    /**
+     * 실행 중인 배치 중단
+     */
+    @PostMapping("/stop/{executionId}")
+    public ApiResponse<String> stopJob(@PathVariable Long executionId) {
+        return ApiResponse.success(batchControlUseCase.stop(new BatchControlUseCase.BatchStopCommand(executionId)));
+    }
+
+    private BatchExecutionResponse toExecutionResponse(BatchControlUseCase.BatchExecutionResult result) {
+        return new BatchExecutionResponse(result.executionId(), result.jobName(), result.statusUrl(), result.message());
+    }
+}

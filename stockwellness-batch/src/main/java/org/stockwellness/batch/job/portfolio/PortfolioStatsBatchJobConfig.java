@@ -4,25 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.data.RepositoryItemReader;
-import org.springframework.batch.item.data.builder.RepositoryItemReaderBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Sort;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
-import org.stockwellness.application.service.portfolio.PortfolioStatBatchService;
-import org.stockwellness.batch.common.BatchMdcListener;
-import org.stockwellness.batch.listener.JobFailureNotificationListener;
-import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.application.port.in.batch.PortfolioStatsRebuildUseCase;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.batch.support.BatchMdcListener;
+import org.stockwellness.batch.support.listener.JobFailureNotificationListener;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Configuration
@@ -31,8 +26,8 @@ public class PortfolioStatsBatchJobConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager txManager;
-    private final PortfolioRepository portfolioRepository;
-    private final PortfolioStatBatchService portfolioStatBatchService;
+    private final PortfolioPort portfolioPort;
+    private final PortfolioStatsRebuildUseCase portfolioStatsRebuildUseCase;
     private final BatchMdcListener mdcListener;
     private final JobFailureNotificationListener failureNotificationListener;
 
@@ -50,38 +45,54 @@ public class PortfolioStatsBatchJobConfig {
     @Bean
     public Step portfolioStatsStep() {
         return new StepBuilder("portfolioStatsStep", jobRepository)
-                .<Portfolio, Portfolio>chunk(CHUNK_SIZE, txManager)
+                .<Long, Long>chunk(CHUNK_SIZE, txManager)
                 .reader(portfolioItemReader())
                 .writer(portfolioStatsWriter())
                 .build();
     }
 
     @Bean
-    @StepScope
-    public RepositoryItemReader<Portfolio> portfolioItemReader() {
-        return new RepositoryItemReaderBuilder<Portfolio>()
-                .name("portfolioItemReader")
-                .repository(portfolioRepository)
-                .methodName("findAll")
-                .pageSize(CHUNK_SIZE)
-                .sorts(Map.of("id", Sort.Direction.ASC))
-                .build();
+    public ItemReader<Long> portfolioItemReader() {
+        return new PortfolioIdPagingReader(portfolioPort, CHUNK_SIZE);
     }
 
     @Bean
-    @StepScope
     public PortfolioStatsWriter portfolioStatsWriter() {
-        return new PortfolioStatsWriter(portfolioStatBatchService);
+        return new PortfolioStatsWriter(portfolioStatsRebuildUseCase);
     }
 
     @RequiredArgsConstructor
-    public static class PortfolioStatsWriter implements ItemWriter<Portfolio> {
-        private final PortfolioStatBatchService portfolioStatBatchService;
+    public static class PortfolioStatsWriter implements ItemWriter<Long> {
+        private final PortfolioStatsRebuildUseCase portfolioStatsRebuildUseCase;
 
         @Override
-        public void write(org.springframework.batch.item.Chunk<? extends Portfolio> chunk) {
-            List<Long> ids = chunk.getItems().stream().map(Portfolio::getId).toList();
-            portfolioStatBatchService.updatePortfolioStatsBatch(ids);
+        public void write(org.springframework.batch.item.Chunk<? extends Long> chunk) {
+            portfolioStatsRebuildUseCase.rebuild(
+                    new PortfolioStatsRebuildUseCase.PortfolioStatsRebuildCommand(List.copyOf(chunk.getItems()))
+            );
+        }
+    }
+
+    @RequiredArgsConstructor
+    static class PortfolioIdPagingReader implements ItemReader<Long> {
+        private final PortfolioPort portfolioPort;
+        private final int pageSize;
+
+        private int offset;
+        private List<Long> currentIds = List.of();
+        private int currentIndex;
+
+        @Override
+        public Long read() {
+            if (currentIndex >= currentIds.size()) {
+                currentIds = portfolioPort.findAllIds(offset, pageSize);
+                currentIndex = 0;
+                offset += currentIds.size();
+            }
+            if (currentIds.isEmpty()) {
+                return null;
+            }
+            return currentIds.get(currentIndex++);
         }
     }
 }

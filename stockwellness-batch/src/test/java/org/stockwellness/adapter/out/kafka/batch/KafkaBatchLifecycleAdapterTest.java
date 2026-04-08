@@ -8,8 +8,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-import org.stockwellness.batch.lifecycle.BatchLifecycleEvent;
-import org.stockwellness.batch.lifecycle.BatchLifecycleEventType;
+import org.stockwellness.batch.support.lifecycle.BatchLifecycleEvent;
+import org.stockwellness.batch.support.lifecycle.BatchLifecycleEventType;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;

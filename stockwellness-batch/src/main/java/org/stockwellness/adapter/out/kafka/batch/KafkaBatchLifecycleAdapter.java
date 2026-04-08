@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-import org.stockwellness.batch.lifecycle.BatchLifecycleEvent;
-import org.stockwellness.batch.lifecycle.BatchLifecycleEventPort;
+import org.stockwellness.batch.support.lifecycle.BatchLifecycleEvent;
+import org.stockwellness.batch.support.lifecycle.BatchLifecycleEventPort;
 
 @Slf4j
 @Component
