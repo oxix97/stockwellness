@@ -128,8 +128,11 @@ public class PortfolioAnalysisController {
                 portfolioId,
                 request.strategy(),
                 request.amount(),
-                (request.benchmarkTickers() == null || request.benchmarkTickers().isEmpty()) ? 
-                    java.util.List.of(org.stockwellness.domain.stock.BenchmarkType.KOSPI.getTicker()) : request.benchmarkTickers(),
+                java.util.List.of(
+                        (request.benchmarkTicker() == null || request.benchmarkTicker().isBlank())
+                                ? org.stockwellness.domain.stock.BenchmarkType.KOSPI.getTicker()
+                                : request.benchmarkTicker()
+                ),
                 request.rebalancingPeriod(),
                 request.weights()
         );

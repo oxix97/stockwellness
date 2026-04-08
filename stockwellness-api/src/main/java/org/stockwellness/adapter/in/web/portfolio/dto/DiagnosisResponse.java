@@ -16,9 +16,9 @@ public record DiagnosisResponse(
         int overallScore,
         
         /**
-         * 5개 카테고리별 상세 점수 (오각형 차트 데이터)
+         * 5개 카테고리별 상세 점수
          */
-        List<ChartData> categories,
+        Map<String, Integer> categories,
         
         /**
          * 종목별 포트폴리오 기여도 분석 결과
@@ -60,17 +60,10 @@ public record DiagnosisResponse(
          */
         List<String> nextSteps
 ) {
-    /**
-     * 차트 표시용 데이터 구조 (카테고리명, 점수)
-     */
-    public record ChartData(String name, int value) {}
-
     public static DiagnosisResponse from(PortfolioHealthResult health) {
         return new DiagnosisResponse(
                 health.overallScore(),
-                health.categories().entrySet().stream()
-                        .map(e -> new ChartData(e.getKey(), e.getValue()))
-                        .toList(),
+                health.categories(),
                 health.stockContributions().stream()
                         .map(StockContributionResponse::from)
                         .toList(),

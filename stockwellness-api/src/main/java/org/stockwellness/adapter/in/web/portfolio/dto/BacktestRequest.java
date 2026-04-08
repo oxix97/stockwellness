@@ -21,12 +21,18 @@ public record BacktestRequest(
      * 투자 금액 (거치식은 총액, 적립식은 월 입금액)
      */
     @Positive BigDecimal amount,
-    
+
     /**
-     * 성과 비교 기준이 될 벤치마크 지수 티커 리스트 (예: ["0001", "SPX"])
+     * 성과 비교 기준이 될 대표 벤치마크 지수 티커 (예: KOSPI, SPY)
      */
-    List<String> benchmarkTickers,
-    
+    @NotBlank String benchmarkTicker,
+
+    /**
+     * 프론트엔드 클라이언트 필터링 호환용 기간 필드.
+     * 서버 계산에는 반영하지 않는다.
+     */
+    String period,
+
     /**
      * 자산 재배분(리밸런싱) 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)
      */

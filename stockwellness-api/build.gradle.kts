@@ -34,6 +34,7 @@ dependencies {
     // rest-doc
     testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
     testImplementation("com.epages:restdocs-api-spec-mockmvc:0.19.2")
+    testImplementation("io.github.resilience4j:resilience4j-ratelimiter:2.2.0")
 
     // swagger-ui
     implementation("org.webjars:swagger-ui:5.10.3")

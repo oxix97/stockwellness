@@ -1,6 +1,7 @@
 package org.stockwellness.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.ratelimiter.RateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ public abstract class RestDocsSupport {
 
     @MockitoBean
     protected LlmClientPort llmClientPort;
+
+    @MockitoBean
+    protected RateLimiter kisRateLimiter;
 
     @Autowired
     protected MockMvc mockMvc;

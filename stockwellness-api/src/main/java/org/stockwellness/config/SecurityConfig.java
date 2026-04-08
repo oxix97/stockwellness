@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.stockwellness.application.service.auth.CustomOAuth2UserService;
+import org.stockwellness.global.security.handler.OAuth2LoginFailureHandler;
 import org.stockwellness.global.security.handler.OAuth2LoginSuccessHandler;
 import org.stockwellness.global.security.jwt.JwtAccessDeniedHandler;
 import org.stockwellness.global.security.jwt.JwtAuthenticationEntryPoint;
@@ -29,9 +30,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
-
-    @Value("${app.frontend-redirect-url:http://localhost:5173/auth/callback}")
-    private String frontendRedirectUrl;
+    private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
     @Bean
     public SecurityFilterChain filterChain(
@@ -53,10 +52,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2LoginSuccessHandler)
-                        .failureHandler((request, response, exception) -> {
-                            log.error("OAuth2 Login Failed: {}", exception.getMessage());
-                            response.sendRedirect(frontendRedirectUrl + "?error=oauth2_failed");
-                        })
+                        .failureHandler(oAuth2LoginFailureHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)

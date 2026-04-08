@@ -141,7 +141,7 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
 
         // [Given] 2. 백테스트 요청 데이터
         BacktestRequest backtestRequest = new BacktestRequest(
-                "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("KOSPI"), org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, null
+                "LUMP_SUM", BigDecimal.valueOf(10000000), "KOSPI", "ALL", org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, null
         );
 
         // [When] 3. 백테스트 실행
