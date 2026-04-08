@@ -97,7 +97,7 @@ public class SectorInsightService implements SectorInsightUseCase {
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 
         LocalDate effectiveDate = sector.getBaseDate();
-        String marketCode = (sector.getMarketType() == MarketType.KOSDAQ) ? "1001" : "0001";
+        String marketCode = sector.getMarketType().getBenchmarkTicker();
         Map<String, SectorInsight> todayData = sectorInsightPort.findByCodesAndDate(List.of(sectorCode, marketCode), effectiveDate).stream()
                 .collect(Collectors.toMap(SectorInsight::getSectorCode, s -> s));
 
@@ -122,8 +122,9 @@ public class SectorInsightService implements SectorInsightUseCase {
                 .collect(Collectors.toMap(SectorInsight::getBaseDate, SectorInsight::getAvgFluctuationRate));
 
         return sectorHistory.stream()
+                .filter(s -> marketMap.containsKey(s.getBaseDate())) // 데이터가 있는 날짜만 포함하여 RS 왜곡 방지
                 .map(s -> {
-                    BigDecimal mRate = marketMap.getOrDefault(s.getBaseDate(), BigDecimal.ZERO);
+                    BigDecimal mRate = marketMap.get(s.getBaseDate());
                     BigDecimal rs = s.getAvgFluctuationRate().subtract(mRate);
                     return new SectorComparisonResult.HistoricalRS(s.getBaseDate(), s.getAvgFluctuationRate(), mRate, rs);
                 })
@@ -132,8 +133,10 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     private String resolvePerformanceStatus(BigDecimal rs) {
-        if (rs.compareTo(new BigDecimal("0.5")) > 0) return "OUTPERFORM";
-        if (rs.compareTo(new BigDecimal("-0.5")) < 0) return "UNDERPERFORM";
+        if (rs == null) return "NEUTRAL";
+        // 0.2%p 차이를 기준으로 보수적인 판별 (기존 0.5%는 너무 큼)
+        if (rs.compareTo(new BigDecimal("0.2")) > 0) return "OUTPERFORM";
+        if (rs.compareTo(new BigDecimal("-0.2")) < 0) return "UNDERPERFORM";
         return "NEUTRAL";
     }
 

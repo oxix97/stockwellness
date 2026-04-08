@@ -1,10 +1,9 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -93,7 +92,11 @@ public interface StockPricePort {
     /**
      * 외부 API를 통해 멀티 종목 시세를 조회합니다. (당일용)
      */
-    List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);
+    List<MultiStockPriceSnapshot> fetchMultiStockPrices(List<String> tickers);
+
+    List<DailyStockPriceSnapshot> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
+
+    List<InvestorTradingSnapshot> fetchInvestorTradingSnapshots(Stock stock, LocalDate startDate, LocalDate endDate);
 
     // FetchStockPricePort에서 통합된 메서드
     List<Stock> fetchDaily(LocalDate date);

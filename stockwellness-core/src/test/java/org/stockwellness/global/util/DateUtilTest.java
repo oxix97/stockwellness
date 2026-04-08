@@ -105,6 +105,17 @@ class DateUtilTest {
     }
 
     @Test
+    @DisplayName("직전 영업일 계산 시 주말은 건너뛴다")
+    void previousBusinessDay_skipsWeekend() {
+        assertThat(DateUtil.previousBusinessDay(LocalDate.of(2026, 4, 6)))
+                .isEqualTo(LocalDate.of(2026, 4, 3));
+        assertThat(DateUtil.previousBusinessDay(LocalDate.of(2026, 4, 5)))
+                .isEqualTo(LocalDate.of(2026, 4, 3));
+        assertThat(DateUtil.previousBusinessDay(LocalDate.of(2026, 4, 8)))
+                .isEqualTo(LocalDate.of(2026, 4, 7));
+    }
+
+    @Test
     @DisplayName("현재 시간 기준 만료 여부를 정확히 판단한다")
     void isExpired_test() {
         LocalDateTime future = LocalDateTime.now().plusDays(1);

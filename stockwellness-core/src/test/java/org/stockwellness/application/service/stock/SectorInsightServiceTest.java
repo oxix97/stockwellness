@@ -116,6 +116,26 @@ class SectorInsightServiceTest {
         }
 
         @Test
+        @DisplayName("RS가 0.2보다 크면 OUTPERFORM을 반환한다")
+        void returnsOutperform_whenRSAbovePointTwo() {
+            LocalDate today = LocalDate.now();
+            SectorIndicators sectorInd = SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.valueOf(1.0), 0L, 0L, 0, 0); // +1.0%
+            SectorInsight sector = SectorInsight.of("전기전자", "0007", MarketType.KOSPI, today, sectorInd, null, false);
+            
+            SectorIndicators marketInd = SectorIndicators.of(BigDecimal.valueOf(2500), BigDecimal.valueOf(0.7), 0L, 0L, 0, 0); // +0.7%
+            SectorInsight market = SectorInsight.of("코스피", "0001", MarketType.KOSPI, today, marketInd, null, false);
+            // RS = 0.3 (> 0.2)
+
+            given(sectorInsightPort.findBySectorCodeAndDate("0007", today)).willReturn(Optional.of(sector));
+            given(sectorInsightPort.findByCodesAndDate(List.of("0007", "0001"), today))
+                    .willReturn(List.of(sector, market));
+
+            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007", today);
+
+            assertThat(result.performanceStatus()).isEqualTo("OUTPERFORM");
+        }
+
+        @Test
         @DisplayName("당일 데이터도 없고 최근 데이터도 없으면 예외를 던진다")
         void throwsException_whenNoDataExists() {
             LocalDate today = LocalDate.now();

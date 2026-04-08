@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record MarketIndexResult(
+        String ticker,
         String name,
         BigDecimal currentPrice,
         BigDecimal fluctuationRate,

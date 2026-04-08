@@ -7,9 +7,10 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.*;
-
-import org.stockwellness.application.port.out.stock.SectorDataPort;
+import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.application.port.out.stock.SectorDailySnapshot;
+import org.stockwellness.application.port.out.stock.SectorDataPort;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -31,7 +32,7 @@ public class KisSectorAdapter implements SectorDataPort {
 
     @Override
     @Retry(name = "kisRetry")
-    public KisDailySectorDetail fetchDailySectorDetail(String indexCode, LocalDate date) {
+    public SectorDailySnapshot fetchDailySectorDetail(String indexCode, LocalDate date) {
         log.debug("섹터 상세 정보 조회: {} (기준일: {})", indexCode, date);
 
         KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
@@ -51,9 +52,15 @@ public class KisSectorAdapter implements SectorDataPort {
         }
 
         // Note: DTO에 날짜 필드가 없는 경우 최신 데이터를 반환하도록 함
-        return (response.output2() != null && !response.output2().isEmpty())
+        KisDailySectorDetail detail = (response.output2() != null && !response.output2().isEmpty())
                 ? response.output2().get(0)
                 : response.output1();
+        return new SectorDailySnapshot(
+                indexCode,
+                date,
+                detail.sectorIndexPrice() != null ? new BigDecimal(detail.sectorIndexPrice()) : BigDecimal.ZERO,
+                detail.sectorIndexPriceChangeRate() != null ? new BigDecimal(detail.sectorIndexPriceChangeRate()) : BigDecimal.ZERO
+        );
     }
 
     /**
@@ -61,7 +68,7 @@ public class KisSectorAdapter implements SectorDataPort {
      */
     @Override
     @Retry(name = "kisRetry")
-    public List<InvestorTradingDaily> fetchInvestorTradingDaily(
+    public List<InvestorTradingSnapshot> fetchInvestorTradingDaily(
             String indexCode,
             LocalDate date,
             int days
@@ -88,7 +95,19 @@ public class KisSectorAdapter implements SectorDataPort {
             return Collections.emptyList();
         }
 
-        return response.output().stream().limit(days).toList();
+        return response.output().stream()
+                .limit(days)
+                .map(detail -> new InvestorTradingSnapshot(
+                        date,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        detail.orgnNtbyTrPbmn() != null ? new BigDecimal(detail.orgnNtbyTrPbmn()).multiply(BigDecimal.valueOf(1_000_000L)) : BigDecimal.ZERO,
+                        detail.frgnNtbyTrPbmn() != null ? new BigDecimal(detail.frgnNtbyTrPbmn()).multiply(BigDecimal.valueOf(1_000_000L)) : BigDecimal.ZERO
+                ))
+                .toList();
     }
 
     @Override
@@ -136,27 +155,26 @@ public class KisSectorAdapter implements SectorDataPort {
             if (response != null && response.output2() != null) {
                 response.output2().forEach(s -> {
                     String sectorCode = s.bstpClsCode();
-                    
+
                     // 수급 데이터 추가 조회 (외인/기관 순매수 금액)
-                    List<InvestorTradingDaily> trading = fetchInvestorTradingDaily(sectorCode, today, 1);
+                    List<InvestorTradingSnapshot> trading = fetchInvestorTradingDaily(sectorCode, today, 1);
                     long netForeign = 0L;
                     long netInst = 0L;
-                    
+
                     if (!trading.isEmpty()) {
-                        InvestorTradingDaily latest = trading.get(0);
-                        // KIS API의 수급 금액 단위는 '백만 원'이므로 시스템 표준인 '1원' 단위로 변환 (* 1,000,000)
-                        netForeign = latest.frgnNtbyTrPbmn() != null ? Long.parseLong(latest.frgnNtbyTrPbmn()) * 1_000_000L : 0L;
-                        netInst = latest.orgnNtbyTrPbmn() != null ? Long.parseLong(latest.orgnNtbyTrPbmn()) * 1_000_000L : 0L;
+                        InvestorTradingSnapshot latest = trading.get(0);
+                        netForeign = latest.netForeignBuyingAmt() != null ? latest.netForeignBuyingAmt().longValue() : 0L;
+                        netInst = latest.netInstitutionalBuyingAmt() != null ? latest.netInstitutionalBuyingAmt().longValue() : 0L;
                     }
 
                     result.add(new SectorApiDto(
-                        sectorCode,
-                        s.htsKorIsnm(),
-                        today,
-                        new BigDecimal(s.bstpNmixPrpr() != null ? s.bstpNmixPrpr() : "0"),
-                        new BigDecimal(s.bstpNmixPrdyCtrt() != null ? s.bstpNmixPrdyCtrt() : "0"),
-                        netForeign,
-                        netInst
+                            sectorCode,
+                            s.htsKorIsnm(),
+                            today,
+                            new BigDecimal(s.bstpNmixPrpr() != null ? s.bstpNmixPrpr() : "0"),
+                            new BigDecimal(s.bstpNmixPrdyCtrt() != null ? s.bstpNmixPrdyCtrt() : "0"),
+                            netForeign,
+                            netInst
                     ));
                 });
             }

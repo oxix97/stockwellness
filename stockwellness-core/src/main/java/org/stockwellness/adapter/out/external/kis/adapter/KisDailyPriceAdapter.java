@@ -193,4 +193,33 @@ public class KisDailyPriceAdapter {
             return Collections.emptyList();
         }
     }
+
+
+    /**
+     * 국내기관, 외국인 매매종목가 집계
+     */
+    @Retry(name = "kisRetry")
+    public List<InvestorTradeDetail> fetchForeignInstitutionData(String indexCode, String sorted) {
+        try {
+            KisResponse<List<InvestorTradeDetail>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/foreign-institution-total")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "V")
+                            .queryParam("FID_COND_SCR_DIV_CODE", "16449")
+                            .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_DIV_CLS_CODE", "1")
+                            .queryParam("FID_RANK_SORT_CLS_CODE", sorted)
+                            .queryParam("FID_ETC_CLS_CODE", "0")
+                            .build())
+                    .header("tr_id", "FHPTJ04400000")
+                    .header("custtype", "P")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+            return response.output();
+        } catch (Exception e) {
+            log.error("[KIS 어댑터] 국내기관 외국인 매매종목가 집계 (지수코드: {}): {}", indexCode, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
 }

@@ -51,6 +51,11 @@ public class StockAdapter implements StockPort {
         return stockRepository.searchByCondition(query.keyword(), query.marketType(), query.status(), pageable);
     }
 
+    @Override
+    public void saveAll(List<Stock> stocks) {
+        stockRepository.saveAll(stocks);
+    }
+
     public Stock save(Stock stock) {
         return stockRepository.save(stock);
     }

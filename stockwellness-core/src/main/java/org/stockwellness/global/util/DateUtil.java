@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.time.Duration;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -114,6 +115,18 @@ public class DateUtil {
      */
     public static LocalDate plusDays(LocalDate date, long days) {
         return date.plusDays(days);
+    }
+
+    /**
+     * 기준일 이전 가장 가까운 직전 평일을 반환합니다.
+     * 현재는 주말만 제외하며, 공휴일 캘린더는 반영하지 않습니다.
+     */
+    public static LocalDate previousBusinessDay(LocalDate date) {
+        LocalDate candidate = date.minusDays(1);
+        while (candidate.getDayOfWeek() == DayOfWeek.SATURDAY || candidate.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            candidate = candidate.minusDays(1);
+        }
+        return candidate;
     }
 
     /**
