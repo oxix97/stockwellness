@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -56,8 +58,8 @@ public class PortfolioStatBatchService {
 
         long startTime = System.currentTimeMillis();
         int totalCount = portfolios.size();
-        java.util.concurrent.atomic.AtomicInteger successCount = new java.util.concurrent.atomic.AtomicInteger(0);
-        java.util.concurrent.atomic.AtomicInteger failureCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
 
         Set<String> allSymbols = portfolios.stream()
                 .flatMap(p -> p.getItems().stream())
@@ -72,8 +74,8 @@ public class PortfolioStatBatchService {
         SimulationData chunkSharedData = loadPartitionedData(allSymbols, start, end);
 
         // Virtual Thread 기반 병렬 처리 (spring.threads.virtual.enabled: true 전제)
-        List<java.util.concurrent.CompletableFuture<Void>> futures = portfolios.stream()
-                .map(portfolio -> java.util.concurrent.CompletableFuture.runAsync(() -> {
+        List<CompletableFuture<Void>> futures = portfolios.stream()
+                .map(portfolio -> CompletableFuture.runAsync(() -> {
                     try {
                         processSinglePortfolio(portfolio, chunkSharedData, end);
                         successCount.incrementAndGet();
@@ -85,7 +87,7 @@ public class PortfolioStatBatchService {
                 .toList();
 
         // 모든 병렬 작업 완료 대기
-        java.util.concurrent.CompletableFuture.allOf(futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         long duration = System.currentTimeMillis() - startTime;
         log.info("[배치 성능 모니터링] PortfolioStatsBatchJob Chunk 완료. 소요시간: {}ms, 성공: {}, 실패: {}, 총계: {}, 가상스레드사용: {}",

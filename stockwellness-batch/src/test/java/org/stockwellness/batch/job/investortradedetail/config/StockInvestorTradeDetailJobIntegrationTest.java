@@ -26,6 +26,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @DisplayName("StockInvestorTradeDetailJob 통합 테스트")
 class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSupport {
@@ -47,7 +49,7 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
     private KisDailyPriceAdapter kisDailyPriceAdapter;
 
     @Test
-    @DisplayName("지정 기준일의 stock_price 수급 컬럼만 보정한다")
+    @DisplayName("지정 기준일의 stock_price 수급 컬럼만 보정하고 중복 티커는 순매수 상위 응답을 우선한다")
     void stockInvestorTradeDetailJob_updatesInvestorAmounts() throws Exception {
         Stock samsung = stockAdapter.save(StockFixture.createSamsung());
         LocalDate baseDate = LocalDate.of(2026, 4, 8);
@@ -70,7 +72,7 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
         given(kisDailyPriceAdapter.fetchForeignInstitutionData("0001", "0"))
                 .willReturn(List.of(investorTradeDetail("005930", "15", "7")));
         given(kisDailyPriceAdapter.fetchForeignInstitutionData("0001", "1"))
-                .willReturn(Collections.emptyList());
+                .willReturn(List.of(investorTradeDetail("005930", "999", "999")));
         given(kisDailyPriceAdapter.fetchForeignInstitutionData("1001", "0"))
                 .willReturn(Collections.emptyList());
         given(kisDailyPriceAdapter.fetchForeignInstitutionData("1001", "1"))
@@ -87,8 +89,16 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
                 .findByStockTickerInAndIdBaseDateBetween(List.of("005930"), baseDate, baseDate)
                 .getFirst();
 
+        assertThat(updated.getNetInstitutionalBuyingQty()).isEqualTo(100L);
+        assertThat(updated.getNetForeignBuyingQty()).isEqualTo(200L);
         assertThat(updated.getNetInstitutionalBuyingAmt()).isEqualByComparingTo("15000000");
         assertThat(updated.getNetForeignBuyingAmt()).isEqualByComparingTo("7000000");
+
+        verify(kisDailyPriceAdapter).fetchForeignInstitutionData("0001", "0");
+        verify(kisDailyPriceAdapter).fetchForeignInstitutionData("0001", "1");
+        verify(kisDailyPriceAdapter).fetchForeignInstitutionData("1001", "0");
+        verify(kisDailyPriceAdapter).fetchForeignInstitutionData("1001", "1");
+        verifyNoMoreInteractions(kisDailyPriceAdapter);
     }
 
     private InvestorTradeDetail investorTradeDetail(String ticker, String institutionalAmount, String foreignAmount) {
@@ -101,8 +111,8 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
                 null,
                 null,
                 null,
-                null,
-                null,
+                "200",
+                "100",
                 null,
                 null,
                 null,

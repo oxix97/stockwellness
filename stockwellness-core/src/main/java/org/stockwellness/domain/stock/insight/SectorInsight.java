@@ -10,10 +10,17 @@ import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 사용자 조회와 분석 결과 제공을 위한 섹터 집계 엔티티.
+ *
+ * <p>원천 시세/수급의 상세값은 {@link SectorDailyDetail}에 보관하고,
+ * 이 엔티티는 API 응답과 랭킹/비교/AI 진단에 필요한 요약값과 파생 지표만 유지한다.
+ */
 @Getter
 @Entity
 @Table(
@@ -91,11 +98,11 @@ public class SectorInsight extends AbstractEntity {
     }
 
     // Delegation methods for backward compatibility/convenience
-    public java.math.BigDecimal getSectorIndexCurrentPrice() {
+    public BigDecimal getSectorIndexCurrentPrice() {
         return indicators != null ? indicators.getSectorIndexCurrentPrice() : null;
     }
 
-    public java.math.BigDecimal getAvgFluctuationRate() {
+    public BigDecimal getAvgFluctuationRate() {
         return indicators != null ? indicators.getAvgFluctuationRate() : null;
     }
 
@@ -105,6 +112,10 @@ public class SectorInsight extends AbstractEntity {
 
     public Long getNetInstBuyAmount() {
         return indicators != null ? indicators.getNetInstBuyAmount() : 0L;
+    }
+
+    public Long getNetTotalBuyAmount() {
+        return getNetForeignBuyAmount() + getNetInstBuyAmount();
     }
 
     public Integer getForeignConsecutiveBuyDays() {

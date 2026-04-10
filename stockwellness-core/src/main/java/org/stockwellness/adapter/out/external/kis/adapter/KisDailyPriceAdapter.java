@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
-import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -8,13 +9,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.stockwellness.adapter.out.external.kis.dto.*;
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.global.config.ResilienceConfig;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 
@@ -24,15 +27,17 @@ import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 public class KisDailyPriceAdapter {
 
     private final RestClient kisApiClient;
+    private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());
+    private final RateLimiter kisRateLimiter;
+
 
     /**
      * 멀티 종목 시세 조회 (최대 30종목)
      */
-    @Retry(name = "kisRetry")
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
         if (tickers == null || tickers.isEmpty()) return Collections.emptyList();
 
-        try {
+        return executeWithRetry(() -> {
             KisPriceResponse<Object, List<KisMultiStockPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/uapi/domestic-stock/v1/quotations/intstock-multprice");
@@ -49,26 +54,18 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            if (response == null || response.output2() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.output2();
-
-        } catch (RestClientException | IllegalStateException e) {
-            log.error("[KIS 어댑터] 멀티 종목 시세 조회 실패 (종목: {}): {}", tickers, e.getMessage());
-            return Collections.emptyList();
-        }
+            response = requireSuccessfulResponse(response, "멀티 종목 시세 조회", String.join(",", tickers));
+            return (response.output2() != null) ? response.output2() : Collections.emptyList();
+        });
     }
 
     /**
      * 주식 기간별 시세(일/주/월/년)
      */
-    @Retry(name = "kisRetry")
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
         String path = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice";
         String ticker = stock.getTicker();
-        try {
+        return executeWithRetry(() -> {
             KisPriceResponse<KisStockInfo, List<KisDailyPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path(path)
@@ -84,24 +81,18 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            if (response == null || response.output2() == null) {
-                return Collections.emptyList();
-            }
-            return response.output2();
-        } catch (RestClientException | IllegalStateException e) {
-            log.error("[KIS 어댑터] 주식 시세 조회 실패 (티커: {}, 경로: {}): {}", ticker, path, e.getMessage());
-            return Collections.emptyList();
-        }
+            response = requireSuccessfulResponse(response, "주식 시세 조회", ticker);
+            return (response.output2() != null) ? response.output2() : Collections.emptyList();
+        });
     }
 
     /**
      * 주식 일자별 투자자 매매 추이 (확정치)
      */
-    @Retry(name = "kisRetry")
     public List<KisInvestorPriceDetail> fetchInvestorPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
         String path = "/uapi/domestic-stock/v1/quotations/inquire-investor";
         String ticker = stock.getTicker();
-        try {
+        return executeWithRetry(() -> {
             // 이 TR은 output1 에 리스트가 담겨 옵니다.
             KisPriceResponse<List<KisInvestorPriceDetail>, Object> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -118,22 +109,16 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            if (response == null || response.output1() == null) {
-                return Collections.emptyList();
-            }
-            return response.output1();
-        } catch (RestClientException | IllegalStateException e) {
-            log.error("[KIS 어댑터] 투자자 매매 추이 조회 실패 (티커: {}): {}", ticker, e.getMessage());
-            return Collections.emptyList();
-        }
+            response = requireSuccessfulResponse(response, "투자자 매매 추이 조회", ticker);
+            return (response.output1() != null) ? response.output1() : Collections.emptyList();
+        });
     }
 
     /**
      * 국내 업종/지수 기간별 시세
      */
-    @Retry(name = "kisRetry")
     public List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
-        try {
+        return executeWithRetry(() -> {
             KisPriceResponse<SectorIndexSummary, List<SectorDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice")
@@ -148,22 +133,28 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            if (response == null || response.output2() == null) {
+            response = requireSuccessfulResponse(response, "국내 지수 시세 조회", indexCode);
+            int outputSize = response.output2() == null ? 0 : response.output2().size();
+            log.info("[KIS 어댑터] 국내 지수 시세 조회 응답 indexCode={}, outputSize={}", indexCode, outputSize);
+
+            if (response.output2() == null || response.output2().isEmpty()) {
                 return Collections.emptyList();
             }
-            return new ArrayList<>(response.output2());
-        } catch (RestClientException | IllegalStateException e) {
-            log.error("[KIS 어댑터] 국내 지수 시세 조회 실패 (지수코드: {}): {}", indexCode, e.getMessage());
-            return Collections.emptyList();
-        }
+
+            return response.output2().stream()
+                    .filter(price -> price.baseDate() != null)
+                    .filter(price -> !price.baseDate().isBefore(startDate) && !price.baseDate().isAfter(endDate))
+                    .sorted(Comparator.comparing(BenchmarkPriceData::baseDate).reversed())
+                    .map(BenchmarkPriceData.class::cast)
+                    .toList();
+        });
     }
 
     /**
      * 해외 지수 일자별 시세 조회
      */
-    @Retry(name = "kisRetry")
     public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
-        try {
+        return executeWithRetry(() -> {
             KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/uapi/overseas-price/v1/quotations/inquire-daily-chartprice")
@@ -179,28 +170,28 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            if (response == null || response.output2() == null) {
+            response = requireSuccessfulResponse(response, "해외 지수 시세 조회", indexCode);
+            int outputSize = response.output2() == null ? 0 : response.output2().size();
+            log.info("[KIS 어댑터] 해외 지수 시세 조회 응답 indexCode={}, outputSize={}", indexCode, outputSize);
+
+            if (response.output2() == null || response.output2().isEmpty()) {
                 return Collections.emptyList();
             }
 
             return response.output2().stream()
+                    .filter(price -> price.baseDate() != null)
                     .filter(price -> !price.baseDate().isBefore(startDate) && !price.baseDate().isAfter(endDate))
                     .sorted(Comparator.comparing(KisOverseasIndexDailyPrice::baseDate).reversed())
                     .map(BenchmarkPriceData.class::cast)
                     .toList();
-        } catch (RestClientException | IllegalStateException e) {
-            log.error("[KIS 어댑터] 해외 지수 시세 조회 실패 (지수코드: {}): {}", indexCode, e.getMessage());
-            return Collections.emptyList();
-        }
+        });
     }
-
 
     /**
      * 국내기관, 외국인 매매종목가 집계
      */
-    @Retry(name = "kisRetry")
     public List<InvestorTradeDetail> fetchForeignInstitutionData(String indexCode, String sorted) {
-        try {
+        return executeWithRetry(() -> {
             KisResponse<List<InvestorTradeDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/uapi/domestic-stock/v1/quotations/foreign-institution-total")
@@ -216,10 +207,40 @@ public class KisDailyPriceAdapter {
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
-            return response.output();
-        } catch (Exception e) {
-            log.error("[KIS 어댑터] 국내기관 외국인 매매종목가 집계 (지수코드: {}): {}", indexCode, e.getMessage());
-            return Collections.emptyList();
+
+            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", indexCode);
+            return (response.output() != null) ? response.output() : Collections.emptyList();
+        });
+    }
+
+    private <T> T requireSuccessfulResponse(T response, String operation, String targetId) {
+        if (response == null) {
+            throw new KisApiException(null, null, "%s 응답이 비어 있습니다. (대상: %s)".formatted(operation, targetId));
         }
+
+        String rtCd = null;
+        String msgCd = null;
+        String msg1 = null;
+
+        if (response instanceof KisPriceResponse<?, ?> priceResponse) {
+            rtCd = priceResponse.rtCd();
+            msgCd = priceResponse.msgCd();
+            msg1 = priceResponse.msg1();
+        } else if (response instanceof KisResponse<?> baseResponse) {
+            rtCd = baseResponse.rtCd();
+            msgCd = baseResponse.msgCd();
+            msg1 = baseResponse.msg1();
+        }
+
+        if (rtCd != null && !"0".equals(rtCd)) {
+            log.error("[KIS 어댑터] {} 실패 (대상: {}, rtCd: {}, msgCd: {}, msg1: {})",
+                    operation, targetId, rtCd, msgCd, msg1);
+            throw KisApiException.from(rtCd, msgCd, msg1);
+        }
+        return response;
+    }
+
+    private <T> T executeWithRetry(Supplier<T> supplier) {
+        return Retry.decorateSupplier(kisRetry, () -> kisRateLimiter.executeSupplier(supplier)).get();
     }
 }

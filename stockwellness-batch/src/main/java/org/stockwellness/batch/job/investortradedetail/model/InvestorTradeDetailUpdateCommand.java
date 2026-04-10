@@ -6,6 +6,8 @@ import java.time.LocalDate;
 public record InvestorTradeDetailUpdateCommand(
         Long stockId,
         LocalDate baseDate,
+        Long netInstitutionalBuyingQty,
+        Long netForeignBuyingQty,
         BigDecimal netInstitutionalBuyingAmt,
         BigDecimal netForeignBuyingAmt
 ) {

@@ -68,16 +68,6 @@ public class StockPriceBatchConfig {
     private final TaskExecutor kisBatchExecutor;
 
     @Bean
-    public RateLimiter kisRateLimiter() {
-        RateLimiterConfig config = RateLimiterConfig.custom()
-                .limitRefreshPeriod(Duration.ofSeconds(1))
-                .limitForPeriod(19)
-                .timeoutDuration(Duration.ofSeconds(20))
-                .build();
-        return RateLimiterRegistry.of(config).rateLimiter("kisRateLimiter");
-    }
-
-    @Bean
     public Job stockPriceBatchJob(Step stockPriceStep) {
         return new JobBuilder("stockPriceBatchJob", jobRepository)
                 .start(stockPriceStep)
@@ -112,7 +102,6 @@ public class StockPriceBatchConfig {
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
-                .retry(org.springframework.web.client.RestClientException.class)
                 .build();
     }
 
@@ -125,7 +114,7 @@ public class StockPriceBatchConfig {
                 list -> list.stream()
                         .map(StockPrice::getStock)
                         .filter(java.util.Objects::nonNull)
-                        .map(org.stockwellness.domain.stock.Stock::getTicker)
+                        .map(Stock::getTicker)
                         .reduce((first, second) -> second)
                         .orElse(null)
         );

@@ -15,8 +15,10 @@ import org.stockwellness.application.port.in.stock.result.StockSearchResult;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.event.StockSearchEvent;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -72,7 +74,7 @@ public class StockService implements StockUseCase {
                 ? latestPrice.getPreviousClosePrice() : closePrice;
         BigDecimal priceChange = closePrice.subtract(prevClose);
         BigDecimal fluctuationRate = prevClose.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
-                priceChange.divide(prevClose, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+                priceChange.divide(prevClose, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
 
         return new StockDetailResult(
                 stock.getStandardCode(),
@@ -94,7 +96,7 @@ public class StockService implements StockUseCase {
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getRsi14() : null,
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getMa20() : null,
                 (latestPrice != null && latestPrice.getIndicators() != null) ? latestPrice.getIndicators().getAiInsight() : "데이터 집계 중입니다.",
-                org.stockwellness.global.util.DateUtil.isMarketOpen()
+                DateUtil.isMarketOpen()
         );
     }
 

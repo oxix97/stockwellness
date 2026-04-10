@@ -1,19 +1,32 @@
 package org.stockwellness.adapter.in.web.batch;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
+import org.stockwellness.batch.support.exception.BatchException;
+import org.stockwellness.global.error.ErrorCode;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,6 +41,32 @@ class BatchAdminControllerTest {
 
     @MockitoBean
     private BatchMonitoringUseCase batchMonitoringUseCase;
+
+    @MockitoBean
+    private DailyBatchOrchestrationService dailyBatchOrchestrationService;
+
+    @MockitoBean
+    private KisDailyPriceAdapter kisDailyPriceAdapter;
+
+    @Test
+    void testFetchMultiPricesResponseFormat() throws Exception {
+        KisMultiStockPriceDetail detail = new KisMultiStockPriceDetail(
+                "005930", "삼성전자", "70000", "1000", "1.45",
+                "69000", "71000", "68000", "1000000", "70000000000",
+                "69000", "500000000", "300000000"
+        );
+        when(kisDailyPriceAdapter.fetchMultiStockPrices(java.util.List.of("005930")))
+                .thenReturn(java.util.List.of(detail));
+
+        mockMvc.perform(get("/api/v1/admin/batch/fetch-multi-prices")
+                        .param("tickers", "005930")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].inter_shrn_iscd").value("005930"))
+                .andExpect(jsonPath("$.data[0].inter_kor_isnm").value("삼성전자"));
+    }
 
     @Test
     void testSyncMasterResponseFormat() throws Exception {
@@ -97,5 +136,35 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.data.jobName").value("stockInvestorTradeDetailJob"))
                 .andExpect(jsonPath("$.data.statusUrl").value("/api/v1/admin/batch/status/stockInvestorTradeDetailJob"))
                 .andExpect(jsonPath("$.data.message").exists());
+    }
+
+    @Test
+    void testRunDailyFullSyncResponseFormat() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/batch/run-daily-full-sync")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.code").value("S000"))
+                .andExpect(jsonPath("$.message").value("요청이 성공적으로 처리되었습니다."))
+                .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
+
+        verify(dailyBatchOrchestrationService).runDailyFullSync();
+    }
+
+    @Test
+    void testRunDailyFullSyncFailureResponseFormat() throws Exception {
+        doThrow(new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED))
+                .when(dailyBatchOrchestrationService)
+                .runDailyFullSync();
+
+        ServletException exception = assertThrows(ServletException.class, () ->
+                mockMvc.perform(post("/api/v1/admin/batch/run-daily-full-sync")
+                        .contentType(MediaType.APPLICATION_JSON))
+        );
+
+        BatchException cause = assertInstanceOf(BatchException.class, exception.getCause());
+        assertThat(cause.getErrorCode()).isEqualTo(ErrorCode.BATCH_ORCHESTRATION_FAILED);
     }
 }

@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,11 +17,13 @@ import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
+import org.stockwellness.domain.stock.price.TradeDirection;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,6 +38,9 @@ class StockPriceRepositoryTest {
 
     @Autowired
     private StockRepository stockRepository;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     private Stock samsung;
     private Stock skHynix;
@@ -110,6 +116,23 @@ class StockPriceRepositoryTest {
     }
 
     @Test
+    @DisplayName("지정일 전체 시세 조회는 Stock 연관을 fetch join으로 초기화한다")
+    void findAllByDateWithStock_fetchJoin() {
+        LocalDate today = LocalDate.of(2026, 4, 9);
+        StockPrice samsungPrice = createStockPrice(samsung, today, BigDecimal.TEN, BigDecimal.ONE);
+        StockPrice skPrice = createStockPrice(skHynix, today, BigDecimal.TEN, BigDecimal.ONE);
+
+        stockPriceRepository.saveAll(List.of(samsungPrice, skPrice));
+        stockPriceRepository.flush();
+
+        List<StockPrice> prices = stockPriceRepository.findAllByDateWithStock(today);
+
+        assertThat(prices).hasSize(2);
+        assertThat(prices)
+                .allSatisfy(price -> assertThat(entityManagerFactory.getPersistenceUnitUtil().isLoaded(price.getStock())).isTrue());
+    }
+
+    @Test
     @DisplayName("여러 종목의 최근 가격 리스트를 조회한다")
     void findRecentPricesByStocks_Success() {
         // given
@@ -135,5 +158,179 @@ class StockPriceRepositoryTest {
         // then
         List<LocalDate> dates = recentPrices.stream().map(p -> p.getId().getBaseDate()).toList();
         assertThat(dates).contains(d1, d2, d3);
+    }
+
+    @Test
+    @DisplayName("기관 수급 랭킹 BUY 조회는 양수 수량만 포함하고 내림차순으로 정렬한다")
+    void findTopInstitutionStocksBySupply_BuyFiltersPositiveOnly() {
+        LocalDate baseDate = LocalDate.of(2026, 4, 7);
+        Stock naver = Stock.of("035420", "KR7035420009", "NAVER", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        stockRepository.save(naver);
+
+        StockPrice samsungPrice = createStockPrice(samsung, baseDate, new BigDecimal("500"), new BigDecimal("200"), 500L, 200L);
+        StockPrice skPrice = createStockPrice(skHynix, baseDate, new BigDecimal("-300"), new BigDecimal("50"), -300L, 50L);
+        StockPrice naverPrice = createStockPrice(naver, baseDate, new BigDecimal("100"), new BigDecimal("-100"), 100L, -100L);
+
+        stockPriceRepository.saveAll(List.of(samsungPrice, skPrice, naverPrice));
+        stockPriceRepository.flush();
+
+        var results = stockPriceRepository.findTopInstitutionStocksBySupply(
+                baseDate, TradeDirection.BUY, 10
+        );
+
+        assertThat(results).extracting("ticker").containsExactly("005930", "035420");
+        assertThat(results.get(0).netBuyingQuantity()).isEqualTo(500L);
+        assertThat(results.get(1).netBuyingQuantity()).isEqualTo(100L);
+        assertThat(results.get(0).netBuyingAmount()).isEqualByComparingTo("500");
+        assertThat(results.get(1).netBuyingAmount()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    @DisplayName("외국인 수급 랭킹 SELL 조회는 음수 수량만 포함하고 오름차순으로 정렬한다")
+    void findTopForeignStocksBySupply_SellFiltersNegativeOnly() {
+        LocalDate baseDate = LocalDate.of(2026, 4, 7);
+        Stock naver = Stock.of("035420", "KR7035420009", "NAVER", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        stockRepository.save(naver);
+
+        StockPrice samsungPrice = createStockPrice(samsung, baseDate, new BigDecimal("-100"), new BigDecimal("-50"), -100L, -50L);
+        StockPrice skPrice = createStockPrice(skHynix, baseDate, new BigDecimal("-400"), new BigDecimal("-200"), -400L, -200L);
+        StockPrice naverPrice = createStockPrice(naver, baseDate, BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L);
+
+        stockPriceRepository.saveAll(List.of(samsungPrice, skPrice, naverPrice));
+        stockPriceRepository.flush();
+
+        var results = stockPriceRepository.findTopForeignStocksBySupply(
+                baseDate, TradeDirection.SELL, 10
+        );
+
+        assertThat(results).extracting("ticker").containsExactly("000660", "005930");
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).netBuyingQuantity()).isEqualTo(-200L);
+        assertThat(results.get(1).netBuyingQuantity()).isEqualTo(-50L);
+        assertThat(results.get(0).netBuyingAmount()).isEqualByComparingTo("-200");
+        assertThat(results.get(1).netBuyingAmount()).isEqualByComparingTo("-50");
+    }
+
+    @Test
+    @DisplayName("기관과 외국인 수급 랭킹은 채널별 수량 컬럼과 부호 필터 규칙을 따른다")
+    void findTopStocksBySupply_UsesChannelSpecificQuantity() {
+        LocalDate baseDate = LocalDate.of(2026, 4, 7);
+
+        StockPrice samsungPrice = createStockPrice(samsung, baseDate, new BigDecimal("1"), new BigDecimal("-10"), 500L, -10L);
+        StockPrice skPrice = createStockPrice(skHynix, baseDate, new BigDecimal("-50"), new BigDecimal("-1"), -50L, -300L);
+
+        stockPriceRepository.saveAll(List.of(samsungPrice, skPrice));
+        stockPriceRepository.flush();
+
+        var institutionResults = stockPriceRepository.findTopInstitutionStocksBySupply(
+                baseDate, TradeDirection.BUY, 10
+        );
+        var foreignResults = stockPriceRepository.findTopForeignStocksBySupply(
+                baseDate, TradeDirection.SELL, 10
+        );
+
+        assertThat(institutionResults).extracting("ticker").containsExactly("005930");
+        assertThat(institutionResults.get(0).netBuyingQuantity()).isEqualTo(500L);
+        assertThat(institutionResults.get(0).netBuyingAmount()).isEqualByComparingTo("1");
+        assertThat(foreignResults).extracting("ticker").containsExactly("000660", "005930");
+        assertThat(foreignResults).hasSize(2);
+        assertThat(foreignResults.get(0).netBuyingQuantity()).isEqualTo(-300L);
+        assertThat(foreignResults.get(1).netBuyingQuantity()).isEqualTo(-10L);
+        assertThat(foreignResults.get(0).netBuyingAmount()).isEqualByComparingTo("-1");
+        assertThat(foreignResults.get(1).netBuyingAmount()).isEqualByComparingTo("-10");
+    }
+
+    @Test
+    @DisplayName("지정일 이전 또는 당일 기준 최신 적재일을 조회한다")
+    void findLatestDateOnOrBefore_Success() {
+        LocalDate oldDate = LocalDate.of(2026, 4, 3);
+        LocalDate latestDate = LocalDate.of(2026, 4, 7);
+
+        stockPriceRepository.saveAll(List.of(
+                createStockPrice(samsung, oldDate, BigDecimal.TEN, BigDecimal.ONE),
+                createStockPrice(samsung, latestDate, BigDecimal.TEN, BigDecimal.ONE)
+        ));
+        stockPriceRepository.flush();
+
+        Optional<LocalDate> result = stockPriceRepository.findLatestDateOnOrBefore(LocalDate.of(2026, 4, 5));
+
+        assertThat(result).contains(oldDate);
+    }
+
+    @Test
+    @DisplayName("최신 기관/외국인 유효 수급일은 요청 방향 기준으로 조회한다")
+    void findLatestSupplyRankingDate_Success() {
+        LocalDate buyDate = LocalDate.of(2026, 4, 7);
+        LocalDate sellDate = LocalDate.of(2026, 4, 8);
+
+        stockPriceRepository.saveAll(List.of(
+                createStockPrice(samsung, buyDate, new BigDecimal("100"), BigDecimal.ZERO, 100L, 0L),
+                createStockPrice(skHynix, sellDate, new BigDecimal("-50"), BigDecimal.ZERO, -50L, 0L)
+        ));
+        stockPriceRepository.flush();
+
+        Optional<LocalDate> latestInstitutionBuyDate =
+                stockPriceRepository.findLatestInstitutionSupplyRankingDate(TradeDirection.BUY);
+        Optional<LocalDate> latestInstitutionSellDate =
+                stockPriceRepository.findLatestInstitutionSupplyRankingDate(TradeDirection.SELL);
+
+        assertThat(latestInstitutionBuyDate).contains(buyDate);
+        assertThat(latestInstitutionSellDate).contains(sellDate);
+    }
+
+    @Test
+    @DisplayName("지정일 이전 최신 외국인 유효 수급일을 조회한다")
+    void findLatestSupplyRankingDateOnOrBefore_Success() {
+        LocalDate olderDate = LocalDate.of(2026, 4, 7);
+        LocalDate newerDate = LocalDate.of(2026, 4, 8);
+
+        stockPriceRepository.saveAll(List.of(
+                createStockPrice(samsung, olderDate, BigDecimal.ZERO, new BigDecimal("-10"), 0L, -10L),
+                createStockPrice(skHynix, newerDate, BigDecimal.ZERO, new BigDecimal("-20"), 0L, -20L)
+        ));
+        stockPriceRepository.flush();
+
+        Optional<LocalDate> result = stockPriceRepository.findLatestForeignSupplyRankingDateOnOrBefore(
+                olderDate,
+                TradeDirection.SELL
+        );
+
+        assertThat(result).contains(olderDate);
+    }
+
+    private StockPrice createStockPrice(
+            Stock stock,
+            LocalDate baseDate,
+            BigDecimal netInstitutionalBuyingAmt,
+            BigDecimal netForeignBuyingAmt
+    ) {
+        return createStockPrice(stock, baseDate, netInstitutionalBuyingAmt, netForeignBuyingAmt, 0L, 0L);
+    }
+
+    private StockPrice createStockPrice(
+            Stock stock,
+            LocalDate baseDate,
+            BigDecimal netInstitutionalBuyingAmt,
+            BigDecimal netForeignBuyingAmt,
+            Long netInstitutionalBuyingQty,
+            Long netForeignBuyingQty
+    ) {
+        return StockPrice.of(
+                stock,
+                baseDate,
+                BigDecimal.valueOf(100),
+                BigDecimal.valueOf(110),
+                BigDecimal.valueOf(90),
+                BigDecimal.valueOf(105),
+                BigDecimal.valueOf(105),
+                BigDecimal.valueOf(100),
+                1000L,
+                BigDecimal.valueOf(100000),
+                netInstitutionalBuyingAmt,
+                netForeignBuyingAmt,
+                netInstitutionalBuyingQty,
+                netForeignBuyingQty,
+                null
+        );
     }
 }

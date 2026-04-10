@@ -11,15 +11,18 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
+import org.stockwellness.adapter.out.external.kis.exception.KisAuthenticationException;
 
 import java.time.Duration;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "kis.base-url=http://localhost:${wiremock.server.port}",
@@ -82,5 +85,63 @@ class KisTokenAdapterWireMockTest {
         assertThat(token).isEqualTo("cached-token");
         verify(valueOperations).get("stockwellness:kis:token");
         // WireMock에 요청이 가지 않았어야 함 (stubFor를 사용하지 않았으므로 요청이 가면 에러가 나거나 검증 가능)
+    }
+
+    @Test
+    @DisplayName("토큰 무효화 호출 시 Redis 캐시 키를 삭제한다")
+    void invalidateAccessToken_ShouldDeleteRedisKey() {
+        kisTokenAdapter.invalidateAccessToken();
+
+        verify(redisTemplate).delete("stockwellness:kis:token");
+    }
+
+    @Test
+    @DisplayName("토큰 발급 응답의 TTL이 safety margin 이하이면 예외를 던진다")
+    void getAccessToken_WhenTtlInvalid_ShouldThrowException() {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.get(anyString())).willReturn(null);
+
+        stubFor(post(urlEqualTo("/oauth2/tokenP"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {
+                                  "access_token": "short-lived-token",
+                                  "expires_in": 300,
+                                  "token_type": "Bearer"
+                                }
+                                """)));
+
+        assertThatThrownBy(() -> kisTokenAdapter.getAccessToken())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("TTL");
+
+        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("토큰 발급 응답이 KIS 업무 오류이면 인증 예외를 던진다")
+    void getAccessToken_WhenBusinessError_ShouldThrowAuthenticationException() {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.get(anyString())).willReturn(null);
+
+        stubFor(post(urlEqualTo("/oauth2/tokenP"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {
+                                  "rt_cd": "1",
+                                  "msg_cd": "TOKEN_EXPIRED",
+                                  "msg1": "기간이 만료된 token 입니다."
+                                }
+                                """)));
+
+        assertThatThrownBy(() -> kisTokenAdapter.getAccessToken())
+                .isInstanceOf(KisAuthenticationException.class)
+                .hasMessageContaining("기간이 만료된 token");
     }
 }

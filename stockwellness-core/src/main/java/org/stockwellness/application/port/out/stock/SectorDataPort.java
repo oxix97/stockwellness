@@ -21,7 +21,8 @@ public interface SectorDataPort {
     List<BigDecimal> fetchHistoricalIndexPrices(String indexCode, LocalDate endDate, int days);
 
     /**
-     * 당일 전체 업종 데이터를 가져옵니다. (배치 Reader 용)
+     * 특정 업종 코드의 당일 상세 스냅샷을 가져옵니다.
+     * 원천 응답은 {@code SectorDailyDetail} 저장 후 {@code SectorInsight} 생성의 입력으로만 사용합니다.
      */
-    List<SectorApiDto> fetchTodaySectorData();
+    SectorDailyDetailSnapshot fetchTodaySectorDetail(String indexCode, LocalDate date);
 }

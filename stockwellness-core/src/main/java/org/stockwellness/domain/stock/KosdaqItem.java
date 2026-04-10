@@ -1,5 +1,8 @@
 package org.stockwellness.domain.stock;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 /**
  * 코스닥 종목 마스터(kosdaq_code.mst) 단일 레코드
  *
@@ -288,10 +291,9 @@ public record KosdaqItem(
      *
      * @return 상장일자, 파싱 실패 시 {@code null}
      */
-    public java.time.LocalDate listingLocalDate() {
+    public LocalDate listingLocalDate() {
         try {
-            return java.time.LocalDate.parse(listingDate,
-                    java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+            return LocalDate.parse(listingDate, DateTimeFormatter.BASIC_ISO_DATE);
         } catch (Exception e) {
             return null;
         }

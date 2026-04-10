@@ -2,13 +2,17 @@ package org.stockwellness.batch.support.operations;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
@@ -16,11 +20,16 @@ import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.job.stockmaster.application.MarketIndexSyncService;
+import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.domain.stock.price.PriceIssueType;
+import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -28,6 +37,13 @@ import java.util.List;
 public class BatchOperationsService implements BatchControlUseCase, BatchMonitoringUseCase {
 
     private static final LocalDate MIN_PRICE_SYNC_DATE = LocalDate.of(2022, 1, 1);
+    private static final Set<BatchJobType> KIS_BOUND_JOB_TYPES = EnumSet.of(
+            BatchJobType.STOCK_MASTER_SYNC,
+            BatchJobType.STOCK_PRICE_SYNC,
+            BatchJobType.SECTOR_EOD_SYNC,
+            BatchJobType.BENCHMARK_PRICE_SYNC,
+            BatchJobType.STOCK_FOREIGN_INSTITUTION
+    );
 
     @Qualifier("jobLauncher")
     private final JobLauncher jobLauncher;
@@ -35,6 +51,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     private final JobLauncher asyncJobLauncher;
     private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
+    private final JobRepository jobRepository;
     private final Job stockMasterSyncJob;
     private final Job stockPriceBatchJob;
     private final Job sectorEodJob;
@@ -49,6 +66,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     @Override
     public BatchExecutionResult launchAsync(BatchLaunchCommand command) {
         Job job = resolveJob(command.jobType());
+        ensureNoRunningPriceSync(command, job);
         JobParameters parameters = buildParameters(command);
         return toResult(runJob(asyncJobLauncher, job, parameters));
     }
@@ -56,6 +74,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     @Override
     public BatchExecutionResult launchSync(BatchLaunchCommand command) {
         Job job = resolveJob(command.jobType());
+        ensureNoRunningPriceSync(command, job);
         JobParameters parameters = buildParameters(command);
         return toResult(runJob(jobLauncher, job, parameters));
     }
@@ -85,6 +104,50 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         } catch (Exception e) {
             return "오류 발생: " + e.getMessage();
         }
+    }
+
+    @Override
+    public String abandon(Long executionId) {
+        JobExecution jobExecution = jobExplorer.getJobExecution(executionId);
+        if (jobExecution == null) {
+            return "존재하지 않는 executionId입니다: " + executionId;
+        }
+
+        if (jobExecution.getStatus().isRunning()) {
+            markExecutionAsFailed(jobExecution);
+            return "배치 실행을 강제 종료 처리했습니다. (FAILED)";
+        }
+        return "이미 종료된 배치입니다. (Status: " + jobExecution.getStatus() + ")";
+    }
+
+    public void cleanupStuckJobs() {
+        log.info("[배치] 시작 시 멈춰있는 배치 정리 시작...");
+        for (String jobName : jobExplorer.getJobNames()) {
+            Set<JobExecution> runningExecutions = jobExplorer.findRunningJobExecutions(jobName);
+            for (JobExecution execution : runningExecutions) {
+                log.warn("[배치] 멈춰있는 배치 발견: id={}, jobName={}, status={}. FAILED로 마킹합니다.",
+                        execution.getId(), jobName, execution.getStatus());
+                markExecutionAsFailed(execution);
+            }
+        }
+        log.info("[배치] 시작 시 멈춰있는 배치 정리 완료");
+    }
+
+    private void markExecutionAsFailed(JobExecution jobExecution) {
+        LocalDateTime now = LocalDateTime.now();
+        jobExecution.setStatus(BatchStatus.FAILED);
+        jobExecution.setExitStatus(ExitStatus.FAILED);
+        jobExecution.setEndTime(now);
+
+        for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
+            if (stepExecution.getStatus().isRunning()) {
+                stepExecution.setStatus(BatchStatus.FAILED);
+                stepExecution.setExitStatus(ExitStatus.FAILED);
+                stepExecution.setEndTime(now);
+                jobRepository.update(stepExecution);
+            }
+        }
+        jobRepository.update(jobExecution);
     }
 
     @Override
@@ -139,6 +202,22 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         }
     }
 
+    private void ensureNoRunningPriceSync(BatchLaunchCommand command, Job job) {
+        if (!KIS_BOUND_JOB_TYPES.contains(command.jobType())) {
+            return;
+        }
+
+        String jobName = command.jobType().jobName();
+        var runningExecutions = jobExplorer.findRunningJobExecutions(jobName);
+        if (runningExecutions == null || runningExecutions.isEmpty()) {
+            return;
+        }
+
+        log.warn("[배치] KIS 연동 배치 중복 실행 차단 jobType={}, jobName={}, runningExecutionCount={}",
+                command.jobType(), jobName, runningExecutions.size());
+        throw new BatchException(ErrorCode.BATCH_JOB_ALREADY_RUNNING);
+    }
+
     private JobParameters buildParameters(BatchLaunchCommand command) {
         validateTargetTicker(command);
 
@@ -151,16 +230,13 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         }
 
         if (command.jobType() == BatchJobType.STOCK_PRICE_SYNC || command.jobType() == BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC) {
-            builder.addString("startDate", normalizePriceDate(command.startDate(), true));
-            builder.addString("endDate", normalizePriceDate(command.endDate(), false));
+            addStringIfPresent(builder, "startDate", normalizePriceDate(command.startDate(), true));
+            addStringIfPresent(builder, "endDate", normalizePriceDate(command.endDate(), false));
         } else if (command.jobType() == BatchJobType.BENCHMARK_PRICE_SYNC) {
-            builder.addString("startDate", normalizeDate(command.startDate()));
-            builder.addString("endDate", normalizeDate(command.endDate()));
+            addStringIfPresent(builder, "startDate", normalizeDate(command.startDate()));
+            addStringIfPresent(builder, "endDate", normalizeDate(command.endDate()));
         } else if (command.jobType() == BatchJobType.STOCK_FOREIGN_INSTITUTION) {
-            builder.addString("baseDate", normalizeDate(command.startDate()));
-        } else {
-            builder.addString("startDate", command.startDate());
-            builder.addString("endDate", command.endDate());
+            addStringIfPresent(builder, "baseDate", normalizeDate(command.startDate()));
         }
 
         if (command.targetTicker() != null) {
@@ -170,6 +246,12 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
             builder.addString("publishEvent", String.valueOf(command.publishEvent()));
         }
         return builder.toJobParameters();
+    }
+
+    private void addStringIfPresent(JobParametersBuilder builder, String key, String value) {
+        if (value != null) {
+            builder.addString(key, value);
+        }
     }
 
     private BatchExecutionResult toResult(JobExecution execution) {

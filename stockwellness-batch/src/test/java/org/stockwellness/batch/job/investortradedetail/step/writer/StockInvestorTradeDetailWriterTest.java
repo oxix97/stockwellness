@@ -32,8 +32,8 @@ class StockInvestorTradeDetailWriterTest {
         StockInvestorTradeDetailWriter writer = new StockInvestorTradeDetailWriter(jdbcTemplate);
 
         writer.write(new Chunk<>(
-                new InvestorTradeDetailUpdateCommand(1L, LocalDate.of(2026, 4, 8), new BigDecimal("100"), new BigDecimal("200")),
-                new InvestorTradeDetailUpdateCommand(2L, LocalDate.of(2026, 4, 8), new BigDecimal("300"), new BigDecimal("400"))
+                new InvestorTradeDetailUpdateCommand(1L, LocalDate.of(2026, 4, 8), 10L, 20L, new BigDecimal("100"), new BigDecimal("200")),
+                new InvestorTradeDetailUpdateCommand(2L, LocalDate.of(2026, 4, 8), 30L, 40L, new BigDecimal("300"), new BigDecimal("400"))
         ));
 
         verify(jdbcTemplate).batchUpdate(ArgumentMatchers.contains("UPDATE stock_price"), ArgumentMatchers.any(BatchPreparedStatementSetter.class));

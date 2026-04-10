@@ -74,4 +74,33 @@ class BenchmarkPriceSyncJobIntegrationTest extends BatchIntegrationTestSupport {
         // 검증
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
     }
+
+    @Test
+    @DisplayName("일부 지수 조회가 실패해도 다른 지수 데이터가 있으면 배치는 완료된다")
+    void benchmarkPriceSyncJob_CompletesWhenSomeBenchmarksFail() throws Exception {
+        String startDate = "20240101";
+        String endDate = "20240102";
+
+        BenchmarkPriceData mockData = mock(BenchmarkPriceData.class);
+        given(mockData.baseDate()).willReturn(LocalDate.of(2024, 1, 1));
+        given(mockData.closePrice()).willReturn(new BigDecimal("5300.00"));
+        given(mockData.prdyVrss()).willReturn(new BigDecimal("15.00"));
+        given(mockData.prdyCtrt()).willReturn(new BigDecimal("0.3"));
+        given(mockData.volume()).willReturn(500000L);
+
+        given(kisDailyPriceAdapter.fetchIndexDailyPrices(anyString(), any(), any()))
+                .willThrow(new IllegalStateException("국내 지수 응답 오류"));
+        given(kisDailyPriceAdapter.fetchOverseasIndexDailyPrices(anyString(), any(), any()))
+                .willReturn(List.of(mockData));
+
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addString("startDate", startDate)
+                .addString("endDate", endDate)
+                .addLong("timestamp", System.currentTimeMillis())
+                .toJobParameters();
+
+        JobExecution jobExecution = jobLauncher.run(job, jobParameters);
+
+        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+    }
 }

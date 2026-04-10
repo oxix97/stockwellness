@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
+import org.stockwellness.adapter.out.external.kis.exception.KisAuthenticationException;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
 
@@ -36,20 +38,25 @@ public class KisTokenAdapter {
 
     public String getAccessToken() {
         String cachedToken = redisTemplate.opsForValue().get(REDIS_TOKEN_KEY);
-        if (cachedToken != null) {
+        if (hasText(cachedToken)) {
             return cachedToken;
         }
 
         // 2. 동시성 제어 (배치 환경 고려 synchronized 사용)
         synchronized (this) {
             cachedToken = redisTemplate.opsForValue().get(REDIS_TOKEN_KEY);
-            if (cachedToken != null) {
+            if (hasText(cachedToken)) {
                 return cachedToken;
             }
 
             log.info("KIS Access Token이 만료되어 재발급을 시도합니다.");
             return refreshAccessToken();
         }
+    }
+
+    public void invalidateAccessToken() {
+        redisTemplate.delete(REDIS_TOKEN_KEY);
+        log.info("KIS Access Token 캐시를 무효화했습니다.");
     }
 
     private String refreshAccessToken() {
@@ -66,16 +73,31 @@ public class KisTokenAdapter {
                 .retrieve()
                 .body(KisTokenResponse.class);
 
-        if (response == null || response.accessToken() == null) {
+        if (response == null) {
             throw new GlobalException(ErrorCode.BATCH_EXECUTION_FAILED);
         }
 
-        // 4. Redis 저장
+        if (response.hasBusinessError()) {
+            throw new KisAuthenticationException(response.rtCd(), response.msgCd(), response.msg1());
+        }
+
+        if (!hasText(response.accessToken())) {
+            throw new GlobalException(ErrorCode.BATCH_EXECUTION_FAILED);
+        }
+
         long ttl = response.expiresIn() - SAFETY_MARGIN_SECONDS;
+        if (ttl <= 0) {
+            throw new KisApiException(response.rtCd(), response.msgCd(), "KIS Access Token TTL이 유효하지 않습니다.");
+        }
+
         redisTemplate.opsForValue().set(REDIS_TOKEN_KEY, response.accessToken(), Duration.ofSeconds(ttl));
 
         log.info("KIS Access Token 재발급 완료. TTL: {}초", ttl);
         return response.accessToken();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     record KisTokenRequest(
@@ -85,9 +107,15 @@ public class KisTokenAdapter {
     ) {
     }
     record KisTokenResponse(
+            @JsonProperty("rt_cd") String rtCd,
+            @JsonProperty("msg_cd") String msgCd,
+            @JsonProperty("msg1") String msg1,
             @JsonProperty("access_token") String accessToken,
             @JsonProperty("expires_in") long expiresIn,
             @JsonProperty("token_type") String tokenType
     ) {
+        boolean hasBusinessError() {
+            return rtCd != null && !"0".equals(rtCd);
+        }
     }
 }

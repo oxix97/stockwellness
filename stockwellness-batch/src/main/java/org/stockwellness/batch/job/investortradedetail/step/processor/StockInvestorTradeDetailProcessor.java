@@ -41,22 +41,45 @@ public class StockInvestorTradeDetailProcessor implements ItemProcessor<Investor
             stockCache.put(ticker, stock);
         }
         if (stock == null) {
-            log.warn("[투자주체 보정 Processor] 종목 매핑을 찾지 못해 건너뜁니다. ticker={}", ticker);
+            log.warn("[투자주체 수급 보정 Processor] 종목 매핑을 찾지 못해 건너뜁니다. ticker={}", ticker);
             return null;
         }
 
+        Long institutionalQuantity = parseQuantity(item.institutionalBuyingQtyText(), ticker, "institutionalQuantity");
+        Long foreignQuantity = parseQuantity(item.foreignBuyingQtyText(), ticker, "foreignQuantity");
         BigDecimal institutionalAmount = parsePbmn(item.institutionalBuyingAmtText(), ticker, "institutional");
         BigDecimal foreignAmount = parsePbmn(item.foreignBuyingAmtText(), ticker, "foreign");
-        if (institutionalAmount == null || foreignAmount == null) {
+        if (institutionalQuantity == null || foreignQuantity == null
+                || institutionalAmount == null || foreignAmount == null) {
             return null;
         }
 
         return new InvestorTradeDetailUpdateCommand(
                 stock.getId(),
                 baseDate,
+                institutionalQuantity,
+                foreignQuantity,
                 institutionalAmount,
                 foreignAmount
         );
+    }
+
+    private Long parseQuantity(String raw, String ticker, String fieldName) {
+        if (!StringUtils.hasText(raw)) {
+            return 0L;
+        }
+
+        try {
+            return Long.parseLong(raw.replace(",", "").trim());
+        } catch (NumberFormatException exception) {
+            log.warn(
+                    "[투자주체 수급 보정 Processor] 수량 파싱에 실패해 건너뜁니다. ticker={}, field={}, value={}",
+                    ticker,
+                    fieldName,
+                    raw
+            );
+            return null;
+        }
     }
 
     private BigDecimal parsePbmn(String raw, String ticker, String fieldName) {
@@ -68,7 +91,7 @@ public class StockInvestorTradeDetailProcessor implements ItemProcessor<Investor
             return new BigDecimal(raw.replace(",", "").trim()).multiply(PBMN_MULTIPLIER);
         } catch (NumberFormatException exception) {
             log.warn(
-                    "[투자주체 보정 Processor] 금액 파싱에 실패해 건너뜁니다. ticker={}, field={}, value={}",
+                    "[투자주체 수급 보정 Processor] 금액 파싱에 실패해 건너뜁니다. ticker={}, field={}, value={}",
                     ticker,
                     fieldName,
                     raw

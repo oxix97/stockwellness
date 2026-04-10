@@ -61,6 +61,15 @@ public class StockPrice {
     @Column(name = "net_foreign_buying_amt", precision = 25, scale = 2)
     private BigDecimal netForeignBuyingAmt = BigDecimal.ZERO;
 
+    @Column(name = "net_institutional_buying_qty")
+    private Long netInstitutionalBuyingQty = 0L;
+
+    @Column(name = "net_foreign_buying_qty")
+    private Long netForeignBuyingQty = 0L;
+
+    @Column(name = "net_total_buying_amt", precision = 25, scale = 2)
+    private BigDecimal netTotalBuyingAmt = BigDecimal.ZERO;
+
     @Embedded
     private TechnicalIndicators indicators;
 
@@ -90,6 +99,30 @@ public class StockPrice {
                                 BigDecimal close, BigDecimal adjClose, BigDecimal previousClose,
                                 Long volume, BigDecimal transactionAmt, BigDecimal netInstitutionalBuyingAmt,
                                 BigDecimal netForeignBuyingAmt, TechnicalIndicators indicators) {
+        return of(
+                stock,
+                baseDate,
+                open,
+                high,
+                low,
+                close,
+                adjClose,
+                previousClose,
+                volume,
+                transactionAmt,
+                netInstitutionalBuyingAmt,
+                netForeignBuyingAmt,
+                0L,
+                0L,
+                indicators
+        );
+    }
+
+    public static StockPrice of(Stock stock, LocalDate baseDate, BigDecimal open, BigDecimal high, BigDecimal low,
+                                BigDecimal close, BigDecimal adjClose, BigDecimal previousClose,
+                                Long volume, BigDecimal transactionAmt, BigDecimal netInstitutionalBuyingAmt,
+                                BigDecimal netForeignBuyingAmt, Long netInstitutionalBuyingQty,
+                                Long netForeignBuyingQty, TechnicalIndicators indicators) {
         var entity = new StockPrice();
         entity.id = new StockPriceId(baseDate, stock.getId());
         entity.stock = stock;
@@ -103,6 +136,9 @@ public class StockPrice {
         entity.transactionAmt = transactionAmt;
         entity.netInstitutionalBuyingAmt = (netInstitutionalBuyingAmt != null) ? netInstitutionalBuyingAmt : BigDecimal.ZERO;
         entity.netForeignBuyingAmt = (netForeignBuyingAmt != null) ? netForeignBuyingAmt : BigDecimal.ZERO;
+        entity.netInstitutionalBuyingQty = (netInstitutionalBuyingQty != null) ? netInstitutionalBuyingQty : 0L;
+        entity.netForeignBuyingQty = (netForeignBuyingQty != null) ? netForeignBuyingQty : 0L;
+        entity.netTotalBuyingAmt = entity.netInstitutionalBuyingAmt.add(entity.netForeignBuyingAmt);
         entity.indicators = indicators;
         return entity;
     }

@@ -39,7 +39,6 @@ class Samsung2023PriceSyncTest {
 
     private StockPriceBatchService stockPriceBatchService;
     private StockPricePort stockPricePort;
-    private RateLimiter kisRateLimiter;
     private ObjectMapper objectMapper;
 
     private Stock samsung;
@@ -47,18 +46,12 @@ class Samsung2023PriceSyncTest {
     @BeforeEach
     void setUp() {
         stockPricePort = Mockito.mock(StockPricePort.class);
-        kisRateLimiter = Mockito.mock(RateLimiter.class);
 
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
 
-        stockPriceBatchService = new StockPriceBatchService(stockPricePort, kisRateLimiter);
+        stockPriceBatchService = new StockPriceBatchService(stockPricePort);
         samsung = createSamsungStock();
-
-        when(kisRateLimiter.executeSupplier(any())).thenAnswer(invocation -> {
-            Supplier<?> supplier = invocation.getArgument(0);
-            return supplier.get();
-        });
     }
 
     @Test

@@ -36,12 +36,14 @@ class StockInvestorTradeDetailProcessorTest {
                 new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
 
         InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "12.5", "3")
+                new InvestorTradeDetailUpdateSource("005930", "1200", "300", "12.5", "3")
         );
 
         assertThat(result).isNotNull();
         assertThat(result.stockId()).isEqualTo(1L);
         assertThat(result.baseDate()).isEqualTo(LocalDate.of(2026, 4, 8));
+        assertThat(result.netInstitutionalBuyingQty()).isEqualTo(1200L);
+        assertThat(result.netForeignBuyingQty()).isEqualTo(300L);
         assertThat(result.netInstitutionalBuyingAmt()).isEqualByComparingTo(new BigDecimal("12500000.0"));
         assertThat(result.netForeignBuyingAmt()).isEqualByComparingTo(new BigDecimal("3000000"));
     }
@@ -57,10 +59,12 @@ class StockInvestorTradeDetailProcessorTest {
                 new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
 
         InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "", null)
+                new InvestorTradeDetailUpdateSource("005930", "", null, "", null)
         );
 
         assertThat(result).isNotNull();
+        assertThat(result.netInstitutionalBuyingQty()).isZero();
+        assertThat(result.netForeignBuyingQty()).isZero();
         assertThat(result.netInstitutionalBuyingAmt()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(result.netForeignBuyingAmt()).isEqualByComparingTo(BigDecimal.ZERO);
     }
@@ -76,7 +80,7 @@ class StockInvestorTradeDetailProcessorTest {
                 new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
 
         InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "invalid", "3")
+                new InvestorTradeDetailUpdateSource("005930", "10", "3", "invalid", "3")
         );
 
         assertThat(result).isNull();

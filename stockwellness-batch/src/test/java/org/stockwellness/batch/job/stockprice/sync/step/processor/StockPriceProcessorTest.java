@@ -26,13 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.stockwellness.batch.job.stockprice.sync.support.StockPriceTestFixture.createSamsungStock;
 
 class StockPriceProcessorTest {
 
     private StockPricePort stockPricePort;
-    private RateLimiter kisRateLimiter;
     private StockPriceBatchService stockPriceBatchService;
 
     private Stock samsung;
@@ -40,14 +41,8 @@ class StockPriceProcessorTest {
     @BeforeEach
     void setUp() {
         stockPricePort = Mockito.mock(StockPricePort.class);
-        kisRateLimiter = Mockito.mock(RateLimiter.class);
-        stockPriceBatchService = new StockPriceBatchService(stockPricePort, kisRateLimiter);
+        stockPriceBatchService = new StockPriceBatchService(stockPricePort);
         samsung = createSamsungStock();
-
-        when(kisRateLimiter.executeSupplier(any())).thenAnswer(invocation -> {
-            Supplier<?> supplier = invocation.getArgument(0);
-            return supplier.get();
-        });
     }
 
     @Test
@@ -119,6 +114,8 @@ class StockPriceProcessorTest {
         assertThat(indicators.getMa5()).isNull();
         assertThat(indicators.getAlignmentStatus()).isEqualTo(AlignmentStatus.MIXED);
     }
+
+
 
     private DailyStockPriceSnapshot dailySnapshot(LocalDate date, int price) {
         return new DailyStockPriceSnapshot(

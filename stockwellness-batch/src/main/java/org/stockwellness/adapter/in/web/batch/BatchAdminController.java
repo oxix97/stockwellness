@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
@@ -23,6 +26,16 @@ public class BatchAdminController {
 
     private final BatchControlUseCase batchControlUseCase;
     private final BatchMonitoringUseCase batchMonitoringUseCase;
+    private final DailyBatchOrchestrationService dailyBatchOrchestrationService;
+    private final KisDailyPriceAdapter kisDailyPriceAdapter;
+
+    /**
+     * KIS 어댑터를 직접 호출하여 여러 종목의 현재가/시세를 즉시 조회 (테스트/관리용)
+     */
+    @GetMapping("/fetch-multi-prices")
+    public ApiResponse<List<KisMultiStockPriceDetail>> fetchMultiPrices(@RequestParam List<String> tickers) {
+        return ApiResponse.success(kisDailyPriceAdapter.fetchMultiStockPrices(tickers));
+    }
 
     /**
      * 업종/지수 마스터(idxcode.mst) 동기화
@@ -85,6 +98,15 @@ public class BatchAdminController {
                         false
                 )
         )));
+    }
+
+    /**
+     * 스케줄러와 동일한 6단계 일일 오케스트레이션 수동 실행
+     */
+    @PostMapping("/run-daily-full-sync")
+    public ApiResponse<Void> runDailyFullSync() {
+        dailyBatchOrchestrationService.runDailyFullSync();
+        return ApiResponse.success();
     }
 
     /**
@@ -167,7 +189,7 @@ public class BatchAdminController {
     }
 
     /**
-     * 투자주체 순매수 금액 보정 배치 실행
+     * 투자주체 순매수 금액 보정 배치 실행 (랭킹 보정용)
      */
     @PostMapping("/sync-investor-trade-detail")
     public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync(
@@ -226,6 +248,14 @@ public class BatchAdminController {
     @PostMapping("/stop/{executionId}")
     public ApiResponse<String> stopJob(@PathVariable Long executionId) {
         return ApiResponse.success(batchControlUseCase.stop(new BatchControlUseCase.BatchStopCommand(executionId)));
+    }
+
+    /**
+     * 멈춰있는 배치 강제 종료 (Status를 FAILED로 변경)
+     */
+    @PostMapping("/abandon/{executionId}")
+    public ApiResponse<String> abandonJob(@PathVariable Long executionId) {
+        return ApiResponse.success(batchControlUseCase.abandon(executionId));
     }
 
     private BatchExecutionResponse toExecutionResponse(BatchControlUseCase.BatchExecutionResult result) {

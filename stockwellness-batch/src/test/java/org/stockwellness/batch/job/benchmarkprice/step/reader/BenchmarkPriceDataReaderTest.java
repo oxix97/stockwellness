@@ -41,7 +41,9 @@ class BenchmarkPriceDataReaderTest {
 
         assertThatThrownBy(reader::read)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("지수 시세 동기화 결과가 비어 있습니다");
+                .hasMessageContaining("지수 시세 동기화 결과가 비어 있습니다")
+                .hasMessageContaining("attemptedBenchmarks=")
+                .hasMessageContaining("emptyCount=");
     }
 
     @Test
@@ -66,6 +68,33 @@ class BenchmarkPriceDataReaderTest {
         BenchmarkPriceDataWrapper second = reader.read();
 
         assertThat(first.type()).isEqualTo(BenchmarkType.KOSPI);
+        assertThat(first.data().closePrice()).isEqualByComparingTo("2500.00");
+        assertThat(second).isNull();
+    }
+
+    @Test
+    @DisplayName("일부 지수 조회가 실패해도 다른 지수 데이터가 있으면 계속 진행한다")
+    void read_continuesWhenSomeBenchmarksFailButOthersSucceed() {
+        BenchmarkPriceData sample = new TestBenchmarkPriceData(LocalDate.of(2026, 4, 3), new BigDecimal("2500.00"));
+
+        given(kisDailyPriceAdapter.fetchIndexDailyPrices(any(), any(), any()))
+                .willThrow(new IllegalStateException("국내 지수 조회 실패"));
+        given(kisDailyPriceAdapter.fetchOverseasIndexDailyPrices(any(), any(), any()))
+                .willReturn(Collections.emptyList());
+        given(kisDailyPriceAdapter.fetchOverseasIndexDailyPrices(eq(BenchmarkType.S_P_500.getTicker()), any(), any()))
+                .willReturn(List.of(sample));
+
+        BenchmarkPriceDataReader reader = new BenchmarkPriceDataReader(
+                kisDailyPriceAdapter,
+                LocalDate.of(2026, 4, 3),
+                LocalDate.of(2026, 4, 3)
+        );
+
+        BenchmarkPriceDataWrapper first = reader.read();
+        BenchmarkPriceDataWrapper second = reader.read();
+
+        assertThat(first).isNotNull();
+        assertThat(first.type().isOverseas()).isTrue();
         assertThat(first.data().closePrice()).isEqualByComparingTo("2500.00");
         assertThat(second).isNull();
     }

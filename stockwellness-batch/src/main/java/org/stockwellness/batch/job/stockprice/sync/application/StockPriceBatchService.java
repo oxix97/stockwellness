@@ -1,6 +1,5 @@
 package org.stockwellness.batch.job.stockprice.sync.application;
 
-import io.github.resilience4j.ratelimiter.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 
 @Slf4j
 @Service
@@ -37,7 +40,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
     private static final LocalDate EARLIEST_BASE_DATE = LocalDate.of(2022, 1, 1);
 
     private final StockPricePort stockPricePort;
-    private final RateLimiter kisRateLimiter;
+    private final AtomicInteger kisRateLimitDetectionCount = new AtomicInteger();
 
     @Override
     public StockPriceSyncResult sync(StockPriceBatchCommand command) {
@@ -136,7 +139,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             return List.of();
         }
 
-        List<MultiStockPriceSnapshot> apiResults = kisRateLimiter.executeSupplier(() ->
+        List<MultiStockPriceSnapshot> apiResults = executeKisCall("multi-stock-prices", () ->
                 stockPricePort.fetchMultiStockPrices(stocks.stream().map(Stock::getTicker).toList())
         );
         Map<String, MultiStockPriceSnapshot> apiResultMap = apiResults.stream()
@@ -216,7 +219,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
         }
 
         LocalDate investorFetchStart = endDate.minusDays(RECENT_SUPPLY_DEMAND_DAYS);
-        Map<LocalDate, InvestorTradingSnapshot> investorMap = kisRateLimiter.executeSupplier(() ->
+        Map<LocalDate, InvestorTradingSnapshot> investorMap = executeKisCall("investor-trading-snapshots", () ->
                         stockPricePort.fetchInvestorTradingSnapshots(stock, investorFetchStart, endDate))
                 .stream()
                 .collect(Collectors.toMap(InvestorTradingSnapshot::baseDate, value -> value, (left, right) -> left));
@@ -302,7 +305,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
             final LocalDate finalChunkStartDate = chunkStartDate;
             final LocalDate finalCursorDate = cursorDate;
-            List<DailyStockPriceSnapshot> response = kisRateLimiter.executeSupplier(() ->
+            List<DailyStockPriceSnapshot> response = executeKisCall("daily-prices:%s".formatted(stock.getTicker()), () ->
                     stockPricePort.fetchDailyPrices(stock, finalChunkStartDate, finalCursorDate)
             );
 
@@ -322,6 +325,20 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
     private BigDecimal defaultDecimal(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private <T> T executeKisCall(String operation, Supplier<T> supplier) {
+        log.info("[KIS 배치] 호출 준비 operation={}", operation);
+        try {
+            return supplier.get();
+        } catch (KisApiException exception) {
+            if (exception.isRateLimitExceeded()) {
+                int detectionCount = kisRateLimitDetectionCount.incrementAndGet();
+                log.warn("[KIS 배치] KIS 호출 제한 감지 operation={}, detectionCount={}, msgCd={}, msg1={}",
+                        operation, detectionCount, exception.msgCd(), exception.msg1());
+            }
+            throw exception;
+        }
     }
 
     private record OHLCRecord(

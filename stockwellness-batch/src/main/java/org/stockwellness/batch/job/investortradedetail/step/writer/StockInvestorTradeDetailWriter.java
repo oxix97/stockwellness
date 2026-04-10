@@ -38,12 +38,18 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
                 """
                 UPDATE stock_price
                    SET net_institutional_buying_amt = %s,
-                       net_foreign_buying_amt = %s
+                       net_foreign_buying_amt = %s,
+                       net_total_buying_amt = %s,
+                       net_institutional_buying_qty = %s,
+                       net_foreign_buying_qty = %s
                  WHERE stock_id = %s
                    AND base_date = %s
                 """,
                 QueryTypeUtil.NUMERIC,
                 QueryTypeUtil.NUMERIC,
+                QueryTypeUtil.NUMERIC,
+                QueryTypeUtil.BIGINT,
+                QueryTypeUtil.BIGINT,
                 QueryTypeUtil.BIGINT,
                 QueryTypeUtil.DATE
         );
@@ -54,8 +60,11 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
                 InvestorTradeDetailUpdateCommand item = items.get(i);
                 ps.setBigDecimal(1, item.netInstitutionalBuyingAmt());
                 ps.setBigDecimal(2, item.netForeignBuyingAmt());
-                ps.setLong(3, item.stockId());
-                ps.setDate(4, DateUtil.toSqlDate(item.baseDate()));
+                ps.setBigDecimal(3, item.netInstitutionalBuyingAmt().add(item.netForeignBuyingAmt()));
+                ps.setLong(4, item.netInstitutionalBuyingQty());
+                ps.setLong(5, item.netForeignBuyingQty());
+                ps.setLong(6, item.stockId());
+                ps.setDate(7, DateUtil.toSqlDate(item.baseDate()));
             }
 
             @Override
@@ -68,7 +77,7 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
             if (updated[i] == 0) {
                 InvestorTradeDetailUpdateCommand item = items.get(i);
                 log.info(
-                        "[투자주체 보정 Writer] 대상 stock_price 행이 없어 업데이트를 건너뜁니다. stockId={}, baseDate={}",
+                        "[투자주체 수급 보정 Writer] 대상 stock_price 행이 없어 업데이트를 건너뜁니다. stockId={}, baseDate={}",
                         item.stockId(),
                         item.baseDate()
                 );

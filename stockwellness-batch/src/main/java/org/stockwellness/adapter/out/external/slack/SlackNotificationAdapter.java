@@ -21,7 +21,7 @@ public class SlackNotificationAdapter implements NotificationPort {
 
     public SlackNotificationAdapter(
         RestClient.Builder restClientBuilder,
-        @Value("${slack.webhook.url:}") String webhookUrl
+        @Value("${slack.webhook.url}") String webhookUrl
     ) {
         this.restClient = restClientBuilder.build();
         this.webhookUrl = webhookUrl;

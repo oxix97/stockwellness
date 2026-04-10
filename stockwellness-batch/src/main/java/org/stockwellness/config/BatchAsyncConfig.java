@@ -30,9 +30,9 @@ public class BatchAsyncConfig {
     @Bean(name = "kisBatchExecutor")
     public TaskExecutor kisBatchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);      // 3 -> 10으로 상향 (19 TPS 달성용)
-        executor.setMaxPoolSize(15);
-        executor.setQueueCapacity(1000);   // 대기 큐 확장
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(1000);
         executor.setThreadNamePrefix("Batch-KIS-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

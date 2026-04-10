@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.out.external.kis.config;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -12,14 +13,23 @@ import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.adapter.KisTokenAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @Slf4j
@@ -27,6 +37,9 @@ import java.time.Duration;
 @EnableConfigurationProperties(KisProperties.class)
 @RequiredArgsConstructor
 public class KisClientConfig {
+
+    private static final Duration AUTH_READ_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration API_READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final KisProperties kisProperties;
 
@@ -39,7 +52,7 @@ public class KisClientConfig {
     public RestClient kisAuthClient(RestClient.Builder builder) {
         return builder
                 .baseUrl(kisProperties.baseUrl())
-                .requestFactory(simpleClientFactory())
+                .requestFactory(bufferingRequestFactory(simpleClientFactory()))
                 .defaultHeader("Content-Type", "application/json; charset=utf-8")
                 .build();
     }
@@ -54,7 +67,7 @@ public class KisClientConfig {
     public RestClient kisApiClient(RestClient.Builder builder, KisTokenAdapter tokenAdapter) {
         return builder
                 .baseUrl(kisProperties.baseUrl())
-                .requestFactory(poolingClientFactory())
+                .requestFactory(bufferingRequestFactory(poolingClientFactory()))
                 .requestInterceptor(tokenAuthInterceptor(tokenAdapter))
                 .defaultHeader("appkey", kisProperties.appKey())
                 .defaultHeader("appsecret", kisProperties.appSecret())
@@ -81,6 +94,7 @@ public class KisClientConfig {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
         factory.setConnectTimeout(Duration.ofSeconds(10));
         factory.setConnectionRequestTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(API_READ_TIMEOUT);
         return factory;
     }
 
@@ -89,7 +103,12 @@ public class KisClientConfig {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setConnectionRequestTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(AUTH_READ_TIMEOUT);
         return factory;
+    }
+
+    private ClientHttpRequestFactory bufferingRequestFactory(ClientHttpRequestFactory delegate) {
+        return new BufferingClientHttpRequestFactory(delegate);
     }
 
     // ObjectMapper 커스텀 (안전성 확보)
@@ -102,10 +121,74 @@ public class KisClientConfig {
 
     // 토큰 주입 Interceptor
     private ClientHttpRequestInterceptor tokenAuthInterceptor(KisTokenAdapter tokenAdapter) {
-        return (request, body, execution) -> {
-            String token = tokenAdapter.getAccessToken();
-            request.getHeaders().add("Authorization", "Bearer " + token);
-            return execution.execute(request, body);
-        };
+        return (request, body, execution) -> executeWithRetry(request, body, execution, tokenAdapter, false);
+    }
+
+    private ClientHttpResponse executeWithRetry(
+            org.springframework.http.HttpRequest request,
+            byte[] body,
+            ClientHttpRequestExecution execution,
+            KisTokenAdapter tokenAdapter,
+            boolean retried
+    ) throws IOException {
+        request.getHeaders().setBearerAuth(tokenAdapter.getAccessToken());
+
+        ClientHttpResponse response = execution.execute(request, body);
+        KisApiException error = inspectBusinessError(response);
+        if (error == null) {
+            return response;
+        }
+
+        if (error.isTokenExpired() && !retried) {
+            log.warn("KIS 토큰 만료 응답 감지. 캐시 토큰을 폐기하고 1회 재시도합니다. msgCd={}, msg1={}", error.msgCd(), error.msg1());
+            response.close();
+            tokenAdapter.invalidateAccessToken();
+            return executeWithRetry(request, body, execution, tokenAdapter, true);
+        }
+
+        log.error("KIS 업무 오류 응답 감지. 재시도 여부={}, msgCd={}, msg1={}", retried, error.msgCd(), error.msg1());
+        throw error;
+    }
+
+    private KisApiException inspectBusinessError(ClientHttpResponse response) throws IOException {
+        byte[] responseBody = StreamUtils.copyToByteArray(response.getBody());
+        if (!isJsonPayload(response.getHeaders(), responseBody)) {
+            return null;
+        }
+
+        JsonNode root = kisObjectMapper().readTree(responseBody);
+        if (root == null || !root.isObject()) {
+            return null;
+        }
+
+        String rtCd = text(root, "rt_cd", "rtCd");
+        if (rtCd == null || "0".equals(rtCd)) {
+            return null;
+        }
+
+        String msgCd = text(root, "msg_cd", "msgCd");
+        String msg1 = text(root, "msg1");
+        return KisApiException.from(rtCd, msgCd, msg1);
+    }
+
+    private boolean isJsonPayload(HttpHeaders headers, byte[] responseBody) {
+        MediaType contentType = headers.getContentType();
+        if (contentType != null && (MediaType.APPLICATION_JSON.includes(contentType)
+                || contentType.getSubtype().endsWith("+json"))) {
+            return true;
+        }
+
+        String trimmed = new String(responseBody, StandardCharsets.UTF_8).trim();
+        return trimmed.startsWith("{");
+    }
+
+    private String text(JsonNode root, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode node = root.get(fieldName);
+            if (node != null && !node.isNull()) {
+                return node.asText();
+            }
+        }
+        return null;
     }
 }

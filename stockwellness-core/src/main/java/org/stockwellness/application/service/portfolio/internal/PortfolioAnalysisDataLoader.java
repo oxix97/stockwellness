@@ -2,10 +2,13 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
@@ -13,15 +16,8 @@ import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
-
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +38,7 @@ public class PortfolioAnalysisDataLoader {
                 .orElseThrow(PortfolioNotFoundException::new);
 
         List<String> symbols = portfolio.getItems().stream()
-                .filter(item -> item.getAssetType() == org.stockwellness.domain.portfolio.AssetType.STOCK)
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
                 .map(PortfolioItem::getSymbol)
                 .toList();
 
@@ -77,7 +73,7 @@ public class PortfolioAnalysisDataLoader {
                 if (stock != null) {
                     BigDecimal price = new BigDecimal(detail.closePrice());
                     // 임시 StockPrice 객체 생성 (계산용으로만 사용)
-                    StockPrice tempPrice = StockPrice.of(stock, java.time.LocalDate.now(), 
+                    StockPrice tempPrice = StockPrice.of(stock, LocalDate.now(), 
                             new BigDecimal(detail.openPrice()), new BigDecimal(detail.highPrice()), 
                             new BigDecimal(detail.lowPrice()), price, price, 
                             new BigDecimal(detail.previousClosePrice()), 

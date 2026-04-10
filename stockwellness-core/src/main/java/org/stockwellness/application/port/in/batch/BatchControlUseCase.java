@@ -10,6 +10,8 @@ public interface BatchControlUseCase {
 
     String stop(BatchStopCommand command);
 
+    String abandon(Long executionId);
+
     enum BatchJobType {
         STOCK_MASTER_SYNC("stockMasterSyncJob"),
         STOCK_PRICE_SYNC("stockPriceBatchJob"),

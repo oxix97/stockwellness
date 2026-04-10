@@ -24,6 +24,9 @@ public class BenchmarkPriceDataReader implements ItemReader<BenchmarkPriceDataWr
     private Iterator<BenchmarkPriceData> dataIterator = Collections.emptyIterator();
     private BenchmarkType currentType;
     private boolean hasReadableData;
+    private final List<String> attemptedBenchmarks = new ArrayList<>();
+    private final List<String> emptyBenchmarks = new ArrayList<>();
+    private final List<String> failedBenchmarks = new ArrayList<>();
 
     public BenchmarkPriceDataReader(KisDailyPriceAdapter kisAdapter, LocalDate startDate, LocalDate endDate) {
         this.kisAdapter = kisAdapter;
@@ -42,9 +45,13 @@ public class BenchmarkPriceDataReader implements ItemReader<BenchmarkPriceDataWr
             if (!typeIterator.hasNext()) {
                 if (!hasReadableData) {
                     throw new IllegalStateException(String.format(
-                            "지수 시세 동기화 결과가 비어 있습니다. startDate=%s, endDate=%s. 영업일 범위와 KIS 응답을 확인하세요.",
-                            startDate, endDate
+                            "지수 시세 동기화 결과가 비어 있습니다. startDate=%s, endDate=%s, attemptedBenchmarks=%s, emptyCount=%d, failedCount=%d, emptyBenchmarks=%s, failedBenchmarks=%s. 영업일 범위와 KIS 응답을 확인하세요.",
+                            startDate, endDate, attemptedBenchmarks, emptyBenchmarks.size(), failedBenchmarks.size(), emptyBenchmarks, failedBenchmarks
                     ));
+                }
+                if (!emptyBenchmarks.isEmpty() || !failedBenchmarks.isEmpty()) {
+                    log.warn("[지수 동기화 Reader] 일부 지수는 비었거나 실패했지만 동기화는 계속 진행됩니다. startDate={}, endDate={}, emptyBenchmarks={}, failedBenchmarks={}",
+                            startDate, endDate, emptyBenchmarks, failedBenchmarks);
                 }
                 return null; // 모든 지수와 시세 처리가 완료되면 null 반환 (Batch 종료)
             }
@@ -62,26 +69,49 @@ public class BenchmarkPriceDataReader implements ItemReader<BenchmarkPriceDataWr
      * KIS API를 통해 특정 지수의 기간별 시세를 가져옵니다.
      */
     private List<BenchmarkPriceData> fetchPrices(BenchmarkType type) {
+        attemptedBenchmarks.add(type.name());
         log.info("[지수 동기화 Reader] 시세 조회 시작: {} (티커: {}, 타입: {})",
                 type.getDescription(), type.getTicker(), type.isOverseas() ? "해외" : "국내");
 
-        List<BenchmarkPriceData> details;
-        if (type.isOverseas()) {
-            // 해외 지수용 API 호출
-            details = kisAdapter.fetchOverseasIndexDailyPrices(type.getTicker(), startDate, endDate);
-        } else {
-            // 국내 지수용 API 호출
-            details = kisAdapter.fetchIndexDailyPrices(type.getTicker(), startDate, endDate);
-        }
+        try {
+            List<BenchmarkPriceData> details;
+            if (type.isOverseas()) {
+                details = kisAdapter.fetchOverseasIndexDailyPrices(type.getTicker(), startDate, endDate);
+            } else {
+                details = kisAdapter.fetchIndexDailyPrices(type.getTicker(), startDate, endDate);
+            }
 
-        if (details == null || details.isEmpty()) {
-            log.warn("[지수 동기화 Reader] 수집된 데이터가 없습니다: {}", type.getDescription());
+            if (details == null || details.isEmpty()) {
+                emptyBenchmarks.add(type.name());
+                log.warn("[지수 동기화 Reader] 수집된 데이터가 없습니다: {} (ticker={}, startDate={}, endDate={})",
+                        type.getDescription(), type.getTicker(), startDate, endDate);
+                return Collections.emptyList();
+            }
+
+            List<BenchmarkPriceData> sorted = details.stream()
+                    .sorted(Comparator.comparing(BenchmarkPriceData::baseDate))
+                    .toList();
+
+            log.info("[지수 동기화 Reader] 시세 조회 성공: {} (ticker={}, count={}, firstDate={}, lastDate={})",
+                    type.getDescription(),
+                    type.getTicker(),
+                    sorted.size(),
+                    sorted.getFirst().baseDate(),
+                    sorted.getLast().baseDate());
+
+            return sorted;
+        } catch (RuntimeException e) {
+            failedBenchmarks.add("%s(%s)".formatted(type.name(), abbreviate(e.getMessage())));
+            log.error("[지수 동기화 Reader] 시세 조회 실패: {} (ticker={}, startDate={}, endDate={}): {}",
+                    type.getDescription(), type.getTicker(), startDate, endDate, e.getMessage(), e);
             return Collections.emptyList();
         }
+    }
 
-        // Processor에서 순차적 등락률 계산을 위해 날짜 오름차순으로 정렬하여 반환
-        return details.stream()
-                .sorted(Comparator.comparing(BenchmarkPriceData::baseDate))
-                .toList();
+    private String abbreviate(String message) {
+        if (message == null || message.isBlank()) {
+            return "원인 메시지 없음";
+        }
+        return message.length() <= 160 ? message : message.substring(0, 157) + "...";
     }
 }

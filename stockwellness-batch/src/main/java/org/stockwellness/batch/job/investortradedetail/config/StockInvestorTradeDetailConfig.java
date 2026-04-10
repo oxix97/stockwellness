@@ -16,6 +16,7 @@ import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateSource;
+import org.stockwellness.batch.job.investortradedetail.listener.StockInvestorTradeDetailSummaryListener;
 import org.stockwellness.batch.job.investortradedetail.step.processor.StockInvestorTradeDetailProcessor;
 import org.stockwellness.batch.job.investortradedetail.step.reader.StockInvestorTradeDetailReader;
 import org.stockwellness.batch.job.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
@@ -38,6 +39,7 @@ public class StockInvestorTradeDetailConfig {
     private final DataSource dataSource;
     private final BatchMdcListener mdcListener;
     private final JobFailureNotificationListener failureNotificationListener;
+    private final StockInvestorTradeDetailSummaryListener stockInvestorTradeDetailSummaryListener;
 
     @Bean
     public Job stockInvestorTradeDetailJob(Step stockInvestorTradeDetailStep) {
@@ -60,6 +62,7 @@ public class StockInvestorTradeDetailConfig {
                 .processor(stockInvestorTradeDetailProcessor)
                 .writer(stockInvestorTradeDetailWriter)
                 .listener(mdcListener)
+                .listener(stockInvestorTradeDetailSummaryListener)
                 .build();
     }
 
@@ -78,7 +81,7 @@ public class StockInvestorTradeDetailConfig {
     ) {
         LocalDate baseDate = baseDateParam != null && !baseDateParam.isBlank()
                 ? DateUtil.parse(baseDateParam)
-                : LocalDate.now();
+                : DateUtil.today();
         return new StockInvestorTradeDetailProcessor(stockRepository, baseDate);
     }
 

@@ -31,3 +31,7 @@ spring:
 
 server:
   port: ${SERVER_PORT:8081}
+
+slack:
+  webhook:
+    url: ${SLACK_WEBHOOK_URL_BATCH}
