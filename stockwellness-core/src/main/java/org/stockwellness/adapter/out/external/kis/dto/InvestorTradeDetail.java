@@ -2,6 +2,9 @@ package org.stockwellness.adapter.out.external.kis.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * 국내기관, 외국인 매매종목가 집계 응답
+ */
 public record InvestorTradeDetail(
         @JsonProperty("hts_kor_isnm")
         String htsKorIsnm,           // HTS 한글 종목명

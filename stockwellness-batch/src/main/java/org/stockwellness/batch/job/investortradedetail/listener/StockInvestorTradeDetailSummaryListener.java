@@ -21,11 +21,13 @@ public class StockInvestorTradeDetailSummaryListener implements StepExecutionLis
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
         String baseDateParam = stepExecution.getJobParameters().getString("baseDate");
-        if (baseDateParam == null || baseDateParam.isBlank()) {
+        String endDateParam = stepExecution.getJobParameters().getString("endDate");
+        String effectiveBaseDate = (baseDateParam != null && !baseDateParam.isBlank()) ? baseDateParam : endDateParam;
+        if (effectiveBaseDate == null || effectiveBaseDate.isBlank()) {
             return stepExecution.getExitStatus();
         }
 
-        LocalDate baseDate = DateUtil.parse(baseDateParam);
+        LocalDate baseDate = DateUtil.parse(effectiveBaseDate);
         long totalCount = stockPriceRepository.countByBaseDate(baseDate);
         long nonZeroSupplyCount = stockPriceRepository.countByBaseDateAndNonZeroSupply(baseDate);
 

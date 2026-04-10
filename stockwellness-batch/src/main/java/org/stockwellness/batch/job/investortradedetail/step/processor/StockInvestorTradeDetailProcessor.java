@@ -7,6 +7,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.StockRepositor
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateSource;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.InvestorSupplyDemand;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -45,22 +46,35 @@ public class StockInvestorTradeDetailProcessor implements ItemProcessor<Investor
             return null;
         }
 
-        Long institutionalQuantity = parseQuantity(item.institutionalBuyingQtyText(), ticker, "institutionalQuantity");
-        Long foreignQuantity = parseQuantity(item.foreignBuyingQtyText(), ticker, "foreignQuantity");
-        BigDecimal institutionalAmount = parsePbmn(item.institutionalBuyingAmtText(), ticker, "institutional");
-        BigDecimal foreignAmount = parsePbmn(item.foreignBuyingAmtText(), ticker, "foreign");
-        if (institutionalQuantity == null || foreignQuantity == null
-                || institutionalAmount == null || foreignAmount == null) {
-            return null;
+        // --- 금액 파싱 (백만원 단위 -> 원 단위 변환) ---
+        BigDecimal instAmt = parsePbmn(item.institutionalBuyingAmtText(), ticker, "institutionalAmt");
+        BigDecimal frgnAmt = parsePbmn(item.foreignBuyingAmtText(), ticker, "foreignAmt");
+        BigDecimal pensionAmt = parsePbmn(item.pensionFundBuyingAmtText(), ticker, "pensionAmt");
+        BigDecimal trustAmt = parsePbmn(item.trustBuyingAmtText(), ticker, "trustAmt");
+        BigDecimal etcCorpAmt = parsePbmn(item.etcCorpBuyingAmtText(), ticker, "etcCorpAmt");
+        BigDecimal totalAmt = parsePbmn(item.totalNetBuyingAmtText(), ticker, "totalAmt");
+
+        // --- 수량 파싱 ---
+        Long instQty = parseQuantity(item.institutionalBuyingQtyText(), ticker, "institutionalQty");
+        Long frgnQty = parseQuantity(item.foreignBuyingQtyText(), ticker, "foreignQty");
+        Long pensionQty = parseQuantity(item.pensionFundBuyingQtyText(), ticker, "pensionQty");
+        Long trustQty = parseQuantity(item.trustBuyingQtyText(), ticker, "trustQty");
+        Long etcCorpQty = parseQuantity(item.etcCorpBuyingQtyText(), ticker, "etcCorpQty");
+        Long totalQty = parseQuantity(item.totalNetBuyingQtyText(), ticker, "totalQty");
+
+        if (instAmt == null || frgnAmt == null || instQty == null || frgnQty == null) {
+            return null; // 필수 데이터 누락 시 건너뜀
         }
+
+        InvestorSupplyDemand supplyDemand = new InvestorSupplyDemand(
+                instAmt, frgnAmt, pensionAmt, trustAmt, etcCorpAmt, totalAmt,
+                instQty, frgnQty, pensionQty, trustQty, etcCorpQty, totalQty
+        );
 
         return new InvestorTradeDetailUpdateCommand(
                 stock.getId(),
                 baseDate,
-                institutionalQuantity,
-                foreignQuantity,
-                institutionalAmount,
-                foreignAmount
+                supplyDemand
         );
     }
 

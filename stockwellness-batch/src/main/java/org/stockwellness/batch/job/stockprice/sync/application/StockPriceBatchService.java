@@ -4,11 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.application.port.in.batch.StockPriceRepairUseCase;
 import org.stockwellness.application.port.in.batch.StockPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.DailyStockPriceSnapshot;
 import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
-import org.stockwellness.application.port.out.stock.MultiStockPriceSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
@@ -18,16 +19,10 @@ import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 
 @Slf4j
 @Service
@@ -69,7 +64,8 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
         for (Stock stock : stocks) {
             LocalDate lastDate = latestDatesMap.get(stock.getId());
-            if (!isExplicitRange && lastDate != null && DateUtil.daysBetween(lastDate, endDate) == 1) {
+            if (!isExplicitRange && lastDate != null
+                    && (DateUtil.daysBetween(lastDate, endDate) == 1 || lastDate.isEqual(endDate))) {
                 todaySyncStocks.add(stock);
             } else {
                 gapSyncStocks.add(stock);
@@ -139,23 +135,21 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             return List.of();
         }
 
-        List<MultiStockPriceSnapshot> apiResults = executeKisCall("multi-stock-prices", () ->
+        List<KisMultiStockPriceDetail> apiResults = executeKisCall("multi-stock-prices", () ->
                 stockPricePort.fetchMultiStockPrices(stocks.stream().map(Stock::getTicker).toList())
         );
-        Map<String, MultiStockPriceSnapshot> apiResultMap = apiResults.stream()
-                .collect(Collectors.toMap(MultiStockPriceSnapshot::ticker, value -> value));
+        Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
+                .collect(Collectors.toMap(KisMultiStockPriceDetail::ticker, value -> value));
 
         List<StockPrice> entities = new ArrayList<>();
         for (Stock stock : stocks) {
-            MultiStockPriceSnapshot todayPrice = apiResultMap.get(stock.getTicker());
+            KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
             if (todayPrice == null || todayPrice.closePrice() == null || todayPrice.closePrice().compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
 
             List<StockPrice> pastEntities = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
-            BigDecimal prevClose = pastEntities.isEmpty()
-                    ? BigDecimal.ZERO
-                    : pastEntities.get(pastEntities.size() - 1).getClosePrice();
+            BigDecimal prevClose = resolvePreviousClose(pastEntities, today);
 
             List<BigDecimal> highPrices = new ArrayList<>(pastEntities.stream()
                     .map(price -> price.getHighPrice() != null ? price.getHighPrice() : price.getClosePrice())
@@ -189,13 +183,21 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     prevClose,
                     todayPrice.accumulatedVolume(),
                     todayPrice.accumulatedTradingValue(),
-                    defaultDecimal(todayPrice.netInstitutionalBuyingAmt()),
-                    defaultDecimal(todayPrice.netForeignBuyingAmt()),
+                    todayPrice.netInstitutionalBuyingAmt(),
+                    todayPrice.netForeignBuyingAmt(),
                     indicators
             ));
         }
 
         return entities;
+    }
+
+    private BigDecimal resolvePreviousClose(List<StockPrice> pastEntities, LocalDate targetDate) {
+        return pastEntities.stream()
+                .filter(price -> price.getId().getBaseDate().isBefore(targetDate))
+                .map(StockPrice::getClosePrice)
+                .reduce((first, second) -> second)
+                .orElse(BigDecimal.ZERO);
     }
 
     private List<StockPrice> processIndividualGap(

@@ -33,6 +33,7 @@ public class StockPriceListWriter implements ItemWriter<List<StockPrice>> {
             return;
         }
 
+        // stock_price 행을 재생성한 뒤 상세 수급 컬럼은 후속 투자주체 수급 step이 복구한다.
         jdbcTemplate.batchUpdate(
                 "DELETE FROM stock_price WHERE base_date = CAST(? AS date) AND stock_id = CAST(? AS bigint)",
                 new BatchPreparedStatementSetter() {

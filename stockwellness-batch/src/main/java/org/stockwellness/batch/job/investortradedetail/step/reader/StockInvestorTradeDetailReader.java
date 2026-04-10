@@ -7,23 +7,14 @@ import org.springframework.util.StringUtils;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateSource;
-import org.stockwellness.domain.stock.BenchmarkType;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 public class StockInvestorTradeDetailReader implements ItemReader<InvestorTradeDetailUpdateSource> {
     private static final String BUY_RANK_SORT = "0";
     private static final String SELL_RANK_SORT = "1";
 
-    private static final List<String> MARKET_INDEX_CODES = List.of(
-            BenchmarkType.KOSPI.getTicker(),
-            BenchmarkType.KOSDAQ.getTicker()
-    );
     /**
      * KIS FID_RANK_SORT_CLS_CODE (정렬기준코드)
      * 0: 순매수 상위, 1: 순매도 상위
@@ -49,41 +40,51 @@ public class StockInvestorTradeDetailReader implements ItemReader<InvestorTradeD
         Map<String, InvestorTradeDetailUpdateSource> merged = new LinkedHashMap<>();
         int duplicateCount = 0;
 
-        for (String marketIndexCode : MARKET_INDEX_CODES) {
+        List<String> marketCodes = List.of("0001", "1001"); // KOSPI, KOSDAQ
+
+        for (String market : marketCodes) {
             for (String sorted : SORTED_VALUES) {
                 log.debug(
-                        "[투자주체 수급 보정 Reader] KIS 랭킹 조회. marketIndexCode={}, sorted={}, label={}",
-                        marketIndexCode,
+                        "[투자주체 수급 보정 Reader] KIS 랭킹 조회. market={}, sorted={}, label={}",
+                        market,
                         sorted,
                         BUY_RANK_SORT.equals(sorted) ? "순매수 상위" : "순매도 상위"
                 );
-                List<InvestorTradeDetail> details = kisDailyPriceAdapter.fetchForeignInstitutionData(marketIndexCode, sorted);
+                List<InvestorTradeDetail> details = kisDailyPriceAdapter.fetchForeignInstitutionData(market, sorted);
                 for (InvestorTradeDetail detail : details) {
-                    String ticker = normalizeTicker(detail.mkscShrnIscd());
-                    if (!StringUtils.hasText(ticker)) {
-                        continue;
-                    }
-                    if (StringUtils.hasText(targetTicker) && !targetTicker.equals(ticker)) {
-                        continue;
-                    }
-                    InvestorTradeDetailUpdateSource source = new InvestorTradeDetailUpdateSource(
+                String ticker = normalizeTicker(detail.mkscShrnIscd());
+                if (!StringUtils.hasText(ticker)) {
+                    continue;
+                }
+                if (StringUtils.hasText(targetTicker) && !targetTicker.equals(ticker)) {
+                    continue;
+                }
+                InvestorTradeDetailUpdateSource source = new InvestorTradeDetailUpdateSource(
+                        ticker,
+                        detail.orgnNtbyQty(),
+                        detail.frgnNtbyQty(),
+                        detail.fundNtbyQty(),
+                        detail.ivtrNtbyQty(),
+                        detail.etcCorpNtbyVol(),
+                        detail.ntbyQty(),
+                        detail.orgnNtbyTrPbmn(),
+                        detail.frgnNtbyTrPbmn(),
+                        detail.fundNtbyTrPbmn(),
+                        detail.ivtrNtbyTrPbmn(),
+                        detail.etcCorpNtbyTrPbmn(),
+                        "0" // totalNetBuyingAmtText - 상세 수급 API에서 합계 금액은 제공되지 않으므로 0으로 설정
+                );
+                if (merged.putIfAbsent(ticker, source) != null) {
+                    duplicateCount++;
+                    log.debug(
+                            "[투자주체 수급 보정 Reader] 중복 티커는 최초 응답을 유지합니다. ticker={}, sorted={}",
                             ticker,
-                            detail.orgnNtbyQty(),
-                            detail.frgnNtbyQty(),
-                            detail.orgnNtbyTrPbmn(),
-                            detail.frgnNtbyTrPbmn()
+                            sorted
                     );
-                    if (merged.putIfAbsent(ticker, source) != null) {
-                        duplicateCount++;
-                        log.debug(
-                                "[투자주체 수급 보정 Reader] 중복 티커는 최초 응답을 유지합니다. ticker={}, sorted={}",
-                                ticker,
-                                sorted
-                        );
-                    }
                 }
             }
         }
+    }
 
         List<InvestorTradeDetailUpdateSource> items = new ArrayList<>(merged.values());
         log.info(

@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
@@ -30,13 +29,10 @@ public class KisDailyPriceAdapter {
     private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());
     private final RateLimiter kisRateLimiter;
 
-
     /**
      * 멀티 종목 시세 조회 (최대 30종목)
      */
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
-        if (tickers == null || tickers.isEmpty()) return Collections.emptyList();
-
         return executeWithRetry(() -> {
             KisPriceResponse<Object, List<KisMultiStockPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> {
@@ -190,14 +186,14 @@ public class KisDailyPriceAdapter {
     /**
      * 국내기관, 외국인 매매종목가 집계
      */
-    public List<InvestorTradeDetail> fetchForeignInstitutionData(String indexCode, String sorted) {
+    public List<InvestorTradeDetail> fetchForeignInstitutionData(String ticker, String sorted) {
         return executeWithRetry(() -> {
             KisResponse<List<InvestorTradeDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/uapi/domestic-stock/v1/quotations/foreign-institution-total")
                             .queryParam("FID_COND_MRKT_DIV_CODE", "V")
                             .queryParam("FID_COND_SCR_DIV_CODE", "16449")
-                            .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_INPUT_ISCD", ticker)
                             .queryParam("FID_DIV_CLS_CODE", "1")
                             .queryParam("FID_RANK_SORT_CLS_CODE", sorted)
                             .queryParam("FID_ETC_CLS_CODE", "0")
@@ -208,7 +204,7 @@ public class KisDailyPriceAdapter {
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", indexCode);
+            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", "0000");
             return (response.output() != null) ? response.output() : Collections.emptyList();
         });
     }

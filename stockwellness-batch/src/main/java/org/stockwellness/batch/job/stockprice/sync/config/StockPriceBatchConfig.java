@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.flow.Flow;
+import org.springframework.batch.core.job.builder.FlowBuilder;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
@@ -68,9 +70,18 @@ public class StockPriceBatchConfig {
     private final TaskExecutor kisBatchExecutor;
 
     @Bean
-    public Job stockPriceBatchJob(Step stockPriceStep) {
-        return new JobBuilder("stockPriceBatchJob", jobRepository)
+    public Job stockPriceBatchJob(
+            Step stockPriceStep,
+            Step stockInvestorTradeDetailStep
+    ) {
+        Flow stockPriceFlow = new FlowBuilder<Flow>("stockPriceFlow")
                 .start(stockPriceStep)
+                .next(stockInvestorTradeDetailStep)
+                .build();
+
+        return new JobBuilder("stockPriceBatchJob", jobRepository)
+                .start(stockPriceFlow)
+                .end()
                 .listener(mdcListener)
                 .listener(commonBatchJobLoggingListener)
                 .listener(batchLifecycleKafkaListener)
@@ -154,7 +165,7 @@ public class StockPriceBatchConfig {
         String sql = """
                 INSERT INTO stock_price (
                     base_date, stock_id, open_price, high_price, low_price, close_price, adj_close_price, prev_close_price, volume, transaction_amt,
-                    net_institutional_buying_amt, net_foreign_buying_amt,
+                    inst_buying_amt, frgn_buying_amt,
                     ma5, ma20, ma60, ma120, rsi14, macd, macd_signal,
                     bollinger_upper, bollinger_mid, bollinger_lower, adx, plus_di, minus_di,
                     alignment_status, is_golden_cross, is_dead_cross, is_macd_cross,

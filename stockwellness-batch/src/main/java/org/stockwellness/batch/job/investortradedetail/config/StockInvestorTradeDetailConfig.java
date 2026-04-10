@@ -77,10 +77,12 @@ public class StockInvestorTradeDetailConfig {
     @Bean
     @StepScope
     public StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor(
-            @Value("#{jobParameters['baseDate']}") String baseDateParam
+            @Value("#{jobParameters['baseDate']}") String baseDateParam,
+            @Value("#{jobParameters['endDate']}") String endDateParam
     ) {
-        LocalDate baseDate = baseDateParam != null && !baseDateParam.isBlank()
-                ? DateUtil.parse(baseDateParam)
+        String effectiveBaseDate = (baseDateParam != null && !baseDateParam.isBlank()) ? baseDateParam : endDateParam;
+        LocalDate baseDate = effectiveBaseDate != null && !effectiveBaseDate.isBlank()
+                ? DateUtil.parse(effectiveBaseDate)
                 : DateUtil.today();
         return new StockInvestorTradeDetailProcessor(stockRepository, baseDate);
     }
