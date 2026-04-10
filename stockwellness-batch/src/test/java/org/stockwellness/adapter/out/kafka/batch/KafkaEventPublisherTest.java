@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "slack.webhook.url=http://localhost/test-webhook")
 @ActiveProfiles("test")
 @Import(TestNotificationConfig.class)
 @EmbeddedKafka(partitions = 1, topics = {KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC})

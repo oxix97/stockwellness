@@ -13,9 +13,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
 import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockInvestorTradeRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockInvestorTrade;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.StockPriceId;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.support.BatchIntegrationTestSupport;
 
@@ -45,11 +48,14 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
     @Autowired
     private StockPriceRepository stockPriceRepository;
 
+    @Autowired
+    private StockInvestorTradeRepository stockInvestorTradeRepository;
+
     @MockitoBean
     private KisDailyPriceAdapter kisDailyPriceAdapter;
 
     @Test
-    @DisplayName("지정 기준일의 stock_price 수급 컬럼만 보정하고 중복 티커는 순매수 상위 응답을 우선한다")
+    @DisplayName("지정 기준일의 stock_price 요약 수급과 stock_investor_trade 상세 수급을 함께 보정하고 중복 티커는 순매수 상위 응답을 우선한다")
     void stockInvestorTradeDetailJob_updatesInvestorAmounts() throws Exception {
         Stock samsung = stockAdapter.save(StockFixture.createSamsung());
         LocalDate baseDate = LocalDate.of(2026, 4, 8);
@@ -93,6 +99,17 @@ class StockInvestorTradeDetailJobIntegrationTest extends BatchIntegrationTestSup
         assertThat(updated.getNetForeignBuyingQty()).isEqualTo(200L);
         assertThat(updated.getNetInstitutionalBuyingAmt()).isEqualByComparingTo("15000000");
         assertThat(updated.getNetForeignBuyingAmt()).isEqualByComparingTo("7000000");
+        assertThat(updated.getNetTotalBuyingQty()).isEqualTo(0L);
+
+        StockInvestorTrade investorTrade = stockInvestorTradeRepository.findById(new StockPriceId(baseDate, samsung.getId()))
+                .orElseThrow();
+        assertThat(investorTrade.getInstitutionQty()).isEqualTo(100L);
+        assertThat(investorTrade.getForeignQty()).isEqualTo(200L);
+        assertThat(investorTrade.getInstitutionAmt()).isEqualByComparingTo("15000000");
+        assertThat(investorTrade.getForeignAmt()).isEqualByComparingTo("7000000");
+        assertThat(investorTrade.getPensionFundAmt()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(investorTrade.getTrustAmt()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(investorTrade.getEtcCorpAmt()).isEqualByComparingTo(BigDecimal.ZERO);
 
         verify(kisDailyPriceAdapter).fetchForeignInstitutionData("0001", "0");
         verify(kisDailyPriceAdapter).fetchForeignInstitutionData("0001", "1");

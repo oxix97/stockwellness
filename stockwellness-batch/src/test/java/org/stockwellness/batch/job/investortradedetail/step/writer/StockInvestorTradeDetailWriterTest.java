@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,5 +38,8 @@ class StockInvestorTradeDetailWriterTest {
         ));
 
         verify(jdbcTemplate).batchUpdate(ArgumentMatchers.contains("UPDATE stock_price"), ArgumentMatchers.any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(ArgumentMatchers.contains("DELETE FROM stock_investor_trade"), ArgumentMatchers.any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate).batchUpdate(ArgumentMatchers.contains("INSERT INTO stock_investor_trade"), ArgumentMatchers.any(BatchPreparedStatementSetter.class));
+        verify(jdbcTemplate, times(3)).batchUpdate(ArgumentMatchers.anyString(), ArgumentMatchers.any(BatchPreparedStatementSetter.class));
     }
 }

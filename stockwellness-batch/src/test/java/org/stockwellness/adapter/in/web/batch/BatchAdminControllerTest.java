@@ -2,6 +2,7 @@ package org.stockwellness.adapter.in.web.batch;
 
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import java.math.BigDecimal;
 import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -51,9 +52,9 @@ class BatchAdminControllerTest {
     @Test
     void testFetchMultiPricesResponseFormat() throws Exception {
         KisMultiStockPriceDetail detail = new KisMultiStockPriceDetail(
-                "005930", "삼성전자", "70000", "1000", "1.45",
-                "69000", "71000", "68000", "1000000", "70000000000",
-                "69000", "500000000", "300000000"
+                "005930", "삼성전자", new BigDecimal("70000"), new BigDecimal("1000"), new BigDecimal("1.45"),
+                new BigDecimal("69000"), new BigDecimal("71000"), new BigDecimal("68000"), 1000000L, new BigDecimal("70000000000"),
+                new BigDecimal("69000"), new BigDecimal("500000000"), new BigDecimal("300000000")
         );
         when(kisDailyPriceAdapter.fetchMultiStockPrices(java.util.List.of("005930")))
                 .thenReturn(java.util.List.of(detail));

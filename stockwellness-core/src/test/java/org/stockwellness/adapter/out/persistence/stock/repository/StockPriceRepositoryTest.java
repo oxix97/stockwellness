@@ -257,47 +257,6 @@ class StockPriceRepositoryTest {
         assertThat(result).contains(oldDate);
     }
 
-    @Test
-    @DisplayName("최신 기관/외국인 유효 수급일은 요청 방향 기준으로 조회한다")
-    void findLatestSupplyRankingDate_Success() {
-        LocalDate buyDate = LocalDate.of(2026, 4, 7);
-        LocalDate sellDate = LocalDate.of(2026, 4, 8);
-
-        stockPriceRepository.saveAll(List.of(
-                createStockPrice(samsung, buyDate, new BigDecimal("100"), BigDecimal.ZERO, 100L, 0L),
-                createStockPrice(skHynix, sellDate, new BigDecimal("-50"), BigDecimal.ZERO, -50L, 0L)
-        ));
-        stockPriceRepository.flush();
-
-        Optional<LocalDate> latestInstitutionBuyDate =
-                stockPriceRepository.findLatestInstitutionSupplyRankingDate(TradeDirection.BUY);
-        Optional<LocalDate> latestInstitutionSellDate =
-                stockPriceRepository.findLatestInstitutionSupplyRankingDate(TradeDirection.SELL);
-
-        assertThat(latestInstitutionBuyDate).contains(buyDate);
-        assertThat(latestInstitutionSellDate).contains(sellDate);
-    }
-
-    @Test
-    @DisplayName("지정일 이전 최신 외국인 유효 수급일을 조회한다")
-    void findLatestSupplyRankingDateOnOrBefore_Success() {
-        LocalDate olderDate = LocalDate.of(2026, 4, 7);
-        LocalDate newerDate = LocalDate.of(2026, 4, 8);
-
-        stockPriceRepository.saveAll(List.of(
-                createStockPrice(samsung, olderDate, BigDecimal.ZERO, new BigDecimal("-10"), 0L, -10L),
-                createStockPrice(skHynix, newerDate, BigDecimal.ZERO, new BigDecimal("-20"), 0L, -20L)
-        ));
-        stockPriceRepository.flush();
-
-        Optional<LocalDate> result = stockPriceRepository.findLatestForeignSupplyRankingDateOnOrBefore(
-                olderDate,
-                TradeDirection.SELL
-        );
-
-        assertThat(result).contains(olderDate);
-    }
-
     private StockPrice createStockPrice(
             Stock stock,
             LocalDate baseDate,

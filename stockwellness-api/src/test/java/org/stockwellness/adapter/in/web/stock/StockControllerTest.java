@@ -98,7 +98,7 @@ class StockControllerTest extends RestDocsSupport {
     void getTopStocksBySupply_docs() throws Exception {
         // given
         StockSupplyRankingResponse result = new StockSupplyRankingResponse(
-                LocalDate.of(2026, 4, 7),
+                null,
                 LocalDate.of(2026, 4, 7),
                 List.of(
                         new StockSupplyRankingResult("005930", "삼성전자", "반도체", new BigDecimal("71000"), new BigDecimal("1.43"), 250000L, new BigDecimal("5000000000"), new BigDecimal("120000000000")),
@@ -109,14 +109,14 @@ class StockControllerTest extends RestDocsSupport {
                 )
         );
 
-        given(stockPriceUseCase.getTopStocksBySupply(any(), any(), anyInt()))
+        given(stockPriceUseCase.getTopStocksBySupply(any(), anyInt()))
                 .willReturn(result);
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
-                fieldWithPath("data.requestedDate").description("사용자가 요청한 날짜").optional(),
-                fieldWithPath("data.effectiveDate").description("실제 랭킹 산정 기준 날짜").optional(),
+                fieldWithPath("data.requestedDate").description("사용자가 요청한 날짜 (현재 미사용)").optional(),
+                fieldWithPath("data.effectiveDate").description("실제 랭킹 산정 기준 날짜 (가장 최신 적재일)").optional(),
                 fieldWithPath("data.institutionItems").description("기관 기준 종목 수급 랭킹 리스트"),
                 fieldWithPath("data.institutionItems[].ticker").description("티커"),
                 fieldWithPath("data.institutionItems[].stockName").description("종목명"),
@@ -138,7 +138,6 @@ class StockControllerTest extends RestDocsSupport {
         ));
 
         mockMvc.perform(get("/api/v1/stocks/ranking/supply")
-                        .param("date", "2026-04-07")
                         .param("direction", "BUY")
                         .param("limit", "10"))
                 .andExpect(status().isOk())
@@ -150,9 +149,8 @@ class StockControllerTest extends RestDocsSupport {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Stock Price")
                                 .summary("종목 수급 랭킹 조회")
-                                .description("지정된 조건(매수/매도 방향)에 따라 기관과 외국인 종목 순매수량/순매도량 순위를 함께 조회합니다.")
+                                .description("가장 최신 적재 날짜를 기준으로 기관과 외국인 종목 순매수량/순매도량 순위를 함께 조회합니다.")
                                 .queryParameters(
-                                        parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional(),
                                         parameterWithName("direction").description("매수/매도 방향 (BUY, SELL)").optional(),
                                         parameterWithName("limit").description("조회 개수 (1 이상)").optional()
                                 )
@@ -174,20 +172,19 @@ class StockControllerTest extends RestDocsSupport {
     }
 
     @Test
-    @DisplayName("종목 수급 랭킹 조회 API는 fallback된 실제 기준일을 응답한다")
+    @DisplayName("종목 수급 랭킹 조회 API는 최신 기준일을 응답한다")
     void getTopStocksBySupply_returnsEffectiveDate() throws Exception {
-        given(stockPriceUseCase.getTopStocksBySupply(any(), any(), anyInt()))
+        given(stockPriceUseCase.getTopStocksBySupply(any(), anyInt()))
                 .willReturn(new StockSupplyRankingResponse(
-                        LocalDate.of(2026, 4, 8),
+                        null,
                         LocalDate.of(2026, 4, 7),
                         List.of(),
                         List.of()
                 ));
 
-        mockMvc.perform(get("/api/v1/stocks/ranking/supply")
-                        .param("date", "2026-04-08"))
+        mockMvc.perform(get("/api/v1/stocks/ranking/supply"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.requestedDate").value("2026-04-08"))
+                .andExpect(jsonPath("$.data.requestedDate").isEmpty())
                 .andExpect(jsonPath("$.data.effectiveDate").value("2026-04-07"))
                 .andExpect(jsonPath("$.data.institutionItems").isArray())
                 .andExpect(jsonPath("$.data.foreignItems").isArray());

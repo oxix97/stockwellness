@@ -42,6 +42,9 @@ public class StockPriceTestFixture {
 
     public static KisMultiStockPriceDetail createMultiDetail(String ticker, String name, String price, String prevClose) {
         return new KisMultiStockPriceDetail(
-                ticker, name, price, "0", "0.00", price, price, price, "100000", "1000000000", prevClose, "0", "0");
+                ticker, name, new BigDecimal(price), BigDecimal.ZERO, BigDecimal.ZERO, 
+                new BigDecimal(price), new BigDecimal(price), new BigDecimal(price), 
+                100000L, new BigDecimal("1000000000"), new BigDecimal(prevClose), 
+                BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }
