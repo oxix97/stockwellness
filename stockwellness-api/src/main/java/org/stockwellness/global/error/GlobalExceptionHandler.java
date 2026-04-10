@@ -2,13 +2,17 @@ package org.stockwellness.global.error;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.stockwellness.global.alert.SlackAlertService;
 import org.stockwellness.global.error.exception.BusinessException;
@@ -31,6 +35,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             BusinessException.class,
             MethodArgumentNotValidException.class,
+            HandlerMethodValidationException.class,
+            ConstraintViolationException.class,
             ExpiredJwtException.class,
             JwtException.class,
             NoResourceFoundException.class,
@@ -42,6 +48,8 @@ public class GlobalExceptionHandler {
         return switch (e) {
             case BusinessException be -> handleBusinessException(be, traceId);
             case MethodArgumentNotValidException me -> handleBindingException(me, traceId);
+            case HandlerMethodValidationException hve -> handleHandlerMethodValidationException(hve, traceId);
+            case ConstraintViolationException cve -> handleConstraintViolationException(cve, traceId);
             case ExpiredJwtException ignored -> createErrorResponse(ErrorCode.EXPIRED_JWT, traceId);
             case JwtException ignored -> createErrorResponse(ErrorCode.INVALID_JWT, traceId);
             case NoResourceFoundException ignored -> createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, traceId);
@@ -57,6 +65,33 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ApiResponse<Void>> handleBindingException(MethodArgumentNotValidException e, String traceId) {
         log.warn("[{}] MethodArgumentNotValidException: {}", traceId, e.getMessage());
         List<ApiResponse.FieldError> fieldErrors = getFieldErrors(e.getBindingResult());
+        return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
+    }
+
+    private ResponseEntity<ApiResponse<Void>> handleHandlerMethodValidationException(
+            HandlerMethodValidationException e,
+            String traceId
+    ) {
+        log.warn("[{}] HandlerMethodValidationException: {}", traceId, e.getMessage());
+        List<ApiResponse.FieldError> fieldErrors = e.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> toFieldError(result, error)))
+                .toList();
+        return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
+    }
+
+    private ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
+            ConstraintViolationException e,
+            String traceId
+    ) {
+        log.warn("[{}] ConstraintViolationException: {}", traceId, e.getMessage());
+        List<ApiResponse.FieldError> fieldErrors = e.getConstraintViolations().stream()
+                .map(violation -> new ApiResponse.FieldError(
+                        extractLeafNode(violation.getPropertyPath().toString()),
+                        violation.getInvalidValue() == null ? "" : violation.getInvalidValue().toString(),
+                        violation.getMessage()
+                ))
+                .toList();
         return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
     }
 
@@ -85,6 +120,22 @@ public class GlobalExceptionHandler {
                         error.getRejectedValue() == null ? "" : error.getRejectedValue().toString(),
                         error.getDefaultMessage()))
                 .toList();
+    }
+
+    private ApiResponse.FieldError toFieldError(ParameterValidationResult result, MessageSourceResolvable error) {
+        String parameterName = result.getMethodParameter().getParameterName();
+        Object argument = result.getArgument();
+
+        return new ApiResponse.FieldError(
+                parameterName == null ? "unknown" : parameterName,
+                argument == null ? "" : argument.toString(),
+                error.getDefaultMessage()
+        );
+    }
+
+    private String extractLeafNode(String propertyPath) {
+        int separatorIndex = propertyPath.lastIndexOf('.');
+        return separatorIndex >= 0 ? propertyPath.substring(separatorIndex + 1) : propertyPath;
     }
 
     private String generateTraceId() {

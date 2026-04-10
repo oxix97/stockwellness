@@ -6,11 +6,28 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DateUtilTest {
+
+    @Test
+    @DisplayName("today는 Asia/Seoul 기준 현재 날짜를 반환한다")
+    void today_usesAsiaSeoulZone() {
+        assertThat(DateUtil.today()).isEqualTo(LocalDate.now(ZoneId.of("Asia/Seoul")));
+    }
+
+    @Test
+    @DisplayName("now는 Asia/Seoul 기준 현재 일시를 반환한다")
+    void now_usesAsiaSeoulZone() {
+        LocalDateTime before = LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusSeconds(1);
+        LocalDateTime actual = DateUtil.now();
+        LocalDateTime after = LocalDateTime.now(ZoneId.of("Asia/Seoul")).plusSeconds(1);
+
+        assertThat(actual).isBetween(before, after);
+    }
 
     @Test
     @DisplayName("문자열 'yyyyMMdd'를 LocalDate로 정확히 파싱한다")

@@ -7,6 +7,8 @@ import java.time.Duration;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
@@ -19,6 +21,7 @@ public class DateUtil {
 
     public static final String DATE_PATTERN = "yyyyMMdd";
     public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_PATTERN);
+    public static final ZoneId ASIA_SEOUL = ZoneId.of("Asia/Seoul");
 
     /**
      * "yyyyMMdd" 문자열을 LocalDate로 파싱합니다.
@@ -54,14 +57,14 @@ public class DateUtil {
      * 현재 날짜(LocalDate)를 반환합니다.
      */
     public static LocalDate today() {
-        return LocalDate.now();
+        return LocalDate.now(ASIA_SEOUL);
     }
 
     /**
      * 현재 일시(LocalDateTime)를 반환합니다.
      */
     public static LocalDateTime now() {
-        return LocalDateTime.now();
+        return LocalDateTime.now(ASIA_SEOUL);
     }
 
     /**
@@ -141,12 +144,12 @@ public class DateUtil {
      * 한국 주식 시장 개장 여부를 확인합니다. (평일 09:00 ~ 15:30)
      */
     public static boolean isMarketOpen() {
-        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
-        java.time.DayOfWeek dayOfWeek = now.getDayOfWeek();
-        if (dayOfWeek == java.time.DayOfWeek.SATURDAY || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+        LocalDateTime now = LocalDateTime.now(ASIA_SEOUL);
+        DayOfWeek dayOfWeek = now.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
             return false;
         }
-        java.time.LocalTime time = now.toLocalTime();
-        return !time.isBefore(java.time.LocalTime.of(9, 0)) && !time.isAfter(java.time.LocalTime.of(15, 30));
+        LocalTime time = now.toLocalTime();
+        return !time.isBefore(LocalTime.of(9, 0)) && !time.isAfter(LocalTime.of(15, 30));
     }
 }

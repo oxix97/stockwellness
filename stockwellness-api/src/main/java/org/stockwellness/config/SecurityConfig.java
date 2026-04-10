@@ -2,7 +2,6 @@ package org.stockwellness.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -66,6 +65,7 @@ public class SecurityConfig {
         return new String[]{
                 "/api/v1/auth/**",          // 로그인, 재발급, 더미 로그인 등
                 "/api/v1/stocks/popular-search", // 인기 검색어 — 비로그인 공개
+                "/api/v1/sectors/**",       // 섹터 대시보드 — 비로그인 공개 (랭킹, 상세, 비교 분석)
                 "/oauth2/**",               // 소셜 로그인 콜백
                 "/login/oauth2/**",         // 소셜 로그인 엔드포인트
                 "/actuator/**",

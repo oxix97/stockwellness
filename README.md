@@ -48,6 +48,7 @@
 - 매 영업일 장 마감 후 한국투자증권 KIS API에서 일일 시세(EOD) 수집
 - RSI, MACD 등 기술 지표를 배치 단계에서 사전 계산하여 저장 (ta4j 활용)
 - Virtual Threads 기반 병렬 처리로 대량 종목 데이터 수집 속도 최적화
+- 운영 점검 런북: `docs/qa/qa-stockwellness-scheduler.md`
 
 ### 4. PortfolioFacade 기반 통합 오케스트레이션
 - 포트폴리오 백테스트, 건강 진단(MDD·Sharpe·Beta), 리밸런싱, AI 어드바이저를 단일 Facade로 통합
