@@ -15,10 +15,9 @@ import java.time.LocalDate;
 public interface StockPriceUseCase {
 
     /**
-     * 특정 날짜 기준 수급(외인/기관) 상위 종목 목록을 조회합니다.
+     * 수급(외인/기관) 상위 종목 목록을 조회합니다. (전체 데이터 중 가장 최신 날짜 기준)
      */
     StockSupplyRankingResponse getTopStocksBySupply(
-            LocalDate date,
             TradeDirection direction,
             int limit
     );

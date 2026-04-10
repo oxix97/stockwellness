@@ -131,15 +131,14 @@ public class StockController {
     }
 
     /**
-     * 종목 수급 랭킹 조회
+     * 종목 수급 랭킹 조회 (가장 최신 날짜 기준)
      */
     @GetMapping("/ranking/supply")
     public ApiResponse<StockSupplyRankingResponse> getTopStocksBySupply(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "BUY") TradeDirection direction,
             @RequestParam(defaultValue = "10") @Min(value = 1, message = "limit는 1 이상이어야 합니다.") int limit
     ) {
-        return ApiResponse.success(stockPriceUseCase.getTopStocksBySupply(date, direction, limit));
+        return ApiResponse.success(stockPriceUseCase.getTopStocksBySupply(direction, limit));
     }
 
     // ==========================================

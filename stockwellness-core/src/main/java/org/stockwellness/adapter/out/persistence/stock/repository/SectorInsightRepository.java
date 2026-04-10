@@ -29,8 +29,8 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
         SELECT s FROM SectorInsight s 
         WHERE s.baseDate = :date 
           AND (:marketType IS NULL OR s.marketType = :marketType)
-        ORDER BY (s.indicators.netForeignBuyAmount + s.indicators.netInstBuyAmount) DESC, 
-                 s.indicators.netForeignBuyAmount DESC, 
+        ORDER BY (COALESCE(s.indicators.netForeignBuyAmount, 0) + COALESCE(s.indicators.netInstBuyAmount, 0)) DESC,
+                 s.indicators.netForeignBuyAmount DESC,
                  s.indicators.netInstBuyAmount DESC
     """)
     List<SectorInsight> findTopBySupply(@Param("date") LocalDate date, @Param("marketType") MarketType marketType, Pageable pageable);

@@ -5,23 +5,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
-import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
+import org.stockwellness.application.port.in.stock.result.*;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.BenchmarkPoint;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
-import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResponse;
-import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.price.TradeDirection;
-import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
-import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,6 +30,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StockChartService implements StockPriceUseCase {
+
     private static final int CALC_SCALE = 8;
     private static final int DISPLAY_SCALE = 4;
 
@@ -44,15 +40,13 @@ public class StockChartService implements StockPriceUseCase {
 
     @Override
     public StockSupplyRankingResponse getTopStocksBySupply(
-            LocalDate date,
             TradeDirection direction,
             int limit
     ) {
-        LocalDate requestedDate = date;
-        Optional<LocalDate> effectiveDate = findEffectiveSupplyRankingDate(requestedDate, direction);
+        Optional<LocalDate> effectiveDate = stockPricePort.findLatestDate();
 
         if (effectiveDate.isEmpty()) {
-            return new StockSupplyRankingResponse(requestedDate, null, List.of(), List.of());
+            return new StockSupplyRankingResponse(null, null, List.of(), List.of());
         }
 
         List<StockSupplyRankingResult> institutionItems = stockPricePort.findTopInstitutionStocksBySupply(
@@ -66,25 +60,7 @@ public class StockChartService implements StockPriceUseCase {
                 limit
         );
 
-        return new StockSupplyRankingResponse(requestedDate, effectiveDate.get(), institutionItems, foreignItems);
-    }
-
-    private Optional<LocalDate> findEffectiveSupplyRankingDate(LocalDate requestedDate, TradeDirection direction) {
-        Optional<LocalDate> instDate;
-        Optional<LocalDate> foreignDate;
-
-        if (requestedDate == null) {
-            instDate = stockPricePort.findLatestInstitutionSupplyRankingDate(direction);
-            foreignDate = stockPricePort.findLatestForeignSupplyRankingDate(direction);
-        } else {
-            instDate = stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, direction);
-            foreignDate = stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, direction);
-        }
-
-        if (instDate.isEmpty()) return foreignDate;
-        if (foreignDate.isEmpty()) return instDate;
-
-        return instDate.get().isAfter(foreignDate.get()) ? instDate : foreignDate;
+        return new StockSupplyRankingResponse(null, effectiveDate.get(), institutionItems, foreignItems);
     }
 
     @Override
@@ -153,7 +129,8 @@ public class StockChartService implements StockPriceUseCase {
                 .orElseThrow(() -> new StockPriceException(ErrorCode.STOCK_NOT_FOUND));
     }
 
-    private record BenchmarkInfo(String ticker, String name) {}
+    private record BenchmarkInfo(String ticker, String name) {
+    }
 
     private BenchmarkInfo resolveBenchmark(MarketType marketType) {
         return switch (marketType) {
@@ -201,8 +178,8 @@ public class StockChartService implements StockPriceUseCase {
     private BigDecimal calculateTotalReturn(List<StockPriceResult> prices) {
         if (prices.size() < 2) return BigDecimal.ZERO;
 
-        BigDecimal startPrice = prices.get(0).adjClosePrice();
-        BigDecimal endPrice = prices.get(prices.size() - 1).adjClosePrice();
+        BigDecimal startPrice = prices.getFirst().adjClosePrice();
+        BigDecimal endPrice = prices.getLast().adjClosePrice();
 
         if (startPrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
 
