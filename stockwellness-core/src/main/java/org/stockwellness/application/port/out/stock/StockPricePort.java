@@ -1,9 +1,11 @@
 package org.stockwellness.application.port.out.stock;
 
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TradeDirection;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,6 +14,21 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface StockPricePort {
+    /**
+     * 특정 날짜 기준 수급(외인/기관) 상위 종목 목록을 조회합니다.
+     */
+    List<StockSupplyRankingResult> findTopInstitutionStocksBySupply(
+            LocalDate date,
+            TradeDirection direction,
+            int limit
+    );
+
+    List<StockSupplyRankingResult> findTopForeignStocksBySupply(
+            LocalDate date,
+            TradeDirection direction,
+            int limit
+    );
+
     /**
      * 기술적 지표를 기반으로 종목을 필터링하여 조회합니다.
      */
@@ -101,4 +118,18 @@ public interface StockPricePort {
     // FetchStockPricePort에서 통합된 메서드
     List<Stock> fetchDaily(LocalDate date);
     List<StockPrice> fetchDailyPrice(LocalDate date);
+
+    Optional<LocalDate> findLatestDate();
+
+    Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
+
+    long countByBaseDate(LocalDate date);
+
+    Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction);
+
+    Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
+
+    Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction);
+
+    Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
 }

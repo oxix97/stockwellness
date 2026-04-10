@@ -8,6 +8,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPrice
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.DailyStockPriceSnapshot;
 import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
@@ -18,6 +19,7 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
+import org.stockwellness.domain.stock.price.TradeDirection;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -45,8 +47,66 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public List<BenchmarkPrice> findHistoryByTicker(String ticker, LocalDate endDate, int limit) {
+        return benchmarkPriceRepository.findByTickerAndBaseDateLessThanEqualOrderByBaseDateDesc(ticker, endDate, PageRequest.of(0, limit));
+    }
+
+    @Override
     public void save(BenchmarkPrice benchmarkPrice) {
         benchmarkPriceRepository.save(benchmarkPrice);
+    }
+
+    @Override
+    public List<StockSupplyRankingResult> findTopInstitutionStocksBySupply(
+            LocalDate date,
+            TradeDirection direction,
+            int limit
+    ) {
+        return stockPriceRepository.findTopInstitutionStocksBySupply(date, direction, limit);
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestDate() {
+        return stockPriceRepository.findLatestDate();
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date) {
+        return stockPriceRepository.findLatestDateOnOrBefore(date);
+    }
+
+    @Override
+    public long countByBaseDate(LocalDate date) {
+        return stockPriceRepository.countByBaseDate(date);
+    }
+
+    @Override
+    public List<StockSupplyRankingResult> findTopForeignStocksBySupply(
+            LocalDate date,
+            TradeDirection direction,
+            int limit
+    ) {
+        return stockPriceRepository.findTopForeignStocksBySupply(date, direction, limit);
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction) {
+        return stockPriceRepository.findLatestInstitutionSupplyRankingDate(direction);
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
+        return stockPriceRepository.findLatestInstitutionSupplyRankingDateOnOrBefore(date, direction);
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction) {
+        return stockPriceRepository.findLatestForeignSupplyRankingDate(direction);
+    }
+
+    @Override
+    public Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
+        return stockPriceRepository.findLatestForeignSupplyRankingDateOnOrBefore(date, direction);
     }
 
     @Override
@@ -186,7 +246,7 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
 
     @Override
     public List<StockPrice> findAllByDate(LocalDate date) {
-        return stockPriceRepository.findAllByIdBaseDate(date);
+        return stockPriceRepository.findAllByDateWithStock(date);
     }
 
     @Override

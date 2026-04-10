@@ -10,33 +10,82 @@ import org.stockwellness.application.port.in.stock.result.ChartDataResponse.Benc
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResponse;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.ChartPeriod;
+import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StockChartService implements StockPriceUseCase {
+    private static final int CALC_SCALE = 8;
+    private static final int DISPLAY_SCALE = 4;
 
     private final StockPricePort stockPricePort;
     private final LoadBenchmarkPort loadBenchmarkPort;
     private final StockPort stockPort;
 
-    private static final int CALC_SCALE = 8;
-    private static final int DISPLAY_SCALE = 4;
+    @Override
+    public StockSupplyRankingResponse getTopStocksBySupply(
+            LocalDate date,
+            TradeDirection direction,
+            int limit
+    ) {
+        LocalDate requestedDate = date;
+        Optional<LocalDate> effectiveDate = findEffectiveSupplyRankingDate(requestedDate, direction);
+
+        if (effectiveDate.isEmpty()) {
+            return new StockSupplyRankingResponse(requestedDate, null, List.of(), List.of());
+        }
+
+        List<StockSupplyRankingResult> institutionItems = stockPricePort.findTopInstitutionStocksBySupply(
+                effectiveDate.get(),
+                direction,
+                limit
+        );
+        List<StockSupplyRankingResult> foreignItems = stockPricePort.findTopForeignStocksBySupply(
+                effectiveDate.get(),
+                direction,
+                limit
+        );
+
+        return new StockSupplyRankingResponse(requestedDate, effectiveDate.get(), institutionItems, foreignItems);
+    }
+
+    private Optional<LocalDate> findEffectiveSupplyRankingDate(LocalDate requestedDate, TradeDirection direction) {
+        Optional<LocalDate> instDate;
+        Optional<LocalDate> foreignDate;
+
+        if (requestedDate == null) {
+            instDate = stockPricePort.findLatestInstitutionSupplyRankingDate(direction);
+            foreignDate = stockPricePort.findLatestForeignSupplyRankingDate(direction);
+        } else {
+            instDate = stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, direction);
+            foreignDate = stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, direction);
+        }
+
+        if (instDate.isEmpty()) return foreignDate;
+        if (foreignDate.isEmpty()) return instDate;
+
+        return instDate.get().isAfter(foreignDate.get()) ? instDate : foreignDate;
+    }
 
     @Override
     public ChartDataResponse loadChartData(ChartQuery query) {

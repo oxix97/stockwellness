@@ -11,12 +11,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
 import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.in.stock.StockUseCase;
-import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
-import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
-import org.stockwellness.application.port.in.stock.result.StockDetailResult;
-import org.stockwellness.application.port.in.stock.result.StockSearchResult;
+import org.stockwellness.application.port.in.stock.result.*;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.support.RestDocsSupport;
 
 import java.math.BigDecimal;
@@ -26,8 +24,7 @@ import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
@@ -94,6 +91,106 @@ class StockControllerTest extends RestDocsSupport {
                                 .responseFields(responseFields)
                                 .build())
                 ));
+    }
+
+    @Test
+    @DisplayName("종목 수급 랭킹 조회 API")
+    void getTopStocksBySupply_docs() throws Exception {
+        // given
+        StockSupplyRankingResponse result = new StockSupplyRankingResponse(
+                LocalDate.of(2026, 4, 7),
+                LocalDate.of(2026, 4, 7),
+                List.of(
+                        new StockSupplyRankingResult("005930", "삼성전자", "반도체", new BigDecimal("71000"), new BigDecimal("1.43"), 250000L, new BigDecimal("5000000000"), new BigDecimal("120000000000")),
+                        new StockSupplyRankingResult("000660", "SK하이닉스", "반도체", new BigDecimal("202000"), new BigDecimal("-0.98"), 180000L, new BigDecimal("3000000000"), new BigDecimal("80000000000"))
+                ),
+                List.of(
+                        new StockSupplyRankingResult("005930", "삼성전자", "반도체", new BigDecimal("71000"), new BigDecimal("1.43"), 90000L, new BigDecimal("2000000000"), new BigDecimal("120000000000"))
+                )
+        );
+
+        given(stockPriceUseCase.getTopStocksBySupply(any(), any(), anyInt()))
+                .willReturn(result);
+
+        // when & then
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.requestedDate").description("사용자가 요청한 날짜").optional(),
+                fieldWithPath("data.effectiveDate").description("실제 랭킹 산정 기준 날짜").optional(),
+                fieldWithPath("data.institutionItems").description("기관 기준 종목 수급 랭킹 리스트"),
+                fieldWithPath("data.institutionItems[].ticker").description("티커"),
+                fieldWithPath("data.institutionItems[].stockName").description("종목명"),
+                fieldWithPath("data.institutionItems[].sectorName").description("업종명").optional(),
+                fieldWithPath("data.institutionItems[].currentPrice").description("기준일 종가"),
+                fieldWithPath("data.institutionItems[].fluctuationRate").description("전일 대비 등락률 (%)"),
+                fieldWithPath("data.institutionItems[].netBuyingQuantity").description("기관 순매수 수량"),
+                fieldWithPath("data.institutionItems[].netBuyingAmount").description("기관 순매수 금액"),
+                fieldWithPath("data.institutionItems[].transactionAmount").description("거래대금"),
+                fieldWithPath("data.foreignItems").description("외국인 기준 종목 수급 랭킹 리스트"),
+                fieldWithPath("data.foreignItems[].ticker").description("티커"),
+                fieldWithPath("data.foreignItems[].stockName").description("종목명"),
+                fieldWithPath("data.foreignItems[].sectorName").description("업종명").optional(),
+                fieldWithPath("data.foreignItems[].currentPrice").description("기준일 종가"),
+                fieldWithPath("data.foreignItems[].fluctuationRate").description("전일 대비 등락률 (%)"),
+                fieldWithPath("data.foreignItems[].netBuyingQuantity").description("외국인 순매수 수량"),
+                fieldWithPath("data.foreignItems[].netBuyingAmount").description("외국인 순매수 금액"),
+                fieldWithPath("data.foreignItems[].transactionAmount").description("거래대금")
+        ));
+
+        mockMvc.perform(get("/api/v1/stocks/ranking/supply")
+                        .param("date", "2026-04-07")
+                        .param("direction", "BUY")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.effectiveDate").value("2026-04-07"))
+                .andExpect(jsonPath("$.data.institutionItems").isArray())
+                .andExpect(jsonPath("$.data.foreignItems").isArray())
+                .andDo(document("stock-supply-ranking",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Stock Price")
+                                .summary("종목 수급 랭킹 조회")
+                                .description("지정된 조건(매수/매도 방향)에 따라 기관과 외국인 종목 순매수량/순매도량 순위를 함께 조회합니다.")
+                                .queryParameters(
+                                        parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional(),
+                                        parameterWithName("direction").description("매수/매도 방향 (BUY, SELL)").optional(),
+                                        parameterWithName("limit").description("조회 개수 (1 이상)").optional()
+                                )
+                                .responseFields(responseFields)
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("종목 수급 랭킹 조회 API는 limit가 0 이하이면 400을 반환한다")
+    void getTopStocksBySupply_invalidLimit() throws Exception {
+        mockMvc.perform(get("/api/v1/stocks/ranking/supply")
+                        .param("limit", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("G001"))
+                .andExpect(jsonPath("$.errors[0].field").value("limit"))
+                .andExpect(jsonPath("$.errors[0].value").value("0"));
+    }
+
+    @Test
+    @DisplayName("종목 수급 랭킹 조회 API는 fallback된 실제 기준일을 응답한다")
+    void getTopStocksBySupply_returnsEffectiveDate() throws Exception {
+        given(stockPriceUseCase.getTopStocksBySupply(any(), any(), anyInt()))
+                .willReturn(new StockSupplyRankingResponse(
+                        LocalDate.of(2026, 4, 8),
+                        LocalDate.of(2026, 4, 7),
+                        List.of(),
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/v1/stocks/ranking/supply")
+                        .param("date", "2026-04-08"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.requestedDate").value("2026-04-08"))
+                .andExpect(jsonPath("$.data.effectiveDate").value("2026-04-07"))
+                .andExpect(jsonPath("$.data.institutionItems").isArray())
+                .andExpect(jsonPath("$.data.foreignItems").isArray());
     }
 
     @Test

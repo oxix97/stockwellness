@@ -40,6 +40,17 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
     @Query("SELECT s FROM StockPrice s WHERE s.stock.ticker IN :tickers AND s.id.baseDate <= :date ORDER BY s.id.baseDate DESC")
     List<StockPrice> findRecentPricesByTickers(@Param("tickers") Collection<String> tickers, @Param("date") LocalDate date);
 
+    @Query("SELECT COUNT(s) FROM StockPrice s WHERE s.id.baseDate = :baseDate")
+    long countByBaseDate(@Param("baseDate") LocalDate baseDate);
+
+    @Query("""
+            SELECT COUNT(s)
+            FROM StockPrice s
+            WHERE s.id.baseDate = :baseDate
+              AND (s.netInstitutionalBuyingAmt <> 0 OR s.netForeignBuyingAmt <> 0 OR s.netTotalBuyingAmt <> 0)
+            """)
+    long countByBaseDateAndNonZeroSupply(@Param("baseDate") LocalDate baseDate);
+
     /**
      * 특정 종목의 가장 최신 시세 엔티티를 조회합니다.
      */

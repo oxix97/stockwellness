@@ -1,31 +1,33 @@
 package org.stockwellness.adapter.in.web.stock;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
-import org.springframework.http.ResponseEntity;
-import org.stockwellness.global.common.response.SliceResponse;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase.ChartQuery;
 import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.in.stock.StockUseCase;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
-import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
-import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
-import org.stockwellness.application.port.in.stock.result.StockDetailResult;
-import org.stockwellness.application.port.in.stock.result.StockSearchResult;
+import org.stockwellness.application.port.in.stock.result.*;
 import org.stockwellness.domain.stock.price.ChartFrequency;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.global.common.response.ApiResponse;
+import org.stockwellness.global.common.response.SliceResponse;
 import org.stockwellness.global.security.MemberPrincipal;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/v1/stocks")
 @RequiredArgsConstructor
 public class StockController {
@@ -126,6 +128,18 @@ public class StockController {
     ) {
         var result = stockUseCase.getStockDetail(ticker);
         return ApiResponse.success(result);
+    }
+
+    /**
+     * 종목 수급 랭킹 조회
+     */
+    @GetMapping("/ranking/supply")
+    public ApiResponse<StockSupplyRankingResponse> getTopStocksBySupply(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "BUY") TradeDirection direction,
+            @RequestParam(defaultValue = "10") @Min(value = 1, message = "limit는 1 이상이어야 합니다.") int limit
+    ) {
+        return ApiResponse.success(stockPriceUseCase.getTopStocksBySupply(date, direction, limit));
     }
 
     // ==========================================

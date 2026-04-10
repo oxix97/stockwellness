@@ -11,6 +11,8 @@ import org.stockwellness.application.port.in.stock.StockPriceUseCase.ChartQuery;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse;
 import org.stockwellness.application.port.in.stock.result.ReturnRateResponse;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResponse;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -18,6 +20,7 @@ import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.ChartFrequency;
 import org.stockwellness.domain.stock.price.ChartPeriod;
+import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -30,9 +33,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class StockChartServiceTest {
+
+    private static final int DEFAULT_LIMIT = 10;
 
     @Mock
     private StockPricePort stockPricePort;
@@ -47,6 +54,125 @@ class StockChartServiceTest {
     private StockChartService stockChartService;
 
     private final String ticker = "AAPL";
+
+    @Nested
+    @DisplayName("수급 랭킹 조회")
+    class GetTopStocksBySupply {
+
+        @Test
+        @DisplayName("date가 없으면 최신 수급 적재일을 기준일로 선택한다")
+        void usesLatestDateWhenDateIsNull() {
+            LocalDate latestDate = LocalDate.of(2026, 4, 8);
+            List<StockSupplyRankingResult> institutionResult = List.of(
+                    new StockSupplyRankingResult("005930", "삼성전자", "반도체", BigDecimal.valueOf(71000), BigDecimal.valueOf(1.43), 10L, BigDecimal.TEN, BigDecimal.ONE)
+            );
+            List<StockSupplyRankingResult> foreignResult = List.of(
+                    new StockSupplyRankingResult("000660", "SK하이닉스", "반도체", BigDecimal.valueOf(202000), BigDecimal.valueOf(-0.98), 20L, BigDecimal.valueOf(20), BigDecimal.TWO)
+            );
+
+            given(stockPricePort.findLatestInstitutionSupplyRankingDate(TradeDirection.BUY)).willReturn(Optional.of(latestDate));
+            given(stockPricePort.findLatestForeignSupplyRankingDate(TradeDirection.BUY)).willReturn(Optional.of(latestDate));
+            given(stockPricePort.findTopInstitutionStocksBySupply(latestDate, TradeDirection.BUY, DEFAULT_LIMIT))
+                    .willReturn(institutionResult);
+            given(stockPricePort.findTopForeignStocksBySupply(latestDate, TradeDirection.BUY, DEFAULT_LIMIT))
+                    .willReturn(foreignResult);
+
+            StockSupplyRankingResponse result = stockChartService.getTopStocksBySupply(
+                    null, TradeDirection.BUY, DEFAULT_LIMIT
+            );
+
+            assertThat(result.requestedDate()).isNull();
+            assertThat(result.effectiveDate()).isEqualTo(latestDate);
+            assertThat(result.institutionItems()).isEqualTo(institutionResult);
+            assertThat(result.foreignItems()).isEqualTo(foreignResult);
+        }
+
+        @Test
+        @DisplayName("요청일이 있으면 해당 시점 이전의 최신 수급 적재일을 사용한다")
+        void usesLatestSupplyDateOnOrBeforeRequestedDate() {
+            LocalDate requestedDate = LocalDate.of(2026, 4, 9);
+            LocalDate effectiveDate = LocalDate.of(2026, 4, 8);
+            List<StockSupplyRankingResult> institutionResult = List.of(
+                    new StockSupplyRankingResult("000660", "SK하이닉스", "반도체", BigDecimal.valueOf(202000), BigDecimal.valueOf(-0.98), 100L, BigDecimal.valueOf(100), BigDecimal.ONE)
+            );
+            List<StockSupplyRankingResult> foreignResult = List.of(
+                    new StockSupplyRankingResult("005930", "삼성전자", "반도체", BigDecimal.valueOf(71000), BigDecimal.valueOf(1.43), 90L, BigDecimal.valueOf(90), BigDecimal.TWO)
+            );
+
+            given(stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.of(effectiveDate));
+            given(stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.of(effectiveDate));
+            given(stockPricePort.findTopInstitutionStocksBySupply(effectiveDate, TradeDirection.BUY, DEFAULT_LIMIT))
+                    .willReturn(institutionResult);
+            given(stockPricePort.findTopForeignStocksBySupply(effectiveDate, TradeDirection.BUY, DEFAULT_LIMIT))
+                    .willReturn(foreignResult);
+
+            StockSupplyRankingResponse result = stockChartService.getTopStocksBySupply(
+                    requestedDate, TradeDirection.BUY, DEFAULT_LIMIT
+            );
+
+            assertThat(result.requestedDate()).isEqualTo(requestedDate);
+            assertThat(result.effectiveDate()).isEqualTo(effectiveDate);
+            assertThat(result.institutionItems()).isEqualTo(institutionResult);
+            assertThat(result.foreignItems()).isEqualTo(foreignResult);
+        }
+
+        @Test
+        @DisplayName("최신 수급 적재일에 데이터가 없어도 해당 날짜 기준으로 빈 리스트를 반환한다")
+        void returnsEmptyListsWhenEffectiveDateHasNoData() {
+            LocalDate requestedDate = LocalDate.of(2026, 4, 1);
+            LocalDate effectiveDate = LocalDate.of(2026, 4, 1);
+
+            given(stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.SELL)).willReturn(Optional.of(effectiveDate));
+            given(stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.SELL)).willReturn(Optional.of(effectiveDate));
+            given(stockPricePort.findTopInstitutionStocksBySupply(effectiveDate, TradeDirection.SELL, DEFAULT_LIMIT))
+                    .willReturn(List.of());
+            given(stockPricePort.findTopForeignStocksBySupply(effectiveDate, TradeDirection.SELL, DEFAULT_LIMIT))
+                    .willReturn(List.of());
+
+            StockSupplyRankingResponse result = stockChartService.getTopStocksBySupply(
+                    requestedDate, TradeDirection.SELL, DEFAULT_LIMIT
+            );
+
+            assertThat(result.requestedDate()).isEqualTo(requestedDate);
+            assertThat(result.effectiveDate()).isEqualTo(effectiveDate);
+            assertThat(result.institutionItems()).isEmpty();
+            assertThat(result.foreignItems()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("수급 적재일이 아예 없으면 effectiveDate 없이 빈 리스트를 반환한다")
+        void returnsEmptyWhenNoSupplyDateExists() {
+            LocalDate requestedDate = LocalDate.of(2026, 4, 1);
+
+            given(stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.empty());
+            given(stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.empty());
+
+            StockSupplyRankingResponse result = stockChartService.getTopStocksBySupply(
+                    requestedDate, TradeDirection.BUY, DEFAULT_LIMIT
+            );
+
+            assertThat(result.requestedDate()).isEqualTo(requestedDate);
+            assertThat(result.effectiveDate()).isNull();
+            assertThat(result.institutionItems()).isEmpty();
+            assertThat(result.foreignItems()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("기관과 외국인 수급일이 다를 경우 더 최신 날짜를 기준으로 조회한다")
+        void usesLaterDateWhenInstAndForeignDatesDiffer() {
+            LocalDate requestedDate = LocalDate.of(2026, 4, 9);
+            LocalDate instDate = LocalDate.of(2026, 4, 8);
+            LocalDate foreignDate = LocalDate.of(2026, 4, 7);
+            
+            given(stockPricePort.findLatestInstitutionSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.of(instDate));
+            given(stockPricePort.findLatestForeignSupplyRankingDateOnOrBefore(requestedDate, TradeDirection.BUY)).willReturn(Optional.of(foreignDate));
+            
+            stockChartService.getTopStocksBySupply(requestedDate, TradeDirection.BUY, DEFAULT_LIMIT);
+            
+            verify(stockPricePort).findTopInstitutionStocksBySupply(instDate, TradeDirection.BUY, DEFAULT_LIMIT);
+            verify(stockPricePort).findTopForeignStocksBySupply(instDate, TradeDirection.BUY, DEFAULT_LIMIT);
+        }
+    }
 
     @Nested
     @DisplayName("차트 데이터 조회")
