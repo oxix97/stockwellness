@@ -7,7 +7,6 @@ import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
-import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.util.DateUtil;
@@ -36,30 +35,13 @@ public class SectorDashboardController {
     }
 
     /**
-     * [기능 27] 수급 상위 섹터 조회
-     */
-    @GetMapping("/ranking/supply")
-    public ApiResponse<List<SectorSupplyResult>> getTopSectorsBySupply(
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) MarketType marketType,
-            @RequestParam(defaultValue = "10") int limit) {
-
-        LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ApiResponse.success(sectorInsightUseCase.getTopSectorsBySupply(targetDate, marketType, limit));
-    }
-
-    /**
-     * [기능 31] 섹터 vs 시장 비교 분석 조회
+     * [기능 31] 섹터 vs 시장 비교 분석 조회 (최신 데이터 기준)
      */
     @GetMapping("/{sectorCode}/comparison")
     public ApiResponse<SectorComparisonResult> compareWithMarket(
-            @PathVariable String sectorCode,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @PathVariable String sectorCode) {
 
-        LocalDate targetDate = DateUtil.getTodayIfNull(date);
-        return ApiResponse.success(sectorInsightUseCase.compareWithMarket(sectorCode, targetDate));
+        return ApiResponse.success(sectorInsightUseCase.compareWithMarket(sectorCode));
     }
 
     /**

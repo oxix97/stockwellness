@@ -3,7 +3,6 @@ package org.stockwellness.application.port.in.stock;
 import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
-import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.MarketType;
 
 import java.time.LocalDate;
@@ -21,17 +20,12 @@ public interface SectorInsightUseCase {
     List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit);
 
     /**
-     * 특정 시장 및 날짜 기준 수급(외인/기관) 상위 섹터 목록을 조회합니다.
-     */
-    List<SectorSupplyResult> getTopSectorsBySupply(LocalDate date, MarketType marketType, int limit);
-
-    /**
      * 특정 섹터의 상세 인사이트 및 진단 정보를 조회합니다.
      */
     SectorDetailResult getSectorDetail(String sectorCode, LocalDate date);
 
     /**
-     * 특정 섹터와 전체 시장(KOSPI/KOSDAQ) 지수를 비교 분석합니다.
+     * 특정 섹터와 전체 시장(KOSPI/KOSDAQ) 지수를 비교 분석합니다. (가장 최신 데이터 기준)
      */
-    SectorComparisonResult compareWithMarket(String sectorCode, LocalDate date);
+    SectorComparisonResult compareWithMarket(String sectorCode);
 }

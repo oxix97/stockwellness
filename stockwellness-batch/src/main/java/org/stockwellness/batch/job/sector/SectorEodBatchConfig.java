@@ -18,20 +18,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
-import org.stockwellness.batch.support.BatchMdcListener;
-import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
-import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
-import org.stockwellness.batch.support.listener.JobFailureNotificationListener;
+import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.batch.job.sector.listener.SectorEodJobListener;
 import org.stockwellness.batch.job.sector.step.*;
+import org.stockwellness.batch.support.BatchMdcListener;
+import org.stockwellness.batch.support.listener.JobFailureNotificationListener;
+import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
+import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Future;
 
 @Slf4j
 @Configuration
@@ -48,14 +49,34 @@ public class SectorEodBatchConfig {
     private final EntityManagerFactory entityManagerFactory;
 
     @Bean
-    public Job sectorEodJob(Step syncSectorInsightStep, Step sectorAiAnalysisStep) {
+    public Job sectorEodJob(Step collectSectorDailyDetailStep, Step syncSectorInsightStep, Step sectorAiAnalysisStep) {
         return new JobBuilder("sectorEodJob", jobRepository)
-                .start(syncSectorInsightStep)
-                .next(sectorAiAnalysisStep)
+                .start(collectSectorDailyDetailStep)
+                .next(syncSectorInsightStep)
+//                .next(sectorAiAnalysisStep)
                 .listener(mdcListener)
                 .listener(commonBatchJobLoggingListener)
                 .listener(failureNotificationListener)
                 .listener(jobListener)
+                .build();
+    }
+
+    @Bean
+    public Step collectSectorDailyDetailStep(
+            SectorMarketIndexItemReader reader,
+            SectorDailyDetailItemProcessor processor,
+            SectorDailyDetailItemWriter writer
+    ) {
+        return new StepBuilder("collectSectorDailyDetailStep", jobRepository)
+                .<MarketIndex, SectorDailyDetail>chunk(20, transactionManager)
+                .reader(reader)
+                .processor(processor)
+                .writer(writer)
+                .listener(mdcListener)
+                .listener(commonBatchStepLoggingListener)
+                .faultTolerant()
+                .retryLimit(3)
+                .retry(Exception.class)
                 .build();
     }
 
@@ -91,7 +112,7 @@ public class SectorEodBatchConfig {
             AsyncItemWriter<SectorInsight> asyncWriter
     ) {
         return new StepBuilder("sectorAiAnalysisStep", jobRepository)
-                .<SectorInsight, java.util.concurrent.Future<SectorInsight>>chunk(5, transactionManager)
+                .<SectorInsight, Future<SectorInsight>>chunk(5, transactionManager)
                 .reader(sectorReader)
                 .processor(asyncProcessor)
                 .writer(asyncWriter)

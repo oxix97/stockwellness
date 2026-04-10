@@ -16,6 +16,7 @@ import org.stockwellness.domain.stock.insight.SectorInsight;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,23 +73,29 @@ class SectorInsightRepositoryTest {
     }
 
     @Test
-    @DisplayName("특정 날짜의 수급(외국인/기관 매수) 상위 업종을 조회한다")
-    void findTopBySupply_Success() {
+    @DisplayName("특정 날짜의 수급(외국인+기관 합산) 상위 업종을 조회한다")
+    void findTopBySupply_CombinedWeight_Success() {
         // given
         LocalDate today = LocalDate.now();
-        SectorInsight s1 = SectorInsight.of("IT", "001", MarketType.KOSPI, today, 
-                SectorIndicators.of(BigDecimal.valueOf(100), BigDecimal.ZERO, 500L, 100L, 5, 1), null, false);
-        SectorInsight s2 = SectorInsight.of("Finance", "002", MarketType.KOSPI, today, 
-                SectorIndicators.of(BigDecimal.valueOf(100), BigDecimal.ZERO, 1000L, 200L, 10, 2), null, false);
         
-        sectorInsightRepository.saveAll(List.of(s1, s2));
+        // Sector A: Foreign 500, Inst 500 (Total 1000)
+        SectorInsight sA = SectorInsight.of("SectorA", "001", MarketType.KOSPI, today, 
+                SectorIndicators.of(BigDecimal.valueOf(100), BigDecimal.ZERO, 500L, 500L, 1, 1), null, false);
+        
+        // Sector B: Foreign 800, Inst 100 (Total 900)
+        SectorInsight sB = SectorInsight.of("SectorB", "002", MarketType.KOSPI, today, 
+                SectorIndicators.of(BigDecimal.valueOf(100), BigDecimal.ZERO, 800L, 100L, 5, 1), null, false);
+        
+        sectorInsightRepository.saveAll(List.of(sA, sB));
         sectorInsightRepository.flush();
 
-        // when
+        // when: 합산 금액 기준 정렬 (A: 1000 > B: 900)
         List<SectorInsight> topSupply = sectorInsightRepository.findTopBySupply(today, MarketType.KOSPI, PageRequest.of(0, 10));
 
-        // then
-        assertThat(topSupply.get(0).getSectorName()).isEqualTo("Finance");
+        // then: A가 1위여야 함 (기존 로직에서는 외국인 매수세가 강한 B가 1위였음)
+        assertThat(topSupply).hasSize(2);
+        assertThat(topSupply.get(0).getSectorName()).isEqualTo("SectorA");
+        assertThat(topSupply.get(1).getSectorName()).isEqualTo("SectorB");
     }
 
     @Test
@@ -112,5 +119,53 @@ class SectorInsightRepositoryTest {
         // then
         assertThat(maxDate).isPresent();
         assertThat(maxDate.get()).isEqualTo(d2);
+    }
+
+    @Test
+    @DisplayName("여러 섹터 코드의 최신 이전 인사이트를 한 번에 조회한다")
+    void findLatestBeforeByCodes_Success() {
+        LocalDate 기준일 = LocalDate.of(2026, 4, 9);
+        SectorInsight oldKospi = SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일.minusDays(3),
+                SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.ONE, 10L, 10L, 1, 1), null, false);
+        SectorInsight latestKospi = SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일.minusDays(1),
+                SectorIndicators.of(BigDecimal.valueOf(1100), BigDecimal.ONE, 20L, 20L, 2, 2), null, false);
+        SectorInsight latestKosdaq = SectorInsight.of("반도체", "101", MarketType.KOSDAQ, 기준일.minusDays(2),
+                SectorIndicators.of(BigDecimal.valueOf(900), BigDecimal.ONE, 30L, 30L, 3, 3), null, false);
+        SectorInsight current = SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일,
+                SectorIndicators.of(BigDecimal.valueOf(1200), BigDecimal.ONE, 40L, 40L, 4, 4), null, false);
+
+        sectorInsightRepository.saveAll(List.of(oldKospi, latestKospi, latestKosdaq, current));
+        sectorInsightRepository.flush();
+
+        Map<String, SectorInsight> result = sectorInsightRepository.findLatestBeforeByCodes(List.of("001", "101"), 기준일);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get("001").getBaseDate()).isEqualTo(기준일.minusDays(1));
+        assertThat(result.get("101").getBaseDate()).isEqualTo(기준일.minusDays(2));
+    }
+
+    @Test
+    @DisplayName("여러 섹터 코드의 과거 가격을 코드별로 그룹핑하고 limit 만큼만 반환한다")
+    void findPastPricesByCodes_Success() {
+        LocalDate 기준일 = LocalDate.of(2026, 4, 9);
+        sectorInsightRepository.saveAll(List.of(
+                SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일.minusDays(1),
+                        SectorIndicators.of(BigDecimal.valueOf(1100), BigDecimal.ZERO, 0L, 0L, 0, 0), null, false),
+                SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일.minusDays(2),
+                        SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.ZERO, 0L, 0L, 0, 0), null, false),
+                SectorInsight.of("전기전자", "001", MarketType.KOSPI, 기준일.minusDays(3),
+                        SectorIndicators.of(BigDecimal.valueOf(900), BigDecimal.ZERO, 0L, 0L, 0, 0), null, false),
+                SectorInsight.of("반도체", "101", MarketType.KOSDAQ, 기준일.minusDays(1),
+                        SectorIndicators.of(BigDecimal.valueOf(700), BigDecimal.ZERO, 0L, 0L, 0, 0), null, false)
+        ));
+        sectorInsightRepository.flush();
+
+        Map<String, List<BigDecimal>> result = sectorInsightRepository.findPastPricesByCodes(List.of("001", "101"), 기준일, 2);
+
+        assertThat(result.get("001")).hasSize(2);
+        assertThat(result.get("001").get(0)).isEqualByComparingTo("1100");
+        assertThat(result.get("001").get(1)).isEqualByComparingTo("1000");
+        assertThat(result.get("101")).hasSize(1);
+        assertThat(result.get("101").get(0)).isEqualByComparingTo("700");
     }
 }

@@ -15,6 +15,9 @@ import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,12 +41,21 @@ class SectorInsightServiceTest {
     @Mock
     private SectorInsightPort sectorInsightPort;
 
+    @Mock
+    private BenchmarkPricePort benchmarkPricePort;
+
     private SectorInsight mockInsight(String sectorCode, LocalDate date) {
         SectorIndicators indicators = SectorIndicators.of(
                 BigDecimal.valueOf(1000), BigDecimal.valueOf(1.5),
                 100L, -50L, 0, 0
         );
         return SectorInsight.of("전기전자", sectorCode, MarketType.KOSPI, date, indicators, null, false);
+    }
+
+    private BenchmarkPrice mockBenchmark(String ticker, LocalDate date, BigDecimal changeRate) {
+        BenchmarkPrice bp = BenchmarkPrice.of("Benchmark", ticker, date, BigDecimal.valueOf(2500));
+        bp.updatePrices(null, null, null, bp.getClosePrice(), changeRate, 0L);
+        return bp;
     }
 
     @Nested
@@ -92,57 +105,66 @@ class SectorInsightServiceTest {
     class CompareWithMarket {
 
         @Test
-        @DisplayName("당일 데이터 없을 때 findLatestBefore 기준 날짜로 시장 비교를 수행한다")
-        void fallsBackToLatestBefore_andUsesEffectiveDate() {
-            LocalDate today = LocalDate.now();
-            LocalDate yesterday = today.minusDays(1);
+        @DisplayName("최신 데이터를 기준으로 시장 비교를 수행한다")
+        void usesLatestDataForComparison() {
+            LocalDate yesterday = LocalDate.now().minusDays(1);
             SectorInsight sector = mockInsight("0007", yesterday);
-            SectorInsight market = mockInsight("0001", yesterday);
+            BenchmarkPrice market = mockBenchmark("0001", yesterday, BigDecimal.valueOf(0.5));
 
-            given(sectorInsightPort.findBySectorCodeAndDate("0007", today)).willReturn(Optional.empty());
-            given(sectorInsightPort.findLatestBefore("0007", today)).willReturn(Optional.of(sector));
-            given(sectorInsightPort.findByCodesAndDate(List.of("0007", "0001"), yesterday))
-                    .willReturn(List.of(sector, market));
+            given(sectorInsightPort.findLatestBefore(eq("0007"), any(LocalDate.class))).willReturn(Optional.of(sector));
+            given(benchmarkPricePort.findByTickerAndBaseDate("0001", yesterday)).willReturn(Optional.of(market));
             given(sectorInsightPort.findHistoryByCode(eq("0007"), eq(yesterday), any(int.class)))
                     .willReturn(List.of());
-            given(sectorInsightPort.findHistoryByCode(eq("0001"), eq(yesterday), any(int.class)))
+            given(benchmarkPricePort.findHistoryByTicker(eq("0001"), eq(yesterday), any(int.class)))
                     .willReturn(List.of());
 
-            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007", today);
+            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007");
 
             assertThat(result.sectorCode()).isEqualTo("0007");
-            verify(sectorInsightPort).findLatestBefore("0007", today);
-            verify(sectorInsightPort).findByCodesAndDate(List.of("0007", "0001"), yesterday);
+            verify(sectorInsightPort).findLatestBefore(eq("0007"), any(LocalDate.class));
+            verify(benchmarkPricePort).findByTickerAndBaseDate("0001", yesterday);
         }
 
         @Test
-        @DisplayName("RS가 0.2보다 크면 OUTPERFORM을 반환한다")
-        void returnsOutperform_whenRSAbovePointTwo() {
+        @DisplayName("RS가 0.4보다 크면 OUTPERFORM을 반환한다")
+        void returnsOutperform_whenRSAbovePointFour() {
             LocalDate today = LocalDate.now();
-            SectorIndicators sectorInd = SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.valueOf(1.0), 0L, 0L, 0, 0); // +1.0%
+            SectorIndicators sectorInd = SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.valueOf(1.0), 0L, 0L, 0, 0);
             SectorInsight sector = SectorInsight.of("전기전자", "0007", MarketType.KOSPI, today, sectorInd, null, false);
             
-            SectorIndicators marketInd = SectorIndicators.of(BigDecimal.valueOf(2500), BigDecimal.valueOf(0.7), 0L, 0L, 0, 0); // +0.7%
-            SectorInsight market = SectorInsight.of("코스피", "0001", MarketType.KOSPI, today, marketInd, null, false);
-            // RS = 0.3 (> 0.2)
+            BenchmarkPrice market = mockBenchmark("0001", today, BigDecimal.valueOf(0.5));
 
-            given(sectorInsightPort.findBySectorCodeAndDate("0007", today)).willReturn(Optional.of(sector));
-            given(sectorInsightPort.findByCodesAndDate(List.of("0007", "0001"), today))
-                    .willReturn(List.of(sector, market));
+            given(sectorInsightPort.findLatestBefore(eq("0007"), any(LocalDate.class))).willReturn(Optional.of(sector));
+            given(benchmarkPricePort.findByTickerAndBaseDate("0001", today)).willReturn(Optional.of(market));
 
-            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007", today);
+            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007");
 
             assertThat(result.performanceStatus()).isEqualTo("OUTPERFORM");
         }
 
         @Test
-        @DisplayName("당일 데이터도 없고 최근 데이터도 없으면 예외를 던진다")
-        void throwsException_whenNoDataExists() {
+        @DisplayName("RS가 0.4 이하(예: 0.3)이면 NEUTRAL을 반환한다")
+        void returnsNeutral_whenRSBelowPointFour() {
             LocalDate today = LocalDate.now();
-            given(sectorInsightPort.findBySectorCodeAndDate("0007", today)).willReturn(Optional.empty());
-            given(sectorInsightPort.findLatestBefore("0007", today)).willReturn(Optional.empty());
+            SectorIndicators sectorInd = SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.valueOf(1.0), 0L, 0L, 0, 0);
+            SectorInsight sector = SectorInsight.of("전기전자", "0007", MarketType.KOSPI, today, sectorInd, null, false);
+            
+            BenchmarkPrice market = mockBenchmark("0001", today, BigDecimal.valueOf(0.7));
 
-            assertThatThrownBy(() -> sectorInsightService.compareWithMarket("0007", today))
+            given(sectorInsightPort.findLatestBefore(eq("0007"), any(LocalDate.class))).willReturn(Optional.of(sector));
+            given(benchmarkPricePort.findByTickerAndBaseDate("0001", today)).willReturn(Optional.of(market));
+
+            SectorComparisonResult result = sectorInsightService.compareWithMarket("0007");
+
+            assertThat(result.performanceStatus()).isEqualTo("NEUTRAL");
+        }
+
+        @Test
+        @DisplayName("최근 데이터가 없으면 예외를 던진다")
+        void throwsException_whenNoDataExists() {
+            given(sectorInsightPort.findLatestBefore(eq("0007"), any(LocalDate.class))).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> sectorInsightService.compareWithMarket("0007"))
                     .isInstanceOf(SectorDomainException.class);
         }
     }

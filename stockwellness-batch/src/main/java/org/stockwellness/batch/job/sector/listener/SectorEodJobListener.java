@@ -34,7 +34,6 @@ public class SectorEodJobListener implements JobExecutionListener {
             LocalDate today = LocalDate.now();
             try {
                 sectorInsightUseCase.getTopSectorsByFluctuation(today, null, 10);
-                sectorInsightUseCase.getTopSectorsBySupply(today, null, 10);
                 log.info("섹터 캐시 프리워밍 완료.");
             } catch (Exception e) {
                 log.error(BatchLogTemplate.error("캐시 프리워밍 중 오류 발생"), e);
@@ -44,7 +43,6 @@ public class SectorEodJobListener implements JobExecutionListener {
 
     private void evictSectorCaches() {
         evictCache("sectorRanking");
-        evictCache("sectorSupply");
         evictCache("sectorDetail");
         evictCache("sectorComparison");
         log.info("섹터 관련 Redis 캐시 무효화 완료.");

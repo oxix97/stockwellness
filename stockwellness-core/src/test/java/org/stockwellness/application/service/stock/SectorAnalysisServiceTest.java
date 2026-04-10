@@ -3,6 +3,7 @@ package org.stockwellness.application.service.stock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
@@ -73,6 +74,69 @@ class SectorAnalysisServiceTest {
         assertThat(leadingStocks).hasSize(2);
         assertThat(leadingStocks.get(0).ticker()).isEqualTo("T001"); // 거래대금 10000
         assertThat(leadingStocks.get(1).ticker()).isEqualTo("T003"); // 거래대금 5000
+    }
+
+    @Test
+    @DisplayName("원천 상세의 요약 시세/수급 값이 SectorInsight에 그대로 반영된다")
+    void analyze_preservesSummaryValuesFromDailyDetail() {
+        MarketIndex index = new MarketIndex("0029", "전기전자");
+        LocalDate today = LocalDate.of(2026, 4, 9);
+        SectorDailyDetail detail = SectorDailyDetail.of(
+                "0029",
+                "전기전자",
+                new org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot(
+                        "0029",
+                        today,
+                        new BigDecimal("1000.12"),
+                        new BigDecimal("12.34"),
+                        "2",
+                        new BigDecimal("1.23"),
+                        100L,
+                        90L,
+                        1000L,
+                        900L,
+                        new BigDecimal("990.00"),
+                        new BigDecimal("1010.00"),
+                        new BigDecimal("980.00"),
+                        10,
+                        1,
+                        2,
+                        3,
+                        0,
+                        new BigDecimal("1100.00"),
+                        new BigDecimal("-9.08"),
+                        today,
+                        new BigDecimal("800.00"),
+                        new BigDecimal("25.01"),
+                        today.minusMonths(1),
+                        100L,
+                        200L,
+                        new BigDecimal("33.33"),
+                        new BigDecimal("66.67"),
+                        100L,
+                        300L,
+                        150L
+                )
+        );
+
+        SectorApiDto currentData = new SectorApiDto(
+                detail.getSectorCode(),
+                detail.getSectorName(),
+                detail.getBaseDate(),
+                detail.getCurrentPrice(),
+                detail.getChangeRate(),
+                detail.getNetForeignBuyAmount(),
+                detail.getNetInstBuyAmount()
+        );
+
+        SectorInsight result = sectorAnalysisService.analyze(index, currentData, null, List.of(new BigDecimal("990.00")), List.of());
+
+        assertThat(result.getSectorCode()).isEqualTo(detail.getSectorCode());
+        assertThat(result.getSectorName()).isEqualTo(detail.getSectorName());
+        assertThat(result.getSectorIndexCurrentPrice()).isEqualByComparingTo(detail.getCurrentPrice());
+        assertThat(result.getAvgFluctuationRate()).isEqualByComparingTo(detail.getChangeRate());
+        assertThat(result.getNetForeignBuyAmount()).isEqualTo(detail.getNetForeignBuyAmount());
+        assertThat(result.getNetInstBuyAmount()).isEqualTo(detail.getNetInstBuyAmount());
     }
 
     private SectorApiDto createDefaultApiDto() {

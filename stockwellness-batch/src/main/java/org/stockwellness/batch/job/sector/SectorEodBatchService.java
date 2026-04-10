@@ -24,10 +24,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,11 +48,54 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
     private Map<String, StockPrice> priceMapCache;
     private Map<String, List<Stock>> sectorToStocksMapCache;
     private Map<String, MarketIndex> indexMapCache;
+    private Map<String, SectorInsight> previousInsightMapCache;
+    private Map<String, List<BigDecimal>> pastPricesMapCache;
+    private Set<String> preparedSectorCodes = Collections.emptySet();
+
+    @Override
+    public void prepareSync(LocalDate targetDate, List<String> sectorCodes) {
+        List<String> normalizedCodes = normalizeSectorCodes(sectorCodes);
+        if (normalizedCodes.isEmpty()) {
+            initializeCaches(targetDate);
+            return;
+        }
+
+        synchronized (this) {
+            initializeCaches(targetDate);
+
+            Set<String> missingCodes = normalizedCodes.stream()
+                    .filter(code -> !preparedSectorCodes.contains(code))
+                    .collect(Collectors.toCollection(HashSet::new));
+
+            if (missingCodes.isEmpty() && previousInsightMapCache != null && pastPricesMapCache != null) {
+                return;
+            }
+
+            if (previousInsightMapCache == null) {
+                previousInsightMapCache = new HashMap<>();
+            }
+            if (pastPricesMapCache == null) {
+                pastPricesMapCache = new HashMap<>();
+            }
+
+            Map<String, SectorInsight> previousInsights = sectorInsightPort.findLatestBeforeByCodes(List.copyOf(missingCodes), targetDate);
+            Map<String, List<BigDecimal>> pastPrices = sectorInsightPort.findPastPricesByCodes(List.copyOf(missingCodes), targetDate, 119);
+
+            previousInsightMapCache.putAll(previousInsights);
+            for (String sectorCode : missingCodes) {
+                pastPricesMapCache.put(sectorCode, pastPrices.getOrDefault(sectorCode, Collections.emptyList()));
+            }
+
+            Set<String> updatedPreparedSectorCodes = new HashSet<>(preparedSectorCodes);
+            updatedPreparedSectorCodes.addAll(missingCodes);
+            preparedSectorCodes = updatedPreparedSectorCodes;
+        }
+    }
 
     @Override
     public SectorEodResult syncSector(SectorSyncCommand command) {
         var apiDto = command.sectorApiDto();
-        initializeCaches(apiDto.baseDate());
+        prepareSync(apiDto.baseDate(), List.of(apiDto.sectorCode()));
 
         MarketIndex index = indexMapCache.get(apiDto.sectorCode());
         if (index == null) {
@@ -64,10 +109,8 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
                 .filter(Objects::nonNull)
                 .toList();
 
-        SectorInsight yesterdayData = sectorInsightPort.findBySectorCodeAndDate(apiDto.sectorCode(), apiDto.baseDate().minusDays(1))
-                .orElse(sectorInsightPort.findLatestBeforeByCodes(List.of(apiDto.sectorCode()), apiDto.baseDate()).get(apiDto.sectorCode()));
-        List<BigDecimal> pastPrices = sectorInsightPort.findPastPricesByCodes(List.of(apiDto.sectorCode()), apiDto.baseDate(), 119)
-                .getOrDefault(apiDto.sectorCode(), Collections.emptyList());
+        SectorInsight yesterdayData = previousInsightMapCache.get(apiDto.sectorCode());
+        List<BigDecimal> pastPrices = pastPricesMapCache.getOrDefault(apiDto.sectorCode(), Collections.emptyList());
 
         return new SectorEodResult(
                 sectorAnalysisService.analyze(index, apiDto, yesterdayData, pastPrices, sectorStockPrices)
@@ -140,7 +183,22 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
 
         indexMapCache = marketIndexPort.findAll().stream()
                 .collect(Collectors.toMap(MarketIndex::getIndexCode, value -> value));
+        previousInsightMapCache = new HashMap<>();
+        pastPricesMapCache = new HashMap<>();
+        preparedSectorCodes = new HashSet<>();
         cachedDate = targetDate;
+    }
+
+    private List<String> normalizeSectorCodes(List<String> sectorCodes) {
+        if (sectorCodes == null || sectorCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return sectorCodes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(code -> !code.isBlank())
+                .distinct()
+                .toList();
     }
 
     private String getMappingCode(Stock stock) {

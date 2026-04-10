@@ -35,23 +35,37 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     @Override
     @Transactional
     public void saveAll(List<? extends SectorInsight> insights) {
-        for (SectorInsight insight : insights) {
-            Optional<SectorInsight> existingOpt = sectorInsightRepository
-                    .findBySectorCodeAndBaseDate(insight.getSectorCode(), insight.getBaseDate());
+        if (insights.isEmpty()) {
+            return;
+        }
 
-            if (existingOpt.isPresent()) {
-                SectorInsight existing = existingOpt.get();
+        LocalDate baseDate = validateSingleBaseDate(insights.stream().map(SectorInsight::getBaseDate).toList());
+        List<String> sectorCodes = insights.stream()
+                .map(SectorInsight::getSectorCode)
+                .distinct()
+                .toList();
+
+        Map<String, SectorInsight> existingMap = sectorInsightRepository.findBySectorCodeInAndBaseDate(sectorCodes, baseDate).stream()
+                .collect(Collectors.toMap(SectorInsight::getSectorCode, insight -> insight));
+
+        List<SectorInsight> toSave = new ArrayList<>();
+        for (SectorInsight insight : insights) {
+            SectorInsight existing = existingMap.get(insight.getSectorCode());
+            if (existing != null) {
                 existing.update(
                         insight.getIndicators(),
                         insight.getTechnicalIndicators(),
-                        insight.isOverheated() 
+                        insight.isOverheated()
                 );
                 existing.updateLeadingStocks(insight.getLeadingStocks());
-                sectorInsightRepository.saveAndFlush(existing);
-            } else {
-                sectorInsightRepository.saveAndFlush(insight);
+                toSave.add(existing);
+                continue;
             }
+            toSave.add(insight);
         }
+
+        sectorInsightRepository.saveAll(toSave);
+        sectorInsightRepository.flush();
     }
 
     @Override
@@ -61,17 +75,12 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
 
     @Override
     public Map<String, SectorInsight> findLatestBeforeByCodes(List<String> sectorCodes, LocalDate date) {
-        return sectorInsightRepository.findRecentSectorsByCodes(sectorCodes, date).stream()
-                .collect(Collectors.toMap(SectorInsight::getSectorCode, s -> s, (s1, s2) -> s1));
+        return sectorInsightRepository.findLatestBeforeByCodes(sectorCodes, date);
     }
 
     @Override
     public Map<String, List<BigDecimal>> findPastPricesByCodes(List<String> sectorCodes, LocalDate date, int limit) {
-        Map<String, List<BigDecimal>> result = new HashMap<>();
-        for (String code : sectorCodes) {
-            result.put(code, findPastPrices(code, date, limit));
-        }
-        return result;
+        return sectorInsightRepository.findPastPricesByCodes(sectorCodes, date, limit);
     }
 
     @Override
@@ -112,5 +121,14 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     @Override
     public List<MarketIndex> findAll() {
         return marketIndexRepository.findAll();
+    }
+
+    private LocalDate validateSingleBaseDate(List<LocalDate> baseDates) {
+        LocalDate baseDate = baseDates.getFirst();
+        boolean hasDifferentBaseDate = baseDates.stream().anyMatch(date -> !baseDate.equals(date));
+        if (hasDifferentBaseDate) {
+            throw new IllegalArgumentException("SectorInsight saveAll은 동일한 baseDate chunk만 지원합니다.");
+        }
+        return baseDate;
     }
 }

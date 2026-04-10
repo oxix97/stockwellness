@@ -9,16 +9,17 @@ import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
-import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.application.port.out.stock.*;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.domain.stock.analysis.DiagnosisStatus;
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.error.ErrorCode;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 public class SectorInsightService implements SectorInsightUseCase {
 
     private final SectorInsightPort sectorInsightPort;
+    private final BenchmarkPricePort benchmarkPricePort;
 
     @Override
     @Transactional
@@ -60,20 +62,6 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorSupply", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit")
-    public List<SectorSupplyResult> getTopSectorsBySupply(LocalDate date, MarketType marketType, int limit) {
-        List<SectorInsight> result = sectorInsightPort.findTopSectorsBySupply(date, marketType, limit);
-        if (result.isEmpty()) {
-            result = sectorInsightPort.findLatestDate()
-                    .map(latestDate -> sectorInsightPort.findTopSectorsBySupply(latestDate, marketType, limit))
-                    .orElse(List.of());
-        }
-        return result.stream()
-                .map(s -> new SectorSupplyResult(s.getSectorCode(), s.getSectorName(), s.getNetForeignBuyAmount(), s.getNetInstBuyAmount(), s.getForeignConsecutiveBuyDays(), s.getInstConsecutiveBuyDays()))
-                .toList();
-    }
-
-    @Override
     @Cacheable(cacheNames = "sectorDetail", key = "#sectorCode + '_' + #date.toString()")
     public SectorDetailResult getSectorDetail(String sectorCode, LocalDate date) {
         SectorInsight insight = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
@@ -90,39 +78,44 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorComparison", key = "#sectorCode + '_' + #date.toString()")
-    public SectorComparisonResult compareWithMarket(String sectorCode, LocalDate date) {
-        SectorInsight sector = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
-                .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
+    @Cacheable(cacheNames = "sectorComparison", key = "#sectorCode")
+    public SectorComparisonResult compareWithMarket(String sectorCode) {
+        SectorInsight sector = sectorInsightPort.findLatestBefore(sectorCode, LocalDate.now().plusDays(1))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 
         LocalDate effectiveDate = sector.getBaseDate();
-        String marketCode = sector.getMarketType().getBenchmarkTicker();
-        Map<String, SectorInsight> todayData = sectorInsightPort.findByCodesAndDate(List.of(sectorCode, marketCode), effectiveDate).stream()
-                .collect(Collectors.toMap(SectorInsight::getSectorCode, s -> s));
+        String marketTicker = sector.getMarketType().getBenchmarkTicker();
 
-        SectorInsight market = todayData.get(marketCode);
-        if (market == null) throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
+        // 시장 데이터는 BenchmarkPricePort에서 조회
+        var market = benchmarkPricePort.findByTickerAndBaseDate(marketTicker, effectiveDate)
+                .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 
-        BigDecimal rs = sector.getAvgFluctuationRate().subtract(market.getAvgFluctuationRate());
+        BigDecimal rs = sector.getAvgFluctuationRate().subtract(market.getChangeRate());
         List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, effectiveDate, 30);
-        List<SectorInsight> marketHistory = sectorInsightPort.findHistoryByCode(marketCode, effectiveDate, 30);
+        List<BenchmarkPrice> marketHistory = benchmarkPricePort.findHistoryByTicker(marketTicker, effectiveDate, 30);
         
-        List<SectorComparisonResult.HistoricalRS> history = calculateHistoricalRS(sectorHistory, marketHistory);
+        List<SectorComparisonResult.HistoricalRS> history = calculateHistoricalRSFromBenchmark(sectorHistory, marketHistory);
 
         return new SectorComparisonResult(
-                sectorCode, sector.getSectorName(), date,
-                sector.getAvgFluctuationRate(), market.getAvgFluctuationRate(),
+                sectorCode, sector.getSectorName(), effectiveDate,
+                sector.getAvgFluctuationRate(), market.getChangeRate(),
                 rs, resolvePerformanceStatus(rs), history
         );
     }
 
-    private List<SectorComparisonResult.HistoricalRS> calculateHistoricalRS(List<SectorInsight> sectorHistory, List<SectorInsight> marketHistory) {
+    private List<SectorComparisonResult.HistoricalRS> calculateHistoricalRSFromBenchmark(
+            List<SectorInsight> sectorHistory, 
+            List<BenchmarkPrice> marketHistory
+    ) {
         Map<LocalDate, BigDecimal> marketMap = marketHistory.stream()
-                .collect(Collectors.toMap(SectorInsight::getBaseDate, SectorInsight::getAvgFluctuationRate));
+                .collect(Collectors.toMap(
+                        BenchmarkPrice::getBaseDate, 
+                        BenchmarkPrice::getChangeRate,
+                        (v1, v2) -> v1
+                ));
 
         return sectorHistory.stream()
-                .filter(s -> marketMap.containsKey(s.getBaseDate())) // 데이터가 있는 날짜만 포함하여 RS 왜곡 방지
+                .filter(s -> marketMap.containsKey(s.getBaseDate()))
                 .map(s -> {
                     BigDecimal mRate = marketMap.get(s.getBaseDate());
                     BigDecimal rs = s.getAvgFluctuationRate().subtract(mRate);
@@ -134,9 +127,9 @@ public class SectorInsightService implements SectorInsightUseCase {
 
     private String resolvePerformanceStatus(BigDecimal rs) {
         if (rs == null) return "NEUTRAL";
-        // 0.2%p 차이를 기준으로 보수적인 판별 (기존 0.5%는 너무 큼)
-        if (rs.compareTo(new BigDecimal("0.2")) > 0) return "OUTPERFORM";
-        if (rs.compareTo(new BigDecimal("-0.2")) < 0) return "UNDERPERFORM";
+        // 0.4%p 차이를 기준으로 판별 (노이즈 감소를 위해 0.3%에서 추가 상향)
+        if (rs.compareTo(new BigDecimal("0.4")) > 0) return "OUTPERFORM";
+        if (rs.compareTo(new BigDecimal("-0.4")) < 0) return "UNDERPERFORM";
         return "NEUTRAL";
     }
 
@@ -149,7 +142,7 @@ public class SectorInsightService implements SectorInsightUseCase {
         
         BigDecimal disparity = BigDecimal.ZERO;
         if (indicators.getMa20() != null && indicators.getMa20().compareTo(BigDecimal.ZERO) > 0) {
-            disparity = insight.getSectorIndexCurrentPrice().divide(indicators.getMa20(), 4, java.math.RoundingMode.HALF_UP);
+            disparity = insight.getSectorIndexCurrentPrice().divide(indicators.getMa20(), 4, RoundingMode.HALF_UP);
         }
         boolean disparityOver = disparity.compareTo(new BigDecimal("1.1")) >= 0;
 

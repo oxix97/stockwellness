@@ -8,7 +8,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
-import org.stockwellness.application.port.in.stock.result.SectorSupplyResult;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.SectorAiOpinion;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
@@ -72,48 +71,6 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data[].fluctuationRate").description("평균 등락률"));
                                     add(fieldWithPath("data[].isOverheated").description("과열 여부"));
                                     add(fieldWithPath("data[].aiComment").description("AI 한 줄 의견").optional());
-                                }})
-                                .build())
-                ));
-    }
-
-    @Test
-    @DisplayName("섹터 수급 랭킹 조회 API 명세 생성")
-    void getSectorSupplyRanking_docs() throws Exception {
-        // given
-        List<SectorSupplyResult> result = List.of(
-                new SectorSupplyResult("001", "종합", 500000000L, 1200000000L, 3, 5),
-                new SectorSupplyResult("002", "반도체", -100000000L, 300000000L, 0, 2)
-        );
-
-        given(sectorInsightUseCase.getTopSectorsBySupply(any(), any(), anyInt()))
-                .willReturn(result);
-
-        // when & then
-        mockMvc.perform(get("/api/v1/sectors/ranking/supply")
-                        .param("date", "2026-02-26")
-                        .param("marketType", "KOSPI")
-                        .param("limit", "10"))
-                .andExpect(status().isOk())
-                .andDo(document("sector-supply",
-                        resource(ResourceSnippetParameters.builder()
-                                .tag("Sector")
-                                .summary("섹터 수급 랭킹 조회")
-                                .description("외국인/기관 순매수 금액 및 연속 매수 일수 기반의 섹터 순위를 조회합니다.")
-                                .queryParameters(
-                                        parameterWithName("date").description("조회 날짜 (yyyy-MM-dd)").optional(),
-                                        parameterWithName("marketType").description("시장 구분 (KOSPI, KOSDAQ)").optional(),
-                                        parameterWithName("limit").description("조회 개수").optional()
-                                )
-                                .responseSchema(Schema.schema("SectorSupplyResponse"))
-                                .responseFields(new ArrayList<>(commonResponseFields()) {{
-                                    add(fieldWithPath("data").description("섹터 수급 리스트"));
-                                    add(fieldWithPath("data[].sectorCode").description("섹터 코드"));
-                                    add(fieldWithPath("data[].sectorName").description("섹터명"));
-                                    add(fieldWithPath("data[].netForeignBuyAmount").description("외국인 순매수 금액"));
-                                    add(fieldWithPath("data[].netInstBuyAmount").description("기관 순매수 금액"));
-                                    add(fieldWithPath("data[].foreignConsecutiveBuyDays").description("외국인 연속 매수 일수"));
-                                    add(fieldWithPath("data[].instConsecutiveBuyDays").description("기관 연속 매수 일수"));
                                 }})
                                 .build())
                 ));
