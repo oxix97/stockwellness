@@ -5,10 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.stock.MarketIndexUseCase;
+import org.stockwellness.application.port.in.stock.result.MarketDashboardResult;
 import org.stockwellness.application.port.in.stock.result.MarketIndexResult;
 import org.stockwellness.application.port.in.stock.result.MarketIndexResult.HistoryPoint;
+import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
@@ -26,14 +29,14 @@ import java.util.List;
 public class MarketIndexService implements MarketIndexUseCase {
 
     private final LoadBenchmarkPort loadBenchmarkPort;
-
-    private static final int LOOKBACK_DAYS = 14; // 연휴/주말로 최근 7일 내 데이터가 비는 경우를 완화
-    private static final int DISPLAY_SCALE = 2;
+    private final StockPricePort stockPricePort;
+    private final MarketBreadthCalculator marketBreadthCalculator;
+    private final MarketWeatherClassifier marketWeatherClassifier;
 
     @Override
-    public List<MarketIndexResult> getMarketIndexes() {
+    public MarketDashboardResult getMarketIndexes() {
         LocalDate end = LocalDate.now();
-        LocalDate start = end.minusDays(LOOKBACK_DAYS);
+        LocalDate start = end.minusDays(MarketWeatherPolicy.LOOKBACK_DAYS);
 
         List<MarketIndexResult> results = new ArrayList<>();
         List<String> missingTickers = new ArrayList<>();
@@ -64,14 +67,16 @@ public class MarketIndexService implements MarketIndexUseCase {
                     missingTickers, start, end);
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
-        return results;
+
+        MarketWeatherResult weather = buildMarketWeather(results);
+        return new MarketDashboardResult(results, weather);
     }
 
     private MarketIndexResult toResult(BenchmarkType type, List<StockPriceResult> prices) {
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
         BigDecimal fluctuationRate = latest.changeRate() != null ? 
-                latest.changeRate().setScale(DISPLAY_SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                latest.changeRate().setScale(MarketWeatherPolicy.DISPLAY_SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         
         // fluctuationAmount = currentPrice - prevPrice
         // prevPrice = currentPrice / (1 + fluctuationRate/100)
@@ -90,5 +95,26 @@ public class MarketIndexService implements MarketIndexUseCase {
         List<HistoryPoint> history = List.of(new HistoryPoint(latest.baseDate(), latest.closePrice()));
 
         return new MarketIndexResult(type.getTicker(), type.getName(), currentPrice, fluctuationRate, fluctuationAmount, history);
+    }
+
+    private MarketWeatherResult buildMarketWeather(List<MarketIndexResult> indexes) {
+        MarketIndexResult kospi = findRequiredIndex(indexes, BenchmarkType.KOSPI);
+        MarketIndexResult kosdaq = findRequiredIndex(indexes, BenchmarkType.KOSDAQ);
+
+        LocalDate benchmarkDate = kospi.history().isEmpty() ? LocalDate.now() : kospi.history().get(0).date();
+        LocalDate breadthDate = stockPricePort.findLatestDateOnOrBefore(benchmarkDate).orElse(null);
+        MarketBreadthSnapshot breadth = breadthDate == null
+                ? null
+                : marketBreadthCalculator.summarize(stockPricePort.findAllByDate(breadthDate));
+
+        LocalDate asOfDate = breadthDate != null ? breadthDate : benchmarkDate;
+        return marketWeatherClassifier.classify(kospi.fluctuationRate(), kosdaq.fluctuationRate(), breadth, asOfDate);
+    }
+
+    private MarketIndexResult findRequiredIndex(List<MarketIndexResult> indexes, BenchmarkType type) {
+        return indexes.stream()
+                .filter(index -> type.getTicker().equals(index.ticker()))
+                .findFirst()
+                .orElseThrow(() -> new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND));
     }
 }
