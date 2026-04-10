@@ -71,15 +71,15 @@ public class PortfolioAnalysisDataLoader {
             for (KisMultiStockPriceDetail detail : details) {
                 Stock stock = stockMap.get(detail.ticker());
                 if (stock != null) {
-                    BigDecimal price = new BigDecimal(detail.closePrice());
+                    BigDecimal price = detail.closePrice();
                     // 임시 StockPrice 객체 생성 (계산용으로만 사용)
                     StockPrice tempPrice = StockPrice.of(stock, LocalDate.now(), 
-                            new BigDecimal(detail.openPrice()), new BigDecimal(detail.highPrice()), 
-                            new BigDecimal(detail.lowPrice()), price, price, 
-                            new BigDecimal(detail.previousClosePrice()), 
-                            Long.parseLong(detail.accumulatedVolume()), 
-                            new BigDecimal(detail.accumulatedTradingValue()),
-                            BigDecimal.ZERO, BigDecimal.ZERO, null);
+                            detail.openPrice(), detail.highPrice(), 
+                            detail.lowPrice(), price, price, 
+                            detail.previousClosePrice(), 
+                            detail.accumulatedVolume(), 
+                            detail.accumulatedTradingValue(),
+                            detail.netInstitutionalBuyingAmt(), detail.netForeignBuyingAmt(), null);
                     
                     priceMap.put(detail.ticker(), List.of(tempPrice));
                 }

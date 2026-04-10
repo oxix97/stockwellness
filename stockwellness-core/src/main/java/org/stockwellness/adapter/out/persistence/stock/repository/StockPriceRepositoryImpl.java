@@ -50,24 +50,19 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
         );
     }
 
+    /**
+     * 종목명(name)으로 해당 종목의 가장 최신 StockPrice 1건 조회
+     */
     @Override
-    public Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction) {
-        return findLatestSupplyRankingDate(stockPrice.netInstitutionalBuyingQty.coalesce(0L), null, direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
-        return findLatestSupplyRankingDate(stockPrice.netInstitutionalBuyingQty.coalesce(0L), date, direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction) {
-        return findLatestSupplyRankingDate(stockPrice.netForeignBuyingQty.coalesce(0L), null, direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
-        return findLatestSupplyRankingDate(stockPrice.netForeignBuyingQty.coalesce(0L), date, direction);
+    public Optional<StockPrice> findLatestPriceByName(String name) {
+        return Optional.ofNullable(
+                queryFactory
+                        .selectFrom(stockPrice)
+                        .join(stockPrice.stock, stock)
+                        .where(stock.name.eq(name))
+                        .orderBy(stockPrice.id.baseDate.desc())
+                        .fetchFirst()
+        );
     }
 
     @Override
@@ -136,23 +131,6 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                 .orderBy(direction == TradeDirection.BUY ? buyingQty.desc() : buyingQty.asc())
                 .limit(limit)
                 .fetch();
-    }
-
-    private Optional<LocalDate> findLatestSupplyRankingDate(
-            NumberExpression<Long> buyingQty,
-            LocalDate onOrBefore,
-            TradeDirection direction
-    ) {
-        return Optional.ofNullable(
-                queryFactory
-                        .select(stockPrice.id.baseDate.max())
-                        .from(stockPrice)
-                        .where(
-                                onOrBefore != null ? stockPrice.id.baseDate.loe(onOrBefore) : null,
-                                getDirectionFilter(buyingQty, direction)
-                        )
-                        .fetchOne()
-        );
     }
 
     private BooleanExpression getDirectionFilter(NumberExpression<Long> buyingQty, TradeDirection direction) {

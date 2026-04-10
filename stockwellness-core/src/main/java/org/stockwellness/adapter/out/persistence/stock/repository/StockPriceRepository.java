@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface StockPriceRepository extends JpaRepository<StockPrice, StockPriceId>, StockPriceRepositoryCustom {
     @Query("SELECT s.closePrice FROM StockPrice s WHERE s.stock = :stock AND s.id.baseDate < :date ORDER BY s.id.baseDate DESC")
@@ -47,12 +48,19 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
             SELECT COUNT(s)
             FROM StockPrice s
             WHERE s.id.baseDate = :baseDate
-              AND (s.netInstitutionalBuyingAmt <> 0 OR s.netForeignBuyingAmt <> 0 OR s.netTotalBuyingAmt <> 0)
+              AND (s.netInstitutionalBuyingAmt <> 0.0 OR s.netForeignBuyingAmt <> 0.0 OR s.netTotalBuyingAmt <> 0.0)
             """)
     long countByBaseDateAndNonZeroSupply(@Param("baseDate") LocalDate baseDate);
 
     /**
      * 특정 종목의 가장 최신 시세 엔티티를 조회합니다.
      */
-    java.util.Optional<StockPrice> findTopByStockTickerOrderByIdBaseDateDesc(String ticker);
+    Optional<StockPrice> findTopByStockTickerOrderByIdBaseDateDesc(String ticker);
+
+    @Query("SELECT s FROM StockPrice s " +
+            "WHERE s.id.stockId = :stockId " +
+            "ORDER BY s.id.baseDate")
+    List<StockPrice> findRecent120Prices(@Param("stockId") Long stockId);
+
+    Long stock(Stock stock);
 }

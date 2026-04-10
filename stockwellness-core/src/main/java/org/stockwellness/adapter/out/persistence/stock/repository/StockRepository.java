@@ -34,9 +34,10 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
     List<Stock> findByMarketTypeAndStatus(MarketType marketType, StockStatus status);
 
     /**
-     * 상장폐지되지 않은 모든 활성 종목 조회
+     * 상장 폐지 되지 않은 종목
      */
-    List<Stock> findByStatus(StockStatus status);
+    @Query("select s from Stock s where s.status = 'ACTIVE'")
+    List<Stock> findAllByActiveStocks();
 
     /**
      * ISIN 코드 목록으로 여러 종목 한 번에 조회 (IN절)
@@ -56,35 +57,46 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
      * - 상장일 내림차순
      */
     @Query("""
-        SELECT s FROM Stock s
-        WHERE s.groupCode = 'ST'
-          AND s.listingDate >= :since
-          AND s.status = 'ACTIVE'
-        ORDER BY s.listingDate DESC
-        """)
+            SELECT s FROM Stock s
+            WHERE s.groupCode = 'ST'
+              AND s.listingDate >= :since
+              AND s.status = 'ACTIVE'
+            ORDER BY s.listingDate DESC
+            """)
     List<Stock> findNewListings(@Param("since") LocalDate since);
 
     @Query("SELECT s.ticker FROM Stock s")
     List<String> findAllByTicker();
 
-    /** 배치 upsert용 — ticker 목록으로 벌크 조회 후 Map 변환 */
+    @Query("SELECT s FROM Stock s where s.status = 'ACTIVE'")
+    List<Stock> findAllByActiveStock();
+
+    /**
+     * 배치 upsert용 — ticker 목록으로 벌크 조회 후 Map 변환
+     */
     default Map<String, Stock> findAsMapByTickers(Collection<String> tickers) {
         return findAllByTickerIn(tickers).stream()
                 .collect(Collectors.toMap(Stock::getTicker, s -> s));
     }
 
-    /** 단축코드 목록으로 벌크 조회 → Map<shortCode, entity> 변환에 활용 */
+    /**
+     * 단축코드 목록으로 벌크 조회 → Map<shortCode, entity> 변환에 활용
+     */
     List<Stock> findAllByTickerIn(Collection<String> tickers);
 
-    /** 마스터 파일에서 사라진 국내 종목 상장폐지 처리 */
+    /**
+     * 마스터 파일에서 사라진 국내 종목 상장폐지 처리
+     */
     @Modifying(clearAutomatically = true)
     @Query("""
-        UPDATE Stock s
-        SET s.status = 'DELISTED', s.isPremiumTracking = false
-        WHERE s.marketType = :marketType
-          AND s.status != 'DELISTED'
-          AND s.ticker NOT IN :activeTickers
-        """)
+            UPDATE Stock s
+            SET s.status = 'DELISTED', s.isPremiumTracking = false
+            WHERE s.marketType = :marketType
+              AND s.status != 'DELISTED'
+              AND s.ticker NOT IN :activeTickers
+            """)
     int delistMissingStocks(@Param("marketType") MarketType marketType,
                             @Param("activeTickers") Collection<String> activeTickers);
+
+    Optional<Stock> findByName(String name);
 }

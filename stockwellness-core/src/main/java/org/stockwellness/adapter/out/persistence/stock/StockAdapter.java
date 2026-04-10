@@ -12,9 +12,12 @@ import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 
 import java.util.List;
 import java.util.Optional;
+
+import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
 
 @Component
 @RequiredArgsConstructor
@@ -23,9 +26,15 @@ public class StockAdapter implements StockPort {
     private final StockRepository stockRepository;
 
     @Override
+    public Stock findByName(String name) {
+        return stockRepository.findByName(name)
+                .orElseThrow(() -> new StockPriceException(STOCK_NOT_FOUND));
+    }
+
+    @Override
     public List<Stock> findBySectorMediumCode(String mediumCode) {
         if (mediumCode == null) {
-            return stockRepository.findByStatus(StockStatus.ACTIVE);
+            return stockRepository.findAllByActiveStock();
         }
         return stockRepository.findBySector_MediumCodeAndStatus(mediumCode, StockStatus.ACTIVE);
     }
@@ -70,11 +79,10 @@ public class StockAdapter implements StockPort {
         return stockRepository.findByMarketTypeAndStatus(marketType, status);
     }
 
-
-    public List<Stock> findByStatus(StockStatus status) {
-        return stockRepository.findByStatus(status);
+    @Override
+    public List<Stock> findAllByActiveStocks() {
+        return stockRepository.findAllByActiveStocks();
     }
-
 
     public List<Stock> findByIsinCodeIn(List<String> isinCodes) {
         return stockRepository.findAllByTickerIn(isinCodes);

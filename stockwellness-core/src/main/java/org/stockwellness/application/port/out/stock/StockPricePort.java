@@ -1,5 +1,6 @@
 package org.stockwellness.application.port.out.stock;
 
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.domain.stock.Stock;
@@ -14,6 +15,16 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface StockPricePort {
+
+    /**
+     * 이름 가지고 가장 최근의 가격 조회
+     */
+    StockPrice findLatestPriceByName(String name);
+
+    /**
+     * stockId를 가지고 가장 최근의 날짜 기준 120개 조회
+     */
+    List<StockPrice> findRecent120Prices(Long stockId);
     /**
      * 특정 날짜 기준 수급(외인/기관) 상위 종목 목록을 조회합니다.
      */
@@ -109,7 +120,7 @@ public interface StockPricePort {
     /**
      * 외부 API를 통해 멀티 종목 시세를 조회합니다. (당일용)
      */
-    List<MultiStockPriceSnapshot> fetchMultiStockPrices(List<String> tickers);
+    List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);
 
     List<DailyStockPriceSnapshot> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
 
@@ -125,11 +136,5 @@ public interface StockPricePort {
 
     long countByBaseDate(LocalDate date);
 
-    Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction);
-
-    Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
-
-    Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction);
-
-    Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
+    void saveAll(List<StockPrice> stockPrices);
 }

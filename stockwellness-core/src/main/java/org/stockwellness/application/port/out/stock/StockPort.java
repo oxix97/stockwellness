@@ -18,4 +18,8 @@ public interface StockPort {
     boolean existsByTicker(String ticker);
     Slice<Stock> searchStocks(SearchStockQuery query);
     void saveAll(List<Stock> stocks);
+
+    List<Stock> findAllByActiveStocks();
+
+    Stock findByName(String name);
 }

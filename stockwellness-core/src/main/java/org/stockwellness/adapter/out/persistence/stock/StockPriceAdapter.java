@@ -4,27 +4,26 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
-import org.stockwellness.application.port.out.stock.DailyStockPriceSnapshot;
-import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
-import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.MultiStockPriceSnapshot;
-import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.*;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.exception.StockPriceException;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.TradeDirection;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
 
 @Component
 @RequiredArgsConstructor
@@ -35,6 +34,16 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     private final BenchmarkPriceRepository benchmarkPriceRepository;
     private final StockPriceCacheAdapter stockPriceCacheAdapter;
     private final KisDailyPriceAdapter kisAdapter;
+
+    @Override
+    public StockPrice findLatestPriceByName(String name) {
+        return stockPriceRepository.findLatestPriceByName(name)
+                .orElseThrow(()->new StockPriceException(STOCK_NOT_FOUND));
+    }
+
+    public List<StockPrice> findRecent120Prices(Long stockId) {
+        return stockPriceRepository.findRecent120Prices(stockId);
+    }
 
     @Override
     public Optional<BenchmarkPrice> findByTickerAndBaseDate(String ticker, LocalDate baseDate) {
@@ -81,32 +90,17 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public void saveAll(List<StockPrice> stockPrices) {
+        stockPriceRepository.saveAll(stockPrices);
+    }
+
+    @Override
     public List<StockSupplyRankingResult> findTopForeignStocksBySupply(
             LocalDate date,
             TradeDirection direction,
             int limit
     ) {
         return stockPriceRepository.findTopForeignStocksBySupply(date, direction, limit);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction) {
-        return stockPriceRepository.findLatestInstitutionSupplyRankingDate(direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
-        return stockPriceRepository.findLatestInstitutionSupplyRankingDateOnOrBefore(date, direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction) {
-        return stockPriceRepository.findLatestForeignSupplyRankingDate(direction);
-    }
-
-    @Override
-    public Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction) {
-        return stockPriceRepository.findLatestForeignSupplyRankingDateOnOrBefore(date, direction);
     }
 
     @Override
@@ -121,22 +115,22 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
-    public List<MultiStockPriceSnapshot> fetchMultiStockPrices(List<String> tickers) {
+    public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
         return kisAdapter.fetchMultiStockPrices(tickers).stream()
-                .map(detail -> new MultiStockPriceSnapshot(
+                .map(detail -> new KisMultiStockPriceDetail(
                         detail.ticker(),
                         detail.name(),
-                        toBigDecimal(detail.closePrice()),
-                        toBigDecimal(detail.priceChange()),
-                        toBigDecimal(detail.priceChangeRate()),
-                        toBigDecimal(detail.openPrice()),
-                        toBigDecimal(detail.highPrice()),
-                        toBigDecimal(detail.lowPrice()),
-                        toLong(detail.accumulatedVolume()),
-                        toBigDecimal(detail.accumulatedTradingValue()),
-                        toBigDecimal(detail.previousClosePrice()),
-                        toBigDecimal(detail.netInstitutionalBuyingAmt()),
-                        toBigDecimal(detail.netForeignBuyingAmt())
+                        detail.closePrice(),
+                        detail.priceChange(),
+                        detail.priceChangeRate(),
+                        detail.openPrice(),
+                        detail.highPrice(),
+                        detail.lowPrice(),
+                        detail.accumulatedVolume(),
+                        detail.accumulatedTradingValue(),
+                        detail.previousClosePrice(),
+                        detail.netInstitutionalBuyingAmt(),
+                        detail.netForeignBuyingAmt()
                 ))
                 .toList();
     }
@@ -335,19 +329,5 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<StockPriceResult> loadBenchmarkPrices(String benchmarkTicker, LocalDate start, LocalDate end) {
         return benchmarkRepository.findBenchmarkPrices(benchmarkTicker, start, end);
-    }
-
-    private BigDecimal toBigDecimal(String value) {
-        if (value == null || value.isBlank()) {
-            return BigDecimal.ZERO;
-        }
-        return new BigDecimal(value);
-    }
-
-    private Long toLong(String value) {
-        if (value == null || value.isBlank()) {
-            return 0L;
-        }
-        return Long.parseLong(value);
     }
 }

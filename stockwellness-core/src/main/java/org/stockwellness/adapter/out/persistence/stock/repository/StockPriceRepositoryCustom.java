@@ -3,8 +3,8 @@ package org.stockwellness.adapter.out.persistence.stock.repository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
+import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
 
 import java.math.BigDecimal;
@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface StockPriceRepositoryCustom {
+
+    Optional<StockPrice> findLatestPriceByName(String name);
     /**
      * 특정 날짜 기준 수급(외인/기관) 순매수량/순매도량 상위 종목 목록을 조회합니다.
      */
@@ -38,14 +40,6 @@ public interface StockPriceRepositoryCustom {
      * 지정일 이전 또는 당일 기준 가장 최신 저장일을 조회합니다.
      */
     Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
-
-    Optional<LocalDate> findLatestInstitutionSupplyRankingDate(TradeDirection direction);
-
-    Optional<LocalDate> findLatestInstitutionSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
-
-    Optional<LocalDate> findLatestForeignSupplyRankingDate(TradeDirection direction);
-
-    Optional<LocalDate> findLatestForeignSupplyRankingDateOnOrBefore(LocalDate date, TradeDirection direction);
 
     /**
      * 기술적 지표를 기반으로 종목을 필터링하여 조회합니다.
