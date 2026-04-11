@@ -8,7 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorPriceDetail;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
+import org.stockwellness.domain.stock.Stock;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -165,6 +167,52 @@ class KisDailyPriceAdapterTest {
         assertThat(result).hasSize(2); // 3/30 이후인 4/1, 3/31 데이터만 포함되어야 함
         assertThat(result.get(0).baseDate()).isEqualTo(LocalDate.of(2026, 4, 1));
         assertThat(result.get(1).baseDate()).isEqualTo(LocalDate.of(2026, 3, 31));
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("주식 일자별 투자자 매매 추이 조회 성공 테스트")
+    void fetchInvestorPrices_success() {
+        // given
+        Stock stock = Stock.ofIndex("005930", "삼성전자");
+        LocalDate startDate = LocalDate.of(2026, 4, 11);
+        LocalDate endDate = LocalDate.of(2026, 4, 11);
+
+        String mockResponse = """
+                {
+                  "rtCd": "0",
+                  "msgCd": "MCA00000",
+                  "msg1": "정상처리 되었습니다.",
+                  "output": [
+                    {
+                      "stck_bsop_date": "20260411",
+                      "stck_clpr": "84000",
+                      "prdy_vrss_sign": "1",
+                      "prdy_vrss": "500",
+                      "prdy_ctrt": "0.60",
+                      "acml_vol": "15000000",
+                      "prsn_ntby_qty": "1000",
+                      "frgn_ntby_qty": "2000",
+                      "orgn_ntby_qty": "3000",
+                      "prsn_ntby_tr_pbmn": "1000",
+                      "frgn_ntby_tr_pbmn": "2000",
+                      "orgn_ntby_tr_pbmn": "3000"
+                    }
+                  ]
+                }
+                """;
+
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-investor")))
+                .andExpect(header("tr_id", "FHKST01010900"))
+                .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
+
+        // when
+        List<KisInvestorPriceDetail> result = adapter.fetchInvestorPrices(stock, startDate, endDate);
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).baseDate()).isEqualTo("20260411");
+        assertThat(result.get(0).netInstitutionalBuyingAmt()).isEqualByComparingTo("3000");
         mockServer.verify();
     }
 

@@ -89,8 +89,7 @@ public class KisDailyPriceAdapter {
         String path = "/uapi/domestic-stock/v1/quotations/inquire-investor";
         String ticker = stock.getTicker();
         return executeWithRetry(() -> {
-            // 이 TR은 output1 에 리스트가 담겨 옵니다.
-            KisPriceResponse<List<KisInvestorPriceDetail>, Object> response = kisApiClient.get()
+            KisResponse<List<KisInvestorPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path(path)
                             .queryParam("FID_COND_MRKT_DIV_CODE", "J")
@@ -106,7 +105,7 @@ public class KisDailyPriceAdapter {
                     });
 
             response = requireSuccessfulResponse(response, "투자자 매매 추이 조회", ticker);
-            return (response.output1() != null) ? response.output1() : Collections.emptyList();
+            return (response.output() != null) ? response.output() : Collections.emptyList();
         });
     }
 
@@ -184,27 +183,23 @@ public class KisDailyPriceAdapter {
     }
 
     /**
-     * 국내기관, 외국인 매매종목가 집계
+     * 주식현재가 투자자
      */
-    public List<InvestorTradeDetail> fetchForeignInstitutionData(String ticker, String sorted) {
+    public List<InvestorTradeDetail> fetchForeignInstitutionData(String ticker) {
         return executeWithRetry(() -> {
             KisResponse<List<InvestorTradeDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/domestic-stock/v1/quotations/foreign-institution-total")
-                            .queryParam("FID_COND_MRKT_DIV_CODE", "V")
-                            .queryParam("FID_COND_SCR_DIV_CODE", "16449")
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-investor")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
                             .queryParam("FID_INPUT_ISCD", ticker)
-                            .queryParam("FID_DIV_CLS_CODE", "1")
-                            .queryParam("FID_RANK_SORT_CLS_CODE", sorted)
-                            .queryParam("FID_ETC_CLS_CODE", "0")
                             .build())
-                    .header("tr_id", "FHPTJ04400000")
+                    .header("tr_id", "FHKST01010900")
                     .header("custtype", "P")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", "0000");
+            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", ticker);
             return (response.output() != null) ? response.output() : Collections.emptyList();
         });
     }

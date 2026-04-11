@@ -114,6 +114,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findFilteredStocksByIndicators(baseDate, alignment, rsiLow, rsiHigh, isGoldenCross);
     }
 
+    private static final BigDecimal PBMN_TO_WON = BigDecimal.valueOf(1_000_000L);
+
     @Override
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
         return kisAdapter.fetchMultiStockPrices(tickers).stream()
@@ -127,10 +129,10 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                         detail.highPrice(),
                         detail.lowPrice(),
                         detail.accumulatedVolume(),
-                        detail.accumulatedTradingValue(),
+                        multiplyPbmn(detail.accumulatedTradingValue()),
                         detail.previousClosePrice(),
-                        detail.netInstitutionalBuyingAmt(),
-                        detail.netForeignBuyingAmt()
+                        multiplyPbmn(detail.netInstitutionalBuyingAmt()),
+                        multiplyPbmn(detail.netForeignBuyingAmt())
                 ))
                 .toList();
     }
@@ -145,7 +147,7 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                         detail.lowPrice(),
                         detail.closePrice(),
                         detail.volume(),
-                        detail.transactionAmt()
+                        multiplyPbmn(detail.transactionAmt())
                 ))
                 .toList();
     }
@@ -153,17 +155,30 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<InvestorTradingSnapshot> fetchInvestorTradingSnapshots(Stock stock, LocalDate startDate, LocalDate endDate) {
         return kisAdapter.fetchInvestorPrices(stock, startDate, endDate).stream()
-                .map(detail -> new InvestorTradingSnapshot(
-                        detail.baseDate(),
+                .map(detail -> {
+                    LocalDate bDate = null;
+                    try {
+                        bDate = LocalDate.parse(detail.baseDate(), java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+                    } catch (Exception e) {
+                        // ignore or log
+                    }
+                    return new InvestorTradingSnapshot(
+                        bDate,
                         detail.closePrice(),
                         detail.prdyCtrt(),
                         detail.volume(),
                         detail.netInstitutionalBuyingQty(),
                         detail.netForeignBuyingQty(),
-                        detail.netInstitutionalBuyingAmt(),
-                        detail.netForeignBuyingAmt()
-                ))
+                        detail.netPersonBuyingQty(),
+                        multiplyPbmn(detail.netInstitutionalBuyingAmt()),
+                        multiplyPbmn(detail.netForeignBuyingAmt()),
+                        multiplyPbmn(detail.netPersonBuyingAmt())
+                ); })
                 .toList();
+    }
+
+    private BigDecimal multiplyPbmn(BigDecimal amount) {
+        return amount != null ? amount.multiply(PBMN_TO_WON) : BigDecimal.ZERO;
     }
 
     @Override
