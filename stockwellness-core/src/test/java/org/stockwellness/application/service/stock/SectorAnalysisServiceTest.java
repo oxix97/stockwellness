@@ -139,6 +139,28 @@ class SectorAnalysisServiceTest {
         assertThat(result.getNetInstBuyAmount()).isEqualTo(detail.getNetInstBuyAmount());
     }
 
+    @Test
+    @DisplayName("당일 주도주 데이터가 없을 때 전일 주도주 데이터를 승계한다")
+    void fallbackToYesterdayLeadingStocks() {
+        // given
+        MarketIndex index = new MarketIndex("001", "전기전자");
+        SectorApiDto currentData = createDefaultApiDto();
+
+        SectorInsight yesterday = mock(SectorInsight.class);
+        LeadingStock yesterdayStock = new LeadingStock("어제주도주", "T999", new BigDecimal("5.0"), 1000L, new BigDecimal("50000"));
+        when(yesterday.getLeadingStocks()).thenReturn(List.of(yesterdayStock));
+
+        // when
+        SectorInsight result = sectorAnalysisService.analyze(
+                index, currentData, yesterday, List.of(new BigDecimal("2400.00")), List.of()
+        );
+
+        // then
+        assertThat(result.getLeadingStocks()).hasSize(1);
+        assertThat(result.getLeadingStocks().get(0).ticker()).isEqualTo("T999");
+        assertThat(result.getLeadingStocks().get(0).name()).isEqualTo("어제주도주");
+    }
+
     private SectorApiDto createDefaultApiDto() {
         return new SectorApiDto("001", "전기전자", LocalDate.now(), BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L);
     }

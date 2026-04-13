@@ -66,6 +66,10 @@ public class SectorAnalysisService {
 
         // 3. 주도주 산출 (거래대금 상위 5개, 상승 종목 우선)
         List<LeadingStock> leadingStocks = calculateLeadingStocks(sectorStockPrices);
+        if (leadingStocks.isEmpty() && yesterdayData != null && yesterdayData.getLeadingStocks() != null) {
+            log.info("섹터 {}의 당일 주도주가 없어 전일 데이터를 승계합니다.", sectorCode);
+            leadingStocks = new ArrayList<>(yesterdayData.getLeadingStocks());
+        }
 
         // 4. SectorIndicators 생성
         SectorIndicators indicators = SectorIndicators.of(

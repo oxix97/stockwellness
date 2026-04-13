@@ -94,6 +94,15 @@ public class SectorPersistenceAdapter implements SectorInsightPort, MarketIndexP
     }
 
     @Override
+    public List<SectorInsight> findAllByDate(LocalDate date, MarketType marketType) {
+        if (marketType == null) {
+            return sectorInsightRepository.findAllByBaseDate(date);
+        }
+        // marketType이 있는 경우 기존 쿼리 메서드 활용 (limit 없이 충분히 큰 Pageable 전달)
+        return sectorInsightRepository.findTopByDate(date, marketType, PageRequest.of(0, 100));
+    }
+
+    @Override
     public Optional<SectorInsight> findBySectorCodeAndDate(String sectorCode, LocalDate date) {
         return sectorInsightRepository.findBySectorCodeAndBaseDate(sectorCode, date);
     }

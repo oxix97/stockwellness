@@ -19,6 +19,7 @@ public interface SectorInsightPort {
 
     List<SectorInsight> findTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit);
     List<SectorInsight> findTopSectorsBySupply(LocalDate date, MarketType marketType, int limit);
+    List<SectorInsight> findAllByDate(LocalDate date, MarketType marketType);
     Optional<SectorInsight> findBySectorCodeAndDate(String sectorCode, LocalDate date);
 
     List<BigDecimal> findPastPrices(String sectorCode, LocalDate date, int limit);

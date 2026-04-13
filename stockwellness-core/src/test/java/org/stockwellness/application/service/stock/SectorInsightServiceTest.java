@@ -168,4 +168,44 @@ class SectorInsightServiceTest {
                     .isInstanceOf(SectorDomainException.class);
         }
     }
+
+    @Nested
+    @DisplayName("getTopSectorsByFluctuation")
+    class GetTopSectorsByFluctuation {
+
+        @Test
+        @DisplayName("이름이 같은 섹터는 그룹화되어 평균 등락률로 반환된다")
+        void groupsDuplicateNames_andCalculatesAverage() {
+            // given
+            LocalDate today = LocalDate.now();
+            
+            // "의료·정밀기기" (KOSPI)
+            SectorIndicators ind1 = SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.valueOf(3.92), 0L, 0L, 0, 0);
+            SectorInsight s1 = SectorInsight.of("의료·정밀기기", "0014", MarketType.KOSPI, today, ind1, null, false);
+            
+            // "의료·정밀기기" (KOSDAQ) - 특수문자나 공백이 섞여도 그룹화되는지 확인
+            SectorIndicators ind2 = SectorIndicators.of(BigDecimal.valueOf(2000), BigDecimal.valueOf(2.64), 0L, 0L, 0, 0);
+            SectorInsight s2 = SectorInsight.of("의료 · 정밀 기기", "1029", MarketType.KOSDAQ, today, ind2, null, false);
+            
+            // 다른 섹터
+            SectorIndicators ind3 = SectorIndicators.of(BigDecimal.valueOf(1500), BigDecimal.valueOf(3.41), 0L, 0L, 0, 0);
+            SectorInsight s3 = SectorInsight.of("운송·창고", "1013", MarketType.KOSDAQ, today, ind3, null, false);
+
+            given(sectorInsightPort.findAllByDate(today, null)).willReturn(List.of(s1, s2, s3));
+
+            // when
+            var results = sectorInsightService.getTopSectorsByFluctuation(today, null, 10);
+
+            // then
+            // 1. 결과는 2개여야 함 (의료·정밀기기 통합)
+            assertThat(results).hasSize(2);
+            
+            // 2. "운송·창고"(3.41)가 1위, "의료·정밀기기"((3.92+2.64)/2 = 3.28)가 2위
+            assertThat(results.get(0).sectorName()).isEqualTo("운송·창고");
+            assertThat(results.get(0).fluctuationRate()).isEqualByComparingTo("3.41");
+            
+            assertThat(results.get(1).sectorName()).isEqualTo("의료·정밀기기");
+            assertThat(results.get(1).fluctuationRate()).isEqualByComparingTo("3.2800"); // 4자리 반올림
+        }
+    }
 }

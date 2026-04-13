@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,23 +42,58 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorRanking", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit")
+    @Cacheable(cacheNames = "sectorRanking", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit + '_v2'")
     public List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
-        List<SectorInsight> result = sectorInsightPort.findTopSectorsByFluctuation(date, marketType, limit);
-        if (result.isEmpty()) {
-            result = sectorInsightPort.findLatestDate()
-                    .map(latestDate -> sectorInsightPort.findTopSectorsByFluctuation(latestDate, marketType, limit))
+        // 지정된 날짜의 전체 섹터 조회 (KOSPI/KOSDAQ 동시 조회 시 이름 중복 해결을 위해)
+        List<SectorInsight> allInsights = sectorInsightPort.findAllByDate(date, marketType);
+
+        if (allInsights.isEmpty()) {
+            allInsights = sectorInsightPort.findLatestDate()
+                    .map(latestDate -> sectorInsightPort.findAllByDate(latestDate, marketType))
                     .orElse(List.of());
         }
-        return result.stream()
-                .map(s -> new SectorRankingResult(
-                        s.getSectorCode(), 
-                        s.getSectorName(), 
-                        s.getSectorIndexCurrentPrice(), 
-                        s.getAvgFluctuationRate(), 
-                        s.isOverheated(),
-                        generateDiagnosisMessage(s) // AI 의견 추가
-                ))
+
+        if (allInsights.isEmpty()) {
+            return List.of();
+        }
+
+        // 1. 이름별로 그룹화 (이름이 같은 KOSPI/KOSDAQ 업종 통합, 공백 및 특수문자 제거하여 정규화)
+        Map<String, List<SectorInsight>> groupedByName = allInsights.stream()
+                .collect(Collectors.groupingBy(s -> s.getSectorName().replaceAll("[^가-힣a-zA-Z0-9]", "")));
+
+        // 2. 그룹별 평균 등락률 계산 및 결과 객체 생성
+        return groupedByName.entrySet().stream()
+                .map(entry -> {
+                    List<SectorInsight> group = entry.getValue();
+                    String name = group.getFirst().getSectorName(); // 원본 이름 중 하나 사용
+
+                    // 등락률 평균 계산
+                    BigDecimal avgRate = group.stream()
+                            .map(SectorInsight::getAvgFluctuationRate)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+                            .divide(BigDecimal.valueOf(group.size()), 4, RoundingMode.HALF_UP);
+
+                    // 현재가 평균 (또는 대표값)
+                    BigDecimal avgPrice = group.stream()
+                            .map(SectorInsight::getSectorIndexCurrentPrice)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+                            .divide(BigDecimal.valueOf(group.size()), 2, RoundingMode.HALF_UP);
+
+                    // 과열 여부 (그룹 내 하나라도 과열이면 과열로 간주)
+                    boolean isOverheated = group.stream().anyMatch(SectorInsight::isOverheated);
+
+                    // 대표 코드 (첫 번째 것 사용)
+                    String repCode = group.getFirst().getSectorCode();
+
+                    // AI 의견 (첫 번째 것 사용 또는 요약)
+                    String diagnosis = generateDiagnosisMessage(group.getFirst());
+
+                    return new SectorRankingResult(repCode, name, avgPrice, avgRate, isOverheated, diagnosis);
+                })
+                // 3. 평균 등락률 기준 내림차순 정렬
+                .sorted((a, b) -> b.fluctuationRate().compareTo(a.fluctuationRate()))
+                // 4. 상위 limit(10)개 추출
+                .limit(limit)
                 .toList();
     }
 
