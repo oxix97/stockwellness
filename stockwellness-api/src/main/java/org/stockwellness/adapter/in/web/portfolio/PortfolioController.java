@@ -2,6 +2,7 @@ package org.stockwellness.adapter.in.web.portfolio;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.portfolio.dto.DiagnosisResponse;
@@ -161,10 +162,8 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        // TODO: AI 진단 로직 성능 최적화 후 재연동 예정
-        // PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
-        // return ApiResponse.success(DiagnosisResponse.from(result));
-        return ApiResponse.success(null);
+        PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
+        return ApiResponse.success(DiagnosisResponse.from(result));
     }
 
     /**
@@ -179,20 +178,17 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        // TODO: AI 어드바이저 로직 성능 최적화 후 재연동 예정
-        // AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
-        // return ApiResponse.success(response);
-        return ApiResponse.success(null);
+        AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
+        return ApiResponse.success(response);
     }
 
     @PostMapping("/{portfolioId}/advice")
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdviceResponse> createAdvice(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        // TODO: AI 어드바이저 생성 로직 성능 최적화 후 재연동 예정
-        // AdviceResponse response = portfolioFacade.getNewAdvice(memberPrincipal.id(), portfolioId);
-        // return ApiResponse.success(SuccessCode.CREATED, response);
-        return ApiResponse.success(null);
+        AdviceResponse response = portfolioFacade.getNewAdvice(memberPrincipal.id(), portfolioId);
+        return ApiResponse.success(SuccessCode.CREATED, response);
     }
 }

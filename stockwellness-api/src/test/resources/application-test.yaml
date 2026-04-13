@@ -79,6 +79,10 @@ kis:
   app-key: "dummy-kis-service-key"
   app-secret: "dummy-kis-secret-key"
 
+app:
+  ai:
+    enabled: true
+
 management:
   health:
     redis:

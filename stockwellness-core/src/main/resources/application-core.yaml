@@ -101,6 +101,8 @@ kis:
   app-secret: ${KIS_APP_SECRET}
 
 app:
+  ai:
+    enabled: ${AI_ENABLED:false}
   frontend-redirect-url: http://localhost:5173/auth/callback
 
 

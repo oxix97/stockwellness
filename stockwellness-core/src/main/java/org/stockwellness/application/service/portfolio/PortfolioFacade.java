@@ -1,6 +1,7 @@
 package org.stockwellness.application.service.portfolio;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.DiagnosePortfolioUseCase;
@@ -27,6 +28,9 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class PortfolioFacade {
+
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
 
     private final ManagePortfolioUseCase managePortfolioUseCase;
     private final LoadPortfolioUseCase loadPortfolioUseCase;
@@ -165,9 +169,10 @@ public class PortfolioFacade {
      * @return 5개 카테고리별 진단 점수 및 종목 기여도 분석 결과
      */
     public PortfolioHealthResult diagnosePortfolio(Long memberId, Long portfolioId) {
-        // TODO: AI 진단 로직 성능 최적화 후 재연동 예정
-        // return diagnosePortfolioUseCase.diagnosePortfolio(memberId, portfolioId);
-        return null; 
+        if (!aiEnabled) {
+            return PortfolioHealthResult.mock();
+        }
+        return diagnosePortfolioUseCase.diagnosePortfolio(memberId, portfolioId);
     }
 
     // -- AI 어드바이저 (Advisor) --
@@ -179,14 +184,16 @@ public class PortfolioFacade {
      * @return AI 조언 리포트 내용
      */
     public AdviceResponse getLatestAdvice(Long memberId, Long portfolioId) {
-        // TODO: AI 어드바이저 로직 성능 최적화 후 재연동 예정
-        // return aiAdvisorUseCase.getLatestAdvice(memberId, portfolioId);
-        return null;
+        if (!aiEnabled) {
+            return AdviceResponse.mock();
+        }
+        return aiAdvisorUseCase.getLatestAdvice(memberId, portfolioId);
     }
 
     public AdviceResponse getNewAdvice(Long memberId, Long portfolioId) {
-        // TODO: AI 어드바이저 생성 로직 성능 최적화 후 재연동 예정
-        // return aiAdvisorUseCase.getNewAdvice(memberId, portfolioId);
-        return null;
+        if (!aiEnabled) {
+            return AdviceResponse.mock();
+        }
+        return aiAdvisorUseCase.getNewAdvice(memberId, portfolioId);
     }
 }

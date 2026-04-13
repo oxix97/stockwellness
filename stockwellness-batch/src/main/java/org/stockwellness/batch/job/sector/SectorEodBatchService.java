@@ -2,6 +2,7 @@ package org.stockwellness.batch.job.sector;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
@@ -32,10 +33,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SectorEodBatchService implements SectorEodSyncUseCase {
+
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
 
     private final MarketIndexPort marketIndexPort;
     private final SectorInsightPort sectorInsightPort;
@@ -124,34 +128,15 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
             return new SectorEodResult(null);
         }
 
+        if (!aiEnabled) {
+            return new SectorEodResult(insight);
+        }
+
+        // AI 사용량 및 요금 절감을 위해 플래그로 제어 (기존 로직 주석 유지)
+        /*
         try {
             SectorAiContext context = new SectorAiContext(
-                    insight.getSectorName(),
-                    insight.getSectorCode(),
-                    insight.getMarketType(),
-                    insight.getBaseDate(),
-                    insight.getIndicators().getSectorIndexCurrentPrice(),
-                    insight.getIndicators().getAvgFluctuationRate(),
-                    insight.getIndicators().getNetForeignBuyAmount(),
-                    insight.getIndicators().getNetInstBuyAmount(),
-                    insight.getIndicators().getForeignConsecutiveBuyDays(),
-                    insight.getIndicators().getInstConsecutiveBuyDays(),
-                    resolveTrendStatus(insight.getTechnicalIndicators()),
-                    insight.getTechnicalIndicators() != null ? insight.getTechnicalIndicators().getRsi14() : null,
-                    insight.isOverheated(),
-                    insight.getLeadingStocks()
-            );
-
-            AiReport report = loadSectorAiPort.generateSectorOpinion(context);
-            insight.updateAiOpinion(SectorAiOpinion.of(
-                    report.decision(),
-                    report.confidenceScore(),
-                    report.title(),
-                    report.keyReasons(),
-                    report.detailedAnalysis()
-            ));
-        } catch (Exception e) {
-            AiReport fallback = AiReport.fallback();
+...
             insight.updateAiOpinion(SectorAiOpinion.of(
                     fallback.decision(),
                     fallback.confidenceScore(),
@@ -160,6 +145,7 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
                     fallback.detailedAnalysis()
             ));
         }
+        */
 
         return new SectorEodResult(insight);
     }
@@ -172,12 +158,12 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
         priceMapCache = stockPricePort.findAllByDate(targetDate).stream()
                 .collect(Collectors.toMap(price -> price.getStock().getTicker(), price -> price, (left, right) -> left));
 
-        List<Stock> allStocks = stockPort.findBySectorMediumCode(null);
+        List<Stock> allStocks = stockPort.findBySectorCode(null);
         sectorToStocksMapCache = new HashMap<>();
         for (Stock stock : allStocks) {
-            String mappingCode = getMappingCode(stock);
-            if (mappingCode != null) {
-                sectorToStocksMapCache.computeIfAbsent(mappingCode, key -> new ArrayList<>()).add(stock);
+            String sectorCode = stock.getSector().getSectorCode();
+            if (sectorCode != null) {
+                sectorToStocksMapCache.computeIfAbsent(sectorCode, key -> new ArrayList<>()).add(stock);
             }
         }
 
@@ -199,18 +185,6 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
                 .filter(code -> !code.isBlank())
                 .distinct()
                 .toList();
-    }
-
-    private String getMappingCode(Stock stock) {
-        String mediumCode = stock.getSector().getMediumCode();
-        if (mediumCode != null && !mediumCode.equals("0000") && !mediumCode.isBlank()) {
-            return mediumCode.trim();
-        }
-        String largeCode = stock.getSector().getLargeCode();
-        if (largeCode != null && !largeCode.isBlank()) {
-            return largeCode.trim();
-        }
-        return null;
     }
 
     private TrendStatus resolveTrendStatus(TechnicalIndicators indicators) {
