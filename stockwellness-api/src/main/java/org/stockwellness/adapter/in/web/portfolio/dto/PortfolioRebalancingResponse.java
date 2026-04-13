@@ -12,6 +12,7 @@ public record PortfolioRebalancingResponse(
 ) {
     public record RebalancingItemResponse(
         String symbol,
+        String name,
         BigDecimal currentWeight,
         BigDecimal targetWeight,
         BigDecimal diffWeight,
@@ -27,6 +28,7 @@ public record PortfolioRebalancingResponse(
             result.items().stream()
                 .map(i -> new RebalancingItemResponse(
                     i.symbol(),
+                    i.name(),
                     i.currentWeight().setScale(4, RoundingMode.HALF_UP),
                     i.targetWeight().setScale(4, RoundingMode.HALF_UP),
                     i.diffWeight().setScale(4, RoundingMode.HALF_UP),

@@ -2,11 +2,13 @@ package org.stockwellness.application.port.in.portfolio.dto;
 
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.PortfolioItem;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public record PortfolioItemResponse(
     String symbol,
+    String name,
     BigDecimal quantity,
     BigDecimal purchasePrice,
     BigDecimal currentPrice,
@@ -17,7 +19,7 @@ public record PortfolioItemResponse(
     BigDecimal returnRate,
     BigDecimal targetWeight
 ) {
-    public static PortfolioItemResponse from(PortfolioItem entity, BigDecimal currentPrice) {
+    public static PortfolioItemResponse from(PortfolioItem entity, String name, BigDecimal currentPrice) {
         BigDecimal purchaseAmount = entity.calculatePurchaseAmount();
         BigDecimal currentValue = currentPrice.multiply(entity.getQuantity());
         BigDecimal returnRate = BigDecimal.ZERO;
@@ -30,6 +32,7 @@ public record PortfolioItemResponse(
 
         return new PortfolioItemResponse(
             entity.getSymbol(),
+            name,
             entity.getQuantity(),
             entity.getPurchasePrice(),
             currentPrice,

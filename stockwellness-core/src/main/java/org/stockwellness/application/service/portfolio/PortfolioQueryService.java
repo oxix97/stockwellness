@@ -6,11 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.LoadPortfolioUseCase;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
@@ -24,13 +26,18 @@ import java.util.stream.Collectors;
 public class PortfolioQueryService implements LoadPortfolioUseCase {
 
     private final PortfolioPort portfolioPort;
+    private final StockPort stockPort;
     private final StockPricePort stockPricePort;
 
     @Override
     public PortfolioResponse getPortfolio(Long memberId, Long portfolioId) {
         Portfolio portfolio = loadOwnedPortfolio(portfolioId, memberId);
         Map<String, BigDecimal> latestPrices = getLatestPrices(portfolio);
-        return PortfolioResponse.from(portfolio, latestPrices);
+        Map<String, Stock> stockMap = getStockMap(portfolio.getItems().stream()
+                .map(PortfolioItem::getSymbol)
+                .distinct()
+                .toList());
+        return PortfolioResponse.from(portfolio, latestPrices, stockMap);
     }
 
     @Override
@@ -45,6 +52,7 @@ public class PortfolioQueryService implements LoadPortfolioUseCase {
                 .toList();
         
         Map<String, BigDecimal> latestPriceMap = stockPricePort.findAllLatestByTickers(allTickers);
+        Map<String, Stock> stockMap = getStockMap(allTickers);
 
         return portfolios.stream()
                 .map(p -> {
@@ -56,7 +64,7 @@ public class PortfolioQueryService implements LoadPortfolioUseCase {
                                     symbol -> symbol,
                                     symbol -> latestPriceMap.getOrDefault(symbol, BigDecimal.ZERO)
                             ));
-                    return PortfolioResponse.from(p, latestPrices);
+                    return PortfolioResponse.from(p, latestPrices, stockMap);
                 })
                 .toList();
     }
@@ -68,6 +76,11 @@ public class PortfolioQueryService implements LoadPortfolioUseCase {
                 .distinct()
                 .toList();
         return stockPricePort.findAllLatestByTickers(tickers);
+    }
+
+    private Map<String, Stock> getStockMap(List<String> tickers) {
+        return stockPort.loadStocksByTickers(tickers).stream()
+                .collect(Collectors.toMap(Stock::getTicker, stock -> stock));
     }
 
     private Portfolio loadOwnedPortfolio(Long portfolioId, Long memberId) {

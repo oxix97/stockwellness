@@ -9,6 +9,7 @@ public record PortfolioRebalancingResult(
 ) {
     public record RebalancingItem(
         String symbol,
+        String name,
         BigDecimal currentWeight,
         BigDecimal targetWeight,
         BigDecimal diffWeight,

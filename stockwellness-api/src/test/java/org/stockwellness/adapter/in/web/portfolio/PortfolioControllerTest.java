@@ -16,6 +16,7 @@ import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.Currency;
@@ -117,13 +118,17 @@ class PortfolioControllerTest extends RestDocsSupport {
         @DisplayName("조회: 포트폴리오 상세 정보를 조회한다")
         void get_portfolio() throws Exception {
             // given
-            given(portfolioFacade.getPortfolio(any(), eq(100L))).willReturn(PortfolioResponse.from(PortfolioFixture.createEntity(100L), Collections.emptyMap()));
+            var portfolio = PortfolioFixture.createEntityWithItems(100L, List.of(
+                    PortfolioItem.createStock("AAPL", BigDecimal.TEN, BigDecimal.valueOf(150), "USD")
+            ));
+            given(portfolioFacade.getPortfolio(any(), eq(100L))).willReturn(PortfolioResponse.from(portfolio, Collections.emptyMap(), Collections.emptyMap()));
 
             mockMvc.perform(get("/api/v1/portfolios/{portfolioId}", 100L)
                             .header("Authorization", "Bearer {ACCESS_TOKEN}")
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.items[0].name").value("AAPL"))
                     .andDo(document("portfolio-get",
                             resource(ResourceSnippetParameters.builder()
                                     .tag("Portfolio")
@@ -170,10 +175,40 @@ class PortfolioControllerTest extends RestDocsSupport {
 
         @Test
         @MockMember(id = 1L)
+        @DisplayName("조언 생성: AI 리밸런싱 조언을 즉시 생성한다")
+        void create_advice() throws Exception {
+            AdviceResponse response = new AdviceResponse("즉시 생성된 조언입니다.", AdviceAction.REBALANCE, LocalDateTime.now());
+            given(portfolioFacade.getNewAdvice(any(), eq(100L))).willReturn(response);
+
+            mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/advice", 100L)
+                            .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                            .with(csrf())
+                            .contentType(APPLICATION_JSON))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content").value("즉시 생성된 조언입니다."))
+                    .andDo(document("portfolio-advice-create",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Portfolio")
+                                    .summary("AI 리밸런싱 조언 즉시 생성")
+                                    .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
+                                    .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                        add(fieldWithPath("data.content").description("상세 조언 내용"));
+                                        add(fieldWithPath("data.action").description("핵심 조언 액션"));
+                                        add(fieldWithPath("data.createdAt").description("생성 일시"));
+                                    }})
+                                    .build())));
+        }
+
+        @Test
+        @MockMember(id = 1L)
         @DisplayName("목록 조회: 내 포트폴리오 목록을 조회한다")
         void get_my_portfolios() throws Exception {
             // given
-            PortfolioResponse response = PortfolioResponse.from(PortfolioFixture.createEntity(100L), Collections.emptyMap());
+            var portfolio = PortfolioFixture.createEntityWithItems(100L, List.of(
+                    PortfolioItem.createStock("AAPL", BigDecimal.TEN, BigDecimal.valueOf(150), "USD")
+            ));
+            PortfolioResponse response = PortfolioResponse.from(portfolio, Collections.emptyMap(), Collections.emptyMap());
             given(portfolioFacade.getMyPortfolios(any())).willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/portfolios")
