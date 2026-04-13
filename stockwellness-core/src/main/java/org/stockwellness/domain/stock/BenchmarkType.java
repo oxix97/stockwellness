@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Getter
 @RequiredArgsConstructor
@@ -25,6 +26,16 @@ public enum BenchmarkType {
     private final String name;
     private final String description;
     private final boolean isOverseas;
+
+    public static List<BenchmarkType> defaultSimulationBenchmarks() {
+        return List.of(KOSPI_200, S_P_500, NASDAQ_100, DOW_JONES);
+    }
+
+    public static List<String> defaultSimulationBenchmarkTickers() {
+        return defaultSimulationBenchmarks().stream()
+                .map(BenchmarkType::getTicker)
+                .toList();
+    }
 
     public static BenchmarkType fromTicker(String ticker) {
         return Arrays.stream(values())

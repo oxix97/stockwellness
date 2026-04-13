@@ -8,8 +8,10 @@ import org.stockwellness.application.port.in.portfolio.PortfolioAnalysisUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.internal.*;
 import org.stockwellness.domain.portfolio.AssetType;
@@ -54,6 +56,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private final StockPort stockPort;
     private final StockPricePort stockPricePort;
     private final BenchmarkPricePort benchmarkPricePort;
+    private final LoadBenchmarkPort loadBenchmarkPort;
     private final BacktestEngine backtestEngine;
     private final PortfolioCorrelationCalculator correlationCalculator;
     private final AiAdvisorUseCase aiAdvisorUseCase;
@@ -198,6 +201,139 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
         BigDecimal benchmarkReturn = calculateBenchmarkReturn(BenchmarkType.KOSPI.getTicker(), portfolio.getInceptionDate(), LocalDate.now());
         return new PortfolioInceptionPerformanceResult(portfolioTotalReturn, benchmarkReturn, stockPerformances);
+    }
+
+    @Override
+    public PortfolioInceptionChartResult getInceptionChart(Long memberId, Long portfolioId) {
+        Portfolio portfolio = portfolioPort.loadPortfolio(portfolioId, memberId)
+                .orElseThrow(() -> {
+                    if (portfolioPort.findById(portfolioId).isPresent()) {
+                        throw new PortfolioAccessDeniedException();
+                    }
+                    return new PortfolioNotFoundException();
+                });
+
+        List<PortfolioItem> items = portfolio.getItems();
+        List<PortfolioItem> stockItems = items.stream()
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .toList();
+
+        if (stockItems.isEmpty()) {
+            return new PortfolioInceptionChartResult(portfolio.getInceptionDate(), List.of(), List.of());
+        }
+
+        LocalDate inceptionDate = portfolio.getInceptionDate();
+        LocalDate endDate = LocalDate.now();
+        List<String> symbols = stockItems.stream().map(PortfolioItem::getSymbol).distinct().toList();
+
+        Map<String, List<StockPriceResult>> stockPriceMap = stockPricePort.loadPricesByTickers(symbols, inceptionDate, endDate);
+        List<LocalDate> dates = stockPriceMap.values().stream()
+                .flatMap(List::stream)
+                .map(StockPriceResult::baseDate)
+                .distinct()
+                .sorted()
+                .toList();
+
+        if (dates.isEmpty()) {
+            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+        }
+
+        Map<String, Map<LocalDate, BigDecimal>> stockCloseMap = stockPriceMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream()
+                                .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::closePrice))
+                ));
+
+        List<BenchmarkType> benchmarks = BenchmarkType.defaultSimulationBenchmarks();
+        Map<String, List<StockPriceResult>> benchmarkSeries = benchmarks.stream()
+                .collect(Collectors.toMap(
+                        BenchmarkType::getTicker,
+                        benchmark -> loadBenchmarkPort.loadBenchmarkPrices(benchmark.getTicker(), inceptionDate, endDate)
+                ));
+        Map<String, Map<LocalDate, BigDecimal>> benchmarkCloseMap = benchmarkSeries.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream()
+                                .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::closePrice))
+                ));
+
+        Map<String, BigDecimal> latestStockPrices = new HashMap<>();
+        Map<String, BigDecimal> firstBenchmarkPrices = new HashMap<>();
+        Map<String, BigDecimal> latestBenchmarkPrices = new HashMap<>();
+        List<PortfolioInceptionChartResult.DailyResult> dailyResults = new ArrayList<>();
+
+        for (LocalDate date : dates) {
+            BigDecimal investedAmount = BigDecimal.ZERO;
+            BigDecimal currentValue = BigDecimal.ZERO;
+
+            for (PortfolioItem item : items) {
+                if (item.getPurchaseDate().isAfter(date)) {
+                    continue;
+                }
+
+                investedAmount = investedAmount.add(item.calculatePurchaseAmount());
+                if (item.getAssetType() == AssetType.CASH) {
+                    currentValue = currentValue.add(item.getQuantity());
+                    continue;
+                }
+
+                BigDecimal closePrice = stockCloseMap.getOrDefault(item.getSymbol(), Map.of()).get(date);
+                if (closePrice != null) {
+                    latestStockPrices.put(item.getSymbol(), closePrice);
+                }
+
+                BigDecimal effectivePrice = latestStockPrices.getOrDefault(item.getSymbol(), item.getPurchasePrice());
+                currentValue = currentValue.add(item.getQuantity().multiply(effectivePrice));
+            }
+
+            if (investedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal portfolioReturnRate = FinanceCalculationUtil.calculateRate(
+                    currentValue.subtract(investedAmount),
+                    investedAmount
+            );
+
+            Map<String, BigDecimal> benchmarkReturnRates = new HashMap<>();
+            for (BenchmarkType benchmark : benchmarks) {
+                BigDecimal closePrice = benchmarkCloseMap.getOrDefault(benchmark.getTicker(), Map.of()).get(date);
+                if (closePrice != null) {
+                    latestBenchmarkPrices.put(benchmark.getTicker(), closePrice);
+                    firstBenchmarkPrices.putIfAbsent(benchmark.getTicker(), closePrice);
+                }
+
+                BigDecimal startPrice = firstBenchmarkPrices.get(benchmark.getTicker());
+                BigDecimal currentBenchmarkPrice = latestBenchmarkPrices.get(benchmark.getTicker());
+                if (startPrice == null || currentBenchmarkPrice == null || startPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                    benchmarkReturnRates.put(benchmark.getTicker(), BigDecimal.ZERO);
+                    continue;
+                }
+
+                benchmarkReturnRates.put(
+                        benchmark.getTicker(),
+                        FinanceCalculationUtil.calculateRate(currentBenchmarkPrice.subtract(startPrice), startPrice)
+                );
+            }
+
+            dailyResults.add(new PortfolioInceptionChartResult.DailyResult(date, portfolioReturnRate, Map.copyOf(benchmarkReturnRates)));
+        }
+
+        if (dailyResults.isEmpty()) {
+            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+        }
+
+        Map<String, BigDecimal> finalBenchmarkReturns = dailyResults.get(dailyResults.size() - 1).benchmarkReturnRates();
+        List<PortfolioInceptionChartResult.IndexComparison> comparisons = benchmarks.stream()
+                .map(benchmark -> new PortfolioInceptionChartResult.IndexComparison(
+                        benchmark.getName(),
+                        benchmark.getTicker(),
+                        finalBenchmarkReturns.getOrDefault(benchmark.getTicker(), BigDecimal.ZERO)
+                ))
+                .toList();
+
+        return new PortfolioInceptionChartResult(inceptionDate, dailyResults, comparisons);
     }
 
     public BigDecimal calculateBenchmarkReturn(String ticker, LocalDate startDate, LocalDate endDate) {
@@ -372,8 +508,16 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             BigDecimal recommendedQuantity = currentPrice.compareTo(BigDecimal.ZERO) > 0 ?
                     diffValue.divide(currentPrice, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
-            items.add(new PortfolioRebalancingResult.RebalancingItem(item.getSymbol(), currentWeight, targetWeight, 
-                    targetWeight.subtract(currentWeight), item.getQuantity(), recommendedQuantity, currentPrice));
+            items.add(new PortfolioRebalancingResult.RebalancingItem(
+                    item.getSymbol(),
+                    resolveDisplayName(item, context.stockMap()),
+                    currentWeight,
+                    targetWeight,
+                    targetWeight.subtract(currentWeight),
+                    item.getQuantity(),
+                    recommendedQuantity,
+                    currentPrice
+            ));
         }
         return new PortfolioRebalancingResult(totalValue, items);
     }
@@ -425,5 +569,17 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private BigDecimal calculateCurrentValue(PortfolioItem item, Map<String, List<StockPrice>> priceMap) {
         if (item.getAssetType() == AssetType.CASH) return item.getQuantity();
         return item.getQuantity().multiply(getCurrentPrice(item, priceMap));
+    }
+
+    private String resolveDisplayName(PortfolioItem item, Map<String, Stock> stockMap) {
+        if (item.getAssetType() == AssetType.CASH) {
+            return "현금";
+        }
+
+        Stock stock = stockMap.get(item.getSymbol());
+        if (stock != null && stock.getName() != null && !stock.getName().isBlank()) {
+            return stock.getName();
+        }
+        return item.getSymbol();
     }
 }

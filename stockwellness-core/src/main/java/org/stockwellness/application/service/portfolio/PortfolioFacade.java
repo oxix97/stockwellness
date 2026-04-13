@@ -152,6 +152,10 @@ public class PortfolioFacade {
         return portfolioAnalysisUseCase.getPerformanceSinceInception(memberId, portfolioId);
     }
 
+    public PortfolioInceptionChartResult getInceptionChart(Long memberId, Long portfolioId) {
+        return portfolioAnalysisUseCase.getInceptionChart(memberId, portfolioId);
+    }
+
     // -- 포트폴리오 진단 (Diagnosis) --
 
     /**
@@ -161,7 +165,9 @@ public class PortfolioFacade {
      * @return 5개 카테고리별 진단 점수 및 종목 기여도 분석 결과
      */
     public PortfolioHealthResult diagnosePortfolio(Long memberId, Long portfolioId) {
-        return diagnosePortfolioUseCase.diagnosePortfolio(memberId, portfolioId);
+        // TODO: AI 진단 로직 성능 최적화 후 재연동 예정
+        // return diagnosePortfolioUseCase.diagnosePortfolio(memberId, portfolioId);
+        return null; 
     }
 
     // -- AI 어드바이저 (Advisor) --
@@ -173,6 +179,14 @@ public class PortfolioFacade {
      * @return AI 조언 리포트 내용
      */
     public AdviceResponse getLatestAdvice(Long memberId, Long portfolioId) {
-        return aiAdvisorUseCase.getLatestAdvice(memberId, portfolioId);
+        // TODO: AI 어드바이저 로직 성능 최적화 후 재연동 예정
+        // return aiAdvisorUseCase.getLatestAdvice(memberId, portfolioId);
+        return null;
+    }
+
+    public AdviceResponse getNewAdvice(Long memberId, Long portfolioId) {
+        // TODO: AI 어드바이저 생성 로직 성능 최적화 후 재연동 예정
+        // return aiAdvisorUseCase.getNewAdvice(memberId, portfolioId);
+        return null;
     }
 }

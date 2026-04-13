@@ -19,6 +19,8 @@ import org.stockwellness.global.security.MemberPrincipal;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -128,11 +130,7 @@ public class PortfolioAnalysisController {
                 portfolioId,
                 request.strategy(),
                 request.amount(),
-                java.util.List.of(
-                        (request.benchmarkTicker() == null || request.benchmarkTicker().isBlank())
-                                ? org.stockwellness.domain.stock.BenchmarkType.KOSPI.getTicker()
-                                : request.benchmarkTicker()
-                ),
+                resolveBenchmarkTickers(request.benchmarkTicker()),
                 request.rebalancingPeriod(),
                 request.weights()
         );
@@ -140,6 +138,18 @@ public class PortfolioAnalysisController {
         BacktestResult result = portfolioFacade.runBacktest(command);
         String primaryTicker = command.benchmarkTickers().get(0);
         return ApiResponse.success(BacktestResponse.from(result, primaryTicker));
+    }
+
+    private List<String> resolveBenchmarkTickers(String benchmarkTicker) {
+        List<String> defaultTickers = org.stockwellness.domain.stock.BenchmarkType.defaultSimulationBenchmarkTickers();
+        if (benchmarkTicker == null || benchmarkTicker.isBlank()) {
+            return defaultTickers;
+        }
+
+        LinkedHashSet<String> tickers = new LinkedHashSet<>();
+        tickers.add(benchmarkTicker);
+        tickers.addAll(defaultTickers);
+        return List.copyOf(tickers);
     }
 
     /**
@@ -169,5 +179,17 @@ public class PortfolioAnalysisController {
 
         PortfolioInceptionPerformanceResult result = portfolioFacade.getPerformanceSinceInception(memberPrincipal.id(), portfolioId);
         return ApiResponse.success(PortfolioInceptionPerformanceResponse.from(result));
+    }
+
+    @GetMapping("/performance/inception/chart")
+    public ApiResponse<PortfolioInceptionChartResponse> getInceptionChart(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long portfolioId) {
+
+        return ApiResponse.success(
+                PortfolioInceptionChartResponse.from(
+                        portfolioFacade.getInceptionChart(memberPrincipal.id(), portfolioId)
+                )
+        );
     }
 }

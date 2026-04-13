@@ -10,14 +10,21 @@ import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.portfolio.internal.*;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.Country;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -47,7 +54,19 @@ class PortfolioAnalysisServiceTest {
     private SimulationDataProvider simulationDataProvider;
 
     @Mock
+    private PortfolioPort portfolioPort;
+
+    @Mock
+    private StockPort stockPort;
+
+    @Mock
     private StockPricePort stockPricePort;
+
+    @Mock
+    private BenchmarkPricePort benchmarkPricePort;
+
+    @Mock
+    private LoadBenchmarkPort loadBenchmarkPort;
 
     @Mock
     private BacktestEngine backtestEngine;
@@ -235,6 +254,41 @@ class PortfolioAnalysisServiceTest {
         assertThat(result.valuation().volatility()).isEqualByComparingTo("8.4");
         assertThat(result.valuation().alpha()).isEqualByComparingTo("3.2");
         assertThat(result.itemContributions().get("005930")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("생성 시점 차트: 포트폴리오와 기본 비교군의 누적 수익률 시계열을 반환한다")
+    void getInceptionChart_Success() {
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
+        LocalDate inception = LocalDate.of(2026, 4, 1);
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(70000), "KRW", BigDecimal.valueOf(100), inception)
+        ));
+
+        given(portfolioPort.loadPortfolio(PORTFOLIO_ID, MEMBER_ID)).willReturn(java.util.Optional.of(portfolio));
+        given(stockPricePort.loadPricesByTickers(List.of("005930"), inception, LocalDate.now()))
+                .willReturn(Map.of(
+                        "005930", List.of(
+                                new StockPriceResult(inception, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(70000), BigDecimal.valueOf(70000), 0L, BigDecimal.ZERO, null, null, null, null),
+                                new StockPriceResult(inception.plusDays(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(77000), BigDecimal.valueOf(77000), 0L, BigDecimal.ZERO, null, null, null, null)
+                        )
+                ));
+        for (BenchmarkType benchmark : BenchmarkType.defaultSimulationBenchmarks()) {
+            given(loadBenchmarkPort.loadBenchmarkPrices(eq(benchmark.getTicker()), eq(inception), any(LocalDate.class)))
+                    .willReturn(List.of(
+                            new StockPriceResult(inception, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(100), BigDecimal.valueOf(100), 0L, BigDecimal.ZERO, null, null, null, null),
+                            new StockPriceResult(inception.plusDays(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(110), BigDecimal.valueOf(110), 0L, BigDecimal.ZERO, null, null, null, null)
+                    ));
+        }
+
+        PortfolioInceptionChartResult result = portfolioAnalysisService.getInceptionChart(MEMBER_ID, PORTFOLIO_ID);
+
+        assertThat(result.portfolioInceptionDate()).isEqualTo(inception);
+        assertThat(result.dailyResults()).hasSize(2);
+        assertThat(result.dailyResults().get(1).portfolioReturnRate()).isEqualByComparingTo("10");
+        assertThat(result.comparisons()).hasSize(4);
+        assertThat(result.comparisons().get(0).ticker()).isEqualTo(BenchmarkType.KOSPI_200.getTicker());
+        assertThat(result.comparisons().get(0).totalReturn()).isEqualByComparingTo("10");
     }
 
     private StockPrice createStockPrice(String symbol, long close, long prevClose) {

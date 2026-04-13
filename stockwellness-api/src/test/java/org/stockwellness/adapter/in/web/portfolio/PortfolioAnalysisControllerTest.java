@@ -8,10 +8,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.in.web.portfolio.dto.*;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
+import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
+import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
 
@@ -198,7 +200,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         PortfolioRebalancingResult result = new PortfolioRebalancingResult(
                 BigDecimal.valueOf(1500000),
                 List.of(new PortfolioRebalancingResult.RebalancingItem(
-                        "AAPL", BigDecimal.valueOf(50), BigDecimal.valueOf(60), BigDecimal.valueOf(-10),
+                        "AAPL", "애플", BigDecimal.valueOf(50), BigDecimal.valueOf(60), BigDecimal.valueOf(-10),
                         BigDecimal.TEN, BigDecimal.valueOf(12), BigDecimal.valueOf(150000)))
         );
         given(portfolioFacade.getRebalancingGuide(1L, 100L)).willReturn(result);
@@ -208,6 +210,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         responseFields.addAll(List.of(
                 fieldWithPath("data.totalValue").description("총 자산 가치"),
                 fieldWithPath("data.items[].symbol").description("종목 심볼"),
+                fieldWithPath("data.items[].name").description("종목명"),
                 fieldWithPath("data.items[].currentWeight").description("현재 비중 (%)"),
                 fieldWithPath("data.items[].targetWeight").description("목표 비중 (%)"),
                 fieldWithPath("data.items[].diffWeight").description("비중 차이 (%p)"),
@@ -242,7 +245,12 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         BacktestResult result = new BacktestResult(
                 List.of(new BacktestResult.DailyBacktestResult(
                         LocalDate.of(2024, 1, 1), BigDecimal.valueOf(1000000), BigDecimal.valueOf(1000000),
-                        BigDecimal.valueOf(5), Map.of("KOSPI", BigDecimal.valueOf(3)))),
+                        BigDecimal.valueOf(5), Map.of(
+                                BenchmarkType.KOSPI_200.getTicker(), BigDecimal.valueOf(3),
+                                BenchmarkType.S_P_500.getTicker(), BigDecimal.valueOf(4),
+                                BenchmarkType.NASDAQ_100.getTicker(), BigDecimal.valueOf(5),
+                                BenchmarkType.DOW_JONES.getTicker(), BigDecimal.valueOf(2)
+                        ))),
                 BigDecimal.valueOf(0.15), // cagr
                 BigDecimal.valueOf(-0.10), // mdd
                 BigDecimal.valueOf(-0.05), // relativeMdd
@@ -254,7 +262,12 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(0.25), // bestYearRate
                 BigDecimal.valueOf(-0.05), // worstYearRate
                 Map.of("005930", BigDecimal.valueOf(10.0)),
-                List.of(new BacktestResult.IndexComparison("코스피", "KOSPI", BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0), BigDecimal.valueOf(10.0), BigDecimal.valueOf(-5.0))),
+                List.of(
+                        new BacktestResult.IndexComparison("코스피 200", BenchmarkType.KOSPI_200.getTicker(), BigDecimal.valueOf(15.5), BigDecimal.valueOf(4.5), BigDecimal.valueOf(1.0), BigDecimal.valueOf(10.0), BigDecimal.valueOf(-5.0)),
+                        new BacktestResult.IndexComparison("S&P 500", BenchmarkType.S_P_500.getTicker(), BigDecimal.valueOf(17.5), BigDecimal.valueOf(2.5), BigDecimal.valueOf(1.1), BigDecimal.valueOf(11.0), BigDecimal.valueOf(-4.0)),
+                        new BacktestResult.IndexComparison("나스닥 100", BenchmarkType.NASDAQ_100.getTicker(), BigDecimal.valueOf(19.5), BigDecimal.valueOf(0.5), BigDecimal.valueOf(1.2), BigDecimal.valueOf(12.0), BigDecimal.valueOf(-3.0)),
+                        new BacktestResult.IndexComparison("다우존스 산업", BenchmarkType.DOW_JONES.getTicker(), BigDecimal.valueOf(14.5), BigDecimal.valueOf(5.5), BigDecimal.valueOf(0.9), BigDecimal.valueOf(9.0), BigDecimal.valueOf(-6.0))
+                ),
                 "현재 포트폴리오는 시장 지수 대비 안정적인 수익을 보여주고 있습니다." // aiComment
         );
         given(portfolioFacade.runBacktest(any())).willReturn(result);
@@ -262,7 +275,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         BacktestRequest request = new BacktestRequest(
                 "LUMP_SUM",
                 BigDecimal.valueOf(1000000),
-                "KOSPI",
+                "",
                 "ALL",
                 org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
@@ -304,6 +317,9 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.aiComment").exists())
+                .andExpect(jsonPath("$.data.dailyResults[0].benchmarkReturnRate").value(3.0))
+                .andExpect(jsonPath("$.data.comparisons.length()").value(4))
+                .andExpect(jsonPath("$.data.comparisons[0].ticker").value(BenchmarkType.KOSPI_200.getTicker()))
                 .andDo(document("portfolio-analysis-backtest",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
@@ -314,7 +330,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .requestFields(
                                         fieldWithPath("strategy").description("투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"),
                                         fieldWithPath("amount").description("초기 투자 금액 (또는 월간 적립액)"),
-                                        fieldWithPath("benchmarkTicker").description("비교 대상 대표 벤치마크 티커 (예: KOSPI, SPY)"),
+                                        fieldWithPath("benchmarkTicker").description("비교 대상 대표 벤치마크 티커 (미입력 시 코스피 200이 기본 비교군의 primary)").optional(),
                                         fieldWithPath("period").description("클라이언트 기간 필터링 호환용 필드 (서버 계산에는 미반영)").optional(),
                                         fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
                                         subsectionWithPath("weights").description("사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)").optional()
@@ -351,6 +367,54 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
+                                .responseFields(responseFields)
+                                .build())
+                ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("생성 시점 차트: 포트폴리오 생성 이후 누적 수익률 시계열을 조회한다")
+    void get_inception_chart() throws Exception {
+        PortfolioInceptionChartResult result = new PortfolioInceptionChartResult(
+                LocalDate.of(2026, 4, 1),
+                List.of(new PortfolioInceptionChartResult.DailyResult(
+                        LocalDate.of(2026, 4, 1),
+                        BigDecimal.ZERO,
+                        Map.of(
+                                BenchmarkType.KOSPI_200.getTicker(), BigDecimal.ZERO,
+                                BenchmarkType.S_P_500.getTicker(), BigDecimal.ZERO
+                        )
+                )),
+                List.of(
+                        new PortfolioInceptionChartResult.IndexComparison("코스피 200", BenchmarkType.KOSPI_200.getTicker(), BigDecimal.valueOf(3.2)),
+                        new PortfolioInceptionChartResult.IndexComparison("S&P 500", BenchmarkType.S_P_500.getTicker(), BigDecimal.valueOf(5.4))
+                )
+        );
+        given(portfolioFacade.getInceptionChart(1L, 100L)).willReturn(result);
+
+        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+        responseFields.addAll(List.of(
+                fieldWithPath("data.portfolioInceptionDate").description("포트폴리오 생성 기준일"),
+                fieldWithPath("data.dailyResults[].date").description("기준 일자"),
+                fieldWithPath("data.dailyResults[].portfolioReturnRate").description("포트폴리오 생성 시점 대비 누적 수익률"),
+                subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("비교군별 누적 수익률"),
+                fieldWithPath("data.comparisons[].indexName").description("비교 지수 이름"),
+                fieldWithPath("data.comparisons[].ticker").description("비교 지수 티커"),
+                fieldWithPath("data.comparisons[].totalReturn").description("전체 기간 비교군 수익률")
+        ));
+
+        mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/performance/inception/chart", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.dailyResults[0].portfolioReturnRate").value(0.0))
+                .andDo(document("portfolio-analysis-inception-chart",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Portfolio Analysis")
+                                .summary("포트폴리오 생성 시점 기준 누적 수익률 차트")
+                                .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
                                 .responseFields(responseFields)
                                 .build())
                 ));

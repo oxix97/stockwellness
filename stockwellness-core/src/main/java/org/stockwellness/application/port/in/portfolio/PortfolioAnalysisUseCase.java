@@ -20,4 +20,5 @@ public interface PortfolioAnalysisUseCase {
 
     // 포트폴리오 생성 시점 기준 성과 분석
     PortfolioInceptionPerformanceResult getPerformanceSinceInception(Long memberId, Long portfolioId);
+    PortfolioInceptionChartResult getInceptionChart(Long memberId, Long portfolioId);
 }

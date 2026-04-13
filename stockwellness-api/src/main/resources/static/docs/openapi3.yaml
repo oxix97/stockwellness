@@ -33,12 +33,24 @@ paths:
                         "id" : 100,
                         "name" : "내 연금 포트폴리오",
                         "description" : "은퇴 자금 마련용",
-                        "totalPurchaseAmount" : 0,
+                        "totalPurchaseAmount" : 1500,
                         "currentTotalValue" : 0,
-                        "totalReturnRate" : 0,
-                        "items" : [ ]
+                        "totalReturnRate" : -100.0,
+                        "items" : [ {
+                          "symbol" : "AAPL",
+                          "name" : "AAPL",
+                          "quantity" : 10,
+                          "purchasePrice" : 150,
+                          "currentPrice" : 0,
+                          "currency" : "USD",
+                          "assetType" : "STOCK",
+                          "purchaseAmount" : 1500,
+                          "currentValue" : 0,
+                          "returnRate" : -100.0,
+                          "targetWeight" : 0
+                        } ]
                       } ],
-                      "timestamp" : "2026-04-08T21:55:30.371313",
+                      "timestamp" : "2026-04-13T10:27:38.940027",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -91,7 +103,7 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : 100,
-                      "timestamp" : "2026-04-08T21:55:30.488846",
+                      "timestamp" : "2026-04-13T10:27:39.092531",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -125,7 +137,7 @@ paths:
                           "redis" : "UP"
                         }
                       },
-                      "timestamp" : "2026-04-08T21:55:17.772317",
+                      "timestamp" : "2026-04-13T10:27:23.523934",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -170,9 +182,9 @@ paths:
                         "memberId" : 1,
                         "email" : "test@example.com",
                         "nickname" : "tester",
-                        "joinedDate" : "2026-04-08"
+                        "joinedDate" : "2026-04-13"
                       },
-                      "timestamp" : "2026-04-08T21:55:21.651168",
+                      "timestamp" : "2026-04-13T10:27:28.733424",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -207,7 +219,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:21.495869",
+                      "timestamp" : "2026-04-13T10:27:28.528353",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -248,7 +260,7 @@ paths:
                         "accessToken" : "new.access.token",
                         "refreshToken" : "new.refresh.token"
                       },
-                      "timestamp" : "2026-04-08T21:55:21.59185",
+                      "timestamp" : "2026-04-13T10:27:28.657851",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -274,28 +286,37 @@ paths:
                       "status" : 200,
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
-                      "data" : [ {
-                        "ticker" : "0001",
-                        "name" : "코스피 종합",
-                        "currentPrice" : 2550.12,
-                        "fluctuationRate" : 1.23,
-                        "fluctuationAmount" : 31.05,
-                        "history" : [ {
-                          "date" : "2026-04-03",
-                          "close" : 2550.12
-                        } ]
-                      }, {
-                        "ticker" : "SPX",
-                        "name" : "S&P 500",
-                        "currentPrice" : 5123.45,
-                        "fluctuationRate" : -0.52,
-                        "fluctuationAmount" : -26.7,
-                        "history" : [ {
-                          "date" : "2026-04-03",
-                          "close" : 5123.45
-                        } ]
-                      } ],
-                      "timestamp" : "2026-04-08T21:55:24.654637",
+                      "data" : {
+                        "indexes" : [ {
+                          "ticker" : "0001",
+                          "name" : "코스피 종합",
+                          "currentPrice" : 2550.12,
+                          "fluctuationRate" : 1.23,
+                          "fluctuationAmount" : 31.05,
+                          "history" : [ {
+                            "date" : "2026-04-03",
+                            "close" : 2550.12
+                          } ]
+                        }, {
+                          "ticker" : "SPX",
+                          "name" : "S&P 500",
+                          "currentPrice" : 5123.45,
+                          "fluctuationRate" : -0.52,
+                          "fluctuationAmount" : -26.7,
+                          "history" : [ {
+                            "date" : "2026-04-03",
+                            "close" : 5123.45
+                          } ]
+                        } ],
+                        "weather" : {
+                          "weatherLevel" : "SUNNY",
+                          "weatherMessage" : "오늘의 증시는 맑음이에요",
+                          "weatherDescription" : "주요 지수가 고르게 오르며 투자심리가 비교적 안정적인 편이에요",
+                          "reasonCode" : "STEADY_ADVANCE",
+                          "asOfDate" : "2026-04-03"
+                        }
+                      },
+                      "timestamp" : "2026-04-13T10:27:32.057699",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -332,12 +353,24 @@ paths:
                         "id" : 100,
                         "name" : "내 연금 포트폴리오",
                         "description" : "은퇴 자금 마련용",
-                        "totalPurchaseAmount" : 0,
+                        "totalPurchaseAmount" : 1500,
                         "currentTotalValue" : 0,
-                        "totalReturnRate" : 0,
-                        "items" : [ ]
+                        "totalReturnRate" : -100.0,
+                        "items" : [ {
+                          "symbol" : "AAPL",
+                          "name" : "AAPL",
+                          "quantity" : 10,
+                          "purchasePrice" : 150,
+                          "currentPrice" : 0,
+                          "currency" : "USD",
+                          "assetType" : "STOCK",
+                          "purchaseAmount" : 1500,
+                          "currentValue" : 0,
+                          "returnRate" : -100.0,
+                          "targetWeight" : 0
+                        } ]
                       },
-                      "timestamp" : "2026-04-08T21:55:30.66565",
+                      "timestamp" : "2026-04-13T10:27:39.259059",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -390,7 +423,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:30.620352",
+                      "timestamp" : "2026-04-13T10:27:39.206631",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -423,7 +456,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:30.592038",
+                      "timestamp" : "2026-04-13T10:27:39.172721",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -456,7 +489,7 @@ paths:
                         "sectorName" : "기타",
                         "status" : "ACTIVE"
                       } ],
-                      "timestamp" : "2026-04-08T21:55:35.87023",
+                      "timestamp" : "2026-04-13T10:27:45.30422",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -483,7 +516,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : [ "삼성전자", "애플", "엔비디아" ],
-                      "timestamp" : "2026-04-08T21:55:35.659546",
+                      "timestamp" : "2026-04-13T10:27:45.086309",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -556,7 +589,7 @@ paths:
                         "hasNext" : false,
                         "empty" : false
                       },
-                      "timestamp" : "2026-04-08T21:55:35.766112",
+                      "timestamp" : "2026-04-13T10:27:45.189485",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -611,7 +644,7 @@ paths:
                         "aiInsight" : "현재 삼성전자는 강력한 반도체 업황 개선 기대감으로 단기 상승 추세에 있습니다.",
                         "isMarketOpen" : true
                       },
-                      "timestamp" : "2026-04-08T21:55:35.892172",
+                      "timestamp" : "2026-04-13T10:27:45.328615",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -654,7 +687,7 @@ paths:
                         "name" : "테크주",
                         "itemCount" : 5
                       } ],
-                      "timestamp" : "2026-04-08T21:55:38.257687",
+                      "timestamp" : "2026-04-13T10:27:48.263441",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -699,7 +732,45 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : 10,
-                      "timestamp" : "2026-04-08T21:55:38.23957",
+                      "timestamp" : "2026-04-13T10:27:48.233229",
+                      "traceId" : null,
+                      "errors" : [ ]
+                    }
+  /api/v1/portfolios/{portfolioId}/advice:
+    post:
+      tags:
+      - Portfolio
+      summary: AI 리밸런싱 조언 즉시 생성
+      description: AI 리밸런싱 조언 즉시 생성
+      operationId: portfolio-advice-create
+      parameters:
+      - name: portfolioId
+        in: path
+        description: 포트폴리오 ID
+        required: true
+        schema:
+          type: string
+      responses:
+        "201":
+          description: "201"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-advice-337529530"
+              examples:
+                portfolio-advice-create:
+                  value: |-
+                    {
+                      "success" : true,
+                      "status" : 201,
+                      "code" : "S001",
+                      "message" : "리소스가 성공적으로 생성되었습니다.",
+                      "data" : {
+                        "content" : "즉시 생성된 조언입니다.",
+                        "action" : "REBALANCE",
+                        "createdAt" : "2026-04-13T10:27:39.282676"
+                      },
+                      "timestamp" : "2026-04-13T10:27:39.284343",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -735,11 +806,11 @@ paths:
                       "data" : {
                         "overallScore" : 77,
                         "categories" : {
-                          "return" : 70,
-                          "cash" : 60,
-                          "diversification" : 85,
+                          "agility" : 90,
                           "stability" : 80,
-                          "agility" : 90
+                          "diversification" : 85,
+                          "cash" : 60,
+                          "return" : 70
                         },
                         "stockContributions" : [ ],
                         "mdd" : 15.5,
@@ -750,7 +821,7 @@ paths:
                         "insight" : "Insight",
                         "nextSteps" : [ "Step 1" ]
                       },
-                      "timestamp" : "2026-04-08T21:55:30.551355",
+                      "timestamp" : "2026-04-13T10:27:39.127621",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -810,69 +881,7 @@ paths:
                         "isOverheated" : true,
                         "aiComment" : null
                       } ],
-                      "timestamp" : "2026-04-08T21:55:33.077776",
-                      "traceId" : null,
-                      "errors" : [ ]
-                    }
-  /api/v1/sectors/ranking/supply:
-    get:
-      tags:
-      - Sector
-      summary: 섹터 수급 랭킹 조회
-      description: 외국인/기관 순매수 금액 및 연속 매수 일수 기반의 섹터 순위를 조회합니다.
-      operationId: sector-supply
-      parameters:
-      - name: date
-        in: query
-        description: 조회 날짜 (yyyy-MM-dd)
-        required: false
-        schema:
-          type: string
-      - name: marketType
-        in: query
-        description: "시장 구분 (KOSPI, KOSDAQ)"
-        required: false
-        schema:
-          type: string
-      - name: limit
-        in: query
-        description: 조회 개수
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          description: "200"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SectorSupplyResponse"
-              examples:
-                sector-supply:
-                  value: |-
-                    {
-                      "success" : true,
-                      "status" : 200,
-                      "code" : "S000",
-                      "message" : "요청이 성공적으로 처리되었습니다.",
-                      "data" : [ {
-                        "sectorCode" : "001",
-                        "sectorName" : "종합",
-                        "netForeignBuyAmount" : 500000000,
-                        "netInstBuyAmount" : 1200000000,
-                        "netTotalBuyAmount" : 1700000000,
-                        "foreignConsecutiveBuyDays" : 3,
-                        "instConsecutiveBuyDays" : 5
-                      }, {
-                        "sectorCode" : "002",
-                        "sectorName" : "반도체",
-                        "netForeignBuyAmount" : -100000000,
-                        "netInstBuyAmount" : 300000000,
-                        "netTotalBuyAmount" : 200000000,
-                        "foreignConsecutiveBuyDays" : 0,
-                        "instConsecutiveBuyDays" : 2
-                      } ],
-                      "timestamp" : "2026-04-08T13:18:19.375359",
+                      "timestamp" : "2026-04-13T10:27:42.097812",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -954,7 +963,7 @@ paths:
                           "detailedAnalysis" : null
                         }
                       },
-                      "timestamp" : "2026-04-08T21:55:33.120134",
+                      "timestamp" : "2026-04-13T10:27:42.135378",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -963,15 +972,9 @@ paths:
       tags:
       - Stock Price
       summary: 종목 수급 랭킹 조회
-      description: 지정된 조건(매수/매도 방향)에 따라 기관과 외국인 종목 순매수량/순매도량 순위를 함께 조회합니다.
+      description: 가장 최신 적재 날짜를 기준으로 기관과 외국인 종목 순매수량/순매도량 순위를 함께 조회합니다.
       operationId: stock-supply-ranking
       parameters:
-      - name: date
-        in: query
-        description: 조회 날짜 (yyyy-MM-dd)
-        required: false
-        schema:
-          type: string
       - name: direction
         in: query
         description: "매수/매도 방향 (BUY, SELL)"
@@ -990,7 +993,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-stocks-ranking-supply-555221257"
+                $ref: "#/components/schemas/api-v1-stocks-ranking-supply-684845"
               examples:
                 stock-supply-ranking:
                   value: |-
@@ -1000,7 +1003,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : {
-                        "requestedDate" : "2026-04-07",
+                        "requestedDate" : null,
                         "effectiveDate" : "2026-04-07",
                         "institutionItems" : [ {
                           "ticker" : "005930",
@@ -1032,7 +1035,7 @@ paths:
                           "transactionAmount" : 120000000000
                         } ]
                       },
-                      "timestamp" : "2026-04-08T21:55:35.679886",
+                      "timestamp" : "2026-04-13T10:27:45.109571",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1059,7 +1062,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : [ ],
-                      "timestamp" : "2026-04-08T21:55:35.72757",
+                      "timestamp" : "2026-04-13T10:27:45.150842",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1100,7 +1103,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:35.584009",
+                      "timestamp" : "2026-04-13T10:27:44.998586",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1145,7 +1148,7 @@ paths:
                         "stockReturnRate" : 15.5,
                         "benchmarkReturnRate" : 10.2
                       },
-                      "timestamp" : "2026-04-08T21:55:35.934408",
+                      "timestamp" : "2026-04-13T10:27:45.371476",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1169,7 +1172,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-advice-latest-337529530"
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-advice-337529530"
               examples:
                 portfolio-advice-latest:
                   value: |-
@@ -1181,9 +1184,9 @@ paths:
                       "data" : {
                         "content" : "상세 조언 내용입니다.",
                         "action" : "REBALANCE",
-                        "createdAt" : "2026-04-08T21:55:30.64179"
+                        "createdAt" : "2026-04-13T10:27:39.229755"
                       },
-                      "timestamp" : "2026-04-08T21:55:30.642907",
+                      "timestamp" : "2026-04-13T10:27:39.231585",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1205,14 +1208,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-backtest-617935080"
+              $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-backtest-1625248920"
             examples:
               portfolio-analysis-backtest:
                 value: |-
                   {
                     "strategy" : "LUMP_SUM",
                     "amount" : 1000000,
-                    "benchmarkTicker" : "KOSPI",
+                    "benchmarkTicker" : "",
                     "period" : "ALL",
                     "rebalancingPeriod" : "MONTHLY",
                     "weights" : {
@@ -1242,7 +1245,10 @@ paths:
                           "returnRate" : 5.0,
                           "benchmarkReturnRate" : 3.0,
                           "benchmarkReturnRates" : {
-                            "KOSPI" : 3.0
+                            ".DJI" : 2.0,
+                            "NDX" : 5.0,
+                            "2001" : 3.0,
+                            "SPX" : 4.0
                           }
                         } ],
                         "cagr" : 0.15,
@@ -1259,17 +1265,41 @@ paths:
                           "005930" : 10.0
                         },
                         "comparisons" : [ {
-                          "indexName" : "코스피",
-                          "ticker" : "KOSPI",
+                          "indexName" : "코스피 200",
+                          "ticker" : "2001",
                           "totalReturn" : 15.5,
                           "alpha" : 4.5,
                           "beta" : 1.0,
                           "mdd" : 10.0,
                           "relativeMdd" : -5.0
+                        }, {
+                          "indexName" : "S&P 500",
+                          "ticker" : "SPX",
+                          "totalReturn" : 17.5,
+                          "alpha" : 2.5,
+                          "beta" : 1.1,
+                          "mdd" : 11.0,
+                          "relativeMdd" : -4.0
+                        }, {
+                          "indexName" : "나스닥 100",
+                          "ticker" : "NDX",
+                          "totalReturn" : 19.5,
+                          "alpha" : 0.5,
+                          "beta" : 1.2,
+                          "mdd" : 12.0,
+                          "relativeMdd" : -3.0
+                        }, {
+                          "indexName" : "다우존스 산업",
+                          "ticker" : ".DJI",
+                          "totalReturn" : 14.5,
+                          "alpha" : 5.5,
+                          "beta" : 0.9,
+                          "mdd" : 9.0,
+                          "relativeMdd" : -6.0
                         } ],
                         "aiComment" : "현재 포트폴리오는 시장 지수 대비 안정적인 수익을 보여주고 있습니다."
                       },
-                      "timestamp" : "2026-04-08T21:55:30.24323",
+                      "timestamp" : "2026-04-13T10:27:38.747409",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1303,16 +1333,16 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : {
-                        "TSLA" : {
-                          "TSLA" : 1,
-                          "AAPL" : 0.85
-                        },
                         "AAPL" : {
-                          "TSLA" : 0.85,
-                          "AAPL" : 1
+                          "AAPL" : 1,
+                          "TSLA" : 0.85
+                        },
+                        "TSLA" : {
+                          "AAPL" : 0.85,
+                          "TSLA" : 1
                         }
                       },
-                      "timestamp" : "2026-04-08T21:55:30.176987",
+                      "timestamp" : "2026-04-13T10:27:38.615199",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1360,7 +1390,7 @@ paths:
                           "value" : 100.0
                         } ]
                       },
-                      "timestamp" : "2026-04-08T21:55:30.19954",
+                      "timestamp" : "2026-04-13T10:27:38.65518",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1384,7 +1414,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-rebalancing1494527279"
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-rebalancing-704126725"
               examples:
                 portfolio-analysis-rebalancing:
                   value: |-
@@ -1397,6 +1427,7 @@ paths:
                         "totalValue" : 1500000,
                         "items" : [ {
                           "symbol" : "AAPL",
+                          "name" : "애플",
                           "currentWeight" : 50.0,
                           "targetWeight" : 60.0,
                           "diffWeight" : -10.0,
@@ -1406,7 +1437,7 @@ paths:
                           "expectedTradeAmount" : 1800000
                         } ]
                       },
-                      "timestamp" : "2026-04-08T21:55:30.302398",
+                      "timestamp" : "2026-04-13T10:27:38.840263",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1466,7 +1497,8 @@ paths:
                           "sharpeRatio" : 1.5,
                           "beta" : 1.1,
                           "totalInstitutionalNetBuying" : 0,
-                          "totalForeignNetBuying" : 0
+                          "totalForeignNetBuying" : 0,
+                          "totalPersonNetBuying" : 0
                         },
                         "diversification" : {
                           "totalValue" : 1500000,
@@ -1491,7 +1523,7 @@ paths:
                           "AAPL" : 12.5
                         }
                       },
-                      "timestamp" : "2026-04-08T21:55:30.086993",
+                      "timestamp" : "2026-04-13T10:27:38.470501",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1515,7 +1547,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-valuation1906810676"
+                $ref: "#/components/schemas/api-v1-portfolios-portfolioId-analysis-valuation-1128535863"
               examples:
                 portfolio-analysis-value:
                   value: |-
@@ -1538,9 +1570,10 @@ paths:
                         "sharpeRatio" : 1.5,
                         "beta" : 1.1,
                         "totalInstitutionalNetBuying" : 0,
-                        "totalForeignNetBuying" : 0
+                        "totalForeignNetBuying" : 0,
+                        "totalPersonNetBuying" : 0
                       },
-                      "timestamp" : "2026-04-08T21:55:30.327356",
+                      "timestamp" : "2026-04-13T10:27:38.875227",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1567,7 +1600,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:35.85353",
+                      "timestamp" : "2026-04-13T10:27:45.287379",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1638,7 +1671,7 @@ paths:
                         } ],
                         "benchmarks" : [ ]
                       },
-                      "timestamp" : "2026-04-08T21:55:35.806",
+                      "timestamp" : "2026-04-13T10:27:45.238857",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1691,7 +1724,7 @@ paths:
                           "aiInsight" : "AI 요약 내용..."
                         } ]
                       },
-                      "timestamp" : "2026-04-08T21:55:38.294275",
+                      "timestamp" : "2026-04-13T10:27:48.33617",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1743,7 +1776,7 @@ paths:
                       "code" : "S001",
                       "message" : "리소스가 성공적으로 생성되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:38.215935",
+                      "timestamp" : "2026-04-13T10:27:48.191094",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1790,7 +1823,7 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:38.277563",
+                      "timestamp" : "2026-04-13T10:27:48.30499",
                       "traceId" : null,
                       "errors" : [ ]
                     }
@@ -1848,54 +1881,12 @@ paths:
                       "code" : "S000",
                       "message" : "요청이 성공적으로 처리되었습니다.",
                       "data" : null,
-                      "timestamp" : "2026-04-08T21:55:38.324571",
+                      "timestamp" : "2026-04-13T10:27:48.389712",
                       "traceId" : null,
                       "errors" : [ ]
                     }
 components:
   schemas:
-    api-v1-portfolios-portfolioId-1115330940:
-      required:
-      - description
-      - name
-      type: object
-      properties:
-        name:
-          type: string
-          description: 수정할 이름
-        description:
-          type: string
-          description: 수정할 설명
-        items:
-          type: array
-          items:
-            required:
-            - assetType
-            - currency
-            - purchasePrice
-            - quantity
-            - symbol
-            - targetWeight
-            type: object
-            properties:
-              symbol:
-                type: string
-                description: 종목 심볼
-              quantity:
-                type: number
-                description: 보유 수량
-              targetWeight:
-                type: number
-                description: 목표 비중
-              currency:
-                type: string
-                description: 통화
-              purchasePrice:
-                type: number
-                description: 평균 매수가
-              assetType:
-                type: string
-                description: 자산 타입
     api-v1-portfolios-portfolioId-health-864754955:
       required:
       - code
@@ -1986,6 +1977,48 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
+    api-v1-portfolios-portfolioId-1115330940:
+      required:
+      - description
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: 수정할 이름
+        description:
+          type: string
+          description: 수정할 설명
+        items:
+          type: array
+          items:
+            required:
+            - assetType
+            - currency
+            - purchasePrice
+            - quantity
+            - symbol
+            - targetWeight
+            type: object
+            properties:
+              symbol:
+                type: string
+                description: 종목 심볼
+              quantity:
+                type: number
+                description: 보유 수량
+              targetWeight:
+                type: number
+                description: 목표 비중
+              currency:
+                type: string
+                description: 통화
+              purchasePrice:
+                type: number
+                description: 평균 매수가
+              assetType:
+                type: string
+                description: 자산 타입
     LoginRequest:
       title: LoginRequest
       required:
@@ -2057,77 +2090,34 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    SectorSupplyResponse:
-      title: SectorSupplyResponse
+    api-v1-portfolios-portfolioId-analysis-backtest-1625248920:
       required:
-      - code
-      - data
-      - message
-      - status
-      - success
-      - timestamp
+      - amount
+      - strategy
       type: object
       properties:
-        code:
+        period:
           type: string
-          description: 비즈니스 상세 코드
-        data:
-          type: array
-          description: 섹터 수급 리스트
-          items:
-            required:
-            - foreignConsecutiveBuyDays
-            - instConsecutiveBuyDays
-            - netForeignBuyAmount
-            - netInstBuyAmount
-            - netTotalBuyAmount
-            - sectorCode
-            - sectorName
-            type: object
-            properties:
-              instConsecutiveBuyDays:
-                type: number
-                description: 기관 연속 매수 일수
-              netForeignBuyAmount:
-                type: number
-                description: 외국인 순매수 금액
-              foreignConsecutiveBuyDays:
-                type: number
-                description: 외국인 연속 매수 일수
-              sectorCode:
-                type: string
-                description: 섹터 코드
-              netInstBuyAmount:
-                type: number
-                description: 기관 순매수 금액
-              netTotalBuyAmount:
-                type: number
-                description: 외국인/기관 합산 순매수 금액
-              sectorName:
-                type: string
-                description: 섹터명
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 결과 메시지
-        errors:
-          type: array
-          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
+          description: 클라이언트 기간 필터링 호환용 필드 (서버 계산에는 미반영)
           nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        timestamp:
-          type: string
-          description: 응답 시간
-        status:
+        amount:
           type: number
-          description: HTTP 상태 코드
+          description: 초기 투자 금액 (또는 월간 적립액)
+        weights:
+          type: object
+          description: 사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)
+          nullable: true
+        strategy:
+          type: string
+          description: "투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"
+        rebalancingPeriod:
+          type: string
+          description: "리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)"
+          nullable: true
+        benchmarkTicker:
+          type: string
+          description: 비교 대상 대표 벤치마크 티커 (미입력 시 코스피 200이 기본 비교군의 primary)
+          nullable: true
     SectorRankingResponse:
       title: SectorRankingResponse
       required:
@@ -2191,7 +2181,8 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    api-v1-stocks-ranking-supply-555221257:
+    MarketIndexListResponse:
+      title: MarketIndexListResponse
       required:
       - code
       - message
@@ -2205,98 +2196,76 @@ components:
           description: 비즈니스 상세 코드
         data:
           required:
-          - foreignItems
-          - institutionItems
+          - indexes
           type: object
           properties:
-            institutionItems:
+            indexes:
               type: array
-              description: 기관 기준 종목 수급 랭킹 리스트
+              description: 시장 지수 리스트
               items:
                 required:
                 - currentPrice
+                - fluctuationAmount
                 - fluctuationRate
-                - netBuyingQuantity
-                - netBuyingAmount
-                - stockName
+                - history
+                - name
                 - ticker
-                - transactionAmount
                 type: object
                 properties:
-                  netBuyingQuantity:
-                    type: integer
-                    format: int64
-                    description: 기관 순매수 수량
-                  netBuyingAmount:
-                    type: number
-                    description: 기관 순매수 금액
                   ticker:
                     type: string
-                    description: 티커
-                  stockName:
-                    type: string
-                    description: 종목명
-                  transactionAmount:
-                    type: number
-                    description: 거래대금
+                    description: 지수 티커
                   fluctuationRate:
                     type: number
-                    description: 전일 대비 등락률 (%)
+                    description: 전일 대비 등락률
+                  name:
+                    type: string
+                    description: 지수명
                   currentPrice:
                     type: number
-                    description: 기준일 종가
-                  sectorName:
-                    type: string
-                    description: 업종명
-                    nullable: true
-            requestedDate:
-              type: string
-              description: 사용자가 요청한 날짜
-              nullable: true
-            foreignItems:
-              type: array
-              description: 외국인 기준 종목 수급 랭킹 리스트
-              items:
-                required:
-                - currentPrice
-                - fluctuationRate
-                - netBuyingQuantity
-                - netBuyingAmount
-                - stockName
-                - ticker
-                - transactionAmount
-                type: object
-                properties:
-                  netBuyingQuantity:
-                    type: integer
-                    format: int64
-                    description: 외국인 순매수 수량
-                  netBuyingAmount:
+                    description: 현재 지수 값
+                  history:
+                    type: array
+                    description: 최근 지수 히스토리
+                    items:
+                      required:
+                      - close
+                      - date
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          description: 히스토리 기준일
+                        close:
+                          type: number
+                          description: 종가
+                  fluctuationAmount:
                     type: number
-                    description: 외국인 순매수 금액
-                  ticker:
-                    type: string
-                    description: 티커
-                  stockName:
-                    type: string
-                    description: 종목명
-                  transactionAmount:
-                    type: number
-                    description: 거래대금
-                  fluctuationRate:
-                    type: number
-                    description: 전일 대비 등락률 (%)
-                  currentPrice:
-                    type: number
-                    description: 기준일 종가
-                  sectorName:
-                    type: string
-                    description: 업종명
-                    nullable: true
-            effectiveDate:
-              type: string
-              description: 실제 랭킹 산정 기준 날짜
-              nullable: true
+                    description: 전일 대비 등락폭
+            weather:
+              required:
+              - asOfDate
+              - reasonCode
+              - weatherDescription
+              - weatherLevel
+              - weatherMessage
+              type: object
+              properties:
+                weatherDescription:
+                  type: string
+                  description: 시장 분위기 보조 설명
+                weatherMessage:
+                  type: string
+                  description: 홈 헤더 메인 문구
+                reasonCode:
+                  type: string
+                  description: 문구 생성 근거 코드
+                weatherLevel:
+                  type: string
+                  description: 시장 날씨 단계
+                asOfDate:
+                  type: string
+                  description: 시장 날씨 기준일
         success:
           type: boolean
           description: 성공 여부
@@ -2332,100 +2301,6 @@ components:
         code:
           type: string
           description: 비즈니스 상세 코드
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 결과 메시지
-        errors:
-          type: array
-          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
-          nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        timestamp:
-          type: string
-          description: 응답 시간
-        status:
-          type: number
-          description: HTTP 상태 코드
-    api-v1-portfolios-portfolioId-analysis-valuation1906810676:
-      required:
-      - code
-      - message
-      - status
-      - success
-      - timestamp
-      type: object
-      properties:
-        code:
-          type: string
-          description: 비즈니스 상세 코드
-        data:
-          required:
-          - alpha
-          - beta
-          - cagr
-          - currentTotalValue
-          - dailyProfitLoss
-          - dailyReturnRate
-          - mdd
-          - sharpeRatio
-          - totalForeignNetBuying
-          - totalInstitutionalNetBuying
-          - totalProfitLoss
-          - totalPurchaseAmount
-          - totalReturnRate
-          - volatility
-          type: object
-          properties:
-            dailyReturnRate:
-              type: number
-              description: 당일 수익률 (%)
-            dailyProfitLoss:
-              type: number
-              description: 당일 평가 손익
-            cagr:
-              type: number
-              description: 연평균 성장률 (CAGR)
-            totalInstitutionalNetBuying:
-              type: number
-              description: 총 기관 순매수 금액
-            volatility:
-              type: number
-              description: 연간 변동성
-            mdd:
-              type: number
-              description: 최대 낙폭 (MDD)
-            totalReturnRate:
-              type: number
-              description: 총 수익률 (%)
-            totalProfitLoss:
-              type: number
-              description: 총 평가 손익
-            alpha:
-              type: number
-              description: 초과 수익률 (Alpha)
-            sharpeRatio:
-              type: number
-              description: 샤프 지수
-            totalPurchaseAmount:
-              type: number
-              description: 총 매수 금액
-            currentTotalValue:
-              type: number
-              description: 현재 총 자산 가치
-            beta:
-              type: number
-              description: 베타 계수
-            totalForeignNetBuying:
-              type: number
-              description: 총 외국인 순매수 금액
         success:
           type: boolean
           description: 성공 여부
@@ -2755,9 +2630,10 @@ components:
           description: 리프레시 토큰
     api-v1-stocks-search-history486549215:
       type: object
-    api-v1-portfolios-portfolioId653085325:
+    api-v1-stocks-popular-search-808622291:
       required:
       - code
+      - data
       - message
       - status
       - success
@@ -2767,6 +2643,15 @@ components:
         code:
           type: string
           description: 비즈니스 상세 코드
+        data:
+          type: array
+          description: 인기 검색어 목록
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
         success:
           type: boolean
           description: 성공 여부
@@ -2852,10 +2737,44 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    api-v1-stocks-popular-search-808622291:
+    api-v1-portfolios-portfolioId653085325:
       required:
       - code
-      - data
+      - message
+      - status
+      - success
+      - timestamp
+      type: object
+      properties:
+        code:
+          type: string
+          description: 비즈니스 상세 코드
+        success:
+          type: boolean
+          description: 성공 여부
+        message:
+          type: string
+          description: 결과 메시지
+        errors:
+          type: array
+          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
+          nullable: true
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        timestamp:
+          type: string
+          description: 응답 시간
+        status:
+          type: number
+          description: HTTP 상태 코드
+    ReissueResponse:
+      title: ReissueResponse
+      required:
+      - code
       - message
       - status
       - success
@@ -2866,14 +2785,17 @@ components:
           type: string
           description: 비즈니스 상세 코드
         data:
-          type: array
-          description: 인기 검색어 목록
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
+          required:
+          - accessToken
+          - refreshToken
+          type: object
+          properties:
+            accessToken:
+              type: string
+              description: 새로운 액세스 토큰
+            refreshToken:
+              type: string
+              description: 새로운 리프레시 토큰
         success:
           type: boolean
           description: 성공 여부
@@ -2958,53 +2880,6 @@ components:
                   value:
                     type: number
                     description: 비중 (%)
-        success:
-          type: boolean
-          description: 성공 여부
-        message:
-          type: string
-          description: 결과 메시지
-        errors:
-          type: array
-          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
-          nullable: true
-          items:
-            oneOf:
-            - type: object
-            - type: boolean
-            - type: string
-            - type: number
-        timestamp:
-          type: string
-          description: 응답 시간
-        status:
-          type: number
-          description: HTTP 상태 코드
-    ReissueResponse:
-      title: ReissueResponse
-      required:
-      - code
-      - message
-      - status
-      - success
-      - timestamp
-      type: object
-      properties:
-        code:
-          type: string
-          description: 비즈니스 상세 코드
-        data:
-          required:
-          - accessToken
-          - refreshToken
-          type: object
-          properties:
-            accessToken:
-              type: string
-              description: 새로운 액세스 토큰
-            refreshToken:
-              type: string
-              description: 새로운 리프레시 토큰
         success:
           type: boolean
           description: 성공 여부
@@ -3245,8 +3120,7 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    MarketIndexListResponse:
-      title: MarketIndexListResponse
+    api-v1-stocks-ranking-supply-684845:
       required:
       - code
       - message
@@ -3259,47 +3133,93 @@ components:
           type: string
           description: 비즈니스 상세 코드
         data:
-          type: array
-          items:
-            required:
-            - currentPrice
-            - fluctuationAmount
-            - fluctuationRate
-            - history
-            - name
-            - ticker
-            type: object
-            properties:
-              ticker:
-                type: string
-                description: 지수 티커
-              fluctuationRate:
-                type: number
-                description: 전일 대비 등락률
-              name:
-                type: string
-                description: 지수명
-              currentPrice:
-                type: number
-                description: 현재 지수 값
-              history:
-                type: array
-                description: 최근 지수 히스토리
-                items:
-                  required:
-                  - close
-                  - date
-                  type: object
-                  properties:
-                    date:
-                      type: string
-                      description: 히스토리 기준일
-                    close:
-                      type: number
-                      description: 종가
-              fluctuationAmount:
-                type: number
-                description: 전일 대비 등락폭
+          required:
+          - foreignItems
+          - institutionItems
+          type: object
+          properties:
+            institutionItems:
+              type: array
+              description: 기관 기준 종목 수급 랭킹 리스트
+              items:
+                required:
+                - currentPrice
+                - fluctuationRate
+                - netBuyingAmount
+                - netBuyingQuantity
+                - stockName
+                - ticker
+                - transactionAmount
+                type: object
+                properties:
+                  netBuyingQuantity:
+                    type: number
+                    description: 기관 순매수 수량
+                  netBuyingAmount:
+                    type: number
+                    description: 기관 순매수 금액
+                  ticker:
+                    type: string
+                    description: 티커
+                  stockName:
+                    type: string
+                    description: 종목명
+                  transactionAmount:
+                    type: number
+                    description: 거래대금
+                  fluctuationRate:
+                    type: number
+                    description: 전일 대비 등락률 (%)
+                  currentPrice:
+                    type: number
+                    description: 기준일 종가
+                  sectorName:
+                    type: string
+                    description: 업종명
+                    nullable: true
+            foreignItems:
+              type: array
+              description: 외국인 기준 종목 수급 랭킹 리스트
+              items:
+                required:
+                - currentPrice
+                - fluctuationRate
+                - netBuyingAmount
+                - netBuyingQuantity
+                - stockName
+                - ticker
+                - transactionAmount
+                type: object
+                properties:
+                  netBuyingQuantity:
+                    type: number
+                    description: 외국인 순매수 수량
+                  netBuyingAmount:
+                    type: number
+                    description: 외국인 순매수 금액
+                  ticker:
+                    type: string
+                    description: 티커
+                  stockName:
+                    type: string
+                    description: 종목명
+                  transactionAmount:
+                    type: number
+                    description: 거래대금
+                  fluctuationRate:
+                    type: number
+                    description: 전일 대비 등락률 (%)
+                  currentPrice:
+                    type: number
+                    description: 기준일 종가
+                  sectorName:
+                    type: string
+                    description: 업종명
+                    nullable: true
+            effectiveDate:
+              type: string
+              description: 실제 랭킹 산정 기준 날짜 (가장 최신 적재일)
+              nullable: true
         success:
           type: boolean
           description: 성공 여부
@@ -3322,7 +3242,7 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    api-v1-portfolios-portfolioId-advice-latest-337529530:
+    api-v1-portfolios-portfolioId-advice-337529530:
       required:
       - code
       - message
@@ -3849,34 +3769,104 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    api-v1-portfolios-portfolioId-analysis-backtest-617935080:
+    api-v1-portfolios-portfolioId-analysis-valuation-1128535863:
       required:
-      - amount
-      - benchmarkTicker
-      - strategy
+      - code
+      - message
+      - status
+      - success
+      - timestamp
       type: object
       properties:
-        period:
+        code:
           type: string
-          description: 클라이언트 기간 필터링 호환용 필드 (서버 계산에는 미반영)
-          nullable: true
-        amount:
-          type: number
-          description: 초기 투자 금액 (또는 월간 적립액)
-        weights:
+          description: 비즈니스 상세 코드
+        data:
+          required:
+          - alpha
+          - beta
+          - cagr
+          - currentTotalValue
+          - dailyProfitLoss
+          - dailyReturnRate
+          - mdd
+          - sharpeRatio
+          - totalForeignNetBuying
+          - totalInstitutionalNetBuying
+          - totalPersonNetBuying
+          - totalProfitLoss
+          - totalPurchaseAmount
+          - totalReturnRate
+          - volatility
           type: object
-          description: 사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)
+          properties:
+            dailyReturnRate:
+              type: number
+              description: 당일 수익률 (%)
+            dailyProfitLoss:
+              type: number
+              description: 당일 평가 손익
+            cagr:
+              type: number
+              description: 연평균 성장률 (CAGR)
+            totalInstitutionalNetBuying:
+              type: number
+              description: 총 기관 순매수 금액
+            volatility:
+              type: number
+              description: 연간 변동성
+            mdd:
+              type: number
+              description: 최대 낙폭 (MDD)
+            totalReturnRate:
+              type: number
+              description: 총 수익률 (%)
+            totalPersonNetBuying:
+              type: number
+              description: 총 개인 순매수 금액
+            totalProfitLoss:
+              type: number
+              description: 총 평가 손익
+            alpha:
+              type: number
+              description: 초과 수익률 (Alpha)
+            sharpeRatio:
+              type: number
+              description: 샤프 지수
+            totalPurchaseAmount:
+              type: number
+              description: 총 매수 금액
+            currentTotalValue:
+              type: number
+              description: 현재 총 자산 가치
+            beta:
+              type: number
+              description: 베타 계수
+            totalForeignNetBuying:
+              type: number
+              description: 총 외국인 순매수 금액
+        success:
+          type: boolean
+          description: 성공 여부
+        message:
+          type: string
+          description: 결과 메시지
+        errors:
+          type: array
+          description: 상세 필드 에러 목록 (성공 시 빈 리스트)
           nullable: true
-        strategy:
+          items:
+            oneOf:
+            - type: object
+            - type: boolean
+            - type: string
+            - type: number
+        timestamp:
           type: string
-          description: "투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"
-        rebalancingPeriod:
-          type: string
-          description: "리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)"
-          nullable: true
-        benchmarkTicker:
-          type: string
-          description: "비교 대상 대표 벤치마크 티커 (예: KOSPI, SPY)"
+          description: 응답 시간
+        status:
+          type: number
+          description: HTTP 상태 코드
     api-v1-portfolios502406471:
       required:
       - code
@@ -4167,7 +4157,7 @@ components:
         status:
           type: number
           description: HTTP 상태 코드
-    api-v1-portfolios-portfolioId-analysis-rebalancing1494527279:
+    api-v1-portfolios-portfolioId-analysis-rebalancing-704126725:
       required:
       - code
       - message
@@ -4196,6 +4186,7 @@ components:
                 - currentWeight
                 - diffWeight
                 - expectedTradeAmount
+                - name
                 - recommendedQuantity
                 - symbol
                 - targetWeight
@@ -4210,6 +4201,9 @@ components:
                   diffWeight:
                     type: number
                     description: 비중 차이 (%p)
+                  name:
+                    type: string
+                    description: 종목명
                   currentPrice:
                     type: number
                     description: 현재가
