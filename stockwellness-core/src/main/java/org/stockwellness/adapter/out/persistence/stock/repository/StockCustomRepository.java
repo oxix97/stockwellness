@@ -11,6 +11,8 @@ public interface StockCustomRepository {
             String keyword,
             MarketType marketType,
             StockStatus status,
+            String sectorCode,
+            String sectorName,
             Pageable pageable
     );
 }

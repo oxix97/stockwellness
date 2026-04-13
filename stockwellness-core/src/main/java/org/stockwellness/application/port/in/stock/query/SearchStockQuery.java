@@ -7,6 +7,8 @@ public record SearchStockQuery(
         String keyword,
         MarketType marketType,
         StockStatus status,
+        String sectorCode,
+        String sectorName,
         int page,
         int size
 ) {}

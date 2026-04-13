@@ -49,10 +49,12 @@ public class StockController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) MarketType marketType,
             @RequestParam(required = false) StockStatus status,
+            @RequestParam(required = false) String sectorCode,
+            @RequestParam(required = false) String sectorName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        SearchStockQuery query = new SearchStockQuery(keyword, marketType, status, page, size);
+        SearchStockQuery query = new SearchStockQuery(keyword, marketType, status, sectorCode, sectorName, page, size);
         Slice<StockSearchResult> result = stockUseCase.searchStocks(query);
 
         // 검색 성공 시 히스토리에 저장 (인증된 사용자만)

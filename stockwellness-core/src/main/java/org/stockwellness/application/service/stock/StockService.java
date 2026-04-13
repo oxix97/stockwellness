@@ -42,6 +42,8 @@ public class StockService implements StockUseCase {
                 query.keyword(),
                 query.marketType(),
                 query.status(),
+                query.sectorCode(),
+                query.sectorName(),
                 pageable
         );
 

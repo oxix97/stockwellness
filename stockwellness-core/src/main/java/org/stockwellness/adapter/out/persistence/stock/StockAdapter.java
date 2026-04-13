@@ -57,7 +57,7 @@ public class StockAdapter implements StockPort {
     @Override
     public Slice<Stock> searchStocks(SearchStockQuery query) {
         PageRequest pageable = PageRequest.of(query.page() - 1, query.size(), Sort.by("name").ascending());
-        return stockRepository.searchByCondition(query.keyword(), query.marketType(), query.status(), pageable);
+        return stockRepository.searchByCondition(query.keyword(), query.marketType(), query.status(), query.sectorCode(), query.sectorName(), pageable);
     }
 
     @Override
@@ -89,8 +89,8 @@ public class StockAdapter implements StockPort {
     }
 
 
-    public Slice<Stock> searchByCondition(String keyword, MarketType marketType, StockStatus status, Pageable pageable) {
-        return stockRepository.searchByCondition(keyword, marketType, status, pageable);
+    public Slice<Stock> searchByCondition(String keyword, MarketType marketType, StockStatus status, String sectorCode, String sectorName, Pageable pageable) {
+        return stockRepository.searchByCondition(keyword, marketType, status, sectorCode, sectorName, pageable);
     }
 
     public List<String> findAllStockCodes() {
