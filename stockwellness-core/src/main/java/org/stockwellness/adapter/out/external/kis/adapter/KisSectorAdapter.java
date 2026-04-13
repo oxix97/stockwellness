@@ -116,8 +116,10 @@ public class KisSectorAdapter implements SectorDataPort {
                         null,
                         null,
                         null,
+                        null,
                         toPbmnAmount(detail.orgnNtbyTrPbmn()),
-                        toPbmnAmount(detail.frgnNtbyTrPbmn())
+                        toPbmnAmount(detail.frgnNtbyTrPbmn()),
+                        toPbmnAmount(detail.prsnNtbyTrPbmn())
                 ))
                 .toList();
 

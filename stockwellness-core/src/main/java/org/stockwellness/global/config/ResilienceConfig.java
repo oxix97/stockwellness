@@ -30,8 +30,8 @@ public class ResilienceConfig {
     public RateLimiter kisRateLimiter() {
         RateLimiterConfig config = RateLimiterConfig.custom()
                 .limitRefreshPeriod(Duration.ofSeconds(1))
-                .limitForPeriod(10)
-                .timeoutDuration(Duration.ofSeconds(20))
+                .limitForPeriod(18) // 실전투자 초당 20건 제한을 고려하여 18건으로 상향
+                .timeoutDuration(Duration.ofSeconds(30)) // 대기 시간을 30초로 늘려 피크 타임의 요청을 더 수용
                 .build();
         log.info("[KIS 설정] RateLimiter 초기화 limitForPeriod={}, refreshPeriod={}, timeout={}",
                 config.getLimitForPeriod(), config.getLimitRefreshPeriod(), config.getTimeoutDuration());
@@ -46,7 +46,7 @@ public class ResilienceConfig {
                     if (throwable instanceof RestClientException) return true;
                     if (throwable instanceof KisAuthenticationException) return true;
                     if (throwable instanceof KisApiException kisApiException) {
-                        return kisApiException.isRateLimitExceeded();
+                        return kisApiException.isRetryable();
                     }
                     return false;
                 })

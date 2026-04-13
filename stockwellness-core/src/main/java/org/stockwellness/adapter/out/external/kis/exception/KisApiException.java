@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.out.external.kis.exception;
 
+import java.util.List;
 import java.util.Locale;
 
 public class KisApiException extends RuntimeException {
@@ -35,6 +36,14 @@ public class KisApiException extends RuntimeException {
         return isRateLimitExceeded(msgCd, msg1);
     }
 
+    public boolean isRetryableBusinessError() {
+        return isRetryableBusinessError(msgCd, msg1);
+    }
+
+    public boolean isRetryable() {
+        return isRetryable(msgCd, msg1);
+    }
+
     public static KisApiException from(String rtCd, String msgCd, String msg1) {
         if (isTokenExpired(msgCd, msg1)) {
             return new KisAuthenticationException(rtCd, msgCd, msg1);
@@ -60,6 +69,19 @@ public class KisApiException extends RuntimeException {
                 || normalizedMessage.contains("rate limit")
                 || normalizedCode.contains("rate")
                 || normalizedCode.contains("limit");
+    }
+
+    public static boolean isRetryableBusinessError(String msgCd, String msg1) {
+        String normalizedMessage = normalize(msg1);
+        String normalizedCode = normalize(msgCd);
+
+        return List.of("egw00316").contains(normalizedCode)
+                || normalizedMessage.contains("재 조회 수행 부탁드립니다")
+                || normalizedMessage.contains("조회 처리 중 오류");
+    }
+
+    public static boolean isRetryable(String msgCd, String msg1) {
+        return isRateLimitExceeded(msgCd, msg1) || isRetryableBusinessError(msgCd, msg1);
     }
 
     private static String buildMessage(String rtCd, String msgCd, String msg1) {

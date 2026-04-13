@@ -183,23 +183,29 @@ public class KisDailyPriceAdapter {
     }
 
     /**
-     * 주식현재가 투자자
+     * 국내기관_외국인 매매종목가집계.
+     * 조회 조건은 랭킹 코드만 사용하며 추가 ticker/baseDate 파라미터는 사용하지 않는다.
+     * code: 0 = 순매수상위, 1 = 순매도상위
      */
-    public List<InvestorTradeDetail> fetchForeignInstitutionData(String ticker) {
+    public List<InvestorTradeDetail> fetchForeignInstitutionData(String code) {
         return executeWithRetry(() -> {
             KisResponse<List<InvestorTradeDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/domestic-stock/v1/quotations/inquire-investor")
-                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
-                            .queryParam("FID_INPUT_ISCD", ticker)
+                            .path("/uapi/domestic-stock/v1/quotations/foreign-institution-total")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "V")
+                            .queryParam("FID_COND_SCR_DIV_CODE", "16449")
+                            .queryParam("FID_INPUT_ISCD", "0000")
+                            .queryParam("FID_DIV_CLS_CODE", "1")
+                            .queryParam("FID_RANK_SORT_CLS_CODE", code)
+                            .queryParam("FID_ETC_CLS_CODE", "0")
                             .build())
-                    .header("tr_id", "FHKST01010900")
+                    .header("tr_id", "FHPTJ04400000")
                     .header("custtype", "P")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
 
-            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", ticker);
+            response = requireSuccessfulResponse(response, "국내기관 외국인 매매종목가 집계", "0000");
             return (response.output() != null) ? response.output() : Collections.emptyList();
         });
     }
@@ -232,6 +238,14 @@ public class KisDailyPriceAdapter {
     }
 
     private <T> T executeWithRetry(Supplier<T> supplier) {
-        return Retry.decorateSupplier(kisRetry, () -> kisRateLimiter.executeSupplier(supplier)).get();
+        return Retry.decorateSupplier(kisRetry, () -> kisRateLimiter.executeSupplier(() -> {
+            // [Rate Limit 방어] 물리적인 미세 지연을 추가하여 트래픽 피크를 방지 (50ms = 초당 최대 20건 수준으로 자연스럽게 분산)
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return supplier.get();
+        })).get();
     }
 }

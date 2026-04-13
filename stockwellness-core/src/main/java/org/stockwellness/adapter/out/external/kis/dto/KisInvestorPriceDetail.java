@@ -1,10 +1,8 @@
 package org.stockwellness.adapter.out.external.kis.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * 주식 일자별 투자자 매매 추이 상세 (output)
@@ -13,11 +11,10 @@ import java.time.LocalDate;
 public record KisInvestorPriceDetail(
         /** 주식 영업 일자 */
         @JsonProperty("stck_bsop_date")
-        @JsonFormat(pattern = "yyyyMMdd")
-        LocalDate baseDate,
+        String baseDate,
 
         /** 현재가 */
-        @JsonProperty("stck_prpr")
+        @JsonProperty("stck_clpr")
         BigDecimal closePrice,
 
         /** 전일 대비 부호 */
@@ -36,19 +33,27 @@ public record KisInvestorPriceDetail(
         @JsonProperty("acml_vol")
         Long volume,
 
-        /** 기관 순매수 수량 */
-        @JsonProperty("ntby_inst_qty")
-        Long netInstitutionalBuyingQty,
+        /** 개인 순매수 수량 */
+        @JsonProperty("prsn_ntby_qty")
+        Long netPersonBuyingQty,
 
         /** 외국인 순매수 수량 */
-        @JsonProperty("ntby_frgn_qty")
+        @JsonProperty("frgn_ntby_qty")
         Long netForeignBuyingQty,
 
-        /** 기관 순매수 금액 */
-        @JsonProperty("ntby_inst_amt")
-        BigDecimal netInstitutionalBuyingAmt,
+        /** 기관계 순매수 수량 */
+        @JsonProperty("orgn_ntby_qty")
+        Long netInstitutionalBuyingQty,
 
-        /** 외국인 순매수 금액 */
-        @JsonProperty("ntby_frgn_amt")
-        BigDecimal netForeignBuyingAmt
+        /** 개인 순매수 거래 대금 */
+        @JsonProperty("prsn_ntby_tr_pbmn")
+        BigDecimal netPersonBuyingAmt,
+
+        /** 외국인 순매수 거래 대금 */
+        @JsonProperty("frgn_ntby_tr_pbmn")
+        BigDecimal netForeignBuyingAmt,
+
+        /** 기관계 순매수 거래 대금 */
+        @JsonProperty("orgn_ntby_tr_pbmn")
+        BigDecimal netInstitutionalBuyingAmt
 ) {}
