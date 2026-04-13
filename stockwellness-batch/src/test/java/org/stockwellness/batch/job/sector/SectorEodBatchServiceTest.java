@@ -75,7 +75,7 @@ class SectorEodBatchServiceTest {
                 SectorIndicators.of(BigDecimal.valueOf(1000), BigDecimal.ZERO, 2L, 2L, 2, 2), null, false);
 
         given(stockPricePort.findAllByDate(targetDate)).willReturn(List.of(price));
-        given(stockPort.findBySectorMediumCode(null)).willReturn(List.of(stock));
+        given(stockPort.findBySectorCode(null)).willReturn(List.of(stock));
         given(marketIndexPort.findAll()).willReturn(List.of(marketIndex));
         given(sectorInsightPort.findLatestBeforeByCodes(List.of("0029"), targetDate)).willReturn(java.util.Map.of("0029", previousInsight));
         given(sectorInsightPort.findPastPricesByCodes(List.of("0029"), targetDate, 119))
@@ -101,7 +101,7 @@ class SectorEodBatchServiceTest {
     void syncSector_returnsNullWhenIndexMissing() {
         LocalDate targetDate = LocalDate.of(2026, 4, 9);
         given(stockPricePort.findAllByDate(targetDate)).willReturn(List.of());
-        given(stockPort.findBySectorMediumCode(null)).willReturn(List.of());
+        given(stockPort.findBySectorCode(null)).willReturn(List.of());
         given(marketIndexPort.findAll()).willReturn(List.of());
         given(sectorInsightPort.findLatestBeforeByCodes(List.of("9999"), targetDate)).willReturn(java.util.Map.of());
         given(sectorInsightPort.findPastPricesByCodes(List.of("9999"), targetDate, 119)).willReturn(java.util.Map.of());

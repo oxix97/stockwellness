@@ -9,9 +9,9 @@ import java.util.Optional;
 
 public interface StockPort {
     /**
-     * 특정 업종 코드(mediumCode)에 속하는 모든 활성 종목을 조회합니다.
+     * 특정 업종 코드(sectorCode)에 속하는 모든 활성 종목을 조회합니다.
      */
-    List<Stock> findBySectorMediumCode(String mediumCode);
+    List<Stock> findBySectorCode(String sectorCode);
 
     Optional<Stock> loadStockByTicker(String ticker);
     List<Stock> loadStocksByTickers(List<String> tickers);

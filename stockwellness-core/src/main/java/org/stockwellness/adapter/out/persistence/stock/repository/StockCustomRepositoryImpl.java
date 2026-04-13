@@ -93,9 +93,7 @@ public class StockCustomRepositoryImpl implements StockCustomRepository {
 
     private BooleanExpression sectorCodeEq(String sectorCode) {
         if (!StringUtils.hasText(sectorCode)) return null;
-        return stock.sector.smallCode.eq(sectorCode)
-                .or(stock.sector.mediumCode.eq(sectorCode))
-                .or(stock.sector.largeCode.eq(sectorCode));
+        return stock.sector.sectorCode.eq(sectorCode);
     }
 
     private BooleanExpression sectorNameEq(String sectorName) {

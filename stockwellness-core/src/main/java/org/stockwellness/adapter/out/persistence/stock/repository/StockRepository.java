@@ -45,9 +45,9 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
     List<Stock> findByTickerIn(List<String> isinCodes);
 
     /**
-     * 특정 업종 코드(mediumCode)에 속하는 활성 종목 조회
+     * 특정 업종 코드(sectorCode)에 속하는 활성 종목 조회
      */
-    List<Stock> findBySector_MediumCodeAndStatus(String mediumCode, StockStatus status);
+    List<Stock> findBySector_SectorCodeAndStatus(String sectorCode, StockStatus status);
 
     /**
      * 신규 상장 종목 조회

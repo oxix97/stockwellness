@@ -21,14 +21,8 @@ import static lombok.AccessLevel.PROTECTED;
 @NoArgsConstructor(access = PROTECTED)
 public class StockSector {
 
-    @Column(name = "sector_large_code", length = 10)
-    private String largeCode;
-
-    @Column(name = "sector_medium_code", length = 10)
-    private String mediumCode;
-
-    @Column(name = "sector_small_code", length = 10)
-    private String smallCode;
+    @Column(name = "sector_code", length = 10)
+    private String sectorCode;
 
     /**
      * 최종 매핑된 업종명 (e.g. "제약", "반도체").
@@ -37,10 +31,8 @@ public class StockSector {
     @Column(name = "sector_name", length = 100)
     private String sectorName;
 
-    private StockSector(String largeCode, String mediumCode, String smallCode, String sectorName) {
-        this.largeCode = largeCode;
-        this.mediumCode = mediumCode;
-        this.smallCode = smallCode;
+    private StockSector(String sectorCode, String sectorName) {
+        this.sectorCode = sectorCode;
         this.sectorName = sectorName;
     }
 
@@ -73,7 +65,10 @@ public class StockSector {
             resolvedName = (l != null && !l.isBlank()) ? l : "미분류";
         }
 
-        return new StockSector(l, m, s, resolvedName);
+        // Sector Code 결정 우선순위: small -> medium -> large
+        String sectorCode = resolveCode(l, m, s);
+
+        return new StockSector(sectorCode, resolvedName);
     }
 
     /**
@@ -81,9 +76,11 @@ public class StockSector {
      */
     public static StockSector of(String large, String medium, String small, String name) {
         return new StockSector(
-                large != null ? large.trim() : null,
-                medium != null ? medium.trim() : null,
-                small != null ? small.trim() : null,
+                resolveCode(
+                        large != null ? large.trim() : null,
+                        medium != null ? medium.trim() : null,
+                        small != null ? small.trim() : null
+                ),
                 name
         );
     }
@@ -92,7 +89,20 @@ public class StockSector {
      * 기본값(모두 null)으로 생성
      */
     public static StockSector empty() {
-        return new StockSector(null, null, null, "미분류");
+        return new StockSector(null, "미분류");
+    }
+
+    private static String resolveCode(String large, String medium, String small) {
+        if (small != null && !small.isBlank() && !"0000".equals(small)) {
+            return small;
+        }
+        if (medium != null && !medium.isBlank() && !"0000".equals(medium)) {
+            return medium;
+        }
+        if (large != null && !large.isBlank() && !"0000".equals(large)) {
+            return large;
+        }
+        return large; // 모두 0000이거나 null인 경우 large 값(보통 0000)을 기본으로 사용
     }
 
     private static String resolveName(String code, Map<String, MarketIndex> indexMap) {

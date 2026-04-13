@@ -52,7 +52,7 @@ public class MarketIndexMstParser {
         // 1. 시장 구분 (1)
         String div = new String(record, 0, 1, CP949).trim();
         
-        // 2. 업종 코드 (4) -> Stock의 mediumCode와 매핑되는 4자리
+        // 2. 업종 코드 (4) -> Stock의 sectorCode와 매핑되는 4자리
         String code = new String(record, 1, 4, CP949).trim();
         
         // 3. 업종명 (40)
