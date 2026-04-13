@@ -45,10 +45,9 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
     long countByBaseDate(@Param("baseDate") LocalDate baseDate);
 
     @Query("""
-            SELECT COUNT(s)
+            SELECT 0L
             FROM StockPrice s
             WHERE s.id.baseDate = :baseDate
-              AND (s.netInstitutionalBuyingAmt <> 0.0 OR s.netForeignBuyingAmt <> 0.0 OR s.netTotalBuyingAmt <> 0.0)
             """)
     long countByBaseDateAndNonZeroSupply(@Param("baseDate") LocalDate baseDate);
 

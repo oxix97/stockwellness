@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.stockwellness.domain.stock.QStock.stock;
+import static org.stockwellness.domain.stock.price.QStockInvestorTrade.stockInvestorTrade;
 import static org.stockwellness.domain.stock.price.QStockPrice.stockPrice;
 
 @RequiredArgsConstructor
@@ -50,6 +51,20 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
         );
     }
 
+    @Override
+    public Optional<LocalDate> findLatestInvestorTradeDate() {
+        return Optional.ofNullable(
+                queryFactory
+                        .select(stockInvestorTrade.id.baseDate.max())
+                        .from(stockInvestorTrade)
+                        .join(stockPrice).on(
+                                stockPrice.stock.eq(stockInvestorTrade.stock)
+                                        .and(stockPrice.id.baseDate.eq(stockInvestorTrade.id.baseDate))
+                        )
+                        .fetchOne()
+        );
+    }
+
     /**
      * 종목명(name)으로 해당 종목의 가장 최신 StockPrice 1건 조회
      */
@@ -73,8 +88,8 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     ) {
         return findTopStocksBySupply(
                 date,
-                stockPrice.netInstitutionalBuyingQty.coalesce(0L),
-                stockPrice.netInstitutionalBuyingAmt.coalesce(BigDecimal.ZERO),
+                stockInvestorTrade.orgnNtbyQty,
+                stockInvestorTrade.orgnNtbyTrPbmn,
                 direction,
                 limit
         );
@@ -88,8 +103,8 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     ) {
         return findTopStocksBySupply(
                 date,
-                stockPrice.netForeignBuyingQty.coalesce(0L),
-                stockPrice.netForeignBuyingAmt.coalesce(BigDecimal.ZERO),
+                stockInvestorTrade.frgnNtbyQty,
+                stockInvestorTrade.frgnNtbyTrPbmn,
                 direction,
                 limit
         );
@@ -102,8 +117,11 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
             TradeDirection direction,
             int limit
     ) {
-        BooleanExpression directionFilter = getDirectionFilter(buyingQty, direction);
+        NumberExpression<Long> netBuyingQuantity = buyingQty.coalesce(0L);
+        NumberExpression<BigDecimal> netBuyingAmount = buyingAmt.coalesce(BigDecimal.ZERO);
+        BooleanExpression directionFilter = getDirectionFilter(netBuyingAmount, direction);
         NumberExpression<BigDecimal> currentPrice = stockPrice.closePrice.coalesce(BigDecimal.ZERO);
+        NumberExpression<BigDecimal> transactionAmount = stockPrice.transactionAmt.coalesce(BigDecimal.ZERO);
         NumberExpression<BigDecimal> fluctuationRate = new CaseBuilder()
                 .when(stockPrice.previousClosePrice.isNull().or(stockPrice.previousClosePrice.eq(BigDecimal.ZERO)))
                 .then(BigDecimal.ZERO)
@@ -118,23 +136,27 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stock.sector.sectorName,
                         currentPrice,
                         fluctuationRate,
-                        buyingQty,
-                        buyingAmt,
-                        stockPrice.transactionAmt
+                        netBuyingQuantity,
+                        netBuyingAmount,
+                        transactionAmount
                 ))
-                .from(stockPrice)
-                .join(stockPrice.stock, stock)
+                .from(stockInvestorTrade)
+                .join(stockInvestorTrade.stock, stock)
+                .leftJoin(stockPrice).on(
+                        stockPrice.stock.eq(stockInvestorTrade.stock)
+                                .and(stockPrice.id.baseDate.eq(stockInvestorTrade.id.baseDate))
+                )
                 .where(
-                        stockPrice.id.baseDate.eq(date),
+                        stockInvestorTrade.id.baseDate.eq(date),
                         directionFilter
                 )
-                .orderBy(direction == TradeDirection.BUY ? buyingQty.desc() : buyingQty.asc())
+                .orderBy(direction == TradeDirection.BUY ? netBuyingAmount.desc() : netBuyingAmount.asc())
                 .limit(limit)
                 .fetch();
     }
 
-    private BooleanExpression getDirectionFilter(NumberExpression<Long> buyingQty, TradeDirection direction) {
-        return direction == TradeDirection.BUY ? buyingQty.gt(0L) : buyingQty.lt(0L);
+    private BooleanExpression getDirectionFilter(NumberExpression<BigDecimal> buyingAmt, TradeDirection direction) {
+        return direction == TradeDirection.BUY ? buyingAmt.gt(BigDecimal.ZERO) : buyingAmt.lt(BigDecimal.ZERO);
     }
 
     @Override

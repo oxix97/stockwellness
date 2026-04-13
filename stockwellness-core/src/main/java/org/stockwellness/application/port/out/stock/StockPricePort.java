@@ -134,6 +134,8 @@ public interface StockPricePort {
 
     Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
 
+    Optional<LocalDate> findLatestInvestorTradeDate();
+
     long countByBaseDate(LocalDate date);
 
     void saveAll(List<StockPrice> stockPrices);

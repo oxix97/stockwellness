@@ -3,7 +3,9 @@ package org.stockwellness.application.service.portfolio;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
@@ -46,6 +48,7 @@ public class PortfolioStatBatchService {
     private final PortfolioAnalysisService portfolioAnalysisService; // 벤치마크 계산 로직 공유
 
     private final PortfolioPort portfolioPort;
+    private final PlatformTransactionManager transactionManager;
 
     private static final int MAX_SYMBOLS_PER_LOAD = 50; // 메모리 보호를 위한 임계치
 
@@ -73,11 +76,15 @@ public class PortfolioStatBatchService {
         LocalDate start = end.minusYears(2);
         SimulationData chunkSharedData = loadPartitionedData(allSymbols, start, end);
 
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
         // Virtual Thread 기반 병렬 처리 (spring.threads.virtual.enabled: true 전제)
         List<CompletableFuture<Void>> futures = portfolios.stream()
                 .map(portfolio -> CompletableFuture.runAsync(() -> {
                     try {
-                        processSinglePortfolio(portfolio, chunkSharedData, end);
+                        transactionTemplate.executeWithoutResult(status -> {
+                            processSinglePortfolio(portfolio, chunkSharedData, end);
+                        });
                         successCount.incrementAndGet();
                     } catch (Exception e) {
                         log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());

@@ -16,83 +16,130 @@ import static jakarta.persistence.FetchType.LAZY;
 
 @Getter
 @Entity
-@Table(name = "stock_investor_trade", indexes = {
-        @Index(name = "idx_investor_trade_lookup", columnList = "stock_id, base_date DESC")
-})
-@EntityListeners(AuditingEntityListener.class)
+@Table(name = "stock_investor_trade")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 public class StockInvestorTrade {
 
     @EmbeddedId
-    private StockPriceId id;
+    private StockInvestorTradeId id;
 
     @MapsId("stockId")
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "stock_id")
+    @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    // --- 금액 (Amount, 단위: 원) ---
-    @Column(name = "inst_buying_amt", precision = 25, scale = 2)
-    private BigDecimal institutionAmt;
+    @Column(name = "name")
+    private String name;
 
-    @Column(name = "frgn_buying_amt", precision = 25, scale = 2)
-    private BigDecimal foreignAmt;
+    @Column(name = "ticker")
+    private String ticker;
 
-    @Column(name = "pension_buying_amt", precision = 25, scale = 2)
-    private BigDecimal pensionFundAmt;
+    @Column(name = "frgn_ntby_qty")
+    private Long frgnNtbyQty;
 
-    @Column(name = "trust_buying_amt", precision = 25, scale = 2)
-    private BigDecimal trustAmt;
+    @Column(name = "orgn_ntby_qty")
+    private Long orgnNtbyQty;
 
-    @Column(name = "etc_corp_buying_amt", precision = 25, scale = 2)
-    private BigDecimal etcCorpAmt;
+    @Column(name = "ivtr_ntby_qty")
+    private Long ivtrNtbyQty;
 
-    @Column(name = "total_net_amt", precision = 25, scale = 2)
-    private BigDecimal totalNetAmt;
+    @Column(name = "bank_ntby_qty")
+    private Long bankNtbyQty;
 
-    // --- 수량 (Quantity, 단위: 주) ---
-    @Column(name = "inst_buying_qty")
-    private Long institutionQty;
+    @Column(name = "insu_ntby_qty")
+    private Long insuNtbyQty;
 
-    @Column(name = "frgn_buying_qty")
-    private Long foreignQty;
+    @Column(name = "mrbn_ntby_qty")
+    private Long mrbnNtbyQty;
 
-    @Column(name = "pension_buying_qty")
-    private Long pensionFundQty;
+    @Column(name = "fund_ntby_qty")
+    private Long fundNtbyQty;
 
-    @Column(name = "trust_buying_qty")
-    private Long trustQty;
+    @Column(name = "etc_orgt_ntby_vol")
+    private Long etcOrgtNtbyVol;
 
-    @Column(name = "etc_corp_buying_qty")
-    private Long etcCorpQty;
+    @Column(name = "etc_corp_ntby_vol")
+    private Long etcCorpNtbyVol;
 
-    @Column(name = "total_net_qty")
-    private Long totalNetQty;
+    @Column(name = "frgn_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal frgnNtbyTrPbmn;
+
+    @Column(name = "orgn_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal orgnNtbyTrPbmn;
+
+    @Column(name = "ivtr_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal ivtrNtbyTrPbmn;
+
+    @Column(name = "bank_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal bankNtbyTrPbmn;
+
+    @Column(name = "insu_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal insuNtbyTrPbmn;
+
+    @Column(name = "mrbn_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal mrbnNtbyTrPbmn;
+
+    @Column(name = "fund_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal fundNtbyTrPbmn;
+
+    @Column(name = "etc_orgt_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal etcOrgtNtbyTrPbmn;
+
+    @Column(name = "etc_corp_ntby_tr_pbmn", precision = 25, scale = 2)
+    private BigDecimal etcCorpNtbyTrPbmn;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public static StockInvestorTrade of(Stock stock, LocalDate baseDate,
-                                        BigDecimal instAmt, BigDecimal frgnAmt, BigDecimal pensionAmt,
-                                        BigDecimal trustAmt, BigDecimal etcCorpAmt, BigDecimal totalAmt,
-                                        Long instQty, Long frgnQty, Long pensionQty,
-                                        Long trustQty, Long etcCorpQty, Long totalQty) {
-        var entity = new StockInvestorTrade();
-        entity.id = new StockPriceId(baseDate, stock.getId());
+    public static StockInvestorTrade of(
+            Stock stock,
+            LocalDate baseDate,
+            String name,
+            String ticker,
+            Long frgnNtbyQty,
+            Long orgnNtbyQty,
+            Long ivtrNtbyQty,
+            Long bankNtbyQty,
+            Long insuNtbyQty,
+            Long mrbnNtbyQty,
+            Long fundNtbyQty,
+            Long etcOrgtNtbyVol,
+            Long etcCorpNtbyVol,
+            BigDecimal frgnNtbyTrPbmn,
+            BigDecimal orgnNtbyTrPbmn,
+            BigDecimal ivtrNtbyTrPbmn,
+            BigDecimal bankNtbyTrPbmn,
+            BigDecimal insuNtbyTrPbmn,
+            BigDecimal mrbnNtbyTrPbmn,
+            BigDecimal fundNtbyTrPbmn,
+            BigDecimal etcOrgtNtbyTrPbmn,
+            BigDecimal etcCorpNtbyTrPbmn
+    ) {
+        StockInvestorTrade entity = new StockInvestorTrade();
+        entity.id = new StockInvestorTradeId(stock.getId(), baseDate);
         entity.stock = stock;
-        entity.institutionAmt = instAmt;
-        entity.foreignAmt = frgnAmt;
-        entity.pensionFundAmt = pensionAmt;
-        entity.trustAmt = trustAmt;
-        entity.etcCorpAmt = etcCorpAmt;
-        entity.totalNetAmt = totalAmt;
-        entity.institutionQty = instQty;
-        entity.foreignQty = frgnQty;
-        entity.pensionFundQty = pensionQty;
-        entity.trustQty = trustQty;
-        entity.etcCorpQty = etcCorpQty;
-        entity.totalNetQty = totalQty;
+        entity.name = name;
+        entity.ticker = ticker;
+        entity.frgnNtbyQty = frgnNtbyQty;
+        entity.orgnNtbyQty = orgnNtbyQty;
+        entity.ivtrNtbyQty = ivtrNtbyQty;
+        entity.bankNtbyQty = bankNtbyQty;
+        entity.insuNtbyQty = insuNtbyQty;
+        entity.mrbnNtbyQty = mrbnNtbyQty;
+        entity.fundNtbyQty = fundNtbyQty;
+        entity.etcOrgtNtbyVol = etcOrgtNtbyVol;
+        entity.etcCorpNtbyVol = etcCorpNtbyVol;
+        entity.frgnNtbyTrPbmn = frgnNtbyTrPbmn;
+        entity.orgnNtbyTrPbmn = orgnNtbyTrPbmn;
+        entity.ivtrNtbyTrPbmn = ivtrNtbyTrPbmn;
+        entity.bankNtbyTrPbmn = bankNtbyTrPbmn;
+        entity.insuNtbyTrPbmn = insuNtbyTrPbmn;
+        entity.mrbnNtbyTrPbmn = mrbnNtbyTrPbmn;
+        entity.fundNtbyTrPbmn = fundNtbyTrPbmn;
+        entity.etcOrgtNtbyTrPbmn = etcOrgtNtbyTrPbmn;
+        entity.etcCorpNtbyTrPbmn = etcCorpNtbyTrPbmn;
         return entity;
     }
 }

@@ -10,7 +10,9 @@ public record InvestorTradingSnapshot(
         Long volume,
         Long netInstitutionalBuyingQty,
         Long netForeignBuyingQty,
+        Long netPersonBuyingQty,
         BigDecimal netInstitutionalBuyingAmt,
-        BigDecimal netForeignBuyingAmt
+        BigDecimal netForeignBuyingAmt,
+        BigDecimal netPersonBuyingAmt
 ) {
 }

@@ -43,7 +43,7 @@ public class StockChartService implements StockPriceUseCase {
             TradeDirection direction,
             int limit
     ) {
-        Optional<LocalDate> effectiveDate = stockPricePort.findLatestDate();
+        Optional<LocalDate> effectiveDate = stockPricePort.findLatestInvestorTradeDate();
 
         if (effectiveDate.isEmpty()) {
             return new StockSupplyRankingResponse(null, null, List.of(), List.of());

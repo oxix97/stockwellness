@@ -85,6 +85,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public Optional<LocalDate> findLatestInvestorTradeDate() {
+        return stockPriceRepository.findLatestInvestorTradeDate();
+    }
+
+    @Override
     public long countByBaseDate(LocalDate date) {
         return stockPriceRepository.countByBaseDate(date);
     }

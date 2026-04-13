@@ -42,6 +42,11 @@ public interface StockPriceRepositoryCustom {
     Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
 
     /**
+     * stock_investor_trade 기준 가장 최신 적재일을 조회합니다.
+     */
+    Optional<LocalDate> findLatestInvestorTradeDate();
+
+    /**
      * 기술적 지표를 기반으로 종목을 필터링하여 조회합니다.
      */
     List<StockPrice> findFilteredStocksByIndicators(

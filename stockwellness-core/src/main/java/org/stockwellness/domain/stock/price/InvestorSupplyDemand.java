@@ -22,14 +22,8 @@ public class InvestorSupplyDemand {
     @Column(name = "frgn_buying_amt", precision = 25, scale = 2)
     private BigDecimal foreignAmt;
 
-    @Column(name = "pension_buying_amt", precision = 25, scale = 2)
-    private BigDecimal pensionFundAmt;
-
-    @Column(name = "trust_buying_amt", precision = 25, scale = 2)
-    private BigDecimal trustAmt;
-
-    @Column(name = "etc_corp_buying_amt", precision = 25, scale = 2)
-    private BigDecimal etcCorpAmt;
+    @Column(name = "prsn_buying_amt", precision = 25, scale = 2)
+    private BigDecimal personAmt;
 
     @Column(name = "total_net_amt", precision = 25, scale = 2)
     private BigDecimal totalNetAmt;
@@ -41,22 +35,16 @@ public class InvestorSupplyDemand {
     @Column(name = "frgn_buying_qty")
     private Long foreignQty;
 
-    @Column(name = "pension_buying_qty")
-    private Long pensionFundQty;
-
-    @Column(name = "trust_buying_qty")
-    private Long trustQty;
-
-    @Column(name = "etc_corp_buying_qty")
-    private Long etcCorpQty;
+    @Column(name = "prsn_buying_qty")
+    private Long personQty;
 
     @Column(name = "total_net_qty")
     private Long totalNetQty;
 
     public static InvestorSupplyDemand empty() {
         return new InvestorSupplyDemand(
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                0L, 0L, 0L, 0L, 0L, 0L
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                0L, 0L, 0L, 0L
         );
     }
 }

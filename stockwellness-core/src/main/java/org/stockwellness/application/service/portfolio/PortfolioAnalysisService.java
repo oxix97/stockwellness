@@ -257,18 +257,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 }));
         BigDecimal previousTotalValue = portfolio.calculateTotalCurrentValue(previousPrices);
 
-        // 수급 데이터 계산
+        // 수급 데이터 계산 (StockPrice에서 분리됨에 따라 0으로 초기화)
         BigDecimal totalInstitutionalNetBuying = BigDecimal.ZERO;
         BigDecimal totalForeignNetBuying = BigDecimal.ZERO;
-        for (PortfolioItem item : portfolio.getItems()) {
-            if (item.getAssetType() == AssetType.STOCK) {
-                StockPrice latest = getLatestPrice(item.getSymbol(), context.priceMap());
-                if (latest != null) {
-                    totalInstitutionalNetBuying = totalInstitutionalNetBuying.add(latest.getNetInstitutionalBuyingAmt() != null ? latest.getNetInstitutionalBuyingAmt() : BigDecimal.ZERO);
-                    totalForeignNetBuying = totalForeignNetBuying.add(latest.getNetForeignBuyingAmt() != null ? latest.getNetForeignBuyingAmt() : BigDecimal.ZERO);
-                }
-            }
-        }
+        BigDecimal totalPersonNetBuying = BigDecimal.ZERO;
 
         if (totalPurchaseAmount.compareTo(BigDecimal.ZERO) == 0 && currentTotalValue.compareTo(BigDecimal.ZERO) == 0) {
             return new PortfolioValuationResult(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
@@ -276,7 +268,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 context.stats() != null ? context.stats().getMdd() : BigDecimal.ZERO,
                 context.stats() != null ? context.stats().getSharpeRatio() : BigDecimal.ZERO,
                 context.stats() != null ? context.stats().getBeta() : BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
             );
         }
 
@@ -294,7 +286,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 context.stats() != null ? context.stats().getMdd() : BigDecimal.ZERO,
                 context.stats() != null ? context.stats().getSharpeRatio() : BigDecimal.ZERO,
                 context.stats() != null ? context.stats().getBeta() : BigDecimal.ZERO,
-                totalInstitutionalNetBuying, totalForeignNetBuying
+                totalInstitutionalNetBuying, totalForeignNetBuying, totalPersonNetBuying
         );
     }
 

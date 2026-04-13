@@ -16,5 +16,6 @@ public record PortfolioValuationResult(
     BigDecimal sharpeRatio,
     BigDecimal beta,
     BigDecimal totalInstitutionalNetBuying,
-    BigDecimal totalForeignNetBuying
+    BigDecimal totalForeignNetBuying,
+    BigDecimal totalPersonNetBuying
 ) {}
