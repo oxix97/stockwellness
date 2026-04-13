@@ -338,24 +338,37 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
     private <T> T executeKisCall(KisCallContext context, Supplier<T> supplier) {
         log.info("[KIS 배치] 호출 준비 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}",
                 context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate());
-        try {
-            return supplier.get();
-        } catch (KisApiException exception) {
-            if (exception.isRateLimitExceeded()) {
-                int detectionCount = kisRateLimitDetectionCount.incrementAndGet();
-                log.warn("[KIS 배치] KIS 호출 제한 감지 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, detectionCount={}, retryable={}, msgCd={}, msg1={}",
-                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
-                        detectionCount, exception.isRetryable(), exception.msgCd(), exception.msg1());
-            } else if (exception.isRetryableBusinessError()) {
-                log.warn("[KIS 배치] KIS 재시도 대상 업무 오류 감지 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, retryable={}, msgCd={}, msg1={}",
-                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
-                        exception.isRetryable(), exception.msgCd(), exception.msg1());
-            } else {
-                log.error("[KIS 배치] KIS 호출 실패 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, retryable={}, rateLimit={}, msgCd={}, msg1={}",
-                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
-                        exception.isRetryable(), exception.isRateLimitExceeded(), exception.msgCd(), exception.msg1());
+
+        int retryCount = 0;
+        int maxRetries = 2;
+
+        while (true) {
+            try {
+                return supplier.get();
+            } catch (KisApiException exception) {
+                if (exception.isRateLimitExceeded() && retryCount < maxRetries) {
+                    retryCount++;
+                    int detectionCount = kisRateLimitDetectionCount.incrementAndGet();
+                    log.warn("[KIS 배치] KIS 호출 제한 감지. {}ms 대기 후 재시도합니다. ({} / {}) operation={}, detectionCount={}, msg1={}",
+                            1000, retryCount, maxRetries, context.operation(), detectionCount, exception.msg1());
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw exception;
+                    }
+                    continue;
+                }
+
+                if (exception.isRetryableBusinessError()) {
+                    log.warn("[KIS 배치] KIS 재시도 대상 업무 오류 감지 operation={}, msgCd={}, msg1={}",
+                            context.operation(), exception.msgCd(), exception.msg1());
+                } else {
+                    log.error("[KIS 배치] KIS 호출 실패 operation={}, rateLimit={}, msgCd={}, msg1={}",
+                            context.operation(), exception.isRateLimitExceeded(), exception.msgCd(), exception.msg1());
+                }
+                throw exception;
             }
-            throw exception;
         }
     }
 

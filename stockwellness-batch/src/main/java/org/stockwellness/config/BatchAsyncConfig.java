@@ -30,8 +30,8 @@ public class BatchAsyncConfig {
     @Bean(name = "kisBatchExecutor")
     public TaskExecutor kisBatchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(2);
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(1);
         executor.setQueueCapacity(1000);
         executor.setThreadNamePrefix("Batch-KIS-");
         executor.setWaitForTasksToCompleteOnShutdown(true);

@@ -24,6 +24,7 @@ import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.batch.job.stockprice.sync.listener.StockPriceSyncEventListener;
 import org.stockwellness.batch.job.stockprice.sync.step.processor.StockPriceProcessor;
 import org.stockwellness.batch.job.stockprice.sync.step.reader.StockListReader;
@@ -84,10 +85,10 @@ public class StockPriceBatchConfig {
                 .listener(eventListener)
                 .listener(resultCaptureListener)
                 .build();
-    }
+                }
 
-    @Bean
-    public Step stockPriceStep(
+                @Bean
+                public Step stockPriceStep(
             StockListReader stockListReader,
             StockPriceProcessor stockPriceProcessor,
             ItemWriter<List<StockPrice>> stockPriceListWriter,
@@ -108,6 +109,7 @@ public class StockPriceBatchConfig {
                 .retryLimit(3)
                 .retry(TransientDataAccessException.class)
                 .retry(RecoverableDataAccessException.class)
+                .retry(KisApiException.class)
                 .build();
     }
 
