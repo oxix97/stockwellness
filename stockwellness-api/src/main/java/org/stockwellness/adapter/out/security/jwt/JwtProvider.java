@@ -15,6 +15,7 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.MemberRole;
 
 import javax.crypto.SecretKey;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Slf4j
@@ -33,7 +34,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
 
     @Override
     public String generateAccessToken(Member member) {
-        return generateAccessToken(member.getId(), member.getEmail().getAddress(), member.getNickname(), member.getLoginType(), member.getRole());
+        return generateAccessToken(member.getId(), member.getEmail().getAddress(), member.getNickname(), member.getLoginType(), member.getRole(), member.getCreatedAt());
     }
 
     @Override
@@ -42,7 +43,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
     }
 
     @Override
-    public String generateAccessToken(Long id, String email, String nickname, LoginType loginType, MemberRole role) {
+    public String generateAccessToken(Long id, String email, String nickname, LoginType loginType, MemberRole role, LocalDateTime createdAt) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.accessTokenExpiryMs());
 
@@ -52,6 +53,7 @@ public class JwtProvider implements GenerateTokenPort, ValidateTokenPort {
                 .claim("nickname", nickname)
                 .claim("loginType", loginType)
                 .claim("role", role.name())
+                .claim("createdAt", createdAt != null ? createdAt.toString() : null)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey, Jwts.SIG.HS256)

@@ -8,7 +8,6 @@ import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
@@ -20,14 +19,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PortfolioDiagnosisDataLoader {
 
-    private final PortfolioPort portfolioPort;
     private final StockPort stockPort;
     private final StockPricePort stockPricePort;
 
-    public DiagnosisContext load(Long portfolioId) {
-        Portfolio portfolio = portfolioPort.findById(portfolioId)
-                .orElseThrow(PortfolioNotFoundException::new);
-
+    public DiagnosisContext load(Portfolio portfolio) {
         List<String> symbols = portfolio.getItems().stream()
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
                 .map(PortfolioItem::getSymbol)

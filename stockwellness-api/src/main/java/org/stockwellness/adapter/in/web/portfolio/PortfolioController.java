@@ -161,8 +161,10 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
-        return ApiResponse.success(DiagnosisResponse.from(result));
+        // TODO: AI 진단 로직 성능 최적화 후 재연동 예정
+        // PortfolioHealthResult result = portfolioFacade.diagnosePortfolio(memberPrincipal.id(), portfolioId);
+        // return ApiResponse.success(DiagnosisResponse.from(result));
+        return ApiResponse.success(null);
     }
 
     /**
@@ -177,7 +179,20 @@ public class PortfolioController {
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,
             @PathVariable Long portfolioId) {
 
-        AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
-        return ApiResponse.success(response);
+        // TODO: AI 어드바이저 로직 성능 최적화 후 재연동 예정
+        // AdviceResponse response = portfolioFacade.getLatestAdvice(memberPrincipal.id(), portfolioId);
+        // return ApiResponse.success(response);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/{portfolioId}/advice")
+    public ApiResponse<AdviceResponse> createAdvice(
+            @AuthenticationPrincipal MemberPrincipal memberPrincipal,
+            @PathVariable Long portfolioId) {
+
+        // TODO: AI 어드바이저 생성 로직 성능 최적화 후 재연동 예정
+        // AdviceResponse response = portfolioFacade.getNewAdvice(memberPrincipal.id(), portfolioId);
+        // return ApiResponse.success(SuccessCode.CREATED, response);
+        return ApiResponse.success(null);
     }
 }

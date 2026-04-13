@@ -25,7 +25,7 @@ public record BacktestRequest(
     /**
      * 성과 비교 기준이 될 대표 벤치마크 지수 티커 (예: KOSPI, SPY)
      */
-    @NotBlank String benchmarkTicker,
+    String benchmarkTicker,
 
     /**
      * 프론트엔드 클라이언트 필터링 호환용 기간 필드.

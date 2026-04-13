@@ -288,14 +288,8 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit) {
         if (isinCodes == null || isinCodes.isEmpty()) return Map.of();
-        Map<String, List<StockPrice>> result = new HashMap<>();
-        for (String ticker : isinCodes) {
-            List<StockPrice> prices = stockPriceRepository.findRecentPrices(ticker, LocalDate.now(), PageRequest.of(0, limit));
-            if (prices != null && !prices.isEmpty()) {
-                result.put(ticker, prices);
-            }
-        }
-        return result;
+        // [N+1 해결] 루프를 제거하고 Repository에서 일괄 조회하도록 변경
+        return stockPriceRepository.findRecentPricesBatch(isinCodes, limit);
     }
 
     @Override

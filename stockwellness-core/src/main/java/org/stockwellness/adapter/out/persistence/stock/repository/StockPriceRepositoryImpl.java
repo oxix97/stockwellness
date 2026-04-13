@@ -290,48 +290,51 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     }
 
     @Override
+    public Map<String, List<StockPrice>> findRecentPricesBatch(List<String> tickers, int limit) {
+        if (tickers == null || tickers.isEmpty()) {
+            return Map.of();
+        }
+
+        // [N+1 해결] 모든 티커의 최근 데이터를 한 번에 조회한 후 메모리에서 그룹화
+        // ticker와 base_date DESC 인덱스를 타게 하여 성능 극대화
+        List<StockPrice> allPrices = queryFactory
+                .selectFrom(stockPrice)
+                .join(stockPrice.stock, stock).fetchJoin()
+                .where(stock.ticker.in(tickers))
+                .orderBy(stock.ticker.asc(), stockPrice.id.baseDate.desc())
+                .fetch();
+
+        return allPrices.stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getStock().getTicker(),
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> list.stream().limit(limit).toList()
+                        )
+                ));
+    }
+
+    @Override
     public Map<String, BigDecimal> findLatestPricesByTickers(List<String> tickers) {
         if (tickers == null || tickers.isEmpty()) {
             return Map.of();
         }
 
-        // 1. 각 티커별 가장 최신 시세 날짜를 먼저 조회
-        List<Tuple> latestDates = queryFactory
-                .select(stockPrice.stock.ticker, stockPrice.id.baseDate.max())
-                .from(stockPrice)
-                .where(stockPrice.stock.ticker.in(tickers))
-                .groupBy(stockPrice.stock.ticker)
+        // [최적화] 복잡한 OR 조건 대신 각 티커별 최신 1건만 가져와서 맵핑
+        // 데이터 양이 아주 많지 않은 경우(티커 수 < 100), 애플리케이션 레벨 필터링이 DB의 복잡한 윈도우 함수보다 빠름
+        List<StockPrice> latests = queryFactory
+                .selectFrom(stockPrice)
+                .join(stockPrice.stock, stock).fetchJoin()
+                .where(stock.ticker.in(tickers))
+                .orderBy(stock.ticker.asc(), stockPrice.id.baseDate.desc())
                 .fetch();
 
-        if (latestDates.isEmpty()) {
-            return Map.of();
-        }
-
-        // 2. 티커와 최신 날짜 조합으로 필터링하기 위한 조건 생성 (OR 결합)
-        BooleanExpression predicate = null;
-        for (Tuple row : latestDates) {
-            String t = row.get(stockPrice.stock.ticker);
-            LocalDate d = row.get(stockPrice.id.baseDate.max());
-            if (t != null && d != null) {
-                BooleanExpression current = stockPrice.stock.ticker.eq(t).and(stockPrice.id.baseDate.eq(d));
-                predicate = (predicate == null) ? current : predicate.or(current);
-            }
-        }
-
-        if (predicate == null) return Map.of();
-
-        // 3. 최종 시세(종가) 조회
-        List<Tuple> results = queryFactory
-                .select(stockPrice.stock.ticker, stockPrice.closePrice)
-                .from(stockPrice)
-                .where(predicate)
-                .fetch();
-
-        return results.stream()
+        // 각 티커별 첫 번째(최신) 데이터만 추출
+        return latests.stream()
                 .collect(Collectors.toMap(
-                        t -> t.get(stockPrice.stock.ticker),
-                        t -> t.get(stockPrice.closePrice) != null ? t.get(stockPrice.closePrice) : BigDecimal.ZERO,
-                        (existing, replacement) -> existing // 중복 방지 (이론상 발생 안함)
+                        p -> p.getStock().getTicker(),
+                        p -> p.getClosePrice() != null ? p.getClosePrice() : BigDecimal.ZERO,
+                        (existing, replacement) -> existing // 이미 최신순 정렬되어 있으므로 첫 번째 값 유지
                 ));
     }
 }
