@@ -5,12 +5,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
-import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateSource;
+import org.stockwellness.domain.shared.AbstractEntity;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.fixture.StockFixture;
+import org.stockwellness.domain.stock.StockSector;
+import org.stockwellness.domain.stock.StockStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,63 +29,89 @@ class StockInvestorTradeDetailProcessorTest {
     private StockRepository stockRepository;
 
     @Test
-    @DisplayName("백만원 단위 금액을 실제 금액으로 변환해 업데이트 명령을 만든다")
-    void process_convertsPbmnAndCreatesCommand() throws Exception {
-        Stock stock = StockFixture.createSamsung();
-        ReflectionTestUtils.setField(stock, "id", 1L);
+    @DisplayName("KIS 상세 응답을 upsert 명령으로 변환한다")
+    void process_mapsInvestorTradeDetailToCommand() throws Exception {
+        Stock stock = stock(1L, "005930");
         given(stockRepository.findByTicker("005930")).willReturn(Optional.of(stock));
 
         StockInvestorTradeDetailProcessor processor =
-                new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
+                new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 10));
 
-        InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "1200", "300", "12.5", "3")
-        );
+        InvestorTradeDetailUpdateCommand result = processor.process(detail("005930", "삼성전자"));
 
         assertThat(result).isNotNull();
         assertThat(result.stockId()).isEqualTo(1L);
-        assertThat(result.baseDate()).isEqualTo(LocalDate.of(2026, 4, 8));
-        assertThat(result.netInstitutionalBuyingQty()).isEqualTo(1200L);
-        assertThat(result.netForeignBuyingQty()).isEqualTo(300L);
-        assertThat(result.netInstitutionalBuyingAmt()).isEqualByComparingTo(new BigDecimal("12500000.0"));
-        assertThat(result.netForeignBuyingAmt()).isEqualByComparingTo(new BigDecimal("3000000"));
+        assertThat(result.baseDate()).isEqualTo(LocalDate.of(2026, 4, 10));
+        assertThat(result.name()).isEqualTo("삼성전자");
+        assertThat(result.ticker()).isEqualTo("005930");
+        assertThat(result.frgnNtbyQty()).isEqualTo(10L);
+        assertThat(result.orgnNtbyQty()).isEqualTo(20L);
+        assertThat(result.ivtrNtbyQty()).isEqualTo(30L);
+        assertThat(result.frgnNtbyTrPbmn()).isEqualByComparingTo(new BigDecimal("100"));
+        assertThat(result.orgnNtbyTrPbmn()).isEqualByComparingTo(new BigDecimal("200"));
     }
 
     @Test
-    @DisplayName("빈 금액은 0으로 처리한다")
-    void process_returnsZeroWhenAmountIsBlank() throws Exception {
-        Stock stock = StockFixture.createSamsung();
-        ReflectionTestUtils.setField(stock, "id", 1L);
-        given(stockRepository.findByTicker("005930")).willReturn(Optional.of(stock));
+    @DisplayName("종목 마스터에 없는 ticker는 건너뛴다")
+    void process_returnsNullWhenTickerMissing() throws Exception {
+        given(stockRepository.findByTicker("999999")).willReturn(Optional.empty());
 
         StockInvestorTradeDetailProcessor processor =
-                new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
+                new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 10));
 
-        InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "", null, "", null)
-        );
-
-        assertThat(result).isNotNull();
-        assertThat(result.netInstitutionalBuyingQty()).isZero();
-        assertThat(result.netForeignBuyingQty()).isZero();
-        assertThat(result.netInstitutionalBuyingAmt()).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(result.netForeignBuyingAmt()).isEqualByComparingTo(BigDecimal.ZERO);
-    }
-
-    @Test
-    @DisplayName("금액 파싱에 실패하면 건너뛴다")
-    void process_skipsWhenAmountIsInvalid() throws Exception {
-        Stock stock = StockFixture.createSamsung();
-        ReflectionTestUtils.setField(stock, "id", 1L);
-        given(stockRepository.findByTicker("005930")).willReturn(Optional.of(stock));
-
-        StockInvestorTradeDetailProcessor processor =
-                new StockInvestorTradeDetailProcessor(stockRepository, LocalDate.of(2026, 4, 8));
-
-        InvestorTradeDetailUpdateCommand result = processor.process(
-                new InvestorTradeDetailUpdateSource("005930", "10", "3", "invalid", "3")
-        );
+        InvestorTradeDetailUpdateCommand result = processor.process(detail("999999", "없는종목"));
 
         assertThat(result).isNull();
+    }
+
+    private InvestorTradeDetail detail(String ticker, String name) {
+        return new InvestorTradeDetail(
+                name,
+                ticker,
+                "70000",
+                "2",
+                "1000",
+                "1.5",
+                "100000",
+                "30",
+                "10",
+                "20",
+                "30",
+                "40",
+                "50",
+                "60",
+                "70",
+                "80",
+                "90",
+                "100",
+                "200",
+                "300",
+                "400",
+                "500",
+                "600",
+                "700",
+                "800",
+                "900"
+        );
+    }
+
+    private Stock stock(Long id, String ticker) {
+        Stock stock = Stock.of(
+                ticker,
+                "KR" + ticker,
+                "테스트종목",
+                MarketType.KOSPI,
+                Currency.KRW,
+                StockSector.empty(),
+                StockStatus.ACTIVE
+        );
+        try {
+            var idField = AbstractEntity.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(stock, id);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
+        return stock;
     }
 }

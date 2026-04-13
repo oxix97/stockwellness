@@ -235,8 +235,6 @@ class MarketIndexServiceTest {
                 previousClose,
                 1000L,
                 BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
                 TechnicalIndicators.empty()
         );
     }

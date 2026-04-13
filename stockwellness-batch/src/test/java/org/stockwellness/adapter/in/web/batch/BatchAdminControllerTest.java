@@ -3,6 +3,7 @@ package org.stockwellness.adapter.in.web.batch;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -111,8 +112,8 @@ class BatchAdminControllerTest {
     void testInvestorTradeDetailSyncResponseFormat() throws Exception {
         when(batchControlUseCase.launchAsync(argThat(command ->
                 command.jobType() == BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION
-                        && "005930".equals(command.targetTicker())
-                        && "20260408".equals(command.startDate())
+                        && command.targetTicker() == null
+                        && command.startDate() == null
         ))).thenReturn(
                 new BatchControlUseCase.BatchExecutionResult(
                         456L,
@@ -124,13 +125,7 @@ class BatchAdminControllerTest {
         );
 
         mockMvc.perform(post("/api/v1/admin/batch/sync-investor-trade-detail")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "baseDate": "20260408",
-                                  "targetTicker": "005930"
-                                }
-                                """))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.executionId").value(456))
@@ -142,6 +137,11 @@ class BatchAdminControllerTest {
     @Test
     void testRunDailyFullSyncResponseFormat() throws Exception {
         mockMvc.perform(post("/api/v1/admin/batch/run-daily-full-sync")
+                        .content("""
+                                {
+                                  "endDate": "20260410"
+                                }
+                                """)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -151,14 +151,24 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.message").value("요청이 성공적으로 처리되었습니다."))
                 .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
 
-        verify(dailyBatchOrchestrationService).runDailyFullSync();
+        verify(dailyBatchOrchestrationService).runDailyFullSync(LocalDate.of(2026, 4, 10));
+    }
+
+    @Test
+    void testRunDailyFullSyncWithoutBodyUsesDefaultDate() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/batch/run-daily-full-sync")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(dailyBatchOrchestrationService).runDailyFullSync(null);
     }
 
     @Test
     void testRunDailyFullSyncFailureResponseFormat() throws Exception {
         doThrow(new BatchException(ErrorCode.BATCH_ORCHESTRATION_FAILED))
                 .when(dailyBatchOrchestrationService)
-                .runDailyFullSync();
+                .runDailyFullSync(null);
 
         ServletException exception = assertThrows(ServletException.class, () ->
                 mockMvc.perform(post("/api/v1/admin/batch/run-daily-full-sync")

@@ -62,9 +62,10 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
 
         // 투자자 수급 데이터에 대한 Mock API 응답 설정
         KisInvestorPriceDetail investorDetail = new KisInvestorPriceDetail(
-                LocalDate.of(2024, 1, 1),
+                "20240101",
                 new BigDecimal("70500"), "2", new BigDecimal("500"), new BigDecimal("0.71"),
-                1000000L, 10000L, 20000L, new BigDecimal("700000000"), new BigDecimal("1400000000")
+                1000000L, 5000L, 20000L, 10000L, 
+                new BigDecimal("350000000"), new BigDecimal("1400000000"), new BigDecimal("700000000")
         );
         given(kisDailyPriceAdapter.fetchInvestorPrices(any(Stock.class), any(LocalDate.class), any(LocalDate.class)))
                 .willReturn(List.of(investorDetail));

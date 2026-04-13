@@ -51,7 +51,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
                 BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
-                BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
 
@@ -71,7 +71,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 fieldWithPath("data.sharpeRatio").description("샤프 지수"),
                 fieldWithPath("data.beta").description("베타 계수"),
                 fieldWithPath("data.totalInstitutionalNetBuying").description("총 기관 순매수 금액"),
-                fieldWithPath("data.totalForeignNetBuying").description("총 외국인 순매수 금액")
+                fieldWithPath("data.totalForeignNetBuying").description("총 외국인 순매수 금액"),
+                fieldWithPath("data.totalPersonNetBuying").description("총 개인 순매수 금액")
         ));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
@@ -143,7 +144,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
                 BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
-                BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
         );
         PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
                 BigDecimal.valueOf(1500000), Map.of("STOCK", BigDecimal.valueOf(100)), Map.of("TECH", BigDecimal.valueOf(100)), Map.of("US", BigDecimal.valueOf(100))

@@ -77,22 +77,22 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
         stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
                 samsung, yesterday, new BigDecimal("50000"), new BigDecimal("51000"), new BigDecimal("49000"),
                 new BigDecimal("50500"), new BigDecimal("50500"), new BigDecimal("50000"), 1000000L, 
-                new BigDecimal("50000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+                new BigDecimal("50000000000"), null));
         
         stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
                 samsung, today, new BigDecimal("50500"), new BigDecimal("52000"), new BigDecimal("50000"),
                 new BigDecimal("51500"), new BigDecimal("51500"), new BigDecimal("50500"), 1200000L, 
-                new BigDecimal("60000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+                new BigDecimal("60000000000"), null));
 
         stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
                 kospi, yesterday, new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"),
                 new BigDecimal("2505"), new BigDecimal("2505"), new BigDecimal("2500"), 500000L, 
-                new BigDecimal("100000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+                new BigDecimal("100000000000"), null));
 
         stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
                 kospi, today, new BigDecimal("2505"), new BigDecimal("2530"), new BigDecimal("2500"),
                 new BigDecimal("2520"), new BigDecimal("2520"), new BigDecimal("2505"), 600000L, 
-                new BigDecimal("120000000000"), BigDecimal.ZERO, BigDecimal.ZERO, null));
+                new BigDecimal("120000000000"), null));
         
         stockPriceRepository.flush();
     }

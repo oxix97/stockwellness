@@ -70,7 +70,7 @@ class StockChartServiceTest {
                     new StockSupplyRankingResult("000660", "SK하이닉스", "반도체", BigDecimal.valueOf(202000), BigDecimal.valueOf(-0.98), 20L, BigDecimal.valueOf(20), BigDecimal.TWO)
             );
 
-            given(stockPricePort.findLatestDate()).willReturn(Optional.of(latestDate));
+            given(stockPricePort.findLatestInvestorTradeDate()).willReturn(Optional.of(latestDate));
             given(stockPricePort.findTopInstitutionStocksBySupply(latestDate, TradeDirection.BUY, DEFAULT_LIMIT))
                     .willReturn(institutionResult);
             given(stockPricePort.findTopForeignStocksBySupply(latestDate, TradeDirection.BUY, DEFAULT_LIMIT))
@@ -91,7 +91,7 @@ class StockChartServiceTest {
         void returnsEmptyListsWhenLatestDateHasNoData() {
             LocalDate latestDate = LocalDate.of(2026, 4, 1);
 
-            given(stockPricePort.findLatestDate()).willReturn(Optional.of(latestDate));
+            given(stockPricePort.findLatestInvestorTradeDate()).willReturn(Optional.of(latestDate));
             given(stockPricePort.findTopInstitutionStocksBySupply(latestDate, TradeDirection.SELL, DEFAULT_LIMIT))
                     .willReturn(List.of());
             given(stockPricePort.findTopForeignStocksBySupply(latestDate, TradeDirection.SELL, DEFAULT_LIMIT))
@@ -109,7 +109,7 @@ class StockChartServiceTest {
         @Test
         @DisplayName("데이터가 아예 없으면 effectiveDate 없이 빈 리스트를 반환한다")
         void returnsEmptyWhenNoDataExists() {
-            given(stockPricePort.findLatestDate()).willReturn(Optional.empty());
+            given(stockPricePort.findLatestInvestorTradeDate()).willReturn(Optional.empty());
 
             StockSupplyRankingResponse result = stockChartService.getTopStocksBySupply(
                     TradeDirection.BUY, DEFAULT_LIMIT

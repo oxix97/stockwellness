@@ -67,7 +67,7 @@ class SectorEodBatchServiceTest {
         Stock stock = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW,
                 StockSector.of("0001", "0029", null, "전기전자"), StockStatus.ACTIVE);
         StockPrice price = StockPrice.of(stock, targetDate, BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE,
-                BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE, 100L, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, null);
+                BigDecimal.TEN, BigDecimal.TEN, BigDecimal.ONE, 100L, BigDecimal.TEN, null);
         MarketIndex marketIndex = MarketIndex.of("0029", "전기전자");
         SectorInsight previousInsight = SectorInsight.of("전기전자", "0029", MarketType.KOSPI, targetDate.minusDays(1),
                 SectorIndicators.of(BigDecimal.valueOf(900), BigDecimal.ZERO, 1L, 1L, 1, 1), null, false);

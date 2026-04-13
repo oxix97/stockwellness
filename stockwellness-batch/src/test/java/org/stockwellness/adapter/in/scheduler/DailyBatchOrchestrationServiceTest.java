@@ -11,6 +11,7 @@ import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.global.util.DateUtil;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,8 @@ class DailyBatchOrchestrationServiceTest {
                 .willReturn(completed("sectorEodJob"))
                 .willReturn(completed("portfolioStatsJob"));
 
-        dailyBatchOrchestrationService.runDailyFullSync();
+        LocalDate businessDate = LocalDate.of(2026, 4, 10);
+        dailyBatchOrchestrationService.runDailyFullSync(businessDate);
 
         ArgumentCaptor<BatchControlUseCase.BatchLaunchCommand> captor =
                 ArgumentCaptor.forClass(BatchControlUseCase.BatchLaunchCommand.class);
@@ -58,8 +60,10 @@ class DailyBatchOrchestrationServiceTest {
                 );
         assertThat(commands).extracting(BatchControlUseCase.BatchLaunchCommand::publishEvent)
                 .containsExactly(false, true, false, false, false, false);
-        assertThat(commands.get(2).startDate()).isEqualTo(DateUtil.format(DateUtil.today().minusDays(7)));
-        assertThat(commands.get(2).endDate()).isEqualTo(DateUtil.format(DateUtil.today()));
+        assertThat(commands.get(1).endDate()).isEqualTo(DateUtil.format(businessDate));
+        assertThat(commands.get(2).startDate()).isEqualTo(DateUtil.format(businessDate.minusDays(7)));
+        assertThat(commands.get(2).endDate()).isEqualTo(DateUtil.format(businessDate));
+        assertThat(commands.get(3).startDate()).isEqualTo(DateUtil.format(businessDate));
     }
 
     @Test
@@ -69,7 +73,7 @@ class DailyBatchOrchestrationServiceTest {
                 .willReturn(completed("stockMasterSyncJob"))
                 .willReturn(new BatchControlUseCase.BatchExecutionResult(2L, "stockPriceBatchJob", "FAILED", null, "failed"));
 
-        assertThatThrownBy(() -> dailyBatchOrchestrationService.runDailyFullSync())
+        assertThatThrownBy(() -> dailyBatchOrchestrationService.runDailyFullSync(LocalDate.of(2026, 4, 10)))
                 .isInstanceOf(BatchException.class);
 
         verify(batchControlUseCase, times(2)).launchSync(any());
@@ -81,7 +85,7 @@ class DailyBatchOrchestrationServiceTest {
         given(batchControlUseCase.launchSync(any()))
                 .willThrow(new IllegalStateException("boom"));
 
-        assertThatThrownBy(() -> dailyBatchOrchestrationService.runDailyFullSync())
+        assertThatThrownBy(() -> dailyBatchOrchestrationService.runDailyFullSync(LocalDate.of(2026, 4, 10)))
                 .isInstanceOf(BatchException.class);
     }
 

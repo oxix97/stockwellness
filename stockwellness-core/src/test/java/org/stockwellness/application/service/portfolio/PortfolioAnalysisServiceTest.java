@@ -251,8 +251,6 @@ class PortfolioAnalysisServiceTest {
                 BigDecimal.valueOf(prevClose),
                 100L,
                 BigDecimal.valueOf(10000),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
                 null
         );
     }

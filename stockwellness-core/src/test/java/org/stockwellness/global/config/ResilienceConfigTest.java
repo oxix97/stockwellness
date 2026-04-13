@@ -43,4 +43,32 @@ class ResilienceConfigTest {
 
         assertThat(attempts).hasValue(3);
     }
+
+    @Test
+    @DisplayName("KIS 재조회 권장 업무 오류는 설정된 횟수만큼 재시도한다")
+    void retryRegistry_retriesRetryableBusinessExceptions() {
+        Retry retry = retryRegistry.retry("kisRetry-business");
+        AtomicInteger attempts = new AtomicInteger();
+
+        assertThatThrownBy(() -> Retry.decorateRunnable(retry, () -> {
+            attempts.incrementAndGet();
+            throw new KisApiException("1", "EGW00316", "조회 처리 중 오류 발생하였습니다. 재 조회 수행 부탁드립니다.");
+        }).run()).isInstanceOf(KisApiException.class);
+
+        assertThat(attempts).hasValue(3);
+    }
+
+    @Test
+    @DisplayName("일반 업무 오류는 재시도하지 않는다")
+    void retryRegistry_doesNotRetryNonRetryableBusinessExceptions() {
+        Retry retry = retryRegistry.retry("kisRetry-non-retryable");
+        AtomicInteger attempts = new AtomicInteger();
+
+        assertThatThrownBy(() -> Retry.decorateRunnable(retry, () -> {
+            attempts.incrementAndGet();
+            throw new KisApiException("1", "ABC12345", "유효하지 않은 종목 코드입니다.");
+        }).run()).isInstanceOf(KisApiException.class);
+
+        assertThat(attempts).hasValue(1);
+    }
 }
