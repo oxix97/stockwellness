@@ -143,7 +143,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         // 최근 2년치 시세 데이터 로딩 및 시뮬레이션 실행
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
-        String primaryTicker = command.benchmarkTickers().get(0);
+        String primaryTicker = command.benchmarkTickers().getFirst();
         SimulationData data = simulationDataProvider.loadData(symbols, primaryTicker, start, end);
 
         BacktestStrategy strategy = BacktestStrategy.valueOf(command.strategy().toUpperCase());

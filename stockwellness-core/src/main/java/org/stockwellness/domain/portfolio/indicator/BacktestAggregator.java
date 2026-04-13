@@ -52,9 +52,9 @@ public class BacktestAggregator {
         }
 
         // Primary Alpha/Beta/RelativeMDD (첫 번째 벤치마크 기준)
-        BigDecimal primaryAlpha = comparisons.isEmpty() ? BigDecimal.ZERO : comparisons.get(0).alpha();
-        BigDecimal primaryBeta = comparisons.isEmpty() ? BigDecimal.ONE : comparisons.get(0).beta();
-        BigDecimal primaryRelativeMdd = comparisons.isEmpty() ? BigDecimal.ZERO : comparisons.get(0).relativeMdd();
+        BigDecimal primaryAlpha = comparisons.isEmpty() ? BigDecimal.ZERO : comparisons.getFirst().alpha();
+        BigDecimal primaryBeta = comparisons.isEmpty() ? BigDecimal.ONE : comparisons.getFirst().beta();
+        BigDecimal primaryRelativeMdd = comparisons.isEmpty() ? BigDecimal.ZERO : comparisons.getFirst().relativeMdd();
 
         return new BacktestResult(
                 dailyResults,

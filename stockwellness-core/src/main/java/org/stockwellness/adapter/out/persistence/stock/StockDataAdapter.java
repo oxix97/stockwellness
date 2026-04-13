@@ -31,7 +31,7 @@ public class StockDataAdapter implements StockDataPort {
                 .collect(Collectors.toMap(
                         isinCode -> isinCode,
                         isinCode -> convertToDetail(
-                                latestHistories.get(isinCode).get(0),
+                                latestHistories.get(isinCode).getFirst(),
                                 technicalContexts.get(isinCode)
                         )
                 ));

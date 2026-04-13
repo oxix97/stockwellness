@@ -160,7 +160,7 @@ public class StockChartService implements StockPriceUseCase {
     private List<BenchmarkPoint> calculateBenchmarkReturns(List<StockPriceResult> daily) {
         if (daily.isEmpty()) return Collections.emptyList();
 
-        BigDecimal firstPrice = daily.get(0).adjClosePrice();
+        BigDecimal firstPrice = daily.getFirst().adjClosePrice();
         if (firstPrice.compareTo(BigDecimal.ZERO) == 0) return Collections.emptyList();
 
         return daily.stream()

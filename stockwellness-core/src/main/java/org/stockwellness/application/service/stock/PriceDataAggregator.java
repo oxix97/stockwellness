@@ -45,8 +45,8 @@ public class PriceDataAggregator {
 
     private static ChartPoint aggregate(LocalDate date, List<StockPriceResult> prices) {
         // dailyPrices가 이미 날짜순으로 정렬되어 넘어오므로 추가 정렬 생략
-        StockPriceResult first = prices.get(0);
-        StockPriceResult last = prices.get(prices.size() - 1);
+        StockPriceResult first = prices.getFirst();
+        StockPriceResult last = prices.getLast();
 
         BigDecimal high = prices.stream()
                 .map(StockPriceResult::highPrice)

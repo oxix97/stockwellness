@@ -101,7 +101,7 @@ public class MarketIndexService implements MarketIndexUseCase {
         MarketIndexResult kospi = findRequiredIndex(indexes, BenchmarkType.KOSPI);
         MarketIndexResult kosdaq = findRequiredIndex(indexes, BenchmarkType.KOSDAQ);
 
-        LocalDate benchmarkDate = kospi.history().isEmpty() ? LocalDate.now() : kospi.history().get(0).date();
+        LocalDate benchmarkDate = kospi.history().isEmpty() ? LocalDate.now() : kospi.history().getFirst().date();
         LocalDate breadthDate = stockPricePort.findLatestDateOnOrBefore(benchmarkDate).orElse(null);
         MarketBreadthSnapshot breadth = breadthDate == null
                 ? null

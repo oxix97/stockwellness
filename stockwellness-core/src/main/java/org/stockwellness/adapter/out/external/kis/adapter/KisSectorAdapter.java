@@ -62,7 +62,7 @@ public class KisSectorAdapter implements SectorDataPort {
 
         // Note: DTO에 날짜 필드가 없는 경우 최신 데이터를 반환하도록 함
         KisDailySectorDetail detail = (response.output2() != null && !response.output2().isEmpty())
-                ? response.output2().get(0)
+                ? response.output2().getFirst()
                 : response.output1();
         return new SectorDailySnapshot(
                 indexCode,

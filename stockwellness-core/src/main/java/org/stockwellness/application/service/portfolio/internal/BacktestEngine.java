@@ -78,7 +78,7 @@ public class BacktestEngine {
         Map<String, BigDecimal> totalShares = new HashMap<>();
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal previousValue = BigDecimal.ZERO;
-        LocalDate lastRebalanceDate = allDates.get(0);
+        LocalDate lastRebalanceDate = allDates.getFirst();
 
         // 3. 일별 시뮬레이션 루프
         for (int i = 0; i < allDates.size(); i++) {

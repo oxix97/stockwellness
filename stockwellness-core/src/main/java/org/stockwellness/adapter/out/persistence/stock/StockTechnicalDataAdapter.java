@@ -34,7 +34,7 @@ public class StockTechnicalDataAdapter implements LoadTechnicalDataPort {
             throw new StockDataNotFoundException(ticker);
         }
 
-        StockPrice today = histories.get(0);
+        StockPrice today = histories.getFirst();
         StockPrice yesterday = histories.size() > 1 ? histories.get(1) : null;
 
         MarketCondition condition = TechnicalCalculator.analyze(today, yesterday);
@@ -58,7 +58,7 @@ public class StockTechnicalDataAdapter implements LoadTechnicalDataPort {
                                     .limit(RECENT_PRICE_LIMIT)
                                     .toList();
                             
-                            StockPrice today = histories.get(0);
+                            StockPrice today = histories.getFirst();
                             StockPrice yesterday = histories.size() > 1 ? histories.get(1) : null;
                             MarketCondition condition = TechnicalCalculator.analyze(today, yesterday);
                             return AiAnalysisContext.of(today, condition);

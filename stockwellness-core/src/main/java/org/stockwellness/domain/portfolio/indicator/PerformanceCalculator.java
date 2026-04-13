@@ -46,8 +46,8 @@ public class PerformanceCalculator implements IndicatorCalculator<PerformanceCal
             
             // For a year, start value is the value BEFORE the first return of that year.
             // i.e., Day (firstIndex) - 1.
-            int firstIdx = indices.get(0);
-            int lastIdx = indices.get(indices.size() - 1);
+            int firstIdx = indices.getFirst();
+            int lastIdx = indices.getLast();
             
             BigDecimal yearStartValue = context.dailyValues().get(firstIdx); // Value at end of previous day
             BigDecimal yearEndValue = context.dailyValues().get(lastIdx + 1); // Value at end of this day

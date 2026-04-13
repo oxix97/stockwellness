@@ -136,7 +136,7 @@ public class PortfolioAnalysisController {
         );
 
         BacktestResult result = portfolioFacade.runBacktest(command);
-        String primaryTicker = command.benchmarkTickers().get(0);
+        String primaryTicker = command.benchmarkTickers().getFirst();
         return ApiResponse.success(BacktestResponse.from(result, primaryTicker));
     }
 
