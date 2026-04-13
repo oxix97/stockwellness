@@ -13,8 +13,8 @@ spring:
       port: 6379
       password: ${REDIS_PASSWORD}
   flyway:
-    enabled: true
-    baseline-on-migrate: true
+    enabled: false
+    baseline-on-migrate: false
     baseline-version: "5"
     out-of-order: true
     validate-on-migrate: false
@@ -22,7 +22,7 @@ spring:
     show-sql: false
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         default_batch_fetch_size: 100

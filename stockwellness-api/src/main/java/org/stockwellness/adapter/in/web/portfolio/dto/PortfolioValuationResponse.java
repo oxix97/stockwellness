@@ -19,7 +19,8 @@ public record PortfolioValuationResponse(
     BigDecimal sharpeRatio,
     BigDecimal beta,
     BigDecimal totalInstitutionalNetBuying,
-    BigDecimal totalForeignNetBuying
+    BigDecimal totalForeignNetBuying,
+    BigDecimal totalPersonNetBuying
 ) {
     public static PortfolioValuationResponse from(PortfolioValuationResult result) {
         return new PortfolioValuationResponse(
@@ -36,7 +37,8 @@ public record PortfolioValuationResponse(
             result.sharpeRatio().setScale(4, RoundingMode.HALF_UP),
             result.beta().setScale(4, RoundingMode.HALF_UP),
             result.totalInstitutionalNetBuying().setScale(0, RoundingMode.HALF_UP),
-            result.totalForeignNetBuying().setScale(0, RoundingMode.HALF_UP)
+            result.totalForeignNetBuying().setScale(0, RoundingMode.HALF_UP),
+            result.totalPersonNetBuying().setScale(0, RoundingMode.HALF_UP)
         );
     }
 }
