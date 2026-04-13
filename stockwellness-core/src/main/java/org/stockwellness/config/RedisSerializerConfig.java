@@ -10,12 +10,10 @@ import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
 
 /**
- * [Redis Serializer Factory]
- * Redis 직렬화/역직렬화에 필요한 ObjectMapper 설정을 전담합니다.
- * Java 21 Record, Security, 날짜 포맷 등을 처리합니다.
+ * Redis JSON 직렬화 정책을 공통화합니다.
+ * API와 core/batch가 동일한 ObjectMapper 규칙을 사용해야 캐시 호환성이 유지됩니다.
  */
 public final class RedisSerializerConfig {
 
@@ -27,14 +25,7 @@ public final class RedisSerializerConfig {
         return new GenericJackson2JsonRedisSerializer(mapper);
     }
 
-    public static GenericJackson2JsonRedisSerializer createSecuritySerializer(ClassLoader classLoader) {
-        ObjectMapper mapper = createBaseObjectMapper();
-        mapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
-        mapper.setDefaultTyping(createTypeResolver(mapper));
-        return new GenericJackson2JsonRedisSerializer(mapper);
-    }
-
-    private static ObjectMapper createBaseObjectMapper() {
+    static ObjectMapper createBaseObjectMapper() {
         PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
                 .allowIfBaseType("org.stockwellness")
                 .allowIfBaseType("java.util")
@@ -56,23 +47,23 @@ public final class RedisSerializerConfig {
         return mapper;
     }
 
-    private static TypeResolverBuilder<?> createTypeResolver(ObjectMapper mapper) {
+    static TypeResolverBuilder<?> createTypeResolver(ObjectMapper mapper) {
         return new ObjectMapper.DefaultTypeResolverBuilder(
-                ObjectMapper.DefaultTyping.NON_FINAL, 
+                ObjectMapper.DefaultTyping.NON_FINAL,
                 mapper.getPolymorphicTypeValidator()
         ) {
             @Override
-            public boolean useForType(JavaType t) {
-                if (t.isPrimitive()) return false;
-                if (t.isTypeOrSubTypeOf(String.class)) return false;
-                if (t.isTypeOrSubTypeOf(Number.class)) return false;
-                if (t.isTypeOrSubTypeOf(Boolean.class)) return false;
-                if (t.isArrayType()) return false;
-                
+            public boolean useForType(JavaType type) {
+                if (type.isPrimitive()) return false;
+                if (type.isTypeOrSubTypeOf(String.class)) return false;
+                if (type.isTypeOrSubTypeOf(Number.class)) return false;
+                if (type.isTypeOrSubTypeOf(Boolean.class)) return false;
+                if (type.isArrayType()) return false;
+
                 return true;
             }
         }.init(JsonTypeInfo.Id.CLASS, null)
-         .inclusion(JsonTypeInfo.As.PROPERTY)
-         .typeProperty("@class");
+                .inclusion(JsonTypeInfo.As.PROPERTY)
+                .typeProperty("@class");
     }
 }

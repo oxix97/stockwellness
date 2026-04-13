@@ -29,7 +29,7 @@ public class ApiRedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
 
-        GenericJackson2JsonRedisSerializer jsonSerializer = RedisSerializerConfig.createDomainSerializer();
+        GenericJackson2JsonRedisSerializer jsonSerializer = ApiRedisSerializerConfig.createDomainSerializer();
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
@@ -40,8 +40,8 @@ public class ApiRedisConfig {
     @Primary
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
-        var domainSerializer = RedisSerializerConfig.createDomainSerializer();
-        var securitySerializer = RedisSerializerConfig.createSecuritySerializer(getClass().getClassLoader());
+        var domainSerializer = ApiRedisSerializerConfig.createDomainSerializer();
+        var securitySerializer = ApiRedisSerializerConfig.createSecuritySerializer(getClass().getClassLoader());
 
         // 기본 설정 (1시간 TTL)
         RedisCacheConfiguration defaultConfig = createCacheConfig(domainSerializer, Duration.ofHours(1));

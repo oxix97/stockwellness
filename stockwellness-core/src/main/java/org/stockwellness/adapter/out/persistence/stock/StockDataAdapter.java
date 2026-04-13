@@ -1,7 +1,6 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
@@ -37,7 +36,6 @@ public class StockDataAdapter implements StockDataPort {
                 ));
     }
 
-    @Cacheable(value = "stock_info", key = "#isinCode", unless = "#result == null")
     public StockWellnessDetail getSingleStockDetail(String isinCode) {
         return stockPricePort.findLateststockPrice(isinCode)
                 .map(stockPrice -> convertToDetail(stockPrice, loadTechnicalDataPort.loadTechnicalContext(isinCode)))

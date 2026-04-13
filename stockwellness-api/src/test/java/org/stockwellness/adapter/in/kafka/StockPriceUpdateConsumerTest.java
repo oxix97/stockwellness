@@ -3,7 +3,6 @@ package org.stockwellness.adapter.in.kafka;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -13,19 +12,21 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.ActiveProfiles;
-import org.stockwellness.config.KafkaTopicConfig;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.stockwellness.adapter.out.persistence.portfolio.PortfolioAdapter;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+import static org.stockwellness.config.KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@EmbeddedKafka(partitions = 1, topics = {KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC})
+@EmbeddedKafka(partitions = 1, topics = {STOCK_PRICE_UPDATED_TOPIC})
 class StockPriceUpdateConsumerTest {
 
     @Autowired
@@ -40,14 +41,19 @@ class StockPriceUpdateConsumerTest {
     @MockitoBean
     private CacheManager cacheManager;
 
+    @MockitoBean
+    private PortfolioAdapter portfolioAdapter;
+
     @Test
     void testConsumeStockPriceUpdatedEvent() {
         // given
         List<String> symbols = List.of("AAPL", "TSLA");
         StockPriceUpdatedEvent event = StockPriceUpdatedEvent.of(symbols);
+        List<Long> portfolioIds = List.of(1L, 2L);
         
         Cache mockCache = mock(Cache.class);
         when(cacheManager.getCache(anyString())).thenReturn(mockCache);
+        when(portfolioAdapter.findPortfolioIdsBySymbols(symbols)).thenReturn(portfolioIds);
 
         // 컨슈머가 파티션을 할당받을 때까지 대기
         for (MessageListenerContainer messageListenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
@@ -55,15 +61,17 @@ class StockPriceUpdateConsumerTest {
         }
 
         // when
-        kafkaTemplate.send(KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC, event);
+        kafkaTemplate.send(STOCK_PRICE_UPDATED_TOPIC, event);
 
         // then
         await()
             .atMost(10, TimeUnit.SECONDS)
             .pollInterval(200, TimeUnit.MILLISECONDS)
             .untilAsserted(() -> {
-                // 적어도 한 번은 캐시 무효화가 발생했는지 확인
-                verify(mockCache, atLeastOnce()).evict(anyString());
+                verify(cacheManager).getCache("sectorRanking");
+                verify(cacheManager).getCache("sectorSupply");
+                verify(mockCache, atLeastOnce()).clear();
+                verify(mockCache, atLeastOnce()).evict(anyLong());
             });
     }
 }

@@ -12,8 +12,6 @@ public enum CacheType {
     MEMBER("member", Duration.ofMinutes(30), true), // Security Serializer 필요 시 플래그 활용
 
     // 주식 도메인
-    STOCK_INFO("stock_info", Duration.ofDays(7), false),
-    STOCK_PRICES("stock_prices", Duration.ofDays(7), false),
     AI_ANALYSIS("ai_analysis", Duration.ofHours(24), false),
 
     // 섹터 도메인
