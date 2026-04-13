@@ -19,9 +19,21 @@ import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.AiReport;
 
+import jakarta.annotation.PreDestroy;
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 @Slf4j
 @Component
 public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort, AiAdviceProviderPort {
+
+    private static final Duration AI_CALL_TIMEOUT = Duration.ofSeconds(12);
+    private static final ExecutorService AI_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
     private final ChatClient chatClient;
     private final PromptTemplateMapper promptTemplateMapper;
@@ -41,7 +53,11 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
         String systemInstruction = promptTemplateMapper.getSectorSystemInstruction();
         String userContext = promptTemplateMapper.toSectorPromptString(context);
 
-        return executeAiCall(systemInstruction, userContext, AiReport.class, "Sector AI Analysis");
+        try {
+            return executeAiCall(systemInstruction, userContext, AiReport.class, "Sector AI Analysis");
+        } catch (Exception e) {
+            return recoverSectorOpinion(e, context);
+        }
     }
 
     @Recover
@@ -60,7 +76,11 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
         String systemInstruction = promptTemplateMapper.getPortfolioSystemInstruction();
         String userContext = promptTemplateMapper.toPortfolioPromptString(context);
 
-        return executeAiCall(systemInstruction, userContext, PortfolioAiResult.class, "Portfolio AI Diagnosis");
+        try {
+            return executeAiCall(systemInstruction, userContext, PortfolioAiResult.class, "Portfolio AI Diagnosis");
+        } catch (Exception e) {
+            return recoverPortfolioInsight(e, context);
+        }
     }
 
     @Recover
@@ -78,7 +98,11 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
     public AiReport generateInsight(String systemInstruction, AiAnalysisContext context) {
         String userContext = promptTemplateMapper.toPromptString(context);
 
-        return executeAiCall(systemInstruction, userContext, AiReport.class, "Stock AI Analysis");
+        try {
+            return executeAiCall(systemInstruction, userContext, AiReport.class, "Stock AI Analysis");
+        } catch (Exception e) {
+            return recoverGenerateInsight(e, systemInstruction, context);
+        }
     }
 
     @Recover
@@ -97,7 +121,11 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
         String systemInstruction = promptTemplateMapper.getAdvisorSystemInstruction();
         String userContext = promptTemplateMapper.toAdvisorPromptString(context);
 
-        return executeAiCall(systemInstruction, userContext, AdvisorAiResult.class, "Portfolio Rebalancing Advice");
+        try {
+            return executeAiCall(systemInstruction, userContext, AdvisorAiResult.class, "Portfolio Rebalancing Advice");
+        } catch (Exception e) {
+            return recoverRebalancingAdvice(e, context);
+        }
     }
 
     @Recover
@@ -113,11 +141,29 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
         log.info("📡 Requesting {}... (Prompt Length: {})", taskName, user.length());
         var outputConverter = new BeanOutputConverter<>(clazz);
 
-        return chatClient.prompt()
+        Future<T> future = AI_EXECUTOR.submit(() -> chatClient.prompt()
                 .system(system)
                 .user(u -> u.text(user + "\n\n반드시 아래 JSON 포맷을 준수하여 응답해:\n{format}")
                         .param("format", outputConverter.getFormat()))
                 .call()
-                .entity(outputConverter);
+                .entity(outputConverter));
+        try {
+            return future.get(AI_CALL_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new IllegalStateException(taskName + " timed out", e);
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(taskName + " interrupted", e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new IllegalStateException(taskName + " failed", cause);
+        }
+    }
+
+    @PreDestroy
+    void shutdownExecutor() {
+        AI_EXECUTOR.shutdownNow();
     }
 }
