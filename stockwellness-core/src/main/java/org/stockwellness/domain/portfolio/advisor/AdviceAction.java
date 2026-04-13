@@ -12,7 +12,8 @@ public enum AdviceAction {
     REBALANCE("리밸런싱"),
     RISK_MANAGEMENT("리스크 관리"),
     TECHNICAL_OPTIMIZATION("기술적 최적화"),
-    DIVERSIFICATION("포트폴리오 다각화");
+    DIVERSIFICATION("포트폴리오 다각화"),
+    HOLD("관망");
 
     private final String description;
 }

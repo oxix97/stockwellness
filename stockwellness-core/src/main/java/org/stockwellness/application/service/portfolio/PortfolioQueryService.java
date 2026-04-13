@@ -3,8 +3,8 @@ package org.stockwellness.application.service.portfolio;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.LoadPortfolioUseCase;
+import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -13,7 +13,6 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -70,7 +69,6 @@ public class PortfolioQueryService implements LoadPortfolioUseCase {
     }
 
     private Map<String, BigDecimal> getLatestPrices(Portfolio portfolio) {
-        // [N+1 해결] 단일 포트폴리오 조회 시에도 배치를 사용하여 조회
         List<String> tickers = portfolio.getItems().stream()
                 .map(PortfolioItem::getSymbol)
                 .distinct()
