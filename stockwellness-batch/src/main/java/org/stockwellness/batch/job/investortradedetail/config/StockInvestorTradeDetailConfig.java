@@ -8,23 +8,23 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.batch.job.investortradedetail.application.StockInvestorTradeDetailBatchService;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
-import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateSource;
-import org.stockwellness.batch.job.investortradedetail.listener.StockInvestorTradeDetailSummaryListener;
 import org.stockwellness.batch.job.investortradedetail.step.processor.StockInvestorTradeDetailProcessor;
 import org.stockwellness.batch.job.investortradedetail.step.reader.StockInvestorTradeDetailReader;
 import org.stockwellness.batch.job.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
 import org.stockwellness.batch.support.BatchMdcListener;
 import org.stockwellness.batch.support.listener.JobFailureNotificationListener;
-import org.stockwellness.global.util.DateUtil;
 
-import javax.sql.DataSource;
 import java.time.LocalDate;
 
 @Slf4j
@@ -34,12 +34,11 @@ public class StockInvestorTradeDetailConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final KisDailyPriceAdapter kisDailyPriceAdapter;
+    private final StockInvestorTradeDetailBatchService batchService;
     private final StockRepository stockRepository;
-    private final DataSource dataSource;
+    private final JdbcTemplate jdbcTemplate;
     private final BatchMdcListener mdcListener;
     private final JobFailureNotificationListener failureNotificationListener;
-    private final StockInvestorTradeDetailSummaryListener stockInvestorTradeDetailSummaryListener;
 
     @Bean
     public Job stockInvestorTradeDetailJob(Step stockInvestorTradeDetailStep) {
@@ -57,38 +56,29 @@ public class StockInvestorTradeDetailConfig {
             StockInvestorTradeDetailWriter stockInvestorTradeDetailWriter
     ) {
         return new StepBuilder("stockInvestorTradeDetailStep", jobRepository)
-                .<InvestorTradeDetailUpdateSource, InvestorTradeDetailUpdateCommand>chunk(100, transactionManager)
+                .<InvestorTradeDetail, InvestorTradeDetailUpdateCommand>chunk(50, transactionManager)
                 .reader(stockInvestorTradeDetailReader)
                 .processor(stockInvestorTradeDetailProcessor)
                 .writer(stockInvestorTradeDetailWriter)
                 .listener(mdcListener)
-                .listener(stockInvestorTradeDetailSummaryListener)
                 .build();
     }
 
     @Bean
     @StepScope
-    public StockInvestorTradeDetailReader stockInvestorTradeDetailReader(
-            @Value("#{jobParameters['targetTicker']}") String targetTicker
-    ) {
-        return new StockInvestorTradeDetailReader(kisDailyPriceAdapter, targetTicker);
+    public StockInvestorTradeDetailReader stockInvestorTradeDetailReader() {
+        return new StockInvestorTradeDetailReader(batchService.fetchMergedDetails());
     }
 
     @Bean
     @StepScope
-    public StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor(
-            @Value("#{jobParameters['baseDate']}") String baseDateParam,
-            @Value("#{jobParameters['endDate']}") String endDateParam
-    ) {
-        String effectiveBaseDate = (baseDateParam != null && !baseDateParam.isBlank()) ? baseDateParam : endDateParam;
-        LocalDate baseDate = effectiveBaseDate != null && !effectiveBaseDate.isBlank()
-                ? DateUtil.parse(effectiveBaseDate)
-                : DateUtil.today();
-        return new StockInvestorTradeDetailProcessor(stockRepository, baseDate);
+    public StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor() {
+        LocalDate marketBaseDate = batchService.resolveMarketBaseDate();
+        return new StockInvestorTradeDetailProcessor(stockRepository, marketBaseDate);
     }
 
     @Bean
     public StockInvestorTradeDetailWriter stockInvestorTradeDetailWriter() {
-        return new StockInvestorTradeDetailWriter(dataSource);
+        return new StockInvestorTradeDetailWriter(jdbcTemplate);
     }
 }

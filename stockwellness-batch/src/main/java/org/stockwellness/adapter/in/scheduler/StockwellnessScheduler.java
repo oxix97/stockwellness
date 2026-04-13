@@ -15,9 +15,9 @@ public class StockwellnessScheduler {
     private final AdvisorOrchestrator advisorOrchestrator;
 
     /**
-     * 매일 평일(월-금) 오후 3시 45분에 전체 데이터 동기화 배치를 실행합니다.
+     * 매일 평일(월-금) 오후 3시 30분에 전체 데이터 동기화 배치를 실행합니다.
      */
-    @Scheduled(cron = "0 45 15 * * MON-FRI", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 30 15 * * MON-FRI", zone = "Asia/Seoul")
     public void runDailyFullSync() {
         dailyBatchOrchestrationService.runDailyFullSync();
     }

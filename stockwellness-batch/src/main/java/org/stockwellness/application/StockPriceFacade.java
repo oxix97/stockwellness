@@ -16,7 +16,5 @@ public class StockPriceFacade {
         stockPriceSyncService.saveDailyStockPrices();
 
         stockPriceCalculateService.calculateStockPrice();
-
-        stockPriceSyncService.syncInvestorTradeDetails();
     }
 }

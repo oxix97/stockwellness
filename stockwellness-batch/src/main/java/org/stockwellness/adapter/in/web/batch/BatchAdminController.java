@@ -12,9 +12,10 @@ import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
 import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
 import org.stockwellness.adapter.in.web.batch.dto.DataIntegrityResponse;
-import org.stockwellness.batch.job.investortradedetail.support.StockInvestorTradeDetailSyncRequest;
+import org.stockwellness.adapter.in.web.batch.dto.DailyFullSyncRequest;
 import org.stockwellness.batch.job.stockprice.sync.support.StockPriceSyncRequest;
 import org.stockwellness.global.common.response.ApiResponse;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -104,8 +105,11 @@ public class BatchAdminController {
      * 스케줄러와 동일한 6단계 일일 오케스트레이션 수동 실행
      */
     @PostMapping("/run-daily-full-sync")
-    public ApiResponse<Void> runDailyFullSync() {
-        dailyBatchOrchestrationService.runDailyFullSync();
+    public ApiResponse<Void> runDailyFullSync(@RequestBody(required = false) DailyFullSyncRequest request) {
+        LocalDate businessDate = request != null && StringUtils.hasText(request.getEndDate())
+                ? DateUtil.parse(request.getEndDate())
+                : null;
+        dailyBatchOrchestrationService.runDailyFullSync(businessDate);
         return ApiResponse.success();
     }
 
@@ -192,14 +196,12 @@ public class BatchAdminController {
      * 투자주체 순매수 금액 보정 배치 실행 (랭킹 보정용)
      */
     @PostMapping("/sync-investor-trade-detail")
-    public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync(
-            @RequestBody(required = false) StockInvestorTradeDetailSyncRequest request
-    ) {
+    public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync() {
         return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
                 new BatchControlUseCase.BatchLaunchCommand(
                         BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION,
-                        request != null ? request.getTargetTicker() : null,
-                        request != null ? request.getBaseDate() : null,
+                        null,
+                        null,
                         null,
                         false
                 )

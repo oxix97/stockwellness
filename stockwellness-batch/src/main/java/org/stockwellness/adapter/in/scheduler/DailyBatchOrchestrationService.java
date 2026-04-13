@@ -29,19 +29,19 @@ public class DailyBatchOrchestrationService {
     );
 
     public void runDailyFullSync() {
+        runDailyFullSync(null);
+    }
+
+    public void runDailyFullSync(LocalDate requestedBusinessDate) {
         long timestamp = System.currentTimeMillis();
         log.info(">>> 일일 전체 데이터 동기화 배치 시작 [시작 시각: {}]", timestamp);
-        
-        LocalDate today = DateUtil.today();
+        LocalDate businessDate = requestedBusinessDate != null ? requestedBusinessDate : DateUtil.today();
 
         try {
             for (ScheduledBatchStep step : DAILY_FULL_SYNC_STEPS) {
                 log.info(step.logLabel());
-                
-                // 지수 동기화의 경우 오늘 날짜를 명시적으로 전달하여 오늘 종가를 가져오도록 함
-                BatchControlUseCase.BatchLaunchCommand command = (step.jobType() == BatchControlUseCase.BatchJobType.BENCHMARK_PRICE_SYNC)
-                        ? step.toCommandWithDates(today.minusDays(7), today)
-                        : step.toCommand();
+
+                BatchControlUseCase.BatchLaunchCommand command = step.toCommand(businessDate);
 
                 BatchControlUseCase.BatchExecutionResult result = batchControlUseCase.launchSync(command);
                 validateStatus(step, result);
@@ -75,24 +75,37 @@ public class DailyBatchOrchestrationService {
             boolean publishEvent,
             String logLabel
     ) {
-        BatchControlUseCase.BatchLaunchCommand toCommand() {
-            return new BatchControlUseCase.BatchLaunchCommand(
-                    jobType,
-                    null,
-                    null,
-                    null,
-                    publishEvent
-            );
-        }
-
-        BatchControlUseCase.BatchLaunchCommand toCommandWithDates(LocalDate start, LocalDate end) {
-            return new BatchControlUseCase.BatchLaunchCommand(
-                    jobType,
-                    null,
-                    DateUtil.format(start),
-                    DateUtil.format(end),
-                    publishEvent
-            );
+        BatchControlUseCase.BatchLaunchCommand toCommand(LocalDate businessDate) {
+            return switch (jobType) {
+                case BENCHMARK_PRICE_SYNC -> new BatchControlUseCase.BatchLaunchCommand(
+                        jobType,
+                        null,
+                        DateUtil.format(businessDate.minusDays(7)),
+                        DateUtil.format(businessDate),
+                        publishEvent
+                );
+                case STOCK_PRICE_SYNC -> new BatchControlUseCase.BatchLaunchCommand(
+                        jobType,
+                        null,
+                        null,
+                        DateUtil.format(businessDate),
+                        publishEvent
+                );
+                case STOCK_FOREIGN_INSTITUTION -> new BatchControlUseCase.BatchLaunchCommand(
+                        jobType,
+                        null,
+                        DateUtil.format(businessDate),
+                        null,
+                        publishEvent
+                );
+                default -> new BatchControlUseCase.BatchLaunchCommand(
+                        jobType,
+                        null,
+                        null,
+                        null,
+                        publishEvent
+                );
+            };
         }
     }
 }

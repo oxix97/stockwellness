@@ -13,6 +13,7 @@ import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
+import org.stockwellness.domain.stock.price.InvestorSupplyDemand;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.util.DateUtil;
@@ -135,7 +136,9 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             return List.of();
         }
 
-        List<KisMultiStockPriceDetail> apiResults = executeKisCall("multi-stock-prices", () ->
+        List<KisMultiStockPriceDetail> apiResults = executeKisCall(
+                KisCallContext.of("multi-stock-prices", stocks.stream().map(Stock::getTicker).toList(), null, today),
+                () ->
                 stockPricePort.fetchMultiStockPrices(stocks.stream().map(Stock::getTicker).toList())
         );
         Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
@@ -183,8 +186,6 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     prevClose,
                     todayPrice.accumulatedVolume(),
                     todayPrice.accumulatedTradingValue(),
-                    todayPrice.netInstitutionalBuyingAmt(),
-                    todayPrice.netForeignBuyingAmt(),
                     indicators
             ));
         }
@@ -221,7 +222,9 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
         }
 
         LocalDate investorFetchStart = endDate.minusDays(RECENT_SUPPLY_DEMAND_DAYS);
-        Map<LocalDate, InvestorTradingSnapshot> investorMap = executeKisCall("investor-trading-snapshots", () ->
+        Map<LocalDate, InvestorTradingSnapshot> investorMap = executeKisCall(
+                        KisCallContext.of("investor-trading-snapshots", stock.getTicker(), investorFetchStart, endDate),
+                        () ->
                         stockPricePort.fetchInvestorTradingSnapshots(stock, investorFetchStart, endDate))
                 .stream()
                 .collect(Collectors.toMap(InvestorTradingSnapshot::baseDate, value -> value, (left, right) -> left));
@@ -235,8 +238,9 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     price.getClosePrice(),
                     price.getVolume(),
                     price.getTransactionAmt(),
-                    price.getNetInstitutionalBuyingAmt(),
-                    price.getNetForeignBuyingAmt()
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO
             ));
         }
 
@@ -250,7 +254,8 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     snapshot.volume(),
                     snapshot.transactionAmt(),
                     investor != null ? defaultDecimal(investor.netInstitutionalBuyingAmt()) : BigDecimal.ZERO,
-                    investor != null ? defaultDecimal(investor.netForeignBuyingAmt()) : BigDecimal.ZERO
+                    investor != null ? defaultDecimal(investor.netForeignBuyingAmt()) : BigDecimal.ZERO,
+                    investor != null ? defaultDecimal(investor.netPersonBuyingAmt()) : BigDecimal.ZERO
             ));
         }
 
@@ -273,6 +278,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             }
             BigDecimal prevClose = (i > 0) ? fullClosingPrices.get(i - 1) : BigDecimal.ZERO;
             OHLCRecord data = mergedData.get(date);
+            
             entities.add(StockPrice.of(
                     stock,
                     date,
@@ -284,8 +290,6 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     prevClose,
                     data.volume(),
                     data.transactionAmt(),
-                    data.instBuying(),
-                    data.frgnBuying(),
                     allIndicators.get(i)
             ));
         }
@@ -307,7 +311,9 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
             final LocalDate finalChunkStartDate = chunkStartDate;
             final LocalDate finalCursorDate = cursorDate;
-            List<DailyStockPriceSnapshot> response = executeKisCall("daily-prices:%s".formatted(stock.getTicker()), () ->
+            List<DailyStockPriceSnapshot> response = executeKisCall(
+                    KisCallContext.of("daily-prices", stock.getTicker(), finalChunkStartDate, finalCursorDate),
+                    () ->
                     stockPricePort.fetchDailyPrices(stock, finalChunkStartDate, finalCursorDate)
             );
 
@@ -329,18 +335,32 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
         return value != null ? value : BigDecimal.ZERO;
     }
 
-    private <T> T executeKisCall(String operation, Supplier<T> supplier) {
-        log.info("[KIS 배치] 호출 준비 operation={}", operation);
+    private <T> T executeKisCall(KisCallContext context, Supplier<T> supplier) {
+        log.info("[KIS 배치] 호출 준비 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}",
+                context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate());
         try {
             return supplier.get();
         } catch (KisApiException exception) {
             if (exception.isRateLimitExceeded()) {
                 int detectionCount = kisRateLimitDetectionCount.incrementAndGet();
-                log.warn("[KIS 배치] KIS 호출 제한 감지 operation={}, detectionCount={}, msgCd={}, msg1={}",
-                        operation, detectionCount, exception.msgCd(), exception.msg1());
+                log.warn("[KIS 배치] KIS 호출 제한 감지 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, detectionCount={}, retryable={}, msgCd={}, msg1={}",
+                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
+                        detectionCount, exception.isRetryable(), exception.msgCd(), exception.msg1());
+            } else if (exception.isRetryableBusinessError()) {
+                log.warn("[KIS 배치] KIS 재시도 대상 업무 오류 감지 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, retryable={}, msgCd={}, msg1={}",
+                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
+                        exception.isRetryable(), exception.msgCd(), exception.msg1());
+            } else {
+                log.error("[KIS 배치] KIS 호출 실패 operation={}, targetCount={}, tickers={}, startDate={}, endDate={}, retryable={}, rateLimit={}, msgCd={}, msg1={}",
+                        context.operation(), context.targetCount(), context.tickers(), context.startDate(), context.endDate(),
+                        exception.isRetryable(), exception.isRateLimitExceeded(), exception.msgCd(), exception.msg1());
             }
             throw exception;
         }
+    }
+
+    static String buildKisCallLogKey(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) {
+        return "%s|tickers=%s|start=%s|end=%s".formatted(operation, tickers, startDate, endDate);
     }
 
     private record OHLCRecord(
@@ -351,7 +371,27 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             Long volume,
             BigDecimal transactionAmt,
             BigDecimal instBuying,
-            BigDecimal frgnBuying
+            BigDecimal frgnBuying,
+            BigDecimal prsnBuying
     ) {
+    }
+
+    private record KisCallContext(
+            String operation,
+            List<String> tickers,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        private static KisCallContext of(String operation, String ticker, LocalDate startDate, LocalDate endDate) {
+            return new KisCallContext(operation, List.of(ticker), startDate, endDate);
+        }
+
+        private static KisCallContext of(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) {
+            return new KisCallContext(operation, List.copyOf(tickers), startDate, endDate);
+        }
+
+        private int targetCount() {
+            return tickers.size();
+        }
     }
 }

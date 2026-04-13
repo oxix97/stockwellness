@@ -1,31 +1,20 @@
 package org.stockwellness.batch.job.investortradedetail.step.writer;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.global.util.DateUtil;
-import org.stockwellness.global.util.QueryTypeUtil;
 
-import javax.sql.DataSource;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 
-@Slf4j
+@RequiredArgsConstructor
 public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeDetailUpdateCommand> {
 
     private final JdbcTemplate jdbcTemplate;
-
-    public StockInvestorTradeDetailWriter(DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
-
-    StockInvestorTradeDetailWriter(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
 
     @Override
     public void write(Chunk<? extends InvestorTradeDetailUpdateCommand> chunk) {
@@ -34,39 +23,33 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
             return;
         }
 
-        String sql = String.format(
-                """
-                UPDATE stock_price SET
-                    inst_buying_amt = %s,
-                    frgn_buying_amt = %s,
-                    total_net_amt = %s,
-                    inst_buying_qty = %s,
-                    frgn_buying_qty = %s,
-                    total_net_qty = %s
-                WHERE stock_id = %s AND base_date = %s
-                """,
-                QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC,
-                QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT,
-                QueryTypeUtil.BIGINT,
-                QueryTypeUtil.DATE
-        );
-
-        int[] updated = jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+        jdbcTemplate.batchUpdate(upsertSql(), new BatchPreparedStatementSetter() {
             @Override
-            public void setValues(PreparedStatement ps, int i) throws SQLException {
+            public void setValues(java.sql.PreparedStatement ps, int i) throws java.sql.SQLException {
                 InvestorTradeDetailUpdateCommand item = items.get(i);
-                var sd = item.supplyDemand();
                 int idx = 1;
-                ps.setBigDecimal(idx++, sd.getInstitutionAmt());
-                ps.setBigDecimal(idx++, sd.getForeignAmt());
-                ps.setBigDecimal(idx++, sd.getTotalNetAmt());
-                
-                ps.setLong(idx++, sd.getInstitutionQty());
-                ps.setLong(idx++, sd.getForeignQty());
-                ps.setLong(idx++, sd.getTotalNetQty());
-
                 ps.setLong(idx++, item.stockId());
                 ps.setDate(idx++, DateUtil.toSqlDate(item.baseDate()));
+                ps.setString(idx++, item.name());
+                ps.setString(idx++, item.ticker());
+                ps.setLong(idx++, item.frgnNtbyQty());
+                ps.setLong(idx++, item.orgnNtbyQty());
+                ps.setLong(idx++, item.ivtrNtbyQty());
+                ps.setLong(idx++, item.bankNtbyQty());
+                ps.setLong(idx++, item.insuNtbyQty());
+                ps.setLong(idx++, item.mrbnNtbyQty());
+                ps.setLong(idx++, item.fundNtbyQty());
+                ps.setLong(idx++, item.etcOrgtNtbyVol());
+                ps.setLong(idx++, item.etcCorpNtbyVol());
+                ps.setBigDecimal(idx++, item.frgnNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.orgnNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.ivtrNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.bankNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.insuNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.mrbnNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.fundNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.etcOrgtNtbyTrPbmn());
+                ps.setBigDecimal(idx++, item.etcCorpNtbyTrPbmn());
             }
 
             @Override
@@ -74,80 +57,42 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
                 return items.size();
             }
         });
+    }
 
-        for (int i = 0; i < updated.length; i++) {
-            if (updated[i] == 0) {
-                InvestorTradeDetailUpdateCommand item = items.get(i);
-                log.info(
-                        "[투자주체 수급 보정 Writer] 대상 stock_price 행이 없어 업데이트를 건너뜁니다. stockId={}, baseDate={}",
-                        item.stockId(),
-                        item.baseDate()
-                );
-            }
-        }
-
-        jdbcTemplate.batchUpdate(
-                "DELETE FROM stock_investor_trade WHERE stock_id = CAST(? AS bigint) AND base_date = CAST(? AS date)",
-                new BatchPreparedStatementSetter() {
-                    @Override
-                    public void setValues(PreparedStatement ps, int i) throws SQLException {
-                        InvestorTradeDetailUpdateCommand item = items.get(i);
-                        ps.setLong(1, item.stockId());
-                        ps.setDate(2, DateUtil.toSqlDate(item.baseDate()));
-                    }
-
-                    @Override
-                    public int getBatchSize() {
-                        return items.size();
-                    }
-                }
-        );
-
-        String investorTradeInsertSql = String.format(
-                """
+    private String upsertSql() {
+        return """
                 INSERT INTO stock_investor_trade (
-                    base_date, stock_id,
-                    inst_buying_amt, frgn_buying_amt, pension_buying_amt, trust_buying_amt, etc_corp_buying_amt, total_net_amt,
-                    inst_buying_qty, frgn_buying_qty, pension_buying_qty, trust_buying_qty, etc_corp_buying_qty, total_net_qty,
+                    stock_id, base_date, name, ticker,
+                    frgn_ntby_qty, orgn_ntby_qty, ivtr_ntby_qty, bank_ntby_qty, insu_ntby_qty, mrbn_ntby_qty, fund_ntby_qty, etc_orgt_ntby_vol, etc_corp_ntby_vol,
+                    frgn_ntby_tr_pbmn, orgn_ntby_tr_pbmn, ivtr_ntby_tr_pbmn, bank_ntby_tr_pbmn, insu_ntby_tr_pbmn, mrbn_ntby_tr_pbmn, fund_ntby_tr_pbmn, etc_orgt_ntby_tr_pbmn, etc_corp_ntby_tr_pbmn,
                     created_at
                 ) VALUES (
-                    %s, %s,
-                    %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s,
+                    CAST(? AS bigint), CAST(? AS date), CAST(? AS varchar), CAST(? AS varchar),
+                    CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint), CAST(? AS bigint),
+                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric),
                     CURRENT_TIMESTAMP
                 )
-                """,
-                QueryTypeUtil.DATE, QueryTypeUtil.BIGINT,
-                QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC, QueryTypeUtil.NUMERIC,
-                QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT, QueryTypeUtil.BIGINT
-        );
-
-        jdbcTemplate.batchUpdate(investorTradeInsertSql, new BatchPreparedStatementSetter() {
-            @Override
-            public void setValues(PreparedStatement ps, int i) throws SQLException {
-                InvestorTradeDetailUpdateCommand item = items.get(i);
-                var sd = item.supplyDemand();
-                int idx = 1;
-                ps.setDate(idx++, DateUtil.toSqlDate(item.baseDate()));
-                ps.setLong(idx++, item.stockId());
-                ps.setBigDecimal(idx++, sd.getInstitutionAmt());
-                ps.setBigDecimal(idx++, sd.getForeignAmt());
-                ps.setBigDecimal(idx++, sd.getPensionFundAmt());
-                ps.setBigDecimal(idx++, sd.getTrustAmt());
-                ps.setBigDecimal(idx++, sd.getEtcCorpAmt());
-                ps.setBigDecimal(idx++, sd.getTotalNetAmt());
-                ps.setLong(idx++, sd.getInstitutionQty());
-                ps.setLong(idx++, sd.getForeignQty());
-                ps.setLong(idx++, sd.getPensionFundQty());
-                ps.setLong(idx++, sd.getTrustQty());
-                ps.setLong(idx++, sd.getEtcCorpQty());
-                ps.setLong(idx++, sd.getTotalNetQty());
-            }
-
-            @Override
-            public int getBatchSize() {
-                return items.size();
-            }
-        });
+                ON CONFLICT (stock_id, base_date) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    ticker = EXCLUDED.ticker,
+                    frgn_ntby_qty = EXCLUDED.frgn_ntby_qty,
+                    orgn_ntby_qty = EXCLUDED.orgn_ntby_qty,
+                    ivtr_ntby_qty = EXCLUDED.ivtr_ntby_qty,
+                    bank_ntby_qty = EXCLUDED.bank_ntby_qty,
+                    insu_ntby_qty = EXCLUDED.insu_ntby_qty,
+                    mrbn_ntby_qty = EXCLUDED.mrbn_ntby_qty,
+                    fund_ntby_qty = EXCLUDED.fund_ntby_qty,
+                    etc_orgt_ntby_vol = EXCLUDED.etc_orgt_ntby_vol,
+                    etc_corp_ntby_vol = EXCLUDED.etc_corp_ntby_vol,
+                    frgn_ntby_tr_pbmn = EXCLUDED.frgn_ntby_tr_pbmn,
+                    orgn_ntby_tr_pbmn = EXCLUDED.orgn_ntby_tr_pbmn,
+                    ivtr_ntby_tr_pbmn = EXCLUDED.ivtr_ntby_tr_pbmn,
+                    bank_ntby_tr_pbmn = EXCLUDED.bank_ntby_tr_pbmn,
+                    insu_ntby_tr_pbmn = EXCLUDED.insu_ntby_tr_pbmn,
+                    mrbn_ntby_tr_pbmn = EXCLUDED.mrbn_ntby_tr_pbmn,
+                    fund_ntby_tr_pbmn = EXCLUDED.fund_ntby_tr_pbmn,
+                    etc_orgt_ntby_tr_pbmn = EXCLUDED.etc_orgt_ntby_tr_pbmn,
+                    etc_corp_ntby_tr_pbmn = EXCLUDED.etc_corp_ntby_tr_pbmn
+                """;
     }
 }

@@ -1,17 +1,14 @@
 package org.stockwellness.batch.job.stockprice.sync.config;
 
-import io.github.resilience4j.ratelimiter.RateLimiter;
-import io.github.resilience4j.ratelimiter.RateLimiterConfig;
-import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.job.flow.Flow;
-import org.springframework.batch.core.job.builder.FlowBuilder;
 import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.job.builder.FlowBuilder;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.flow.Flow;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
@@ -33,21 +30,21 @@ import org.stockwellness.batch.job.stockprice.sync.step.reader.StockListReader;
 import org.stockwellness.batch.job.stockprice.sync.step.writer.StockPriceListWriter;
 import org.stockwellness.batch.job.stockprice.sync.support.StockPriceBatchTargetQuery;
 import org.stockwellness.batch.support.BatchMdcListener;
-import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
-import org.stockwellness.batch.support.logging.CommonBatchProgressLoggingListener;
-import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.batch.support.lifecycle.BatchLifecycleKafkaListener;
 import org.stockwellness.batch.support.listener.BatchFailureItemListener;
 import org.stockwellness.batch.support.listener.BatchResultCaptureListener;
 import org.stockwellness.batch.support.listener.JobFailureNotificationListener;
+import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
+import org.stockwellness.batch.support.logging.CommonBatchProgressLoggingListener;
+import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
 
 import javax.sql.DataSource;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Configuration
@@ -71,12 +68,10 @@ public class StockPriceBatchConfig {
 
     @Bean
     public Job stockPriceBatchJob(
-            Step stockPriceStep,
-            Step stockInvestorTradeDetailStep
+            Step stockPriceStep
     ) {
         Flow stockPriceFlow = new FlowBuilder<Flow>("stockPriceFlow")
                 .start(stockPriceStep)
-                .next(stockInvestorTradeDetailStep)
                 .build();
 
         return new JobBuilder("stockPriceBatchJob", jobRepository)
@@ -124,7 +119,7 @@ public class StockPriceBatchConfig {
                         .toList(),
                 list -> list.stream()
                         .map(StockPrice::getStock)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .map(Stock::getTicker)
                         .reduce((first, second) -> second)
                         .orElse(null)
@@ -165,17 +160,15 @@ public class StockPriceBatchConfig {
         String sql = """
                 INSERT INTO stock_price (
                     base_date, stock_id, open_price, high_price, low_price, close_price, adj_close_price, prev_close_price, volume, transaction_amt,
-                    inst_buying_amt, frgn_buying_amt,
                     ma5, ma20, ma60, ma120, rsi14, macd, macd_signal,
                     bollinger_upper, bollinger_mid, bollinger_lower, adx, plus_di, minus_di,
                     alignment_status, is_golden_cross, is_dead_cross, is_macd_cross,
                     created_at
                 ) VALUES (
-                    CAST(? AS date), CAST(? AS bigint), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS bigint), CAST(? AS numeric), 
-                    CAST(? AS numeric), CAST(? AS numeric),
-                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
-                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), 
-                    CAST(? AS varchar), CAST(? AS boolean), CAST(? AS boolean), CAST(? AS boolean), 
+                    CAST(? AS date), CAST(? AS bigint), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS bigint), CAST(? AS numeric),
+                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric),
+                    CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric), CAST(? AS numeric),
+                    CAST(? AS varchar), CAST(? AS boolean), CAST(? AS boolean), CAST(? AS boolean),
                     CURRENT_TIMESTAMP
                 )
                 """;
@@ -195,10 +188,9 @@ public class StockPriceBatchConfig {
                     ps.setBigDecimal(idx++, item.getPreviousClosePrice());
                     ps.setLong(idx++, item.getVolume());
                     ps.setBigDecimal(idx++, item.getTransactionAmt());
-                    ps.setBigDecimal(idx++, item.getNetInstitutionalBuyingAmt());
-                    ps.setBigDecimal(idx++, item.getNetForeignBuyingAmt());
 
                     var indicators = item.getIndicators();
+
                     if (indicators != null) {
                         ps.setBigDecimal(idx++, indicators.getMa5());
                         ps.setBigDecimal(idx++, indicators.getMa20());

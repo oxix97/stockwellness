@@ -235,11 +235,9 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         } else if (command.jobType() == BatchJobType.BENCHMARK_PRICE_SYNC) {
             addStringIfPresent(builder, "startDate", normalizeDate(command.startDate()));
             addStringIfPresent(builder, "endDate", normalizeDate(command.endDate()));
-        } else if (command.jobType() == BatchJobType.STOCK_FOREIGN_INSTITUTION) {
-            addStringIfPresent(builder, "baseDate", normalizeDate(command.startDate()));
         }
 
-        if (command.targetTicker() != null) {
+        if (command.targetTicker() != null && command.jobType() != BatchJobType.STOCK_FOREIGN_INSTITUTION) {
             builder.addString("targetTicker", command.targetTicker());
         }
         if (command.jobType() == BatchJobType.STOCK_PRICE_SYNC) {
@@ -269,8 +267,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         if (command.targetTicker() == null || command.targetTicker().isBlank()) {
             return;
         }
-        if ((command.jobType() == BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC
-                || command.jobType() == BatchJobType.STOCK_FOREIGN_INSTITUTION)
+        if (command.jobType() == BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC
                 && !stockPort.existsByTicker(command.targetTicker())) {
             throw new IllegalArgumentException("존재하지 않는 종목입니다: " + command.targetTicker());
         }
