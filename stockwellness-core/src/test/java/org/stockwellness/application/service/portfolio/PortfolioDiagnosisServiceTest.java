@@ -61,7 +61,7 @@ class PortfolioDiagnosisServiceTest {
         given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.of(portfolio));
         
         DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of(), null, Map.of());
-        given(dataLoader.load(portfolioId)).willReturn(diagnosisContext);
+        given(dataLoader.load(portfolio)).willReturn(diagnosisContext);
         given(correlationCalculator.calculateMatrix(any())).willReturn(Map.of());
 
         Map<String, Integer> categories = new HashMap<>();
@@ -84,6 +84,33 @@ class PortfolioDiagnosisServiceTest {
         assertThat(result.overallScore()).isEqualTo(77);
         assertThat(result.categories().get(DiagnosisCategory.STABILITY.getKey())).isEqualTo(80);
         assertThat(result.summary()).isEqualTo("Summary");
+    }
+
+    @Test
+    @DisplayName("AI 인사이트 생성이 실패해도 fallback 진단 결과를 반환한다")
+    void diagnose_returnsFallback_whenAiInsightFails() {
+        Long portfolioId = 1L;
+        Long memberId = 1L;
+        Portfolio portfolio = Portfolio.create(memberId, "My Portfolio", "Description");
+
+        given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.of(portfolio));
+
+        DiagnosisContext diagnosisContext = new DiagnosisContext(portfolio, Map.of(), Map.of(), null, Map.of());
+        given(dataLoader.load(portfolio)).willReturn(diagnosisContext);
+        given(correlationCalculator.calculateMatrix(any())).willReturn(Map.of());
+
+        Map<String, Integer> categories = new HashMap<>();
+        categories.put(DiagnosisCategory.STABILITY.getKey(), 80);
+        CalculatedHealth calculatedHealth = new CalculatedHealth(77, categories, List.of());
+        given(healthCalculator.calculate(any(DiagnosisContext.class))).willReturn(calculatedHealth);
+        given(loadPortfolioAiPort.generatePortfolioInsight(any(PortfolioAiContext.class)))
+                .willThrow(new IllegalStateException("AI down"));
+
+        PortfolioHealthResult result = portfolioDiagnosisService.diagnosePortfolio(memberId, portfolioId);
+
+        assertThat(result.overallScore()).isEqualTo(77);
+        assertThat(result.summary()).isEqualTo("진단 일시 장애");
+        assertThat(result.insight()).contains("AI 인사이트를 생성하는 중 오류");
     }
 
     @Test

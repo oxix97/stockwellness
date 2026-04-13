@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,5 +63,25 @@ class AiAdvisorServiceTest {
         assertThat(response.content()).isEqualTo("조언 내용");
         assertThat(response.action()).isEqualTo(AdviceAction.REBALANCE);
         assertThat(response.createdAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("AI 제공자 호출이 실패해도 fallback 조언을 반환한다")
+    void getNewAdvice_returnsFallback_whenAiProviderFails() {
+        Long memberId = 1L;
+        Long portfolioId = 100L;
+        Portfolio portfolio = Portfolio.create(memberId, "테스트 포트폴리오", "");
+
+        given(portfolioPort.loadPortfolio(portfolioId, memberId)).willReturn(Optional.of(portfolio));
+
+        AdvisorAiContext context = new AdvisorAiContext(portfolio.getName(), List.of(), List.of());
+        given(dataLoader.loadContext(portfolioId)).willReturn(context);
+        given(aiAdviceProviderPort.getRebalancingAdvice(context)).willThrow(new IllegalStateException("AI down"));
+
+        AdviceResponse response = aiAdvisorService.getNewAdvice(memberId, portfolioId);
+
+        assertThat(response.content()).contains("리밸런싱 조언을 생성하지 못했습니다");
+        assertThat(response.action()).isEqualTo(AdviceAction.REBALANCE);
+        verify(aiAdviceProviderPort).getRebalancingAdvice(context);
     }
 }

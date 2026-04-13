@@ -1,11 +1,13 @@
 package org.stockwellness.application.service.portfolio;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
+import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.LoadAdvisorPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.service.portfolio.internal.AdvisorAiDataLoader;
@@ -24,6 +26,7 @@ import java.time.LocalDateTime;
  * 백테스트 결과를 분석하여 사용자에게 이해하기 쉬운 리포트를 제공하는 로직을 포함합니다.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AiAdvisorService implements AiAdvisorUseCase {
@@ -49,7 +52,7 @@ public class AiAdvisorService implements AiAdvisorUseCase {
         // 진단에 필요한 데이터 로드 (종목 정보, 시세, 지표 등)
         var context = dataLoader.loadContext(portfolioId);
         // AI 제공자 포트를 통해 조언 생성 요청
-        var aiResult = aiAdviceProviderPort.getRebalancingAdvice(context);
+        var aiResult = getAdviceSafely(context, portfolioId);
 
         return new AdviceResponse(
                 aiResult.adviceContent(),
@@ -163,5 +166,14 @@ public class AiAdvisorService implements AiAdvisorUseCase {
                     }
                     return new PortfolioNotFoundException();
                 });
+    }
+
+    private AiAdviceProviderPort.AdvisorAiResult getAdviceSafely(AdvisorAiContext context, Long portfolioId) {
+        try {
+            return aiAdviceProviderPort.getRebalancingAdvice(context);
+        } catch (Exception e) {
+            log.error("AI 리밸런싱 조언 생성 실패. fallback 응답으로 대체합니다. portfolioId={}", portfolioId, e);
+            return AiAdviceProviderPort.AdvisorAiResult.fallback();
+        }
     }
 }

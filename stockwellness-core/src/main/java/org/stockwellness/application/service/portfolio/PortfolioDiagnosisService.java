@@ -1,6 +1,7 @@
 package org.stockwellness.application.service.portfolio;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.stockwellness.application.port.in.portfolio.DiagnosePortfolioUseCase;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
@@ -24,6 +25,7 @@ import java.util.Map;
  * 포트폴리오의 건강 상태를 다각도로 분석하고, AI 인사이트를 포함한 종합 진단 결과를 생성합니다.
  */
 @Service
+@Slf4j
 @LogExecution
 @RequiredArgsConstructor
 public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
@@ -45,7 +47,7 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
     @Override
     public PortfolioHealthResult diagnosePortfolio(Long memberId, Long portfolioId) {
         // 1. 권한 확인 (사용자가 해당 포트폴리오의 소유자인지 체크)
-        portfolioPort.loadPortfolio(portfolioId, memberId)
+        var portfolio = portfolioPort.loadPortfolio(portfolioId, memberId)
                 .orElseThrow(() -> {
                     if (portfolioPort.findById(portfolioId).isPresent()) {
                         throw new PortfolioAccessDeniedException();
@@ -54,7 +56,7 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
                 });
 
         // 2. 진단에 필요한 데이터 로딩 (포트폴리오 구성, 종목 정보, 과거 시세 등)
-        DiagnosisContext context = dataLoader.load(portfolioId);
+        DiagnosisContext context = dataLoader.load(portfolio);
 
         // 3. 종목 간 상관관계 행렬 산출 (분산 효과 분석용)
         Map<String, List<BigDecimal>> returnsMap = new HashMap<>();
@@ -76,7 +78,7 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
 
         // 5. AI 인사이트 생성 (계산된 점수와 지표를 바탕으로 AI 어드바이저 호출)
         PortfolioAiContext aiContext = new PortfolioAiContext(health.overallScore(), health.categories());
-        PortfolioAiResult aiResult = loadPortfolioAiPort.generatePortfolioInsight(aiContext);
+        PortfolioAiResult aiResult = generateInsightSafely(aiContext, portfolioId);
 
         // 6. 결과 조합 및 최종 리포트 반환
         BacktestResult backtest = updatedContext.backtestResult();
@@ -92,5 +94,14 @@ public class PortfolioDiagnosisService implements DiagnosePortfolioUseCase {
                 aiResult.insight(),
                 aiResult.nextSteps()
         );
+    }
+
+    private PortfolioAiResult generateInsightSafely(PortfolioAiContext aiContext, Long portfolioId) {
+        try {
+            return loadPortfolioAiPort.generatePortfolioInsight(aiContext);
+        } catch (Exception e) {
+            log.error("포트폴리오 진단 AI 인사이트 생성 실패. fallback 응답으로 대체합니다. portfolioId={}", portfolioId, e);
+            return PortfolioAiResult.fallback();
+        }
     }
 }
