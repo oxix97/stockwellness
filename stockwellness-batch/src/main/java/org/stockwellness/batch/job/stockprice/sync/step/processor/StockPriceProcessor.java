@@ -16,7 +16,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<StockPrice>> {
 
+    public enum Mode {
+        FETCH, INDICATOR
+    }
+
     private final StockPriceSyncUseCase stockPriceSyncUseCase;
+    private final Mode mode;
 
     @Value("#{jobParameters['startDate']}")
     private String startDateStr;
@@ -26,9 +31,14 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
 
     @Override
     public List<StockPrice> process(List<Stock> stocks) {
-        List<StockPrice> result = stockPriceSyncUseCase.sync(
-                new StockPriceSyncUseCase.StockPriceBatchCommand(stocks, startDateStr, endDateStr)
-        ).stockPrices();
-        return result.isEmpty() ? null : result;
+        if (mode == Mode.FETCH) {
+            return stockPriceSyncUseCase.fetch(
+                    new StockPriceSyncUseCase.StockPriceBatchCommand(stocks, startDateStr, endDateStr)
+            ).stockPrices();
+        } else {
+            return stockPriceSyncUseCase.calculateIndicators(
+                    new StockPriceSyncUseCase.StockPriceBatchCommand(stocks, startDateStr, endDateStr)
+            ).stockPrices();
+        }
     }
 }

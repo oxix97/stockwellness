@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
 import org.stockwellness.application.port.out.stock.MarketIndexPort;
-import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;

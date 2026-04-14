@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -76,13 +77,22 @@ class Samsung2023PriceSyncTest {
         }
 
         when(stockPricePort.findLatestBaseDatesByStocks(any())).thenReturn(Collections.emptyMap());
-        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Collections.emptyMap());
         when(stockPricePort.fetchDailyPrices(eq(samsung), any(), any())).thenReturn(apiResults);
         when(stockPricePort.fetchInvestorTradingSnapshots(eq(samsung), any(), any())).thenReturn(List.<InvestorTradingSnapshot>of());
 
-        List<StockPrice> result = stockPriceBatchService.sync(
+        List<StockPrice> mockDbPrices = apiResults.stream()
+                .map(snapshot -> StockPrice.of(
+                        samsung, snapshot.baseDate(),
+                        snapshot.openPrice(), snapshot.highPrice(), snapshot.lowPrice(), snapshot.closePrice(),
+                        snapshot.closePrice(), BigDecimal.ZERO,
+                        snapshot.volume(), snapshot.transactionAmt(),
+                        TechnicalIndicators.empty()
+                )).toList();
+        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Map.of(samsung.getId(), mockDbPrices));
+
+        List<StockPrice> result = new ArrayList<>(stockPriceBatchService.sync(
                 new StockPriceSyncUseCase.StockPriceBatchCommand(List.of(samsung), "20230101", "20231231")
-        ).stockPrices();
+        ).stockPrices());
 
         assertThat(result).isNotEmpty();
         result.sort(Comparator.comparing(p -> p.getId().getBaseDate()));

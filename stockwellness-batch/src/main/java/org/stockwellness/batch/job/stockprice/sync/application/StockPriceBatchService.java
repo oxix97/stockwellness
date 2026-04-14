@@ -13,7 +13,6 @@ import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
-import org.stockwellness.domain.stock.price.InvestorSupplyDemand;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.util.DateUtil;
@@ -40,6 +39,16 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
     @Override
     public StockPriceSyncResult sync(StockPriceBatchCommand command) {
+        // 기존 하위 호환성을 위해 유지 (필요 시 제거 가능)
+        StockPriceSyncResult fetchResult = fetch(command);
+        return calculateIndicators(new StockPriceBatchCommand(command.stocks(), command.startDate(), command.endDate()));
+    }
+
+    /**
+     * [Step 2-1] 시세 수집: 지표 계산 없이 원시 데이터만 수집하여 반환
+     */
+    @Override
+    public StockPriceSyncResult fetch(StockPriceBatchCommand command) {
         List<Stock> stocks = command.stocks();
         if (stocks == null || stocks.isEmpty()) {
             return new StockPriceSyncResult(List.of());
@@ -53,12 +62,6 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
         boolean isExplicitRange = effectiveStartDate != null;
         Map<Long, LocalDate> latestDatesMap = stockPricePort.findLatestBaseDatesByStocks(stocks);
-        LocalDate lookbackBaseDate = isExplicitRange ? effectiveStartDate : endDate;
-        Map<Long, List<StockPrice>> historicalEntitiesMap = stockPricePort.findRecentPricesWithDateByStocks(
-                stocks,
-                lookbackBaseDate,
-                INDICATOR_BUFFER_DAYS
-        );
 
         List<Stock> todaySyncStocks = new ArrayList<>();
         List<Stock> gapSyncStocks = new ArrayList<>();
@@ -75,20 +78,115 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
         List<StockPrice> resultEntities = new ArrayList<>();
         if (!todaySyncStocks.isEmpty()) {
-            resultEntities.addAll(processMultiStockPrices(todaySyncStocks, endDate, historicalEntitiesMap));
+            resultEntities.addAll(fetchMultiStockPricesOnly(todaySyncStocks, endDate));
         }
 
         for (Stock stock : gapSyncStocks) {
-            resultEntities.addAll(processIndividualGap(
+            resultEntities.addAll(fetchIndividualGapOnly(
                     stock,
                     latestDatesMap.get(stock.getId()),
                     effectiveStartDate,
-                    endDate,
-                    historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList())
+                    endDate
             ));
         }
 
         return new StockPriceSyncResult(resultEntities);
+    }
+
+    /**
+     * [Step 2-2] 지표 계산: 수집된 데이터를 바탕으로 벌크 조회 후 지표 계산
+     */
+    @Override
+    public StockPriceSyncResult calculateIndicators(StockPriceBatchCommand command) {
+        List<Stock> stocks = command.stocks();
+        if (stocks == null || stocks.isEmpty()) {
+            return new StockPriceSyncResult(List.of());
+        }
+
+        LocalDate endDate = StringUtils.hasText(command.endDate()) ? DateUtil.parse(command.endDate()) : DateUtil.today();
+        LocalDate paramStartDate = StringUtils.hasText(command.startDate()) ? DateUtil.parse(command.startDate()) : null;
+        LocalDate effectiveStartDate = (paramStartDate != null && paramStartDate.isBefore(EARLIEST_BASE_DATE))
+                ? EARLIEST_BASE_DATE
+                : paramStartDate;
+
+        // 벌크 조회: 300종목의 120일치 데이터를 단 한 번의 쿼리로 로드
+        LocalDate lookbackBaseDate = effectiveStartDate != null ? effectiveStartDate : endDate;
+        Map<Long, List<StockPrice>> historicalEntitiesMap = stockPricePort.findRecentPricesWithDateByStocks(
+                stocks,
+                lookbackBaseDate,
+                INDICATOR_BUFFER_DAYS + 10 // 수집된 오늘 데이터까지 포함하기 위해 여유분 추가
+        );
+
+        List<StockPrice> updatedEntities = new ArrayList<>();
+        for (Stock stock : stocks) {
+            List<StockPrice> allPrices = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
+            if (allPrices.isEmpty()) continue;
+
+            // 날짜순 정렬 보장
+            allPrices.sort(Comparator.comparing(p -> p.getId().getBaseDate()));
+
+            List<LocalDate> dates = allPrices.stream().map(p -> p.getId().getBaseDate()).toList();
+            List<BigDecimal> highPrices = allPrices.stream().map(p -> p.getHighPrice() != null ? p.getHighPrice() : p.getClosePrice()).toList();
+            List<BigDecimal> lowPrices = allPrices.stream().map(p -> p.getLowPrice() != null ? p.getLowPrice() : p.getClosePrice()).toList();
+            List<BigDecimal> closePrices = allPrices.stream().map(p -> p.getClosePrice() != null ? p.getClosePrice() : BigDecimal.ZERO).toList();
+
+            List<TechnicalIndicators> indicatorsList = TechnicalIndicatorCalculator.calculateSeries(highPrices, lowPrices, closePrices, dates);
+
+            for (int i = 0; i < allPrices.size(); i++) {
+                StockPrice price = allPrices.get(i);
+                // 오늘 또는 수집 범위 내의 데이터만 지표 업데이트 (과거 데이터는 이미 계산되어 있을 것이므로 성능상 선택적 업데이트)
+                if (price.getId().getBaseDate().isEqual(endDate) || (effectiveStartDate != null && !price.getId().getBaseDate().isBefore(effectiveStartDate))) {
+                    BigDecimal prevClose = (i > 0) ? allPrices.get(i - 1).getClosePrice() : BigDecimal.ZERO;
+                    price.updateIndicators(indicatorsList.get(i), prevClose);
+                    updatedEntities.add(price);
+                }
+            }
+        }
+
+        return new StockPriceSyncResult(updatedEntities);
+    }
+
+    private List<StockPrice> fetchMultiStockPricesOnly(List<Stock> stocks, LocalDate today) {
+        if (today.isBefore(EARLIEST_BASE_DATE)) return List.of();
+
+        List<KisMultiStockPriceDetail> apiResults = executeKisCall(
+                KisCallContext.of("multi-stock-prices", stocks.stream().map(Stock::getTicker).toList(), null, today),
+                () -> stockPricePort.fetchMultiStockPrices(stocks.stream().map(Stock::getTicker).toList())
+        );
+        Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
+                .collect(Collectors.toMap(KisMultiStockPriceDetail::ticker, v -> v));
+
+        List<StockPrice> entities = new ArrayList<>();
+        for (Stock stock : stocks) {
+            KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
+            if (todayPrice == null || todayPrice.closePrice() == null || todayPrice.closePrice().compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            entities.add(StockPrice.of(
+                    stock, today,
+                    todayPrice.openPrice(), todayPrice.highPrice(), todayPrice.lowPrice(), todayPrice.closePrice(),
+                    todayPrice.closePrice(), BigDecimal.ZERO, // prevClose는 Indicator 단계에서 보정
+                    todayPrice.accumulatedVolume(), todayPrice.accumulatedTradingValue(),
+                    TechnicalIndicators.empty()
+            ));
+        }
+        return entities;
+    }
+
+    private List<StockPrice> fetchIndividualGapOnly(Stock stock, LocalDate latestBaseDate, LocalDate effectiveStartDate, LocalDate endDate) {
+        LocalDate storeStartDate = (effectiveStartDate != null) ? effectiveStartDate : (latestBaseDate != null ? latestBaseDate.plusDays(1) : EARLIEST_BASE_DATE);
+        if (storeStartDate.isAfter(endDate)) return List.of();
+
+        List<DailyStockPriceSnapshot> apiResults = fetchPricesFromPort(stock, storeStartDate, endDate);
+        if (apiResults.isEmpty()) return List.of();
+
+        return apiResults.stream()
+                .map(snapshot -> StockPrice.of(
+                        stock, snapshot.baseDate(),
+                        snapshot.openPrice(), snapshot.highPrice(), snapshot.lowPrice(), snapshot.closePrice(),
+                        snapshot.closePrice(), BigDecimal.ZERO,
+                        snapshot.volume(), snapshot.transactionAmt(),
+                        TechnicalIndicators.empty()
+                )).toList();
     }
 
     @Override
@@ -98,9 +196,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                 LocalDate.now(),
                 Integer.MAX_VALUE
         ).getOrDefault(command.stock().getId(), List.of());
-        if (allPrices.isEmpty()) {
-            return new StockPriceRepairResult(List.of());
-        }
+        if (allPrices.isEmpty()) return new StockPriceRepairResult(List.of());
 
         LocalDate reqStart = DateUtil.parse(command.startDate());
         LocalDate reqEnd = DateUtil.parse(command.endDate());
@@ -111,210 +207,30 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
             LocalDate currentBaseDate = current.getId().getBaseDate();
             if (previousClose != null) {
                 boolean inRange = DateUtil.isBetween(currentBaseDate, reqStart, reqEnd);
-                boolean needsRepair = current.getPreviousClosePrice() == null
-                        || current.getPreviousClosePrice().compareTo(BigDecimal.ZERO) == 0;
+                boolean needsRepair = current.getPreviousClosePrice() == null || current.getPreviousClosePrice().compareTo(BigDecimal.ZERO) == 0;
                 if (inRange && needsRepair) {
-                    toUpdate.add(new StockPriceRepairRow(
-                            command.stock().getId(),
-                            currentBaseDate,
-                            previousClose
-                    ));
+                    toUpdate.add(new StockPriceRepairRow(command.stock().getId(), currentBaseDate, previousClose));
                 }
             }
             previousClose = current.getClosePrice();
         }
-
         return new StockPriceRepairResult(toUpdate);
     }
 
-    private List<StockPrice> processMultiStockPrices(
-            List<Stock> stocks,
-            LocalDate today,
-            Map<Long, List<StockPrice>> historicalEntitiesMap
-    ) {
-        if (today.isBefore(EARLIEST_BASE_DATE)) {
-            return List.of();
-        }
-
-        List<KisMultiStockPriceDetail> apiResults = executeKisCall(
-                KisCallContext.of("multi-stock-prices", stocks.stream().map(Stock::getTicker).toList(), null, today),
-                () ->
-                stockPricePort.fetchMultiStockPrices(stocks.stream().map(Stock::getTicker).toList())
-        );
-        Map<String, KisMultiStockPriceDetail> apiResultMap = apiResults.stream()
-                .collect(Collectors.toMap(KisMultiStockPriceDetail::ticker, value -> value));
-
-        List<StockPrice> entities = new ArrayList<>();
-        for (Stock stock : stocks) {
-            KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
-            if (todayPrice == null || todayPrice.closePrice() == null || todayPrice.closePrice().compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
-
-            List<StockPrice> pastEntities = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
-            BigDecimal prevClose = resolvePreviousClose(pastEntities, today);
-
-            List<BigDecimal> highPrices = new ArrayList<>(pastEntities.stream()
-                    .map(price -> price.getHighPrice() != null ? price.getHighPrice() : price.getClosePrice())
-                    .toList());
-            List<BigDecimal> lowPrices = new ArrayList<>(pastEntities.stream()
-                    .map(price -> price.getLowPrice() != null ? price.getLowPrice() : price.getClosePrice())
-                    .toList());
-            List<BigDecimal> closePrices = new ArrayList<>(pastEntities.stream()
-                    .map(price -> price.getClosePrice() != null ? price.getClosePrice() : BigDecimal.ZERO)
-                    .toList());
-            List<LocalDate> dates = new ArrayList<>(pastEntities.stream().map(price -> price.getId().getBaseDate()).toList());
-
-            highPrices.add(todayPrice.highPrice());
-            lowPrices.add(todayPrice.lowPrice());
-            closePrices.add(todayPrice.closePrice());
-            dates.add(today);
-
-            TechnicalIndicators indicators = TechnicalIndicatorCalculator.calculateSeries(highPrices, lowPrices, closePrices, dates)
-                    .stream()
-                    .reduce((first, second) -> second)
-                    .orElse(TechnicalIndicators.empty());
-
-            entities.add(StockPrice.of(
-                    stock,
-                    today,
-                    todayPrice.openPrice(),
-                    todayPrice.highPrice(),
-                    todayPrice.lowPrice(),
-                    todayPrice.closePrice(),
-                    todayPrice.closePrice(),
-                    prevClose,
-                    todayPrice.accumulatedVolume(),
-                    todayPrice.accumulatedTradingValue(),
-                    indicators
-            ));
-        }
-
-        return entities;
-    }
-
-    private BigDecimal resolvePreviousClose(List<StockPrice> pastEntities, LocalDate targetDate) {
-        return pastEntities.stream()
-                .filter(price -> price.getId().getBaseDate().isBefore(targetDate))
-                .map(StockPrice::getClosePrice)
-                .reduce((first, second) -> second)
-                .orElse(BigDecimal.ZERO);
-    }
-
-    private List<StockPrice> processIndividualGap(
-            Stock stock,
-            LocalDate latestBaseDate,
-            LocalDate effectiveStartDate,
-            LocalDate endDate,
-            List<StockPrice> historicalEntities
-    ) {
-        LocalDate storeStartDate = (effectiveStartDate != null)
-                ? effectiveStartDate
-                : (latestBaseDate != null ? latestBaseDate.plusDays(1) : EARLIEST_BASE_DATE);
-        if (storeStartDate.isAfter(endDate)) {
-            return List.of();
-        }
-
-        LocalDate fetchStartDate = storeStartDate.minusDays(200);
-        List<DailyStockPriceSnapshot> apiResults = fetchPricesFromPort(stock, fetchStartDate, endDate);
-        if (apiResults.isEmpty()) {
-            return List.of();
-        }
-
-        LocalDate investorFetchStart = endDate.minusDays(RECENT_SUPPLY_DEMAND_DAYS);
-        Map<LocalDate, InvestorTradingSnapshot> investorMap = executeKisCall(
-                        KisCallContext.of("investor-trading-snapshots", stock.getTicker(), investorFetchStart, endDate),
-                        () ->
-                        stockPricePort.fetchInvestorTradingSnapshots(stock, investorFetchStart, endDate))
-                .stream()
-                .collect(Collectors.toMap(InvestorTradingSnapshot::baseDate, value -> value, (left, right) -> left));
-
-        Map<LocalDate, OHLCRecord> mergedData = new TreeMap<>();
-        for (StockPrice price : historicalEntities) {
-            mergedData.put(price.getId().getBaseDate(), new OHLCRecord(
-                    price.getOpenPrice(),
-                    price.getHighPrice(),
-                    price.getLowPrice(),
-                    price.getClosePrice(),
-                    price.getVolume(),
-                    price.getTransactionAmt(),
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO
-            ));
-        }
-
-        for (DailyStockPriceSnapshot snapshot : apiResults) {
-            InvestorTradingSnapshot investor = investorMap.get(snapshot.baseDate());
-            mergedData.put(snapshot.baseDate(), new OHLCRecord(
-                    snapshot.openPrice(),
-                    snapshot.highPrice(),
-                    snapshot.lowPrice(),
-                    snapshot.closePrice(),
-                    snapshot.volume(),
-                    snapshot.transactionAmt(),
-                    investor != null ? defaultDecimal(investor.netInstitutionalBuyingAmt()) : BigDecimal.ZERO,
-                    investor != null ? defaultDecimal(investor.netForeignBuyingAmt()) : BigDecimal.ZERO,
-                    investor != null ? defaultDecimal(investor.netPersonBuyingAmt()) : BigDecimal.ZERO
-            ));
-        }
-
-        List<LocalDate> fullDates = new ArrayList<>(mergedData.keySet());
-        List<BigDecimal> fullHighPrices = fullDates.stream().map(date -> mergedData.get(date).high()).toList();
-        List<BigDecimal> fullLowPrices = fullDates.stream().map(date -> mergedData.get(date).low()).toList();
-        List<BigDecimal> fullClosingPrices = fullDates.stream().map(date -> mergedData.get(date).close()).toList();
-        List<TechnicalIndicators> allIndicators = TechnicalIndicatorCalculator.calculateSeries(
-                fullHighPrices,
-                fullLowPrices,
-                fullClosingPrices,
-                fullDates
-        );
-
-        List<StockPrice> entities = new ArrayList<>();
-        for (int i = 0; i < fullDates.size(); i++) {
-            LocalDate date = fullDates.get(i);
-            if (date.isBefore(storeStartDate)) {
-                continue;
-            }
-            BigDecimal prevClose = (i > 0) ? fullClosingPrices.get(i - 1) : BigDecimal.ZERO;
-            OHLCRecord data = mergedData.get(date);
-            
-            entities.add(StockPrice.of(
-                    stock,
-                    date,
-                    data.open(),
-                    data.high(),
-                    data.low(),
-                    data.close(),
-                    data.close(),
-                    prevClose,
-                    data.volume(),
-                    data.transactionAmt(),
-                    allIndicators.get(i)
-            ));
-        }
-        return entities;
-    }
-
     private List<DailyStockPriceSnapshot> fetchPricesFromPort(Stock stock, LocalDate start, LocalDate end) {
-        if (!stock.getTicker().matches("^[0-9]+$")) {
-            return List.of();
-        }
+        if (!stock.getTicker().matches("^[0-9]+$")) return List.of();
 
         List<DailyStockPriceSnapshot> allDetails = new ArrayList<>();
         LocalDate cursorDate = end;
         while (!cursorDate.isBefore(start)) {
             LocalDate chunkStartDate = cursorDate.minusDays(CHUNK_DAYS);
-            if (chunkStartDate.isBefore(start)) {
-                chunkStartDate = start;
-            }
+            if (chunkStartDate.isBefore(start)) chunkStartDate = start;
 
-            final LocalDate finalChunkStartDate = chunkStartDate;
-            final LocalDate finalCursorDate = cursorDate;
+            final LocalDate fStart = chunkStartDate;
+            final LocalDate fEnd = cursorDate;
             List<DailyStockPriceSnapshot> response = executeKisCall(
-                    KisCallContext.of("daily-prices", stock.getTicker(), finalChunkStartDate, finalCursorDate),
-                    () ->
-                    stockPricePort.fetchDailyPrices(stock, finalChunkStartDate, finalCursorDate)
+                    KisCallContext.of("daily-prices", stock.getTicker(), fStart, fEnd),
+                    () -> stockPricePort.fetchDailyPrices(stock, fStart, fEnd)
             );
 
             if (response.isEmpty()) {
@@ -324,15 +240,9 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
             allDetails.addAll(response);
             LocalDate oldestDateInResponse = response.get(response.size() - 1).baseDate();
-            cursorDate = oldestDateInResponse.isBefore(cursorDate)
-                    ? oldestDateInResponse.minusDays(1)
-                    : chunkStartDate.minusDays(1);
+            cursorDate = oldestDateInResponse.isBefore(cursorDate) ? oldestDateInResponse.minusDays(1) : chunkStartDate.minusDays(1);
         }
         return allDetails;
-    }
-
-    private BigDecimal defaultDecimal(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
     }
 
     private <T> T executeKisCall(KisCallContext context, Supplier<T> supplier) {
@@ -351,60 +261,19 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     int detectionCount = kisRateLimitDetectionCount.incrementAndGet();
                     log.warn("[KIS 배치] KIS 호출 제한 감지. {}ms 대기 후 재시도합니다. ({} / {}) operation={}, detectionCount={}, msg1={}",
                             1000, retryCount, maxRetries, context.operation(), detectionCount, exception.msg1());
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw exception;
-                    }
+                    try { Thread.sleep(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw exception; }
                     continue;
-                }
-
-                if (exception.isRetryableBusinessError()) {
-                    log.warn("[KIS 배치] KIS 재시도 대상 업무 오류 감지 operation={}, msgCd={}, msg1={}",
-                            context.operation(), exception.msgCd(), exception.msg1());
-                } else {
-                    log.error("[KIS 배치] KIS 호출 실패 operation={}, rateLimit={}, msgCd={}, msg1={}",
-                            context.operation(), exception.isRateLimitExceeded(), exception.msgCd(), exception.msg1());
                 }
                 throw exception;
             }
         }
     }
 
-    static String buildKisCallLogKey(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) {
-        return "%s|tickers=%s|start=%s|end=%s".formatted(operation, tickers, startDate, endDate);
-    }
+    private record OHLCRecord(BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Long volume, BigDecimal transactionAmt, BigDecimal instBuying, BigDecimal frgnBuying, BigDecimal prsnBuying) {}
 
-    private record OHLCRecord(
-            BigDecimal open,
-            BigDecimal high,
-            BigDecimal low,
-            BigDecimal close,
-            Long volume,
-            BigDecimal transactionAmt,
-            BigDecimal instBuying,
-            BigDecimal frgnBuying,
-            BigDecimal prsnBuying
-    ) {
-    }
-
-    private record KisCallContext(
-            String operation,
-            List<String> tickers,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        private static KisCallContext of(String operation, String ticker, LocalDate startDate, LocalDate endDate) {
-            return new KisCallContext(operation, List.of(ticker), startDate, endDate);
-        }
-
-        private static KisCallContext of(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) {
-            return new KisCallContext(operation, List.copyOf(tickers), startDate, endDate);
-        }
-
-        private int targetCount() {
-            return tickers.size();
-        }
+    private record KisCallContext(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) {
+        private static KisCallContext of(String operation, String ticker, LocalDate startDate, LocalDate endDate) { return new KisCallContext(operation, List.of(ticker), startDate, endDate); }
+        private static KisCallContext of(String operation, List<String> tickers, LocalDate startDate, LocalDate endDate) { return new KisCallContext(operation, List.copyOf(tickers), startDate, endDate); }
+        private int targetCount() { return tickers.size(); }
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.stockwellness.batch.job.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.global.util.DateUtil;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
 
@@ -25,7 +27,7 @@ public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeD
 
         jdbcTemplate.batchUpdate(upsertSql(), new BatchPreparedStatementSetter() {
             @Override
-            public void setValues(java.sql.PreparedStatement ps, int i) throws java.sql.SQLException {
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
                 InvestorTradeDetailUpdateCommand item = items.get(i);
                 int idx = 1;
                 ps.setLong(idx++, item.stockId());

@@ -50,16 +50,5 @@ class StockPriceBatchServiceTest {
                 .hasMessageContaining("EGW00316");
     }
 
-    @Test
-    @DisplayName("KIS 호출 로그 키는 operation, ticker, 기간을 함께 조합한다")
-    void buildKisCallLogKeyIncludesContext() {
-        String logKey = StockPriceBatchService.buildKisCallLogKey(
-                "daily-prices",
-                List.of("005930"),
-                LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 4, 10)
-        );
 
-        assertThat(logKey).isEqualTo("daily-prices|tickers=[005930]|start=2026-01-01|end=2026-04-10");
-    }
 }

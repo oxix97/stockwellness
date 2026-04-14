@@ -20,6 +20,7 @@ import org.stockwellness.global.util.DateUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -187,7 +188,7 @@ public class StockPriceBatchLoggingProvider implements
         if (endDate != null) {
             return endDate;
         }
-        return DateUtil.today().format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+        return DateUtil.today().format(DateTimeFormatter.BASIC_ISO_DATE);
     }
 
     private Long getLong(JobExecution jobExecution, String key) {

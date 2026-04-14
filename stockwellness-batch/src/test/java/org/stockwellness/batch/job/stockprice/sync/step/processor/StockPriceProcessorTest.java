@@ -17,6 +17,7 @@ import org.stockwellness.domain.stock.price.AlignmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +60,6 @@ class StockPriceProcessorTest {
         );
 
         when(stockPricePort.findLatestBaseDatesByStocks(any())).thenReturn(Map.of());
-        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Collections.emptyMap());
         when(stockPricePort.fetchDailyPrices(eq(samsung), any(), any())).thenAnswer(invocation -> {
             LocalDate start = invocation.getArgument(1);
             LocalDate end = invocation.getArgument(2);
@@ -70,9 +70,19 @@ class StockPriceProcessorTest {
         });
         when(stockPricePort.fetchInvestorTradingSnapshots(eq(samsung), any(), any())).thenReturn(List.<InvestorTradingSnapshot>of());
 
-        List<StockPrice> result = stockPriceBatchService.sync(
+        List<StockPrice> mockDbPrices1 = new ArrayList<>(apiResults.stream()
+                .map(snapshot -> StockPrice.of(
+                        samsung, snapshot.baseDate(),
+                        snapshot.openPrice(), snapshot.highPrice(), snapshot.lowPrice(), snapshot.closePrice(),
+                        snapshot.closePrice(), BigDecimal.ZERO,
+                        snapshot.volume(), snapshot.transactionAmt(),
+                        TechnicalIndicators.empty()
+                )).toList());
+        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Map.of(samsung.getId(), mockDbPrices1));
+
+        List<StockPrice> result = new ArrayList<>(stockPriceBatchService.sync(
                 new StockPriceSyncUseCase.StockPriceBatchCommand(List.of(samsung), "20211230", "20220102")
-        ).stockPrices();
+        ).stockPrices());
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting(p -> p.getId().getBaseDate()).doesNotContain(date2021);
@@ -94,7 +104,6 @@ class StockPriceProcessorTest {
         );
 
         when(stockPricePort.findLatestBaseDatesByStocks(any())).thenReturn(Collections.emptyMap());
-        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Collections.emptyMap());
         when(stockPricePort.fetchDailyPrices(eq(samsung), any(), any())).thenAnswer(invocation -> {
             LocalDate start = invocation.getArgument(1);
             LocalDate end = invocation.getArgument(2);
@@ -104,6 +113,16 @@ class StockPriceProcessorTest {
             return List.of();
         });
         when(stockPricePort.fetchInvestorTradingSnapshots(eq(samsung), any(), any())).thenReturn(List.<InvestorTradingSnapshot>of());
+
+        List<StockPrice> mockDbPrices = new ArrayList<>(apiResults.stream()
+                .map(snapshot -> StockPrice.of(
+                        samsung, snapshot.baseDate(),
+                        snapshot.openPrice(), snapshot.highPrice(), snapshot.lowPrice(), snapshot.closePrice(),
+                        snapshot.closePrice(), BigDecimal.ZERO,
+                        snapshot.volume(), snapshot.transactionAmt(),
+                        TechnicalIndicators.empty()
+                )).toList());
+        when(stockPricePort.findRecentPricesWithDateByStocks(any(), any(), anyInt())).thenReturn(Map.of(samsung.getId(), mockDbPrices));
 
         List<StockPrice> result = stockPriceBatchService.sync(
                 new StockPriceSyncUseCase.StockPriceBatchCommand(List.of(samsung), "20240101", "20240103")

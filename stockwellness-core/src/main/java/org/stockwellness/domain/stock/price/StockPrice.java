@@ -76,6 +76,11 @@ public class StockPrice {
         this.indicators = indicators;
     }
 
+    public void updateIndicators(TechnicalIndicators indicators, BigDecimal previousClosePrice) {
+        this.indicators = indicators;
+        this.previousClosePrice = previousClosePrice;
+    }
+
     /**
      * 등락률 계산 (전일 종가 우선, 없으면 시가 대비)
      */

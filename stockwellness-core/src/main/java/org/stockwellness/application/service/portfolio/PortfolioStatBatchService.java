@@ -162,9 +162,5 @@ public class PortfolioStatBatchService {
         return new SimulationData(filteredStockPrices, sharedData.benchmarkPrices());
     }
 
-    @Deprecated
-    @Transactional
-    public void updatePortfolioStats(Portfolio portfolio) {
-        updatePortfolioStatsBatch(List.of(portfolio.getId()));
-    }
+
 }

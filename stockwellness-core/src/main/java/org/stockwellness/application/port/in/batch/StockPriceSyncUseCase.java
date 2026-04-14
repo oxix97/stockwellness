@@ -9,6 +9,10 @@ public interface StockPriceSyncUseCase {
 
     StockPriceSyncResult sync(StockPriceBatchCommand command);
 
+    StockPriceSyncResult fetch(StockPriceBatchCommand command);
+
+    StockPriceSyncResult calculateIndicators(StockPriceBatchCommand command);
+
     record StockPriceBatchCommand(
             List<Stock> stocks,
             String startDate,
