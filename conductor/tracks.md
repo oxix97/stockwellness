@@ -12,3 +12,8 @@
 
 ---
 
+
+---
+
+- [ ] **Track: 포트폴리오 API 정합성 작업 목록**
+*Link: [./tracks/portfolio_api_alignment_20260414/](./tracks/portfolio_api_alignment_20260414/)*
