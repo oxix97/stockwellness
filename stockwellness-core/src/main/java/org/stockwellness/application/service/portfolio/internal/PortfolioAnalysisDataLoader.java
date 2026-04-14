@@ -14,7 +14,6 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.InvestorSupplyDemand;
 import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.math.BigDecimal;
