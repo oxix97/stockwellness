@@ -2,7 +2,7 @@ package org.stockwellness.application.service.stock;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;

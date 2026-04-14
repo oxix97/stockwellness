@@ -1,4 +1,4 @@
-package org.stockwellness.application.port.out.stock;
+package org.stockwellness.adapter.out.external.kis.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

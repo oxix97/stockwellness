@@ -2,7 +2,7 @@ package org.stockwellness.application.service.stock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.LeadingStock;

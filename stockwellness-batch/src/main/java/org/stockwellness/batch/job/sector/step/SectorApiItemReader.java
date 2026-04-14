@@ -7,7 +7,7 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
-import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;

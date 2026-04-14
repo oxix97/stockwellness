@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
-import org.stockwellness.application.port.out.stock.SectorApiDto;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 @Component
 @RequiredArgsConstructor
