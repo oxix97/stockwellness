@@ -7,8 +7,12 @@ import org.mockito.Mockito;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.application.port.in.batch.StockPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.DailyStockPriceSnapshot;
+import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -50,5 +54,38 @@ class StockPriceBatchServiceTest {
                 .hasMessageContaining("EGW00316");
     }
 
+    @Test
+    @DisplayName("시세 수집 시 투자자별 수급 데이터가 함께 수집되어야 한다")
+    void testSupplyDemandSyncDuringFetch() {
+        // given
+        LocalDate today = LocalDate.of(2026, 4, 14);
+        when(stockPricePort.findLatestBaseDatesByStocks(any())).thenReturn(Map.of(samsung.getId(), today.minusDays(1)));
 
+        // Mock OHLCV
+        DailyStockPriceSnapshot ohlcv = new DailyStockPriceSnapshot(
+                today,
+                BigDecimal.valueOf(70000), BigDecimal.valueOf(71000), BigDecimal.valueOf(69000), BigDecimal.valueOf(70500),
+                1000000L, BigDecimal.valueOf(70500000000L)
+        );
+        when(stockPricePort.fetchDailyPrices(eq(samsung), any(), any())).thenReturn(List.of(ohlcv));
+
+        // Mock Investor Data
+        InvestorTradingSnapshot investor = new InvestorTradingSnapshot(
+                today,
+                BigDecimal.valueOf(70500), BigDecimal.valueOf(0.5), 1000000L,
+                10000L, 20000L, -30000L,
+                BigDecimal.valueOf(705000000L), BigDecimal.valueOf(1410000000L), BigDecimal.valueOf(-2115000000L)
+        );
+        when(stockPricePort.fetchInvestorTradingSnapshots(eq(samsung), any(), any())).thenReturn(List.of(investor));
+
+        // when
+        StockPriceSyncUseCase.StockPriceSyncResult result = stockPriceBatchService.fetch(
+                new StockPriceSyncUseCase.StockPriceBatchCommand(List.of(samsung), "20260414", "20260414")
+        );
+
+        // then
+        assertThat(result.stockPrices()).hasSize(1);
+        assertThat(result.investorTrades()).isNotEmpty();
+        assertThat(result.investorTrades().get(0).getFrgnNtbyTrPbmn()).isEqualByComparingTo(investor.netForeignBuyingAmt());
+    }
 }

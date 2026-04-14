@@ -9,6 +9,7 @@ import org.springframework.batch.item.Chunk;
 import org.springframework.stereotype.Component;
 import org.stockwellness.batch.support.BatchLogTemplate;
 import org.stockwellness.adapter.out.kafka.batch.KafkaEventPublisher;
+import org.stockwellness.application.port.in.batch.StockPriceSyncUseCase;
 import org.stockwellness.domain.stock.price.StockPrice;
 
 import java.util.ArrayList;
@@ -19,16 +20,16 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class StockPriceSyncEventListener implements ItemWriteListener<List<StockPrice>>, JobExecutionListener {
+public class StockPriceSyncEventListener implements ItemWriteListener<StockPriceSyncUseCase.StockPriceSyncResult>, JobExecutionListener {
 
     private final KafkaEventPublisher kafkaEventPublisher;
     private final Set<String> updatedSymbols = ConcurrentHashMap.newKeySet();
 
     @Override
-    public void afterWrite(Chunk<? extends List<StockPrice>> items) {
-        for (List<StockPrice> stockPrices : items) {
-            if (stockPrices == null) continue;
-            for (StockPrice stockPrice : stockPrices) {
+    public void afterWrite(Chunk<? extends StockPriceSyncUseCase.StockPriceSyncResult> items) {
+        for (StockPriceSyncUseCase.StockPriceSyncResult result : items) {
+            if (result == null) continue;
+            for (StockPrice stockPrice : result.stockPrices()) {
                 if (stockPrice != null && stockPrice.getStock() != null) {
                     updatedSymbols.add(stockPrice.getStock().getTicker());
                 }

@@ -80,17 +80,17 @@ public class StockPriceBatchComponentConfig {
     }
 
     @Bean
-    public ItemWriter<List<StockPrice>> stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
+    public ItemWriter<StockPriceSyncUseCase.StockPriceSyncResult> stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
         return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
     }
 
     @Bean
-    public BatchFailureItemListener<List<StockPrice>> stockPriceFailureListener() {
-        return new BatchFailureItemListener<>(list ->
-                list.stream()
+    public BatchFailureItemListener<StockPriceSyncUseCase.StockPriceSyncResult> stockPriceFailureListener() {
+        return new BatchFailureItemListener<>(result ->
+                result.stockPrices().stream()
                         .map(item -> item.getId().getStockId().toString())
                         .toList(),
-                list -> list.stream()
+                result -> result.stockPrices().stream()
                         .map(StockPrice::getStock)
                         .filter(Objects::nonNull)
                         .map(Stock::getTicker)

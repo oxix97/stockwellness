@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.batch.item.Chunk;
 import org.stockwellness.adapter.out.kafka.batch.KafkaEventPublisher;
+import org.stockwellness.application.port.in.batch.StockPriceSyncUseCase;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 
@@ -48,8 +49,10 @@ class StockPriceSyncEventListenerTest {
                         stockPrices.add(stockPrice);
                     }
                     
-                    // Chunk<List<StockPrice>> 형태로 afterWrite 호출
-                    listener.afterWrite(new Chunk<>(Collections.singletonList(stockPrices)));
+                    StockPriceSyncUseCase.StockPriceSyncResult result = new StockPriceSyncUseCase.StockPriceSyncResult(stockPrices, List.of());
+                    
+                    // Chunk<StockPriceSyncResult> 형태로 afterWrite 호출
+                    listener.afterWrite(new Chunk<>(Collections.singletonList(result)));
                 } finally {
                     latch.countDown();
                 }

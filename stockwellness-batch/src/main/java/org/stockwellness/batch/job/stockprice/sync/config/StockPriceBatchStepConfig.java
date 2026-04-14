@@ -13,6 +13,7 @@ import org.springframework.dao.RecoverableDataAccessException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
+import org.stockwellness.application.port.in.batch.StockPriceSyncUseCase;
 import org.stockwellness.batch.job.stockprice.sync.listener.StockPriceSyncEventListener;
 import org.stockwellness.batch.job.stockprice.sync.step.processor.StockPriceProcessor;
 import org.stockwellness.batch.job.stockprice.sync.step.reader.StockListReader;
@@ -44,11 +45,11 @@ public class StockPriceBatchStepConfig {
     public Step stockPriceFetchStep(
             StockListReader stockListReader,
             StockPriceProcessor stockPriceFetchProcessor,
-            ItemWriter<List<StockPrice>> stockPriceListWriter,
-            BatchFailureItemListener<List<StockPrice>> stockPriceFailureListener
+            ItemWriter<StockPriceSyncUseCase.StockPriceSyncResult> stockPriceListWriter,
+            BatchFailureItemListener<StockPriceSyncUseCase.StockPriceSyncResult> stockPriceFailureListener
     ) {
         return new StepBuilder("stockPriceFetchStep", jobRepository)
-                .<List<Stock>, List<StockPrice>>chunk(1, transactionManager)
+                .<List<Stock>, StockPriceSyncUseCase.StockPriceSyncResult>chunk(1, transactionManager)
                 .reader(stockListReader)
                 .processor(stockPriceFetchProcessor)
                 .writer(stockPriceListWriter)
@@ -73,10 +74,10 @@ public class StockPriceBatchStepConfig {
     public Step stockPriceIndicatorStep(
             StockListReader stockIndicatorReader,
             StockPriceProcessor stockPriceIndicatorProcessor,
-            ItemWriter<List<StockPrice>> stockPriceListWriter
+            ItemWriter<StockPriceSyncUseCase.StockPriceSyncResult> stockPriceListWriter
     ) {
         return new StepBuilder("stockPriceIndicatorStep", jobRepository)
-                .<List<Stock>, List<StockPrice>>chunk(10, transactionManager)
+                .<List<Stock>, StockPriceSyncUseCase.StockPriceSyncResult>chunk(10, transactionManager)
                 .reader(stockIndicatorReader)
                 .processor(stockPriceIndicatorProcessor)
                 .writer(stockPriceListWriter)

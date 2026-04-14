@@ -14,7 +14,7 @@ import java.util.List;
 @Component
 @StepScope
 @RequiredArgsConstructor
-public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<StockPrice>> {
+public class StockPriceProcessor implements ItemProcessor<List<Stock>, StockPriceSyncUseCase.StockPriceSyncResult> {
 
     public enum Mode {
         FETCH, INDICATOR
@@ -30,15 +30,15 @@ public class StockPriceProcessor implements ItemProcessor<List<Stock>, List<Stoc
     private String endDateStr;
 
     @Override
-    public List<StockPrice> process(List<Stock> stocks) {
+    public StockPriceSyncUseCase.StockPriceSyncResult process(List<Stock> stocks) {
         if (mode == Mode.FETCH) {
             return stockPriceSyncUseCase.fetch(
                     new StockPriceSyncUseCase.StockPriceBatchCommand(stocks, startDateStr, endDateStr)
-            ).stockPrices();
+            );
         } else {
             return stockPriceSyncUseCase.calculateIndicators(
                     new StockPriceSyncUseCase.StockPriceBatchCommand(stocks, startDateStr, endDateStr)
-            ).stockPrices();
+            );
         }
     }
 }

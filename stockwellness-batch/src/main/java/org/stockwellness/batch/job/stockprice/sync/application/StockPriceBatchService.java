@@ -14,6 +14,7 @@ import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.StockInvestorTrade;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.util.DateUtil;
 
@@ -51,7 +52,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
     public StockPriceSyncResult fetch(StockPriceBatchCommand command) {
         List<Stock> stocks = command.stocks();
         if (stocks == null || stocks.isEmpty()) {
-            return new StockPriceSyncResult(List.of());
+            return new StockPriceSyncResult(List.of(), List.of());
         }
 
         LocalDate endDate = StringUtils.hasText(command.endDate()) ? DateUtil.parse(command.endDate()) : DateUtil.today();
@@ -77,20 +78,26 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
         }
 
         List<StockPrice> resultEntities = new ArrayList<>();
+        List<StockInvestorTrade> resultInvestorTrades = new ArrayList<>();
+
         if (!todaySyncStocks.isEmpty()) {
-            resultEntities.addAll(fetchMultiStockPricesOnly(todaySyncStocks, endDate));
+            StockPriceSyncResult todayResult = fetchMultiStockPricesOnly(todaySyncStocks, endDate);
+            resultEntities.addAll(todayResult.stockPrices());
+            resultInvestorTrades.addAll(todayResult.investorTrades());
         }
 
         for (Stock stock : gapSyncStocks) {
-            resultEntities.addAll(fetchIndividualGapOnly(
+            StockPriceSyncResult gapResult = fetchIndividualGapOnly(
                     stock,
                     latestDatesMap.get(stock.getId()),
                     effectiveStartDate,
                     endDate
-            ));
+            );
+            resultEntities.addAll(gapResult.stockPrices());
+            resultInvestorTrades.addAll(gapResult.investorTrades());
         }
 
-        return new StockPriceSyncResult(resultEntities);
+        return new StockPriceSyncResult(resultEntities, resultInvestorTrades);
     }
 
     /**
@@ -119,7 +126,7 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
 
         List<StockPrice> updatedEntities = new ArrayList<>();
         for (Stock stock : stocks) {
-            List<StockPrice> allPrices = historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList());
+            List<StockPrice> allPrices = new ArrayList<>(historicalEntitiesMap.getOrDefault(stock.getId(), Collections.emptyList()));
             if (allPrices.isEmpty()) continue;
 
             // 날짜순 정렬 보장
@@ -146,8 +153,8 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
         return new StockPriceSyncResult(updatedEntities);
     }
 
-    private List<StockPrice> fetchMultiStockPricesOnly(List<Stock> stocks, LocalDate today) {
-        if (today.isBefore(EARLIEST_BASE_DATE)) return List.of();
+    private StockPriceSyncResult fetchMultiStockPricesOnly(List<Stock> stocks, LocalDate today) {
+        if (today.isBefore(EARLIEST_BASE_DATE)) return new StockPriceSyncResult(List.of(), List.of());
 
         List<KisMultiStockPriceDetail> apiResults = executeKisCall(
                 KisCallContext.of("multi-stock-prices", stocks.stream().map(Stock::getTicker).toList(), null, today),
@@ -157,6 +164,8 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                 .collect(Collectors.toMap(KisMultiStockPriceDetail::ticker, v -> v));
 
         List<StockPrice> entities = new ArrayList<>();
+        List<StockInvestorTrade> investorTrades = new ArrayList<>();
+
         for (Stock stock : stocks) {
             KisMultiStockPriceDetail todayPrice = apiResultMap.get(stock.getTicker());
             if (todayPrice == null || todayPrice.closePrice() == null || todayPrice.closePrice().compareTo(BigDecimal.ZERO) <= 0) continue;
@@ -168,18 +177,35 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                     todayPrice.accumulatedVolume(), todayPrice.accumulatedTradingValue(),
                     TechnicalIndicators.empty()
             ));
+
+            // 수급 데이터 생성 (오늘 데이터)
+            // Multi 종목 시세 조회 API는 전체 항목을 다 주지 않으므로 가능한 것만 매핑
+            investorTrades.add(StockInvestorTrade.of(
+                    stock, today, todayPrice.name(), stock.getTicker(),
+                    null, null, null, null, null, null, null, null, null, // Qty 정보는 Multi API에 없음
+                    todayPrice.netForeignBuyingAmt(), todayPrice.netInstitutionalBuyingAmt(),
+                    null, null, null, null, null, null, null // 상세 매매 대금 정보는 Multi API에 없음
+            ));
         }
-        return entities;
+        return new StockPriceSyncResult(entities, investorTrades);
     }
 
-    private List<StockPrice> fetchIndividualGapOnly(Stock stock, LocalDate latestBaseDate, LocalDate effectiveStartDate, LocalDate endDate) {
+    private StockPriceSyncResult fetchIndividualGapOnly(Stock stock, LocalDate latestBaseDate, LocalDate effectiveStartDate, LocalDate endDate) {
         LocalDate storeStartDate = (effectiveStartDate != null) ? effectiveStartDate : (latestBaseDate != null ? latestBaseDate.plusDays(1) : EARLIEST_BASE_DATE);
-        if (storeStartDate.isAfter(endDate)) return List.of();
+        if (storeStartDate.isAfter(endDate)) return new StockPriceSyncResult(List.of(), List.of());
 
-        List<DailyStockPriceSnapshot> apiResults = fetchPricesFromPort(stock, storeStartDate, endDate);
-        if (apiResults.isEmpty()) return List.of();
+        List<DailyStockPriceSnapshot> priceSnapshots = fetchPricesFromPort(stock, storeStartDate, endDate);
+        if (priceSnapshots.isEmpty()) return new StockPriceSyncResult(List.of(), List.of());
 
-        return apiResults.stream()
+        List<InvestorTradingSnapshot> investorSnapshots = executeKisCall(
+                KisCallContext.of("investor-prices", stock.getTicker(), storeStartDate, endDate),
+                () -> stockPricePort.fetchInvestorTradingSnapshots(stock, storeStartDate, endDate)
+        );
+
+        Map<LocalDate, InvestorTradingSnapshot> investorMap = investorSnapshots.stream()
+                .collect(Collectors.toMap(InvestorTradingSnapshot::baseDate, v -> v, (v1, v2) -> v1));
+
+        List<StockPrice> entities = priceSnapshots.stream()
                 .map(snapshot -> StockPrice.of(
                         stock, snapshot.baseDate(),
                         snapshot.openPrice(), snapshot.highPrice(), snapshot.lowPrice(), snapshot.closePrice(),
@@ -187,6 +213,23 @@ public class StockPriceBatchService implements StockPriceSyncUseCase, StockPrice
                         snapshot.volume(), snapshot.transactionAmt(),
                         TechnicalIndicators.empty()
                 )).toList();
+
+        List<StockInvestorTrade> investorTrades = priceSnapshots.stream()
+                .map(snapshot -> {
+                    InvestorTradingSnapshot inv = investorMap.get(snapshot.baseDate());
+                    if (inv == null) return null;
+                    return StockInvestorTrade.of(
+                            stock, snapshot.baseDate(), null, stock.getTicker(),
+                            inv.netForeignBuyingQty(), inv.netInstitutionalBuyingQty(), inv.netPersonBuyingQty(),
+                            null, null, null, null, null, null, // 세부 Qty는 없음
+                            inv.netForeignBuyingAmt(), inv.netInstitutionalBuyingAmt(), inv.netPersonBuyingAmt(),
+                            null, null, null, null, null, null // 세부 Amt는 없음
+                    );
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return new StockPriceSyncResult(entities, investorTrades);
     }
 
     @Override
