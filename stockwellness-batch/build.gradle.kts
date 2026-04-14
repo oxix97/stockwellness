@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":stockwellness-core"))
+
     testImplementation(testFixtures(project(":stockwellness-core")))
 
     // web (for BatchAdminController)
