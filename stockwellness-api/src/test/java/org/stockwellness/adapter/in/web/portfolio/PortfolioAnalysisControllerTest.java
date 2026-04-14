@@ -138,7 +138,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("요약분석: 가치, 분산, 리밸런싱 및 성과 지표를 통합 조회한다")
+    @DisplayName("요약분석: 포트폴리오 메인 화면용 집계 데이터를 통합 조회한다")
     void get_summary() throws Exception {
         // given
         PortfolioValuationResult valuation = new PortfolioValuationResult(
@@ -176,10 +176,14 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.valuation.currentTotalValue").value(1500000))
+                .andExpect(jsonPath("$.data.diversification.totalValue").value(1500000))
+                .andExpect(jsonPath("$.data.rebalancing.totalValue").value(1500000))
+                .andExpect(jsonPath("$.data.itemContributions.AAPL").value(12.5))
                 .andDo(document("portfolio-analysis-summary",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 통합 분석 요약")
+                                .summary("포트폴리오 메인 화면용 통합 분석 요약")
                                 .pathParameters(
                                         parameterWithName("portfolioId").description("포트폴리오 ID")
                                 )
@@ -374,7 +378,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("생성 시점 차트: 포트폴리오 생성 이후 누적 수익률 시계열을 조회한다")
+    @DisplayName("생성 시점 차트: 포트폴리오 메인 화면용 누적 수익률 시계열을 조회한다")
     void get_inception_chart() throws Exception {
         PortfolioInceptionChartResult result = new PortfolioInceptionChartResult(
                 LocalDate.of(2026, 4, 1),
@@ -410,10 +414,11 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.dailyResults[0].portfolioReturnRate").value(0.0))
+                .andExpect(jsonPath("$.data.comparisons[0].ticker").value(BenchmarkType.KOSPI_200.getTicker()))
                 .andDo(document("portfolio-analysis-inception-chart",
                         resource(ResourceSnippetParameters.builder()
                                 .tag("Portfolio Analysis")
-                                .summary("포트폴리오 생성 시점 기준 누적 수익률 차트")
+                                .summary("포트폴리오 메인 화면용 생성 시점 기준 누적 수익률 차트")
                                 .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
                                 .responseFields(responseFields)
                                 .build())

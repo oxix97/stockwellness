@@ -14,6 +14,7 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioValuation
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 import org.stockwellness.global.common.response.ApiResponse;
+import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,10 +25,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 포트폴리오 분석 API 컨트롤러
- * 평가 가치, 자산 분산도, 리밸런싱 가이드 제공 및 백테스트 시뮬레이션 등의 분석 기능을 제공합니다.
+ * 포트폴리오 계산성 분석 API 컨트롤러.
+ * 메인 화면 집계 요약, 상세 분석 위젯, 시뮬레이션/시계열 데이터를 모두 이 컨트롤러에서 제공합니다.
  */
 @RestController
+@LogExecution
 @RequestMapping("/api/v1/portfolios/{portfolioId}/analysis")
 @RequiredArgsConstructor
 public class PortfolioAnalysisController {
@@ -86,7 +88,8 @@ public class PortfolioAnalysisController {
     }
 
     /**
-     * 포트폴리오 분석의 핵심 지표(가치, 분산, 리밸런싱, 종목 기여도)를 통합하여 요약 조회합니다.
+     * 포트폴리오 메인 화면용 통합 분석 요약을 조회합니다.
+     * 가치, 분산, 리밸런싱, 종목 기여도를 한 번에 반환해 메인 화면의 초기 네트워크 수를 줄입니다.
      *
      * @param memberPrincipal 인증된 사용자 정보
      * @param portfolioId 포트폴리오 ID
@@ -170,7 +173,7 @@ public class PortfolioAnalysisController {
     }
 
     /**
-     * 포트폴리오 생성 시점 기준 상세 성과 분석 조회
+     * 포트폴리오 생성 시점 기준의 상세 성과 지표를 조회합니다.
      */
     @GetMapping("/performance/inception")
     public ApiResponse<PortfolioInceptionPerformanceResponse> getPerformanceSinceInception(
@@ -181,6 +184,9 @@ public class PortfolioAnalysisController {
         return ApiResponse.success(PortfolioInceptionPerformanceResponse.from(result));
     }
 
+    /**
+     * 포트폴리오 메인 화면의 미니 성과 차트에 사용되는 생성 시점 기준 누적 수익률 시계열을 조회합니다.
+     */
     @GetMapping("/performance/inception/chart")
     public ApiResponse<PortfolioInceptionChartResponse> getInceptionChart(
             @AuthenticationPrincipal MemberPrincipal memberPrincipal,

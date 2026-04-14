@@ -115,7 +115,7 @@ class PortfolioControllerTest extends RestDocsSupport {
 
         @Test
         @MockMember(id = 1L)
-        @DisplayName("조회: 포트폴리오 상세 정보를 조회한다")
+        @DisplayName("조회: 포트폴리오 메인 화면용 상세 정보를 조회한다")
         void get_portfolio() throws Exception {
             // given
             var portfolio = PortfolioFixture.createEntityWithItems(100L, List.of(
@@ -128,11 +128,13 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.name").value(PortfolioFixture.NAME))
                     .andExpect(jsonPath("$.data.items[0].name").value("AAPL"))
+                    .andExpect(jsonPath("$.data.items[0].symbol").value("AAPL"))
                     .andDo(document("portfolio-get",
                             resource(ResourceSnippetParameters.builder()
                                     .tag("Portfolio")
-                                    .summary("포트폴리오 상세 조회")
+                                    .summary("포트폴리오 상세 조회 (메인 화면 보유 종목)")
                                     .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
                                     .responseFields(new ArrayList<>(commonResponseFields()) {{
                                         add(fieldWithPath("data.id").description("포트폴리오 ID"));
@@ -148,7 +150,7 @@ class PortfolioControllerTest extends RestDocsSupport {
 
         @Test
         @MockMember(id = 1L)
-        @DisplayName("조언 조회: 최신 AI 리밸런싱 조언을 조회한다")
+        @DisplayName("조언 조회: 메인 화면용 최신 AI 조언을 조회한다")
         void get_latest_advice() throws Exception {
             // given
             AdviceResponse response = new AdviceResponse("상세 조언 내용입니다.", AdviceAction.REBALANCE, LocalDateTime.now());
@@ -160,10 +162,12 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content").value("상세 조언 내용입니다."))
+                    .andExpect(jsonPath("$.data.action").value(AdviceAction.REBALANCE.name()))
                     .andDo(document("portfolio-advice-latest",
                             resource(ResourceSnippetParameters.builder()
                                     .tag("Portfolio")
-                                    .summary("최신 AI 리밸런싱 조언 조회")
+                                    .summary("최신 AI 조언 조회 (메인/건강 진단 공용)")
                                     .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
                                     .responseFields(new ArrayList<>(commonResponseFields()) {{
                                         add(fieldWithPath("data.content").description("상세 조언 내용"));
@@ -234,7 +238,7 @@ class PortfolioControllerTest extends RestDocsSupport {
 
         @Test
         @MockMember(id = 1L)
-        @DisplayName("진단: 포트폴리오 건강 상태를 진단한다")
+        @DisplayName("진단: 포트폴리오 메인/건강 진단 화면용 건강 상태를 진단한다")
         void diagnose_portfolio() throws Exception {
             // given
             Map<String, Integer> categories = Map.of(
@@ -256,10 +260,13 @@ class PortfolioControllerTest extends RestDocsSupport {
                             .contentType(APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.overallScore").value(77))
+                    .andExpect(jsonPath("$.data.categories.stability").value(80))
+                    .andExpect(jsonPath("$.data.nextSteps[0]").value("Step 1"))
                     .andDo(document("portfolio-diagnose",
                             resource(ResourceSnippetParameters.builder()
                                     .tag("Portfolio")
-                                    .summary("포트폴리오 건강 진단")
+                                    .summary("포트폴리오 건강 진단 (메인/건강 진단 공용)")
                                     .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
                                     .responseFields(new ArrayList<>(commonResponseFields()) {{
                                         add(fieldWithPath("data.overallScore").description("종합 점수"));

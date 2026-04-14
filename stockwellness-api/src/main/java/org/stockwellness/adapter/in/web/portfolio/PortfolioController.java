@@ -22,8 +22,9 @@ import org.stockwellness.global.security.MemberPrincipal;
 import java.util.List;
 
 /**
- * 포트폴리오 관리 API 컨트롤러
- * 사용자의 포트폴리오 생성, 조회, 수정, 삭제 및 진단/조언 관련 엔드포인트를 제공합니다.
+ * 포트폴리오 상태성 API 컨트롤러.
+ * 포트폴리오 본체(생성·목록·상세·수정·삭제)와 메인 화면/건강 진단 화면이 직접 소비하는
+ * 건강 진단, AI 조언 엔드포인트를 제공합니다.
  */
 @RestController
 @LogExecution
@@ -82,7 +83,8 @@ public class PortfolioController {
     }
 
     /**
-     * 특정 포트폴리오의 상세 정보(구성 종목 및 비중 등)를 조회합니다.
+     * 특정 포트폴리오의 상세 정보(구성 종목 및 메타 정보)를 조회합니다.
+     * 포트폴리오 메인 화면과 편집 화면에서 보유 종목 목록을 렌더링할 때 사용합니다.
      *
      * @param memberPrincipal 인증된 사용자 정보
      * @param portfolioId 조회할 포트폴리오 ID
@@ -150,8 +152,8 @@ public class PortfolioController {
     }
 
     /**
-     * 포트폴리오의 건강 상태를 진단하여 오각형 지표 점수를 조회합니다.
-     * 내부적으로 수익성, 안정성, 분산도 등을 계산하여 결과를 반환합니다.
+     * 포트폴리오 건강 진단 결과를 조회합니다.
+     * 포트폴리오 메인 화면의 건강 배지와 건강 진단 화면의 레이더 차트/다음 액션에 함께 사용됩니다.
      *
      * @param memberPrincipal 인증된 사용자 정보
      * @param portfolioId 진단할 포트폴리오 ID
@@ -167,7 +169,8 @@ public class PortfolioController {
     }
 
     /**
-     * 해당 포트폴리오에 대해 AI 어드바이저가 생성한 가장 최신의 투자 조언(리밸런싱 등)을 조회합니다.
+     * 해당 포트폴리오의 최신 AI 조언을 조회합니다.
+     * 메인 화면과 건강 진단 화면에서 동일한 최신 조언 카드를 렌더링할 때 사용합니다.
      *
      * @param memberPrincipal 인증된 사용자 정보
      * @param portfolioId 포트폴리오 ID
@@ -182,6 +185,10 @@ public class PortfolioController {
         return ApiResponse.success(response);
     }
 
+    /**
+     * 최신 조언이 없을 때 즉시 새 AI 조언을 생성합니다.
+     * 프론트엔드는 최신 조언 조회가 404일 경우 이 엔드포인트로 fallback 합니다.
+     */
     @PostMapping("/{portfolioId}/advice")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<AdviceResponse> createAdvice(
