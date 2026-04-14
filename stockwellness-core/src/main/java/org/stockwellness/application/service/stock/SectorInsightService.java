@@ -58,7 +58,9 @@ public class SectorInsightService implements SectorInsightUseCase {
         }
 
         // 1. 이름별로 그룹화 (이름이 같은 KOSPI/KOSDAQ 업종 통합, 공백 및 특수문자 제거하여 정규화)
+        // NPE 방지를 위해 indicators가 없는 데이터는 제외
         Map<String, List<SectorInsight>> groupedByName = allInsights.stream()
+                .filter(s -> s.getIndicators() != null && s.getAvgFluctuationRate() != null && s.getSectorIndexCurrentPrice() != null)
                 .collect(Collectors.groupingBy(s -> s.getSectorName().replaceAll("[^가-힣a-zA-Z0-9]", "")));
 
         // 2. 그룹별 평균 등락률 계산 및 결과 객체 생성
