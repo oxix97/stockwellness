@@ -2,6 +2,7 @@ package org.stockwellness.global.common;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.stockwellness.global.common.response.ApiResponse;
 
 import java.time.LocalDateTime;
 

@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import io.github.resilience4j.ratelimiter.RateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +15,14 @@ import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -31,7 +36,15 @@ class KisSectorAdapterTest {
         RestClient.Builder builder = RestClient.builder();
         mockServer = MockRestServiceServer.bindTo(builder).build();
         RestClient restClient = builder.baseUrl("https://openapi.koreainvestment.com:9443").build();
-        adapter = new KisSectorAdapter(restClient);
+        RateLimiter rateLimiter = mock(RateLimiter.class);
+        
+        // Mock RateLimiter to execute the supplier
+        when(rateLimiter.executeSupplier(any())).thenAnswer(invocation -> {
+            Supplier<?> supplier = invocation.getArgument(0);
+            return supplier.get();
+        });
+
+        adapter = new KisSectorAdapter(restClient, rateLimiter);
     }
 
     @Test
