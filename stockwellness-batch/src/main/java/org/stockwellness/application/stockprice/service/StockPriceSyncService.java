@@ -1,9 +1,10 @@
-package org.stockwellness.application;
+package org.stockwellness.application.stockprice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -11,7 +12,6 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +25,7 @@ public class StockPriceSyncService {
 
     private final StockPort stockPort;
     private final StockPricePort stockPricePort;
+    private final KisDailyPriceAdapter kisPriceAdapter;
 
     /**
      * 당일 종목 가격 반영<br>
@@ -46,7 +47,7 @@ public class StockPriceSyncService {
             List<Stock> subList = stocks.subList(i, end);
             List<String> tickers = subList.stream().map(Stock::getTicker).toList();
 
-            List<KisMultiStockPriceDetail> dtos = stockPricePort.fetchMultiStockPrices(tickers);
+            List<KisMultiStockPriceDetail> dtos = kisPriceAdapter.fetchMultiStockPrices(tickers);
 
             Map<String, Stock> stockMap = subList.stream()
                     .collect(Collectors.toMap(Stock::getTicker, Function.identity()));

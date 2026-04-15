@@ -1,4 +1,4 @@
-package org.stockwellness.application;
+package org.stockwellness.application.stockprice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
