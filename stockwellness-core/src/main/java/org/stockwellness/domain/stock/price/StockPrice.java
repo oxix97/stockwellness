@@ -1,17 +1,7 @@
 package org.stockwellness.domain.stock.price;
 
 import com.querydsl.core.annotations.QueryTransient;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +10,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.stockwellness.domain.stock.Stock;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -95,14 +86,23 @@ public class StockPrice {
         }
 
         return closePrice.subtract(base)
-                .divide(base, new java.math.MathContext(16))
+                .divide(base, new MathContext(16))
                 .multiply(BigDecimal.valueOf(100));
     }
 
-    public static StockPrice of(Stock stock, LocalDate baseDate, BigDecimal open, BigDecimal high, BigDecimal low,
-                                BigDecimal close, BigDecimal adjClose, BigDecimal previousClose,
-                                Long volume, BigDecimal transactionAmt,
-                                TechnicalIndicators indicators) {
+    public static StockPrice of(
+            Stock stock,
+            LocalDate baseDate,
+            BigDecimal open,
+            BigDecimal high,
+            BigDecimal low,
+            BigDecimal close,
+            BigDecimal adjClose,
+            BigDecimal previousClose,
+            Long volume,
+            BigDecimal transactionAmt,
+            TechnicalIndicators indicators
+    ) {
         var entity = new StockPrice();
         entity.id = new StockPriceId(baseDate, stock.getId());
         entity.stock = stock;

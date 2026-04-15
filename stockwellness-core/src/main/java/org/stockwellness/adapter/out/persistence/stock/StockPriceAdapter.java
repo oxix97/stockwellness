@@ -1,19 +1,18 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
-import org.stockwellness.application.port.out.stock.*;
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.exception.StockPriceException;
-import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
@@ -23,8 +22,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, BenchmarkPricePort {
@@ -33,16 +31,14 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     private final BenchmarkRepository benchmarkRepository;
     private final BenchmarkPriceRepository benchmarkPriceRepository;
     private final StockPriceCacheAdapter stockPriceCacheAdapter;
-    private final KisDailyPriceAdapter kisAdapter;
 
     @Override
-    public StockPrice findLatestPriceByName(String name) {
-        return stockPriceRepository.findLatestPriceByName(name)
-                .orElseThrow(()->new StockPriceException(STOCK_NOT_FOUND));
+    public StockPrice save(StockPrice stockPrice) {
+        return stockPriceRepository.save(stockPrice);
     }
 
     public List<StockPrice> findRecent120Prices(Long stockId) {
-        return stockPriceRepository.findRecent120Prices(stockId);
+        return stockPriceRepository.findRecent120Prices(stockId, PageRequest.of(0, 120));
     }
 
     @Override
@@ -75,11 +71,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
-    public Optional<LocalDate> findLatestDate() {
-        return stockPriceRepository.findLatestDate();
-    }
-
-    @Override
     public Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date) {
         return stockPriceRepository.findLatestDateOnOrBefore(date);
     }
@@ -89,10 +80,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findLatestInvestorTradeDate();
     }
 
-    @Override
-    public long countByBaseDate(LocalDate date) {
-        return stockPriceRepository.countByBaseDate(date);
-    }
 
     @Override
     public void saveAll(List<StockPrice> stockPrices) {
@@ -108,120 +95,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findTopForeignStocksBySupply(date, direction, limit);
     }
 
-    @Override
-    public List<StockPrice> findFilteredStocksByIndicators(
-            LocalDate baseDate,
-            AlignmentStatus alignment,
-            BigDecimal rsiLow,
-            BigDecimal rsiHigh,
-            Boolean isGoldenCross
-    ) {
-        return stockPriceRepository.findFilteredStocksByIndicators(baseDate, alignment, rsiLow, rsiHigh, isGoldenCross);
-    }
-
-    private static final BigDecimal PBMN_TO_WON = BigDecimal.valueOf(1_000_000L);
-
-    @Override
-    public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
-        return kisAdapter.fetchMultiStockPrices(tickers).stream()
-                .map(detail -> new KisMultiStockPriceDetail(
-                        detail.ticker(),
-                        detail.name(),
-                        detail.closePrice(),
-                        detail.priceChange(),
-                        detail.priceChangeRate(),
-                        detail.openPrice(),
-                        detail.highPrice(),
-                        detail.lowPrice(),
-                        detail.accumulatedVolume(),
-                        multiplyPbmn(detail.accumulatedTradingValue()),
-                        detail.previousClosePrice(),
-                        multiplyPbmn(detail.netInstitutionalBuyingAmt()),
-                        multiplyPbmn(detail.netForeignBuyingAmt())
-                ))
-                .toList();
-    }
-
-    @Override
-    public List<DailyStockPriceSnapshot> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
-        return kisAdapter.fetchDailyPrices(stock, startDate, endDate).stream()
-                .map(detail -> new DailyStockPriceSnapshot(
-                        detail.baseDate(),
-                        detail.openPrice(),
-                        detail.highPrice(),
-                        detail.lowPrice(),
-                        detail.closePrice(),
-                        detail.volume(),
-                        multiplyPbmn(detail.transactionAmt())
-                ))
-                .toList();
-    }
-
-    @Override
-    public List<InvestorTradingSnapshot> fetchInvestorTradingSnapshots(Stock stock, LocalDate startDate, LocalDate endDate) {
-        return kisAdapter.fetchInvestorPrices(stock, startDate, endDate).stream()
-                .map(detail -> {
-                    LocalDate bDate = null;
-                    try {
-                        bDate = LocalDate.parse(detail.baseDate(), java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
-                    } catch (Exception e) {
-                        // ignore or log
-                    }
-                    return new InvestorTradingSnapshot(
-                        bDate,
-                        detail.closePrice(),
-                        detail.prdyCtrt(),
-                        detail.volume(),
-                        detail.netInstitutionalBuyingQty(),
-                        detail.netForeignBuyingQty(),
-                        detail.netPersonBuyingQty(),
-                        multiplyPbmn(detail.netInstitutionalBuyingAmt()),
-                        multiplyPbmn(detail.netForeignBuyingAmt()),
-                        multiplyPbmn(detail.netPersonBuyingAmt())
-                ); })
-                .toList();
-    }
-
-    private BigDecimal multiplyPbmn(BigDecimal amount) {
-        return amount != null ? amount.multiply(PBMN_TO_WON) : BigDecimal.ZERO;
-    }
-
-    @Override
-    public List<Stock> fetchDaily(LocalDate date) {
-        return List.of();
-    }
-
-    @Override
-    public List<StockPrice> fetchDailyPrice(LocalDate date) {
-        return List.of();
-    }
-
-    @Override
-    public List<BigDecimal> findRecentClosingPrices(Stock stock, LocalDate date, int limit) {
-        List<BigDecimal> prices = stockPriceRepository.findRecentClosingPrices(stock, date, PageRequest.of(0, limit));
-        Collections.reverse(prices);
-        return prices;
-    }
-
-    @Override
-    public Map<Long, List<BigDecimal>> findRecentClosingPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
-        // [수정] limit 파라미터 전달 보강
-        List<StockPrice> allPrices = stockPriceRepository.findRecentPricesByStocks(stocks, date, limit);
-
-        return allPrices.stream()
-                .collect(Collectors.groupingBy(
-                        p -> p.getStock().getId(),
-                        Collectors.mapping(StockPrice::getClosePrice, Collectors.toList())
-                )).entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> {
-                            List<BigDecimal> prices = e.getValue().stream().limit(limit).collect(Collectors.toList());
-                            Collections.reverse(prices);
-                            return prices;
-                        }
-                ));
-    }
 
     @Override
     public Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit) {
@@ -242,10 +115,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                 ));
     }
 
-    @Override
-    public LocalDate findLatestBaseDate(Stock stock) {
-        return stockPriceRepository.findLatestBaseDate(stock);
-    }
 
     @Override
     public Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks) {
@@ -253,10 +122,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findLatestBaseDatesByStocks(stocks);
     }
 
-    @Override
-    public List<StockPrice> findByStocksAndDate(List<Stock> stocks, LocalDate date) {
-        return stockPriceRepository.findByStockInAndIdBaseDate(stocks, date);
-    }
 
     @Override
     public List<StockPrice> findAllByDate(LocalDate date) {
@@ -279,22 +144,12 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findLatestPricesByTickers(tickers);
     }
 
-    @Override
-    public List<StockPrice> loadRecentHistories(String isinCode, int limit) {
-        if (isinCode == null || isinCode.isBlank()) return List.of();
-        return stockPriceRepository.findRecentPrices(isinCode, LocalDate.now(), PageRequest.of(0, limit));
-    }
 
     @Override
     public Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit) {
         if (isinCodes == null || isinCodes.isEmpty()) return Map.of();
         // [N+1 해결] 루프를 제거하고 Repository에서 일괄 조회하도록 변경
         return stockPriceRepository.findRecentPricesBatch(isinCodes, limit);
-    }
-
-    @Override
-    public List<StockPriceResult> loadPricesByYear(String ticker, int year) {
-        return stockPriceCacheAdapter.loadPricesByYear(ticker, year);
     }
 
     @Override

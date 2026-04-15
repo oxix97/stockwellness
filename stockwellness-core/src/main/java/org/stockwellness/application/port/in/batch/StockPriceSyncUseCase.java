@@ -10,6 +10,8 @@ public interface StockPriceSyncUseCase {
 
     StockPriceSyncResult sync(StockPriceBatchCommand command);
 
+    StockInvestorTradeSyncResult fetchInvestorTrades(StockPriceBatchCommand command);
+
     StockPriceSyncResult fetch(StockPriceBatchCommand command);
 
     StockPriceSyncResult calculateIndicators(StockPriceBatchCommand command);
@@ -22,11 +24,12 @@ public interface StockPriceSyncUseCase {
     }
 
     record StockPriceSyncResult(
-            List<StockPrice> stockPrices,
+            List<StockPrice> stockPrices
+    ) {
+    }
+
+    record StockInvestorTradeSyncResult(
             List<StockInvestorTrade> investorTrades
     ) {
-        public StockPriceSyncResult(List<StockPrice> stockPrices) {
-            this(stockPrices, List.of());
-        }
     }
 }

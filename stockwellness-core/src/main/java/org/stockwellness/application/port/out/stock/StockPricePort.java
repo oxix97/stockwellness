@@ -1,10 +1,8 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
 
@@ -16,10 +14,7 @@ import java.util.Optional;
 
 public interface StockPricePort {
 
-    /**
-     * 이름 가지고 가장 최근의 가격 조회
-     */
-    StockPrice findLatestPriceByName(String name);
+    StockPrice save(StockPrice stockPrice);
 
     /**
      * stockId를 가지고 가장 최근의 날짜 기준 120개 조회
@@ -41,22 +36,6 @@ public interface StockPricePort {
     );
 
     /**
-     * 기술적 지표를 기반으로 종목을 필터링하여 조회합니다.
-     */
-    List<StockPrice> findFilteredStocksByIndicators(
-            LocalDate baseDate,
-            AlignmentStatus alignment,
-            BigDecimal rsiLow,
-            BigDecimal rsiHigh,
-            Boolean isGoldenCross
-    );
-
-    /**
-     * 특정 종목들의 지정된 날짜 시세 데이터를 조회합니다.
-     */
-    List<StockPrice> findByStocksAndDate(List<Stock> stocks, LocalDate date);
-
-    /**
      * 지정된 날짜의 모든 종목 시세 데이터를 조회합니다.
      */
     List<StockPrice> findAllByDate(LocalDate date);
@@ -73,14 +52,7 @@ public interface StockPricePort {
      */
     Map<String, BigDecimal> findAllLatestByTickers(List<String> tickers);
 
-    List<StockPrice> loadRecentHistories(String isinCode, int limit);
-
     Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit);
-
-    /**
-     * 티커와 연도를 기준으로 일봉 데이터를 로드합니다. (캐싱 단위)
-     */
-    List<StockPriceResult> loadPricesByYear(String ticker, int year);
 
     /**
      * 티커와 기간을 기준으로 일봉 데이터를 로드합니다.
@@ -92,51 +64,21 @@ public interface StockPricePort {
      */
     Map<String, List<StockPriceResult>> loadPricesByTickers(List<String> tickers, LocalDate start, LocalDate end);
 
-    /**
-     * 특정 종목의 최근 종가 리스트를 조회합니다. (지표 계산용)
-     */
-    List<BigDecimal> findRecentClosingPrices(Stock stock, LocalDate date, int limit);
-
-    /**
-     * 특정 종목의 가장 최근 저장된 날짜를 조회합니다.
-     */
-    LocalDate findLatestBaseDate(Stock stock);
 
     /**
      * 여러 종목의 마지막 저장일들을 한 번에 조회합니다.
      */
     Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks);
 
-    /**
-     * 여러 종목의 과거 종가 리스트를 한 번에 조회합니다.
-     */
-    Map<Long, List<BigDecimal>> findRecentClosingPricesByStocks(List<Stock> stocks, LocalDate date, int limit);
 
     /**
      * 여러 종목의 과거 시세 엔티티 리스트를 한 번에 조회합니다. (지표 계산용 날짜 포함)
      */
     Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit);
 
-    /**
-     * 외부 API를 통해 멀티 종목 시세를 조회합니다. (당일용)
-     */
-    List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);
-
-    List<DailyStockPriceSnapshot> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
-
-    List<InvestorTradingSnapshot> fetchInvestorTradingSnapshots(Stock stock, LocalDate startDate, LocalDate endDate);
-
-    // FetchStockPricePort에서 통합된 메서드
-    List<Stock> fetchDaily(LocalDate date);
-    List<StockPrice> fetchDailyPrice(LocalDate date);
-
-    Optional<LocalDate> findLatestDate();
-
     Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
 
     Optional<LocalDate> findLatestInvestorTradeDate();
-
-    long countByBaseDate(LocalDate date);
 
     void saveAll(List<StockPrice> stockPrices);
 }

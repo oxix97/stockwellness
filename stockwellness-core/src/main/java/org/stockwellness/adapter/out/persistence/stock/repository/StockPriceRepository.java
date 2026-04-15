@@ -58,8 +58,8 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
 
     @Query("SELECT s FROM StockPrice s " +
             "WHERE s.id.stockId = :stockId " +
-            "ORDER BY s.id.baseDate")
-    List<StockPrice> findRecent120Prices(@Param("stockId") Long stockId);
+            "ORDER BY s.id.baseDate desc")
+    List<StockPrice> findRecent120Prices(@Param("stockId") Long stockId, Pageable pageable);
 
     Long stock(Stock stock);
 }
