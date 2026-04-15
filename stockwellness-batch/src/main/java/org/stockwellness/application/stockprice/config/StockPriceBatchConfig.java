@@ -1,8 +1,15 @@
-package org.stockwellness.application.stockprice.job;
+package org.stockwellness.application.stockprice.config;
 
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
@@ -11,10 +18,18 @@ import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilde
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.stockprice.listener.StockPriceSyncEventListener;
+import org.stockwellness.application.stockprice.step.processor.DailyStockPriceProcessor;
+import org.stockwellness.application.stockprice.step.processor.TechnicalIndicatorProcessor;
 import org.stockwellness.application.stockprice.step.reader.StockListReader;
 import org.stockwellness.application.stockprice.step.writer.StockInvestorTradeListWriter;
 import org.stockwellness.application.stockprice.step.writer.StockPriceListWriter;
+import org.stockwellness.application.stockprice.step.writer.StockPriceWriter;
 import org.stockwellness.application.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.application.stockprice.support.StockPriceSql;
 import org.stockwellness.batch.support.listener.BatchFailureItemListener;
@@ -29,13 +44,72 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class StockPriceBatchComponentConfig {
+public class StockPriceBatchConfig {
 
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager txManager;
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
+    private final JobExecutionListener commonJobListener;
+    private final StockPriceSyncEventListener eventListener;
+
+    /**
+     * 가격 정보 반영
+     * @param dailyStockPriceStep: 멀티종목 시세조회를 통해 가격 정보를 저장한다.
+     * @param technicalIndicatorCalculateStep: 기술 지표 계산.
+     */
+    @Bean
+    public Job dailyStockPriceBatchJob(
+            Step dailyStockPriceStep,
+            Step technicalIndicatorCalculateStep
+    ) {
+        return new JobBuilder("dailyStockPriceBatchJob", jobRepository)
+                .start(dailyStockPriceStep)
+                .next(technicalIndicatorCalculateStep)
+                .listener(commonJobListener)
+                .listener(eventListener)
+                .build();
+    }
+
+    /**
+     * [Step 2-1] 시세 수집 단계: [KIS] 멀티종목시세 조회를 통해 원시 가격 데이터를 저장
+     */
+    @Bean
+    public Step dailyStockPriceStep(
+            StockListReader dailyStockPriceReader,
+            DailyStockPriceProcessor dailyStockPriceProcessor,
+            StockPriceListWriter stockPriceListWriter
+    ) {
+        return new StepBuilder("dailyStockPriceStep", jobRepository)
+                .<List<Stock>, List<StockPrice>>chunk(1, txManager)
+                .reader(dailyStockPriceReader)
+                .processor(dailyStockPriceProcessor)
+                .writer(stockPriceListWriter)
+                .build();
+    }
+
+    /**
+     * [Step 2-2] 기술 지표 계산
+     */
+    @Bean
+    public Step technicalIndicatorCalculateStep(
+            JpaPagingItemReader<Stock> technicalIndicatorReader,
+            TechnicalIndicatorProcessor technicalIndicatorProcessor,
+            StockPriceWriter technicalIndicatorWriter,
+            TaskExecutor batchExecutor
+    ) {
+        return new StepBuilder("technicalIndicatorCalculateStep", jobRepository)
+                .<Stock, StockPrice>chunk(300, txManager)
+                .reader(technicalIndicatorReader)
+                .processor(technicalIndicatorProcessor)
+                .writer(technicalIndicatorWriter)
+                .taskExecutor(batchExecutor)
+                .build();
+    }
 
     @Bean
     @StepScope
@@ -57,6 +131,28 @@ public class StockPriceBatchComponentConfig {
 
     @Bean
     @StepScope
+    public JpaPagingItemReader<Stock> technicalIndicatorReader() {
+        JpaPagingItemReader<Stock> reader = new JpaPagingItemReader<>();
+        reader.setEntityManagerFactory(entityManagerFactory);
+        reader.setPageSize(300);
+        reader.setQueryString("""
+                select s
+                from Stock s
+                where s.status = org.stockwellness.domain.stock.StockStatus.ACTIVE
+                order by s.id asc
+                """);
+        reader.setSaveState(false);
+        return reader;
+    }
+
+    @Bean
+    @StepScope
+    public StockListReader dailyStockPriceReader(JpaPagingItemReader<Stock> stockReader) {
+        return new StockListReader(stockReader, 30);
+    }
+
+    @Bean
+    @StepScope
     public StockListReader stockInvestorTradeReader(JpaPagingItemReader<Stock> stockReader) {
         return new StockListReader(stockReader, 30);
     }
@@ -73,26 +169,31 @@ public class StockPriceBatchComponentConfig {
         return new StockListReader(stockReader, 30);
     }
 
-//    @Bean
-//    @StepScope
-//    public StockPriceFetchProcessor stockPriceFetchProcessor(StockPriceFetchStepService stockPriceFetchStepService) {
-//        return new StockPriceFetchProcessor(stockPriceFetchStepService);
-//    }
-//
-//    @Bean
-//    @StepScope
-//    public StockPriceIndicatorProcessor stockPriceIndicatorProcessor(StockPriceIndicatorStepService stockPriceIndicatorStepService) {
-//        return new StockPriceIndicatorProcessor(stockPriceIndicatorStepService);
-//    }
+    @Bean
+    @StepScope
+    public DailyStockPriceProcessor dailyStockPriceProcessor(KisDailyPriceAdapter kisDailyPriceAdapter) {
+        return new DailyStockPriceProcessor(kisDailyPriceAdapter);
+    }
+
+    @Bean
+    @StepScope
+    public TechnicalIndicatorProcessor technicalIndicatorProcessor(StockPricePort stockPricePort) {
+        return new TechnicalIndicatorProcessor(stockPricePort);
+    }
+
+    @Bean
+    public StockPriceListWriter stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
+        return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
+    }
+
+    @Bean
+    public StockPriceWriter technicalIndicatorWriter(StockPricePort stockPricePort) {
+        return new StockPriceWriter(stockPricePort);
+    }
 
     @Bean
     public ItemWriter<List<StockInvestorTrade>> stockInvestorTradeListWriter() {
         return new StockInvestorTradeListWriter(jdbcTemplate);
-    }
-
-    @Bean
-    public ItemWriter<List<StockPrice>> stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
-        return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
     }
 
     @Bean

@@ -1,7 +1,12 @@
-package org.stockwellness.application.stock.step;
+package org.stockwellness.application.stock.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
@@ -9,28 +14,57 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.stock.step.processor.StockItemProcessor;
 import org.stockwellness.application.stock.step.reader.KosdaqMasterItemReader;
 import org.stockwellness.application.stock.step.reader.KospiMasterItemReader;
 import org.stockwellness.application.stock.step.tasklet.StockDelistTasklet;
 import org.stockwellness.batch.support.BatchMdcListener;
+import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
 import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 
+import java.util.ArrayList;
+import java.util.Objects;
+
+/**
+ * 종목 마스터 동기화 Spring Batch Job 설정
+ */
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class StockMasterStepConfig {
+public class StockMasterBatchConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager txManager;
     private final StockMasterSyncUseCase stockMasterSyncUseCase;
+    private final StockPort stockPort;
     private final BatchMdcListener mdcListener;
+    private final JobExecutionListener commonJobListener;
+    private final CommonBatchJobLoggingListener commonBatchJobLoggingListener;
     private final CommonBatchStepLoggingListener commonBatchStepLoggingListener;
 
     private static final int CHUNK_SIZE = 500;
+
+    @Bean
+    public Job stockMasterSyncJob(
+            Step kospiUpsertStep,
+            Step kospiDelistStep,
+            Step kosdaqUpsertStep,
+            Step kosdaqDelistStep
+    ) {
+        return new JobBuilder("stockMasterSyncJob", jobRepository)
+                .listener(commonJobListener)
+                .listener(commonBatchJobLoggingListener)
+                .start(kospiUpsertStep)
+                .next(kospiDelistStep)
+                .next(kosdaqUpsertStep)
+                .next(kosdaqDelistStep)
+                .build();
+    }
 
     @Bean
     public Step kospiUpsertStep(
@@ -86,5 +120,36 @@ public class StockMasterStepConfig {
                 .listener(mdcListener)
                 .listener(commonBatchStepLoggingListener)
                 .build();
+    }
+
+    @Bean
+    @StepScope
+    public KospiMasterItemReader kospiItemReader() {
+        return new KospiMasterItemReader(stockMasterSyncUseCase.loadKospiItems());
+    }
+
+    @Bean
+    @StepScope
+    public KosdaqMasterItemReader kosdaqItemReader() {
+        return new KosdaqMasterItemReader(stockMasterSyncUseCase.loadKosdaqItems());
+    }
+
+    @Bean
+    @StepScope
+    public StockItemProcessor.Kospi kospiItemProcessor() {
+        return new StockItemProcessor.Kospi(stockMasterSyncUseCase);
+    }
+
+    @Bean
+    @StepScope
+    public StockItemProcessor.Kosdaq kosdaqItemProcessor() {
+        return new StockItemProcessor.Kosdaq(stockMasterSyncUseCase);
+    }
+
+    @Bean
+    public ItemWriter<Stock> stockItemWriter() {
+        return chunk -> stockPort.saveAll(new ArrayList<>(chunk.getItems().stream()
+                .filter(Objects::nonNull)
+                .toList()));
     }
 }
