@@ -26,7 +26,7 @@ class RedisSerializerCompatibilityTest {
             ApiRedisSerializerConfig.createSecuritySerializer(getClass().getClassLoader());
 
     private final GenericJackson2JsonRedisSerializer coreFallbackSerializer =
-            RedisSerializerConfig.createDomainSerializer();
+            ApiRedisSerializerConfig.createDomainSerializer();
 
     @Test
     void domainSerializer_includesClassMetadataInPayload() {

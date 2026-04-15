@@ -1,4 +1,4 @@
-//package org.stockwellness.application.service.watchlist;
+//package org.stockwellness.service.service.watchlist;
 //
 //import org.junit.jupiter.api.DisplayName;
 //import org.junit.jupiter.api.Test;
@@ -7,11 +7,11 @@
 //import org.mockito.Mock;
 //import org.mockito.junit.jupiter.MockitoExtension;
 //import org.stockwellness.adapter.in.web.watchlist.dto.WatchlistGroupResponse;
-//import org.stockwellness.application.port.out.member.LoadMemberPort;
-//import org.stockwellness.application.port.out.stock.StockPort;
-//import org.stockwellness.application.port.out.watchlist.StockDataPort;
-//import org.stockwellness.application.port.out.watchlist.WatchlistPort;
-//import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
+//import org.stockwellness.service.port.out.member.LoadMemberPort;
+//import org.stockwellness.service.port.out.stock.StockPort;
+//import org.stockwellness.service.port.out.watchlist.StockDataPort;
+//import org.stockwellness.service.port.out.watchlist.WatchlistPort;
+//import org.stockwellness.service.port.out.watchlist.dto.WatchlistGroupWithCount;
 //import org.stockwellness.domain.member.LoginType;
 //import org.stockwellness.domain.member.Member;
 //import org.stockwellness.domain.shared.AbstractEntity;

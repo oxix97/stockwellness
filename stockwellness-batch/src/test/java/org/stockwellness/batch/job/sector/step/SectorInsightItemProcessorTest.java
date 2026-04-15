@@ -2,8 +2,9 @@ package org.stockwellness.batch.job.sector.step;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
+import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
+import org.stockwellness.application.sector.step.processor.SectorInsightItemProcessor;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 
 import java.math.BigDecimal;
@@ -11,10 +12,7 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class SectorInsightItemProcessorTest {
 

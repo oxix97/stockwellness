@@ -6,19 +6,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
 import org.stockwellness.application.port.out.stock.MarketIndexPort;
-import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.sector.service.SectorEodBatchService;
 import org.stockwellness.application.service.stock.SectorAnalysisService;
-import org.stockwellness.domain.stock.Currency;
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockSector;
-import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;
@@ -32,9 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SectorEodBatchServiceTest {

@@ -10,25 +10,16 @@ import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.security.jackson2.SecurityJackson2Modules;
 
 /**
- * API 모듈 전용 Redis serializer 팩토리.
- * Security 타입 캐시는 Spring Security 모듈이 포함된 serializer를 사용한다.
+ * Batch 모듈 전용 Redis serializer 팩토리.
  */
-public final class ApiRedisSerializerConfig {
+public final class BatchRedisSerializerConfig {
 
-    private ApiRedisSerializerConfig() {}
+    private BatchRedisSerializerConfig() {}
 
     public static GenericJackson2JsonRedisSerializer createDomainSerializer() {
         ObjectMapper mapper = createBaseObjectMapper();
-        mapper.setDefaultTyping(createTypeResolver(mapper));
-        return new GenericJackson2JsonRedisSerializer(mapper);
-    }
-
-    public static GenericJackson2JsonRedisSerializer createSecuritySerializer(ClassLoader classLoader) {
-        ObjectMapper mapper = createBaseObjectMapper();
-        mapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
         mapper.setDefaultTyping(createTypeResolver(mapper));
         return new GenericJackson2JsonRedisSerializer(mapper);
     }
@@ -38,11 +29,9 @@ public final class ApiRedisSerializerConfig {
                 .allowIfBaseType("org.stockwellness")
                 .allowIfBaseType("java.util")
                 .allowIfBaseType("java.time")
-                .allowIfBaseType("org.springframework.security")
                 .allowIfSubType("org.stockwellness")
                 .allowIfSubType("java.util")
                 .allowIfSubType("java.time")
-                .allowIfSubType("org.springframework.security")
                 .allowIfSubType("java.lang")
                 .build();
 

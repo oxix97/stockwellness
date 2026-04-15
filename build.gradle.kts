@@ -38,13 +38,14 @@ subprojects {
 
     dependencyManagement {
         imports {
-            mavenBom("org.springframework.ai:spring-ai-bom:$springAiVersion")
-            mavenBom("org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion")
+            mavenBom("org.springframework.boot:spring-boot-dependencies:3.4.1")
+            mavenBom("org.springframework.ai:spring-ai-bom:1.0.0-M1")
+            mavenBom("org.springframework.cloud:spring-cloud-dependencies:2024.0.0")
         }
     }
 
     dependencies {
-        //json
+        // json
         implementation("org.springframework.boot:spring-boot-starter-json")
 
         // lombok

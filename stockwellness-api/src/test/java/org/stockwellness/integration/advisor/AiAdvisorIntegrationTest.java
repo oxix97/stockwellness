@@ -10,7 +10,6 @@ import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
-import org.stockwellness.config.CoreRedisConfig;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.portfolio.Portfolio;
@@ -47,7 +46,7 @@ class AiAdvisorIntegrationTest extends RestDocsSupport {
     private CustomUserDetailsService customUserDetailsService;
 
     @MockitoBean
-    private CoreRedisConfig coreRedisConfig;
+    private org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("포트폴리오 조언 생성부터 API 조회까지의 전체 흐름을 검증한다")

@@ -3,6 +3,8 @@ package org.stockwellness.batch.job.stockmaster.support.parser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.stockwellness.application.stock.parser.KosdaqMstParser;
+import org.stockwellness.application.stock.parser.KospiMstParser;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 

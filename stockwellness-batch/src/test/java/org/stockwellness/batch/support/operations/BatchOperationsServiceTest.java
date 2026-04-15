@@ -20,7 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.batch.job.stockmaster.application.MarketIndexSyncService;
+import org.stockwellness.application.stock.service.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 
 import java.util.List;
@@ -62,9 +62,6 @@ class BatchOperationsServiceTest {
     private Job sectorEodJob;
 
     @Mock
-    private Job stockPricePrevCloseSyncJob;
-
-    @Mock
     private Job portfolioStatsJob;
 
     @Mock
@@ -91,7 +88,6 @@ class BatchOperationsServiceTest {
         ReflectionTestUtils.setField(batchOperationsService, "jobLauncher", jobLauncher);
         ReflectionTestUtils.setField(batchOperationsService, "stockPriceBatchJob", stockPriceBatchJob);
         ReflectionTestUtils.setField(batchOperationsService, "benchmarkPriceSyncJob", benchmarkPriceSyncJob);
-        ReflectionTestUtils.setField(batchOperationsService, "stockPricePrevCloseSyncJob", stockPricePrevCloseSyncJob);
     }
 
     @Test
@@ -194,9 +190,9 @@ class BatchOperationsServiceTest {
 
         org.springframework.batch.core.JobInstance jobInstance = org.mockito.Mockito.mock(org.springframework.batch.core.JobInstance.class);
         given(jobExecution.getJobInstance()).willReturn(jobInstance);
-        given(jobInstance.getJobName()).willReturn("stockPricePrevCloseSyncJob");
+        given(jobInstance.getJobName()).willReturn("stockPriceBatchJob");
         given(jobExecution.getStatus()).willReturn(org.springframework.batch.core.BatchStatus.COMPLETED);
-        given(asyncJobLauncher.run(org.mockito.ArgumentMatchers.eq(stockPricePrevCloseSyncJob), org.mockito.ArgumentMatchers.any()))
+        given(asyncJobLauncher.run(org.mockito.ArgumentMatchers.eq(stockPriceBatchJob), org.mockito.ArgumentMatchers.any()))
                 .willReturn(jobExecution);
 
         BatchControlUseCase.BatchLaunchCommand command = new BatchControlUseCase.BatchLaunchCommand(
@@ -209,9 +205,9 @@ class BatchOperationsServiceTest {
 
         BatchControlUseCase.BatchExecutionResult result = batchOperationsService.launchAsync(command);
 
-        assertThat(result.jobName()).isEqualTo("stockPricePrevCloseSyncJob");
+        assertThat(result.jobName()).isEqualTo("stockPriceBatchJob");
         verifyNoInteractions(jobExplorer);
-        verify(asyncJobLauncher).run(org.mockito.ArgumentMatchers.eq(stockPricePrevCloseSyncJob), org.mockito.ArgumentMatchers.any());
+        verify(asyncJobLauncher).run(org.mockito.ArgumentMatchers.eq(stockPriceBatchJob), org.mockito.ArgumentMatchers.any());
     }
 
     @Test

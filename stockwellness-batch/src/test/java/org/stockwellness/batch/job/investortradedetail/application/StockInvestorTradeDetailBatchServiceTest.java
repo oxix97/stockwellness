@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
+import org.stockwellness.application.investortradedetail.application.StockInvestorTradeDetailBatchService;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 
 import java.time.LocalDate;

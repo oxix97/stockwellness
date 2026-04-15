@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.stockwellness.application.StockPriceFacade;
+import org.stockwellness.application.stockprice.service.StockPriceFacade;
 
 
 @RestController

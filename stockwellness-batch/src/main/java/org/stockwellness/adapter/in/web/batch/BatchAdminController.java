@@ -5,20 +5,22 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
+import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
+import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
+import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
+import org.stockwellness.adapter.in.web.batch.dto.DailyFullSyncRequest;
+import org.stockwellness.adapter.in.web.batch.dto.DataIntegrityResponse;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
-import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
-import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
-import org.stockwellness.adapter.in.web.batch.dto.DataIntegrityResponse;
-import org.stockwellness.adapter.in.web.batch.dto.DailyFullSyncRequest;
-import org.stockwellness.batch.job.stockprice.sync.support.StockPriceSyncRequest;
+import org.stockwellness.application.stockprice.support.StockPriceSyncRequest;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/batch")
@@ -29,6 +31,7 @@ public class BatchAdminController {
     private final BatchMonitoringUseCase batchMonitoringUseCase;
     private final DailyBatchOrchestrationService dailyBatchOrchestrationService;
     private final KisDailyPriceAdapter kisDailyPriceAdapter;
+    private final DailyBatchOrchestrator dailyBatchOrchestrator;
 
     /**
      * KIS 어댑터를 직접 호출하여 여러 종목의 현재가/시세를 즉시 조회 (테스트/관리용)
@@ -111,6 +114,38 @@ public class BatchAdminController {
                 : null;
         dailyBatchOrchestrationService.runDailyFullSync(businessDate);
         return ApiResponse.success();
+    }
+
+    @PostMapping("/run-daily-sync")
+    public ApiResponse<Map<String, String>> runDailySync() {
+        long totalStartTime = System.currentTimeMillis();
+
+        // 1. 지수 동기화 (KOSPI, S&P500 등)
+        long marketStart = System.currentTimeMillis();
+        dailyBatchOrchestrator.runDailyMarketSync();
+        long marketDuration = System.currentTimeMillis() - marketStart;
+
+        // 2. 주식 데이터 동기화 (마스터, 수급, 시세) - 섹터 분석의 선행 작업
+        long stockStart = System.currentTimeMillis();
+        dailyBatchOrchestrator.runDailyStockSync();
+        long stockDuration = System.currentTimeMillis() - stockStart;
+
+        // 3. 섹터 인사이트 동기화 (주식 시세를 기반으로 계산)
+        long sectorStart = System.currentTimeMillis();
+        dailyBatchOrchestrator.runDailySectorInsightSync();
+        long sectorDuration = System.currentTimeMillis() - sectorStart;
+
+        long totalDuration = System.currentTimeMillis() - totalStartTime;
+
+        // 밀리초(ms)를 초(s) 단위로 가독성 있게 변환하여 응답
+        Map<String, String> timings = Map.of(
+                "marketSync", (marketDuration / 1000.0) + "s",
+                "stockSync", (stockDuration / 1000.0) + "s",
+                "sectorSync", (sectorDuration / 1000.0) + "s",
+                "totalTime", (totalDuration / 1000.0) + "s"
+        );
+
+        return ApiResponse.success(timings);
     }
 
     /**

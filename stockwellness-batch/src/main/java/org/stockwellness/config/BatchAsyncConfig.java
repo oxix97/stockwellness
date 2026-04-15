@@ -1,6 +1,6 @@
 package org.stockwellness.config;
 
-import org.stockwellness.batch.support.MdcTaskDecorator;
+import org.stockwellness.batch.support.async.MdcTaskDecorator;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;

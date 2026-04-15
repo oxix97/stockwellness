@@ -22,8 +22,9 @@ import java.util.Map;
 @EnableCaching
 public class ApiRedisConfig {
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+    @Bean(name = "domainRedisTemplate")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(name = "domainRedisTemplate")
+    public RedisTemplate<String, Object> domainRedisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());

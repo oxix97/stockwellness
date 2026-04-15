@@ -3,6 +3,7 @@ package org.stockwellness.batch.job.stockmaster.support.parser;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.stockwellness.application.stock.parser.MarketIndexMstParser;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 
 import java.io.IOException;

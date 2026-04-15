@@ -7,8 +7,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
 import org.stockwellness.application.port.out.stock.MarketIndexPort;
+import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
+import org.stockwellness.application.sector.step.reader.SectorMarketIndexItemReader;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 
 import java.util.List;

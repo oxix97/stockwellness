@@ -26,6 +26,13 @@ spring:
     bootstrap-servers: localhost:9092
     producer:
       retries: 0
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
     properties:
       max.block.ms: 500 # 연결 대기 시간을 0.5초로 극단적으로 단축
   data:

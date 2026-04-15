@@ -30,7 +30,7 @@
 mkdir -p stockwellness-core/src/main/java/org/stockwellness/adapter/out/external/kis/dto
 
 # 파일 이동
-mv stockwellness-core/src/main/java/org/stockwellness/application/port/out/stock/SectorApiDto.java stockwellness-core/src/main/java/org/stockwellness/adapter/out/external/kis/dto/SectorApiDto.java
+mv stockwellness-core/src/main/java/org/stockwellness/service/port/out/stock/SectorApiDto.java stockwellness-core/src/main/java/org/stockwellness/adapter/out/external/kis/dto/SectorApiDto.java
 ```
 
 ### Step 2: `import` 경로 수정
@@ -39,7 +39,7 @@ mv stockwellness-core/src/main/java/org/stockwellness/application/port/out/stock
 
 - **대상 파일**: `SectorEodStepConfig.java`, `SectorApiItemReader.java` 등 `SectorApiDto`를 사용하는 모든 클래스
 - **변경 전**: `import org.stockwellness.application.port.out.stock.SectorApiDto;`
-- **변경 후**: `import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;`
+- **변경 후**: `import org.stockwellness.adapter.out.external.slack.dto.kis.SectorApiDto;`
 
 ### Step 3: `build.gradle.kts` 설정 원복
 

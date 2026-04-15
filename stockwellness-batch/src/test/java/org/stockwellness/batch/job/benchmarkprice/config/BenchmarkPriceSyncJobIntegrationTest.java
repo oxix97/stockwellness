@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
-import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.support.BatchIntegrationTestSupport;
 
 import java.math.BigDecimal;
@@ -25,7 +24,6 @@ import static org.mockito.Mockito.mock;
 
 import org.springframework.batch.core.Job;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.junit.jupiter.api.BeforeEach;
 
 import org.springframework.batch.core.launch.JobLauncher;
 

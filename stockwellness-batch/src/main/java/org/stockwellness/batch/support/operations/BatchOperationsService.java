@@ -19,7 +19,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepo
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.batch.job.stockmaster.application.MarketIndexSyncService;
+import org.stockwellness.application.stock.service.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.domain.stock.price.PriceIssueType;
 import org.stockwellness.global.error.ErrorCode;
@@ -33,7 +33,6 @@ import java.util.Set;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class BatchOperationsService implements BatchControlUseCase, BatchMonitoringUseCase {
 
     private static final LocalDate MIN_PRICE_SYNC_DATE = LocalDate.of(2022, 1, 1);
@@ -45,9 +44,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
             BatchJobType.STOCK_FOREIGN_INSTITUTION
     );
 
-    @Qualifier("jobLauncher")
     private final JobLauncher jobLauncher;
-    @Qualifier("asyncJobLauncher")
     private final JobLauncher asyncJobLauncher;
     private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
@@ -55,13 +52,44 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     private final Job stockMasterSyncJob;
     private final Job stockPriceBatchJob;
     private final Job sectorEodJob;
-    private final Job stockPricePrevCloseSyncJob;
     private final Job portfolioStatsJob;
     private final Job benchmarkPriceSyncJob;
     private final Job stockInvestorTradeDetailJob;
     private final StockPort stockPort;
     private final MarketIndexSyncService marketIndexSyncService;
     private final StockPriceRepository stockPriceRepository;
+
+    public BatchOperationsService(
+            @Qualifier("jobLauncher") JobLauncher jobLauncher,
+            @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
+            JobExplorer jobExplorer,
+            JobOperator jobOperator,
+            JobRepository jobRepository,
+            @Qualifier("stockMasterSyncJob") Job stockMasterSyncJob,
+            @Qualifier("dailyStockPriceBatchJob") Job stockPriceBatchJob,
+            @Qualifier("sectorEodJob") Job sectorEodJob,
+            @Qualifier("portfolioStatsJob") Job portfolioStatsJob,
+            @Qualifier("benchmarkPriceSyncJob") Job benchmarkPriceSyncJob,
+            @Qualifier("stockInvestorTradeDetailJob") Job stockInvestorTradeDetailJob,
+            StockPort stockPort,
+            MarketIndexSyncService marketIndexSyncService,
+            StockPriceRepository stockPriceRepository
+    ) {
+        this.jobLauncher = jobLauncher;
+        this.asyncJobLauncher = asyncJobLauncher;
+        this.jobExplorer = jobExplorer;
+        this.jobOperator = jobOperator;
+        this.jobRepository = jobRepository;
+        this.stockMasterSyncJob = stockMasterSyncJob;
+        this.stockPriceBatchJob = stockPriceBatchJob;
+        this.sectorEodJob = sectorEodJob;
+        this.portfolioStatsJob = portfolioStatsJob;
+        this.benchmarkPriceSyncJob = benchmarkPriceSyncJob;
+        this.stockInvestorTradeDetailJob = stockInvestorTradeDetailJob;
+        this.stockPort = stockPort;
+        this.marketIndexSyncService = marketIndexSyncService;
+        this.stockPriceRepository = stockPriceRepository;
+    }
 
     @Override
     public BatchExecutionResult launchAsync(BatchLaunchCommand command) {
@@ -183,9 +211,8 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     private Job resolveJob(BatchJobType jobType) {
         return switch (jobType) {
             case STOCK_MASTER_SYNC -> stockMasterSyncJob;
-            case STOCK_PRICE_SYNC -> stockPriceBatchJob;
+            case STOCK_PRICE_SYNC, STOCK_PRICE_PREV_CLOSE_SYNC -> stockPriceBatchJob;
             case SECTOR_EOD_SYNC -> sectorEodJob;
-            case STOCK_PRICE_PREV_CLOSE_SYNC -> stockPricePrevCloseSyncJob;
             case PORTFOLIO_STATS_SYNC -> portfolioStatsJob;
             case BENCHMARK_PRICE_SYNC -> benchmarkPriceSyncJob;
             case STOCK_FOREIGN_INSTITUTION -> stockInvestorTradeDetailJob;

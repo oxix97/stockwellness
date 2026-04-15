@@ -1,4 +1,4 @@
-package org.stockwellness.batch.support;
+package org.stockwellness.batch.support.async;
 
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
