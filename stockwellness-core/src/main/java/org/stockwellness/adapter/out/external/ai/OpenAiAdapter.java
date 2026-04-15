@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.out.external.ai;
 
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
@@ -8,9 +9,8 @@ import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
-import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
-import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort.AdvisorAiResult;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
+import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
@@ -19,14 +19,8 @@ import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.AiReport;
 
-import jakarta.annotation.PreDestroy;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 @Slf4j
 @Component

@@ -53,7 +53,7 @@ public class KisClientConfig {
         return builder
                 .baseUrl(kisProperties.baseUrl())
                 .requestFactory(bufferingRequestFactory(simpleClientFactory()))
-                .defaultHeader("Content-Type", "application/json; charset=utf-8")
+                .defaultHeader("Content-Type", "service/json; charset=utf-8")
                 .build();
     }
 
@@ -71,7 +71,7 @@ public class KisClientConfig {
                 .requestInterceptor(tokenAuthInterceptor(tokenAdapter))
                 .defaultHeader("appkey", kisProperties.appKey())
                 .defaultHeader("appsecret", kisProperties.appSecret())
-                .defaultHeader("Content-Type", "application/json; charset=utf-8")
+                .defaultHeader("Content-Type", "service/json; charset=utf-8")
                 // 4. 안전한 JSON 변환기 설정
                 .messageConverters(converters ->
                         converters.addFirst(new MappingJackson2HttpMessageConverter(kisObjectMapper()))

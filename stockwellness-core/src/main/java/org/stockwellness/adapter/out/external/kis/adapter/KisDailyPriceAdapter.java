@@ -4,13 +4,14 @@ import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.stockwellness.adapter.out.external.kis.config.ResilienceConfig;
 import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.global.config.ResilienceConfig;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -22,19 +23,23 @@ import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class KisDailyPriceAdapter {
 
     private final RestClient kisApiClient;
     private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());
     private final RateLimiter kisRateLimiter;
 
+    public KisDailyPriceAdapter(@Qualifier("kisApiClient") RestClient kisApiClient, RateLimiter kisRateLimiter) {
+        this.kisApiClient = kisApiClient;
+        this.kisRateLimiter = kisRateLimiter;
+    }
+
     /**
      * 멀티 종목 시세 조회 (최대 30종목)
      */
     public List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers) {
         return executeWithRetry(() -> {
-            KisPriceResponse<Object, List<KisMultiStockPriceDetail>> response = kisApiClient.get()
+            KisResponse<List<KisMultiStockPriceDetail>> response = kisApiClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/uapi/domestic-stock/v1/quotations/intstock-multprice");
                         for (int i = 0; i < Math.min(tickers.size(), 30); i++) {
@@ -51,7 +56,7 @@ public class KisDailyPriceAdapter {
                     });
 
             response = requireSuccessfulResponse(response, "멀티 종목 시세 조회", String.join(",", tickers));
-            return (response.output2() != null) ? response.output2() : Collections.emptyList();
+            return (response.output() != null) ? response.output() : Collections.emptyList();
         });
     }
 

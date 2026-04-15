@@ -2,6 +2,7 @@ package org.stockwellness.adapter.out.external.kis.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.global.error.ErrorCode;
@@ -17,10 +18,13 @@ import java.util.zip.ZipInputStream;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class KisMasterClient {
 
     private final RestClient kisAuthClient; // 인증용 클라이언트 재사용 (BaseURL만 덮어씀)
+
+    public KisMasterClient(@Qualifier("kisAuthClient") RestClient kisAuthClient) {
+        this.kisAuthClient = kisAuthClient;
+    }
 
     // KIS 마스터 파일 다운로드 URL (상수)
     private static final String KOSPI_MASTER_URL = "https://new.real.download.dws.co.kr/common/master/kospi_code.mst.zip";

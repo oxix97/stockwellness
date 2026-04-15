@@ -4,9 +4,11 @@ import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.stockwellness.adapter.out.external.kis.config.ResilienceConfig;
 import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.application.port.out.stock.InvestorTradingSnapshot;
@@ -14,7 +16,6 @@ import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.application.port.out.stock.SectorDailySnapshot;
 import org.stockwellness.application.port.out.stock.SectorDataPort;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
-import org.stockwellness.global.config.ResilienceConfig;
 import org.stockwellness.global.error.ErrorCode;
 
 import java.math.BigDecimal;
@@ -28,7 +29,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class KisSectorAdapter implements SectorDataPort {
 
     private static final String INVESTOR_DAILY_PATH = "/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market";
@@ -43,6 +43,11 @@ public class KisSectorAdapter implements SectorDataPort {
     private final RateLimiter kisRateLimiter;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.BASIC_ISO_DATE;
+
+    public KisSectorAdapter(@Qualifier("kisApiClient") RestClient kisApiClient, RateLimiter kisRateLimiter) {
+        this.kisApiClient = kisApiClient;
+        this.kisRateLimiter = kisRateLimiter;
+    }
 
     @Override
     public SectorDailySnapshot fetchDailySectorDetail(String indexCode, LocalDate date) {
