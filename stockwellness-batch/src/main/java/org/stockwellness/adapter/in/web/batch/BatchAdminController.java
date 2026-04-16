@@ -14,7 +14,7 @@ import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
-import org.stockwellness.application.stockprice.support.StockPriceSyncRequest;
+import org.stockwellness.adapter.batch.stockprice.support.StockPriceSyncRequest;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.util.DateUtil;
 

@@ -19,7 +19,7 @@ import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepo
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.application.stock.service.MarketIndexSyncService;
+import org.stockwellness.application.service.batch.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.domain.stock.price.PriceIssueType;
 import org.stockwellness.global.error.ErrorCode;
