@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.client.ResourceAccessException;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 
+import org.stockwellness.adapter.out.external.kis.config.ResilienceConfig;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
