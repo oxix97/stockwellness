@@ -1,5 +1,14 @@
 plugins {
     id("org.springframework.boot")
+    id("com.epages.restdocs-api-spec")
+}
+
+openapi3 {
+    setServer("http://localhost:8080")
+    title = "Stockwellness API"
+    description = "Stockwellness 서비스의 REST API 명세서"
+    version = "0.0.1"
+    format = "yaml"
 }
 
 dependencies {
