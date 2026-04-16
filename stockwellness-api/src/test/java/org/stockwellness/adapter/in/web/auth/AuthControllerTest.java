@@ -13,6 +13,7 @@ import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
+import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.support.RestDocsSupport;
 import org.springframework.restdocs.payload.FieldDescriptor;
@@ -72,6 +73,48 @@ class AuthControllerTest extends RestDocsSupport {
                                     .tag("Auth")
                                     .summary("로그인")
                                     .description("소셜 로그인 정보를 통해 액세스 토큰 및 리프레시 토큰을 발급받습니다.")
+                                    .requestSchema(Schema.schema("LoginRequest"))
+                                    .responseSchema(Schema.schema("LoginResponse"))
+                                    .requestFields(
+                                            fieldWithPath("email").description("이메일"),
+                                            fieldWithPath("nickname").description("닉네임"),
+                                            fieldWithPath("loginType").description("로그인 타입 (GOOGLE, KAKAO, NAVER)")
+                                    )
+                                    .responseFields(responseFields)
+                                    .build())
+                    ));
+        }
+
+        @Test
+        @DisplayName("카카오 로그인 성공 시 토큰을 반환한다")
+        void login_kakao_success() throws Exception {
+            // given
+            LoginRequest request = new LoginRequest("ieejo716@naver.com", "chan", LoginType.KAKAO);
+            LoginResult result = new LoginResult(AuthFixture.ACCESS_TOKEN, AuthFixture.REFRESH_TOKEN, 1L, "ieejo716@naver.com", "chan", LocalDate.now());
+
+            given(authUseCase.login(any(LoginCommand.class))).willReturn(result);
+
+            List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
+            responseFields.addAll(List.of(
+                    fieldWithPath("data.accessToken").description("액세스 토큰"),
+                    fieldWithPath("data.refreshToken").description("리프레시 토큰"),
+                    fieldWithPath("data.memberId").description("회원 ID"),
+                    fieldWithPath("data.email").description("이메일"),
+                    fieldWithPath("data.nickname").description("닉네임"),
+                    fieldWithPath("data.joinedDate").description("가입 일자")
+            ));
+
+            // when & then
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andDo(document("auth-login-kakao",
+                            resource(ResourceSnippetParameters.builder()
+                                    .tag("Auth")
+                                    .summary("카카오 로그인")
+                                    .description("카카오 소셜 로그인 정보를 통해 액세스 토큰 및 리프레시 토큰을 발급받습니다.")
                                     .requestSchema(Schema.schema("LoginRequest"))
                                     .responseSchema(Schema.schema("LoginResponse"))
                                     .requestFields(
