@@ -42,7 +42,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorRanking", key = "#date.toString() + '_' + (#marketType != null ? #marketType.name() : 'ALL') + '_' + #limit + '_v2'")
+    @Cacheable(cacheNames = "sectorRanking", key = "#date + '_' + (#marketType != null ? #marketType : 'ALL') + '_' + #limit + '_v2'")
     public List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
         // 지정된 날짜의 전체 섹터 조회 (KOSPI/KOSDAQ 동시 조회 시 이름 중복 해결을 위해)
         List<SectorInsight> allInsights = sectorInsightPort.findAllByDate(date, marketType);
@@ -100,7 +100,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorDetail", key = "#sectorCode + '_' + #date.toString()")
+    @Cacheable(cacheNames = "sectorDetail", key = "#sectorCode + '_' + #date")
     public SectorDetailResult getSectorDetail(String sectorCode, LocalDate date) {
         SectorInsight insight = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
                 .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
