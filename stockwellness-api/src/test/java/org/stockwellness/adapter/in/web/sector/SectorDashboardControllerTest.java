@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
+import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.domain.stock.insight.LeadingStock;
@@ -147,6 +148,50 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data.aiOpinion.title").description("리포트 제목").optional());
                                     add(fieldWithPath("data.aiOpinion.keyReasons").description("핵심 근거 리스트").optional());
                                     add(fieldWithPath("data.aiOpinion.detailedAnalysis").description("상세 분석 본문").optional());
+                                }})
+                                .build())
+                ));
+    }
+
+    @Test
+    @DisplayName("섹터 vs 시장 비교 분석 API 명세 생성")
+    void compareWithMarket_docs() throws Exception {
+        // given
+        SectorComparisonResult result = new SectorComparisonResult(
+                "001", "종합", LocalDate.of(2026, 4, 7),
+                new BigDecimal("3.45"), new BigDecimal("1.20"), new BigDecimal("2.25"),
+                "OUTPERFORM",
+                List.of(new SectorComparisonResult.HistoricalRS(LocalDate.of(2026, 4, 6), new BigDecimal("2.1"), new BigDecimal("1.0"), new BigDecimal("1.1")))
+        );
+
+        given(sectorInsightUseCase.compareWithMarket(anyString()))
+                .willReturn(result);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/sectors/{sectorCode}/comparison", "001"))
+                .andExpect(status().isOk())
+                .andDo(document("sector-comparison",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Sector")
+                                .summary("섹터 vs 시장 비교 분석 조회")
+                                .description("특정 섹터의 수익률을 시장 지수와 비교 분석합니다.")
+                                .pathParameters(
+                                        parameterWithName("sectorCode").description("섹터 코드")
+                                )
+                                .responseSchema(Schema.schema("SectorComparisonResponse"))
+                                .responseFields(new ArrayList<>(commonResponseFields()) {{
+                                    add(fieldWithPath("data.sectorCode").description("섹터 코드"));
+                                    add(fieldWithPath("data.sectorName").description("섹터명"));
+                                    add(fieldWithPath("data.baseDate").description("기준 날짜"));
+                                    add(fieldWithPath("data.sectorChangeRate").description("섹터 변동률"));
+                                    add(fieldWithPath("data.marketChangeRate").description("시장 변동률"));
+                                    add(fieldWithPath("data.relativeStrength").description("상대 강도 (RS)"));
+                                    add(fieldWithPath("data.performanceStatus").description("성과 상태 (OUTPERFORM, UNDERPERFORM, NEUTRAL)"));
+                                    add(fieldWithPath("data.historicalComparison[]").description("과거 비교 데이터 리스트"));
+                                    add(fieldWithPath("data.historicalComparison[].date").description("날짜"));
+                                    add(fieldWithPath("data.historicalComparison[].sectorRate").description("섹터 변동률"));
+                                    add(fieldWithPath("data.historicalComparison[].marketRate").description("시장 변동률"));
+                                    add(fieldWithPath("data.historicalComparison[].relativeStrength").description("상대 강도"));
                                 }})
                                 .build())
                 ));
