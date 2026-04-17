@@ -3,7 +3,7 @@ package org.stockwellness.batch.job.sector.step;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
-import org.stockwellness.application.sector.step.processor.SectorAiItemProcessor;
+import org.stockwellness.adapter.batch.sector.step.processor.SectorAiItemProcessor;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;

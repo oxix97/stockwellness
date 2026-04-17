@@ -9,8 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.item.Chunk;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.stockwellness.application.investortradedetail.model.InvestorTradeDetailUpdateCommand;
-import org.stockwellness.application.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
+import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
+import org.stockwellness.adapter.batch.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

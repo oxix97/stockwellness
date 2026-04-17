@@ -14,7 +14,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.test.MetaDataInstanceFactory;
-import org.stockwellness.application.stockprice.support.StockPriceBatchLoggingProvider;
+import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchLoggingProvider;
 import org.stockwellness.batch.support.listener.BatchFailureItemListener;
 import org.stockwellness.batch.support.logging.BatchFailureSummary;
 import org.stockwellness.batch.support.logging.BatchLoggingConstants;

@@ -3,7 +3,7 @@ package org.stockwellness.batch.job.benchmarkprice.step.processor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.stockwellness.application.benchmarkprice.BenchmarkPriceSyncService;
+import org.stockwellness.application.service.batch.BenchmarkPriceSyncService;
 import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;

@@ -15,7 +15,7 @@ import static org.mockito.Mockito.verify;
 class StockwellnessSchedulerTest {
 
     @Mock
-    private DailyBatchOrchestrationService dailyBatchOrchestrationService;
+    private DailyBatchOrchestrator dailyBatchOrchestrator;
 
     @Mock
     private AdvisorOrchestrator advisorOrchestrator;
@@ -25,10 +25,12 @@ class StockwellnessSchedulerTest {
 
     @Test
     @DisplayName("일일 전체 동기화 스케줄러는 오케스트레이션 서비스만 호출한다")
-    void runDailyFullSync_delegatesToOrchestrationService() {
+    void runDailyFullSync_delegatesToOrchestrator() {
         stockwellnessScheduler.runDailyFullSync();
 
-        verify(dailyBatchOrchestrationService).runDailyFullSync();
+        verify(dailyBatchOrchestrator).runDailyStockSync();
+        verify(dailyBatchOrchestrator).runDailySectorInsightSync();
+        verify(dailyBatchOrchestrator).runDailyMarketSync();
     }
 
     @Test

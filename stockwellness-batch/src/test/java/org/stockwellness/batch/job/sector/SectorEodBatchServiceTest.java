@@ -13,7 +13,7 @@ import org.stockwellness.application.port.out.stock.MarketIndexPort;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
-import org.stockwellness.application.sector.service.SectorEodBatchService;
+import org.stockwellness.application.service.batch.SectorEodBatchService;
 import org.stockwellness.application.service.stock.SectorAnalysisService;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.MarketIndex;

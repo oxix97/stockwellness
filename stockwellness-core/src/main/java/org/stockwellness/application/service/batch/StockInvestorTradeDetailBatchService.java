@@ -44,7 +44,7 @@ public class StockInvestorTradeDetailBatchService {
         return resolveMarketBaseDate(DateUtil.today());
     }
 
-    LocalDate resolveMarketBaseDate(LocalDate referenceDate) {
+    public LocalDate resolveMarketBaseDate(LocalDate referenceDate) {
         LocalDate marketBaseDate = stockPricePort.findLatestDateOnOrBefore(referenceDate)
                 .orElseThrow(() -> new IllegalStateException(
                         "stock_price 기준 영업일을 찾을 수 없어 stockInvestorTradeDetailJob을 실행할 수 없습니다."

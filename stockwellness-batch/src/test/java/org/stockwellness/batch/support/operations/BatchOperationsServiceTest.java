@@ -20,7 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
-import org.stockwellness.application.stock.service.MarketIndexSyncService;
+import org.stockwellness.application.service.batch.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 
 import java.util.List;

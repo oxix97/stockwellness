@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
-import org.stockwellness.application.sector.step.reader.SectorApiItemReader;
+import org.stockwellness.adapter.batch.sector.step.reader.SectorApiItemReader;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 

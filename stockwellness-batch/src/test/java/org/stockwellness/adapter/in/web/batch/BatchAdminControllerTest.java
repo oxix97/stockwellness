@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
+import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
@@ -46,6 +47,9 @@ class BatchAdminControllerTest {
 
     @MockitoBean
     private DailyBatchOrchestrationService dailyBatchOrchestrationService;
+
+    @MockitoBean
+    private DailyBatchOrchestrator dailyBatchOrchestrator;
 
     @MockitoBean
     private KisDailyPriceAdapter kisDailyPriceAdapter;
