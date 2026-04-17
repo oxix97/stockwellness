@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.global.config.CacheType;
+import org.stockwellness.domain.common.cache.CacheType;
 
 import java.util.List;
 import java.util.Optional;

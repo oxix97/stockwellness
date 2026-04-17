@@ -1,4 +1,4 @@
-package org.stockwellness.global.config;
+package org.stockwellness.domain.common.cache;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +9,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public enum CacheType {
     // 인증/회원
-    MEMBER("member:v2", Duration.ofMinutes(30), true), // Security Serializer 필요 시 플래그 활용
+    MEMBER("member:v2", Duration.ofMinutes(30), true),
 
     // 주식 도메인
     AI_ANALYSIS("ai_analysis:v2", Duration.ofHours(24), false),
