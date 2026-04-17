@@ -34,8 +34,8 @@ public class StockAnalysisService implements StockAnalysisUseCase {
 
     @Override
     @Cacheable(
-            value = "ai_analysis",
-            key = "#command.isinCode() + ':' + T(java.time.LocalDate).now().toString()",
+            value = "ai_analysis:v2",
+            key = "#p0.isinCode() + ':' + T(java.time.LocalDate).now().toString()",
             unless = "#result == null"
     )
     public StockAnalysisResult analyze(StockAnalysisCommand command) {

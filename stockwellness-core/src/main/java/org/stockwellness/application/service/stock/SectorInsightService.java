@@ -42,7 +42,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorRanking", key = "#date + '_' + (#marketType != null ? #marketType : 'ALL') + '_' + #limit + '_v2'")
+    @Cacheable(cacheNames = "sectorRanking:v3", key = "#p0 + '_' + (#p1 != null ? #p1 : 'ALL') + '_' + #p2", unless = "#result == null")
     public List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
         // 지정된 날짜의 전체 섹터 조회 (KOSPI/KOSDAQ 동시 조회 시 이름 중복 해결을 위해)
         List<SectorInsight> allInsights = sectorInsightPort.findAllByDate(date, marketType);
@@ -100,8 +100,12 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorDetail", key = "#sectorCode + '_' + #date")
+    @Cacheable(cacheNames = "sectorDetail:v3", key = "#p0 + '_' + #p1", unless = "#result == null")
     public SectorDetailResult getSectorDetail(String sectorCode, LocalDate date) {
+        if (sectorCode == null || sectorCode.isBlank()) {
+            throw new SectorDomainException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         SectorInsight insight = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
                 .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
@@ -116,8 +120,12 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorComparison", key = "#sectorCode")
+    @Cacheable(cacheNames = "sectorComparison:v3", key = "#p0", unless = "#result == null")
     public SectorComparisonResult compareWithMarket(String sectorCode) {
+        if (sectorCode == null || sectorCode.isBlank()) {
+            throw new SectorDomainException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         SectorInsight sector = sectorInsightPort.findLatestBefore(sectorCode, LocalDate.now().plusDays(1))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
 

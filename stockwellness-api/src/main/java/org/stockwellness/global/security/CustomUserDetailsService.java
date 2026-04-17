@@ -18,7 +18,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final LoadMemberPort loadMemberPort;
 
     @Override
-    @Cacheable(value = "member", key = "#memberIdStr")
+    @Cacheable(value = "member:v2", key = "#p0")
     public UserDetails loadUserByUsername(String memberIdStr) {
         Long memberId = Long.parseLong(memberIdStr);
         Member member = loadMemberPort.loadMember(memberId)

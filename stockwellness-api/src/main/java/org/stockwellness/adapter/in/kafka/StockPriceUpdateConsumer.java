@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.global.config.CacheType;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,8 +43,8 @@ public class StockPriceUpdateConsumer {
         List<String> symbols = event.symbols();
 
         // 1. 섹터 관련 인사이트 캐시 전체 무효화 (새로운 시세 기준 순위 재산출 필요)
-        Optional.ofNullable(cacheManager.getCache("sectorRanking")).ifPresent(Cache::clear);
-        Optional.ofNullable(cacheManager.getCache("sectorSupply")).ifPresent(Cache::clear);
+        Optional.ofNullable(cacheManager.getCache(CacheType.SECTOR_RANKING.getCacheName())).ifPresent(Cache::clear);
+        Optional.ofNullable(cacheManager.getCache(CacheType.SECTOR_SUPPLY.getCacheName())).ifPresent(Cache::clear);
 
         // 2. 영향을 받는 포트폴리오 식별 및 분석 캐시 무효화
         List<Long> affectedPortfolioIds = portfolioPort.findPortfolioIdsBySymbols(symbols);
@@ -57,7 +58,12 @@ public class StockPriceUpdateConsumer {
     }
 
     private void invalidatePortfolioAnalysisCaches(List<Long> portfolioIds) {
-        String[] cacheNames = {"portfolio_valuation", "portfolio_diversification", "portfolio_rebalancing", "ai_analysis"};
+        String[] cacheNames = {
+            "portfolio_valuation", 
+            "portfolio_diversification", 
+            "portfolio_rebalancing", 
+            CacheType.AI_ANALYSIS.getCacheName()
+        };
         
         for (String cacheName : cacheNames) {
             Optional.ofNullable(cacheManager.getCache(cacheName)).ifPresent(cache -> {
