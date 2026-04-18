@@ -36,11 +36,11 @@ public class DailyBatchOrchestrator {
             JobExecution stockSync = executeJob(stockMasterSyncJob);
             if (isFailed(stockSync)) return;
 
+            JobExecution stockPriceSync = executeJob(dailyStockPriceBatchJob);
+            if (isFailed(stockPriceSync)) return;
+
             JobExecution stockInvestorTradeDetailSync = executeJob(stockInvestorTradeDetailJob);
             if (isFailed(stockInvestorTradeDetailSync)) return;
-
-            JobExecution stockPriceSync = executeJob(dailyStockPriceBatchJob);
-//            if (isFailed(stockPriceSync)) return;
         } catch (Exception e) {
             e.printStackTrace();
         }
