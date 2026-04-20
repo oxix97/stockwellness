@@ -14,9 +14,9 @@ public class StockInvestorTradeDetailScheduler {
     private final BatchControlUseCase batchControlUseCase;
 
     /**
-     * 매주 평일(월-금) 오후 3시(KST) 외국인/기관 매매종목가 집계 배치를 실행합니다.
+     * 매주 평일(월-금) 오후 4시(KST) 외국인/기관 매매종목가 집계 배치를 실행합니다.
      */
-    @Scheduled(cron = "0 0 15 * * MON-FRI", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 16 * * MON-FRI", zone = "Asia/Seoul")
     public void runStockInvestorTradeDetailJob() {
         log.info("[Scheduler] 외국인/기관 매매종목가 집계 배치 자동 실행 시작");
         try {
