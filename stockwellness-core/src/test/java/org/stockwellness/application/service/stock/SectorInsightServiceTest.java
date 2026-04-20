@@ -16,8 +16,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
+import org.stockwellness.global.error.ErrorCode;
 
 @ExtendWith(MockitoExtension.class)
 class SectorInsightServiceTest {
@@ -44,5 +47,22 @@ class SectorInsightServiceTest {
         // when & then
         assertThatCode(() -> sectorInsightService.getTopSectorsByFluctuation(today, MarketType.KOSPI, 10))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("섹터 코드가 비어있는 경우 SectorDomainException이 발생해야 한다")
+    void getSectorDetail_withEmptyCode_shouldThrowException() {
+        LocalDate today = LocalDate.now();
+        assertThatThrownBy(() -> sectorInsightService.getSectorDetail("", today))
+                .isInstanceOf(SectorDomainException.class)
+                .hasMessageContaining(ErrorCode.INVALID_INPUT_VALUE.getMessage());
+    }
+
+    @Test
+    @DisplayName("섹터 비교 요청 시 섹터 코드가 비어있는 경우 SectorDomainException이 발생해야 한다")
+    void compareWithMarket_withEmptyCode_shouldThrowException() {
+        assertThatThrownBy(() -> sectorInsightService.compareWithMarket(null))
+                .isInstanceOf(SectorDomainException.class)
+                .hasMessageContaining(ErrorCode.INVALID_INPUT_VALUE.getMessage());
     }
 }

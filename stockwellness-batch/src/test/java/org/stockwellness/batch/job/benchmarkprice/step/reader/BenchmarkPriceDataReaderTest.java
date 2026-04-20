@@ -7,8 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
-import org.stockwellness.application.benchmarkprice.model.BenchmarkPriceDataWrapper;
-import org.stockwellness.application.benchmarkprice.step.reader.BenchmarkPriceDataReader;
+import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
+import org.stockwellness.adapter.batch.benchmarkprice.step.reader.BenchmarkPriceDataReader;
 import org.stockwellness.domain.stock.BenchmarkType;
 
 import java.math.BigDecimal;

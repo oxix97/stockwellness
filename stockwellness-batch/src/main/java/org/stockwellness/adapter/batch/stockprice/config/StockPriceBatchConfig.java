@@ -25,6 +25,7 @@ import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.adapter.batch.stockprice.listener.StockPriceSyncEventListener;
 import org.stockwellness.adapter.batch.stockprice.step.processor.DailyStockPriceProcessor;
+import org.stockwellness.adapter.batch.stockprice.step.processor.StockInvestorTradeProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.processor.TechnicalIndicatorProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.reader.StockListReader;
 import org.stockwellness.adapter.batch.stockprice.step.writer.StockInvestorTradeListWriter;
@@ -65,10 +66,12 @@ public class StockPriceBatchConfig {
     @Bean
     public Job dailyStockPriceBatchJob(
             Step dailyStockPriceStep,
+            Step stockInvestorTradeStep,
             Step technicalIndicatorCalculateStep
     ) {
         return new JobBuilder("dailyStockPriceBatchJob", jobRepository)
                 .start(dailyStockPriceStep)
+                .next(stockInvestorTradeStep)
                 .next(technicalIndicatorCalculateStep)
                 .listener(commonJobListener)
                 .listener(eventListener)
@@ -93,7 +96,24 @@ public class StockPriceBatchConfig {
     }
 
     /**
-     * [Step 2-2] 기술 지표 계산
+     * [Step 2-2] 수급 수집 단계: [KIS] 멀티종목시세 조회를 통해 수급 데이터를 저장
+     */
+    @Bean
+    public Step stockInvestorTradeStep(
+            StockListReader stockInvestorTradeReader,
+            StockInvestorTradeProcessor stockInvestorTradeProcessor,
+            ItemWriter<List<StockInvestorTrade>> stockInvestorTradeListWriter
+    ) {
+        return new StepBuilder("stockInvestorTradeStep", jobRepository)
+                .<List<Stock>, List<StockInvestorTrade>>chunk(1, txManager)
+                .reader(stockInvestorTradeReader)
+                .processor(stockInvestorTradeProcessor)
+                .writer(stockInvestorTradeListWriter)
+                .build();
+    }
+
+    /**
+     * [Step 2-3] 기술 지표 계산
      */
     @Bean
     public Step technicalIndicatorCalculateStep(
@@ -173,6 +193,12 @@ public class StockPriceBatchConfig {
     @StepScope
     public DailyStockPriceProcessor dailyStockPriceProcessor(KisDailyPriceAdapter kisDailyPriceAdapter) {
         return new DailyStockPriceProcessor(kisDailyPriceAdapter);
+    }
+
+    @Bean
+    @StepScope
+    public StockInvestorTradeProcessor stockInvestorTradeProcessor(KisDailyPriceAdapter kisDailyPriceAdapter) {
+        return new StockInvestorTradeProcessor(kisDailyPriceAdapter);
     }
 
     @Bean

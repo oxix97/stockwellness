@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.batch.support.BatchLogTemplate;
 
+import org.stockwellness.domain.common.cache.CacheType;
+
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -42,9 +44,9 @@ public class SectorEodJobListener implements JobExecutionListener {
     }
 
     private void evictSectorCaches() {
-        evictCache("sectorRanking");
-        evictCache("sectorDetail");
-        evictCache("sectorComparison");
+        evictCache(CacheType.SECTOR_RANKING.getCacheName());
+        evictCache(CacheType.SECTOR_DETAIL.getCacheName());
+        evictCache(CacheType.SECTOR_COMPARISON.getCacheName());
         log.info("섹터 관련 Redis 캐시 무효화 완료.");
     }
 

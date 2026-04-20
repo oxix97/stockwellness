@@ -68,8 +68,9 @@ class StockPriceUpdateConsumerTest {
             .atMost(10, TimeUnit.SECONDS)
             .pollInterval(200, TimeUnit.MILLISECONDS)
             .untilAsserted(() -> {
-                verify(cacheManager).getCache("sectorRanking");
-                verify(cacheManager).getCache("sectorSupply");
+                verify(cacheManager).getCache("sectorRanking:v3");
+                verify(cacheManager).getCache("sectorSupply:v3");
+                verify(cacheManager).getCache("ai_analysis:v2");
                 verify(mockCache, atLeastOnce()).clear();
                 verify(mockCache, atLeastOnce()).evict(anyLong());
             });

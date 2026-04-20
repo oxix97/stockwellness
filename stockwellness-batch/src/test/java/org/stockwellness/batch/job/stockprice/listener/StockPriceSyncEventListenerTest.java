@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.batch.item.Chunk;
 import org.stockwellness.adapter.out.kafka.batch.KafkaEventPublisher;
-import org.stockwellness.application.stockprice.listener.StockPriceSyncEventListener;
+import org.stockwellness.adapter.batch.stockprice.listener.StockPriceSyncEventListener;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 

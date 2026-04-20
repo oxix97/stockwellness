@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import org.stockwellness.global.config.CacheType;
+import org.stockwellness.domain.common.cache.CacheType;
 
 import java.time.Duration;
 import java.util.HashMap;

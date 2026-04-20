@@ -30,7 +30,7 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
     private JobLauncher jobLauncher;
 
     @Autowired
-    @Qualifier("stockPriceBatchJob")
+    @Qualifier("dailyStockPriceBatchJob")
     private Job job;
 
     @Autowired

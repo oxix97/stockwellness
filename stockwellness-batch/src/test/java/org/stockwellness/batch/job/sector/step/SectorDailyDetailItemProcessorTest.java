@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.application.port.out.stock.SectorDataPort;
-import org.stockwellness.application.sector.step.processor.SectorDailyDetailItemProcessor;
+import org.stockwellness.adapter.batch.sector.step.processor.SectorDailyDetailItemProcessor;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 
