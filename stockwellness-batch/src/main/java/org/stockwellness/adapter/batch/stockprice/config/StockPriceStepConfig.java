@@ -7,7 +7,6 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
@@ -21,16 +20,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.adapter.batch.stockprice.step.processor.DailyStockPriceProcessor;
-import org.stockwellness.adapter.batch.stockprice.step.processor.StockInvestorTradeProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.processor.TechnicalIndicatorProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.reader.StockListReader;
-import org.stockwellness.adapter.batch.stockprice.step.writer.StockInvestorTradeListWriter;
 import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceListWriter;
 import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceWriter;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceSql;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockInvestorTrade;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
 
@@ -69,24 +65,7 @@ public class StockPriceStepConfig {
     }
 
     /**
-     * [Step 2] 수급 수집 단계: [KIS] 멀티종목시세 조회를 통해 수급 데이터를 저장
-     */
-    @Bean
-    public Step stockInvestorTradeStep(
-            StockListReader stockInvestorTradeReader,
-            StockInvestorTradeProcessor stockInvestorTradeProcessor,
-            ItemWriter<List<StockInvestorTrade>> stockInvestorTradeListWriter
-    ) {
-        return new StepBuilder("stockInvestorTradeStep", jobRepository)
-                .<List<Stock>, List<StockInvestorTrade>>chunk(1, txManager)
-                .reader(stockInvestorTradeReader)
-                .processor(stockInvestorTradeProcessor)
-                .writer(stockInvestorTradeListWriter)
-                .build();
-    }
-
-    /**
-     * [Step 3] 기술 지표 계산
+     * [Step 2] 기술 지표 계산
      */
     @Bean
     public Step technicalIndicatorCalculateStep(
@@ -108,26 +87,22 @@ public class StockPriceStepConfig {
     @StepScope
     public DailyStockPriceProcessor dailyStockPriceProcessor(
             KisDailyPricePort kisDailyPricePort,
-            @Value("#{jobParameters['targetDate']}") String targetDateStr
+            @Value("#{jobParameters['targetDate']}") String targetDateStr,
+            @Value("#{jobParameters['endDate']}") String endDateStr
     ) {
-        LocalDate targetDate = DateUtil.parse(targetDateStr);
-        if (targetDate == null) {
-            targetDate = LocalDate.now();
-        }
+        LocalDate targetDate = parseTargetDate(targetDateStr, endDateStr);
         return new DailyStockPriceProcessor(kisDailyPricePort, targetDate);
     }
 
-    @Bean
-    @StepScope
-    public StockInvestorTradeProcessor stockInvestorTradeProcessor(
-            KisDailyPricePort kisDailyPricePort,
-            @Value("#{jobParameters['targetDate']}") String targetDateStr
-    ) {
+    private LocalDate parseTargetDate(String targetDateStr, String endDateStr) {
         LocalDate targetDate = DateUtil.parse(targetDateStr);
         if (targetDate == null) {
-            targetDate = LocalDate.now();
+            targetDate = DateUtil.parse(endDateStr);
         }
-        return new StockInvestorTradeProcessor(kisDailyPricePort, targetDate);
+        if (targetDate == null) {
+            targetDate = DateUtil.today();
+        }
+        return targetDate;
     }
 
     @Bean
@@ -139,12 +114,6 @@ public class StockPriceStepConfig {
     @Bean
     @StepScope
     public StockListReader dailyStockPriceReader(JpaPagingItemReader<Stock> stockReader) {
-        return new StockListReader(stockReader, 30);
-    }
-
-    @Bean
-    @StepScope
-    public StockListReader stockInvestorTradeReader(JpaPagingItemReader<Stock> stockReader) {
         return new StockListReader(stockReader, 30);
     }
 
@@ -187,11 +156,6 @@ public class StockPriceStepConfig {
     @Bean
     public StockPriceListWriter stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
         return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
-    }
-
-    @Bean
-    public ItemWriter<List<StockInvestorTrade>> stockInvestorTradeListWriter() {
-        return new StockInvestorTradeListWriter(jdbcTemplate);
     }
 
     @Bean

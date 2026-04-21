@@ -26,12 +26,10 @@ public class StockPriceJobConfig {
     @Bean
     public Job dailyStockPriceBatchJob(
             Step dailyStockPriceStep,
-            Step stockInvestorTradeStep,
             Step technicalIndicatorCalculateStep
     ) {
         return new JobBuilder("dailyStockPriceBatchJob", jobRepository)
                 .start(dailyStockPriceStep)
-                .next(stockInvestorTradeStep)
                 .next(technicalIndicatorCalculateStep)
                 .listener(commonJobListener)
                 .listener(eventListener)
