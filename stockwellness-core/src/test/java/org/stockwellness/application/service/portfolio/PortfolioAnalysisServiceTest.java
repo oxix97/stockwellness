@@ -173,20 +173,20 @@ class PortfolioAnalysisServiceTest {
     @DisplayName("백테스팅 실행: 선택한 전략에 따라 백테스팅 엔진을 호출하고 결과를 반환한다")
     void runBacktest_Success() {
         // given
-        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), org.stockwellness.domain.stock.price.ChartPeriod.ONE_YEAR, true, org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
         
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
         portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())));
         AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of(), null);
         
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
-        given(simulationDataProvider.loadData(anyList(), anyString(), any(), any())).willReturn(new SimulationData(Map.of(), Map.of()));
+        given(simulationDataProvider.loadData(anyList(), anyList(), any(), any())).willReturn(new SimulationData(Map.of(), Map.of()));
         
         BacktestResult mockEngineResult = new BacktestResult(
                 Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "AI 조언입니다.");
-        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class), anyString(), any())).willReturn(mockEngineResult);
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class), anyString(), any(), anyBoolean())).willReturn(mockEngineResult);
         given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
 
         // when
@@ -236,7 +236,7 @@ class PortfolioAnalysisServiceTest {
         LocalDate start = end.minusMonths(12);
 
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
-        given(simulationDataProvider.loadData(anyList(), anyString(), eq(start), eq(end)))
+        given(simulationDataProvider.loadData(anyList(), anyList(), eq(start), eq(end)))
                 .willReturn(new SimulationData(Map.of(), Map.of()));
 
         BacktestResult mockPerf = new BacktestResult(
@@ -244,7 +244,7 @@ class PortfolioAnalysisServiceTest {
                 BigDecimal.ONE, BigDecimal.valueOf(20.0), BigDecimal.valueOf(8.4), BigDecimal.valueOf(3.2),
                 BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "Advice");
         
-        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any())).willReturn(mockPerf);
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean())).willReturn(mockPerf);
 
         // when
         PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);

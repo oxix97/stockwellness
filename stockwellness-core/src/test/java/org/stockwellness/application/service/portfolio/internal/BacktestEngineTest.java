@@ -37,7 +37,7 @@ class BacktestEngineTest {
         BigDecimal initialAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0));
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0), false);
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -67,7 +67,7 @@ class BacktestEngineTest {
         BigDecimal monthlyAmount = BigDecimal.valueOf(1000);
 
         // when
-        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0));
+        BacktestResult result = backtestEngine.runDCA(data, weights, monthlyAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0), false);
 
         // then
         assertThat(result.dailyResults()).hasSize(2);
@@ -104,7 +104,7 @@ class BacktestEngineTest {
 
         // when
         // Monthly rebalancing
-        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, RebalancingPeriod.MONTHLY, "KOSPI", BigDecimal.valueOf(3.0));
+        BacktestResult result = backtestEngine.runLumpSum(data, weights, initialAmount, RebalancingPeriod.MONTHLY, "KOSPI", BigDecimal.valueOf(3.0), false);
 
         // then
         assertThat(result.dailyResults()).hasSize(2);

@@ -28,10 +28,14 @@ public record BacktestRequest(
     String benchmarkTicker,
 
     /**
-     * 프론트엔드 클라이언트 필터링 호환용 기간 필드.
-     * 서버 계산에는 반영하지 않는다.
+     * 시뮬레이션 기간 (1M, 3M, 6M, 1Y, 3Y, ALL)
      */
     String period,
+
+    /**
+     * 배당금 재투자 여부
+     */
+    Boolean dividendReinvested,
 
     /**
      * 자산 재배분(리밸런싱) 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)

@@ -10,6 +10,7 @@ import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolio
 import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
@@ -129,6 +130,8 @@ public class PortfolioAnalysisController {
                 request.strategy(),
                 request.amount(),
                 resolveBenchmarkTickers(request.benchmarkTicker()),
+                ChartPeriod.fromLabel(request.period() != null ? request.period() : "1Y"),
+                request.dividendReinvested() != null ? request.dividendReinvested() : true,
                 request.rebalancingPeriod(),
                 request.weights()
         );

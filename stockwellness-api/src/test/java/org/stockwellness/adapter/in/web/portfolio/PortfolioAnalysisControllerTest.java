@@ -281,10 +281,10 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1000000),
                 "",
                 "ALL",
+                true,
                 org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
         );
-
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
                 fieldWithPath("data.dailyResults[].date").description("시뮬레이션 일자"),
@@ -335,7 +335,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                         fieldWithPath("strategy").description("투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"),
                                         fieldWithPath("amount").description("초기 투자 금액 (또는 월간 적립액)"),
                                         fieldWithPath("benchmarkTicker").description("비교 대상 대표 벤치마크 티커 (미입력 시 코스피 200이 기본 비교군의 primary)").optional(),
-                                        fieldWithPath("period").description("클라이언트 기간 필터링 호환용 필드 (서버 계산에는 미반영)").optional(),
+                                        fieldWithPath("period").description("시뮬레이션 기간 (1M, 3M, 6M, 1Y, 3Y, ALL)").optional(),
+                                        fieldWithPath("dividendReinvested").description("배당금 재투자 여부").optional(),
                                         fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
                                         subsectionWithPath("weights").description("사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)").optional()
                                 )

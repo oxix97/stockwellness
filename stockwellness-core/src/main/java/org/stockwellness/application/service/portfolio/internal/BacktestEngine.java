@@ -15,7 +15,12 @@ import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -40,8 +45,8 @@ public class BacktestEngine {
      * @param riskFreeRate 무위험 수익률 (샤프 지수 계산용)
      * @return 일별 수익률 및 최종 통계가 포함된 백테스트 결과
      */
-    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate) {
-        return runSimulation(data, weights, new LumpSumModel(initialAmount), rebalancingPeriod, primaryBenchmarkTicker, riskFreeRate);
+    public BacktestResult runLumpSum(SimulationData data, Map<String, BigDecimal> weights, BigDecimal initialAmount, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate, boolean dividendReinvested) {
+        return runSimulation(data, weights, new LumpSumModel(initialAmount), rebalancingPeriod, primaryBenchmarkTicker, riskFreeRate, dividendReinvested);
     }
 
     /**
@@ -54,23 +59,24 @@ public class BacktestEngine {
      * @param rebalancingPeriod 리밸런싱 주기
      * @param primaryBenchmarkTicker 비교 기준 지수 티커
      * @param riskFreeRate 무위험 수익률
+     * @param dividendReinvested 배당금 재투자 여부
      * @return 백테스트 결과
      */
-    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate) {
-        return runSimulation(data, weights, new DCAModel(monthlyAmount), rebalancingPeriod, primaryBenchmarkTicker, riskFreeRate);
+    public BacktestResult runDCA(SimulationData data, Map<String, BigDecimal> weights, BigDecimal monthlyAmount, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate, boolean dividendReinvested) {
+        return runSimulation(data, weights, new DCAModel(monthlyAmount), rebalancingPeriod, primaryBenchmarkTicker, riskFreeRate, dividendReinvested);
     }
 
     /**
      * 공통 시뮬레이션 실행 로직
      */
-    private BacktestResult runSimulation(SimulationData data, Map<String, BigDecimal> weights, CashFlowModel cashFlowModel, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate) {
+    private BacktestResult runSimulation(SimulationData data, Map<String, BigDecimal> weights, CashFlowModel cashFlowModel, RebalancingPeriod rebalancingPeriod, String primaryBenchmarkTicker, BigDecimal riskFreeRate, boolean dividendReinvested) {
         // 1. 모든 데이터(종목, 지수)의 날짜를 합쳐서 전체 시뮬레이션 기간의 기준일 리스트 생성
         List<LocalDate> allDates = extractSortedDates(data);
         if (allDates.isEmpty()) return BacktestResult.empty();
 
         // 2. 계산 효율을 위해 시세 데이터를 날짜 순으로 정렬된 배열로 변환
-        Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data.stockPrices(), allDates);
-        Map<String, BigDecimal[]> benchmarkArrays = createAlignedPriceArrays(data.benchmarkPrices(), allDates);
+        Map<String, BigDecimal[]> priceArrays = createAlignedPriceArrays(data.stockPrices(), allDates, dividendReinvested);
+        Map<String, BigDecimal[]> benchmarkArrays = createAlignedPriceArrays(data.benchmarkPrices(), allDates, false); // 지수는 일반 종가 사용
 
         List<BacktestResult.DailyBacktestResult> results = new ArrayList<>();
         Map<LocalDate, BigDecimal> dailyPortfolioReturns = new TreeMap<>();
@@ -244,11 +250,16 @@ public class BacktestEngine {
      * 원본 시세 데이터를 전체 시뮬레이션 날짜에 맞춰 정렬된 배열로 변환합니다.
      * 중간에 빠진 날짜(휴장일 등)가 있다면 직전 가격을 채워 넣습니다.
      */
-    private Map<String, BigDecimal[]> createAlignedPriceArrays(Map<String, List<StockPriceResult>> sourceData, List<LocalDate> allDates) {
+    private Map<String, BigDecimal[]> createAlignedPriceArrays(Map<String, List<StockPriceResult>> sourceData, List<LocalDate> allDates, boolean dividendReinvested) {
         Map<String, BigDecimal[]> alignedPrices = new HashMap<>();
         sourceData.forEach((symbol, prices) -> {
             NavigableMap<LocalDate, BigDecimal> priceMap = prices.stream()
-                    .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::closePrice, (v1, v2) -> v1, TreeMap::new));
+                    .collect(Collectors.toMap(
+                            StockPriceResult::baseDate, 
+                            p -> dividendReinvested ? p.adjClosePrice() : p.closePrice(), 
+                            (v1, v2) -> v1, 
+                            TreeMap::new
+                    ));
             
             BigDecimal[] array = new BigDecimal[allDates.size()];
             BigDecimal lastPrice = BigDecimal.ZERO;
