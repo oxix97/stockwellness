@@ -17,6 +17,7 @@ public enum ChartPeriod {
     ONE_WEEK("1W", end -> end.minusWeeks(1)),
     ONE_MONTH("1M", end -> end.minusMonths(1)),
     THREE_MONTHS("3M", end -> end.minusMonths(3)),
+    SIX_MONTHS("6M", end -> end.minusMonths(6)),
     ONE_YEAR("1Y", end -> end.minusYears(1)),
     THREE_YEARS("3Y", end -> end.minusYears(3)),
     FIVE_YEARS("5Y", end -> end.minusYears(5)),

@@ -257,11 +257,16 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         }
 
         if (command.jobType() == BatchJobType.STOCK_PRICE_SYNC || command.jobType() == BatchJobType.STOCK_PRICE_PREV_CLOSE_SYNC) {
-            addStringIfPresent(builder, "startDate", normalizePriceDate(command.startDate(), true));
-            addStringIfPresent(builder, "endDate", normalizePriceDate(command.endDate(), false));
+            String normalizedStartDate = normalizePriceDate(command.startDate(), true);
+            String normalizedEndDate = normalizePriceDate(command.endDate(), false);
+            addStringIfPresent(builder, "startDate", normalizedStartDate);
+            addStringIfPresent(builder, "endDate", normalizedEndDate);
+            addStringIfPresent(builder, "targetDate", normalizePriceDate(command.targetDate() != null ? command.targetDate() : normalizedEndDate, false));
         } else if (command.jobType() == BatchJobType.BENCHMARK_PRICE_SYNC) {
             addStringIfPresent(builder, "startDate", normalizeDate(command.startDate()));
             addStringIfPresent(builder, "endDate", normalizeDate(command.endDate()));
+        } else if (command.jobType() == BatchJobType.STOCK_FOREIGN_INSTITUTION) {
+            addStringIfPresent(builder, "targetDate", normalizeDate(command.targetDate()));
         }
 
         if (command.targetTicker() != null && command.jobType() != BatchJobType.STOCK_FOREIGN_INSTITUTION) {

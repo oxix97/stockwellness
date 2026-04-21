@@ -99,6 +99,7 @@ public class BatchAdminController {
                         null,
                         null,
                         null,
+                        null,
                         false
                 )
         )));
@@ -162,6 +163,7 @@ public class BatchAdminController {
                         null,
                         startDate,
                         endDate,
+                        null,
                         false
                 )
         )));
@@ -180,6 +182,7 @@ public class BatchAdminController {
                         BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC,
                         null,
                         request != null ? request.getStartDate() : null,
+                        request != null ? request.getEndDate() : null,
                         request != null ? request.getEndDate() : null,
                         publishEvent
                 )
@@ -203,6 +206,7 @@ public class BatchAdminController {
                         request.getTargetTicker(),
                         request.getStartDate(),
                         request.getEndDate(),
+                        request.getEndDate(),
                         publishEvent
                 )
         )));
@@ -222,6 +226,7 @@ public class BatchAdminController {
                         null,
                         startDate,
                         endDate,
+                        endDate,
                         false
                 )
         )));
@@ -231,13 +236,16 @@ public class BatchAdminController {
      * 투자주체 순매수 금액 보정 배치 실행 (랭킹 보정용)
      */
     @PostMapping("/sync-investor-trade-detail")
-    public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync() {
+    public ApiResponse<BatchExecutionResponse> runInvestorTradeDetailSync(
+            @RequestParam(required = false) String targetDate
+    ) {
         return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
                 new BatchControlUseCase.BatchLaunchCommand(
                         BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION,
                         null,
                         null,
                         null,
+                        targetDate,
                         false
                 )
         )));
@@ -258,6 +266,7 @@ public class BatchAdminController {
                         ticker,
                         startDate,
                         endDate,
+                        endDate,
                         false
                 )
         )));
@@ -271,6 +280,7 @@ public class BatchAdminController {
         return ApiResponse.success(toExecutionResponse(batchControlUseCase.launchAsync(
                 new BatchControlUseCase.BatchLaunchCommand(
                         BatchControlUseCase.BatchJobType.PORTFOLIO_STATS_SYNC,
+                        null,
                         null,
                         null,
                         null,

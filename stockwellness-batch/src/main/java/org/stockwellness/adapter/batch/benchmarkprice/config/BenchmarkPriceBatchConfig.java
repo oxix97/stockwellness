@@ -58,6 +58,9 @@ public class BenchmarkPriceBatchConfig {
                 .reader(benchmarkPriceDataReader)
                 .processor(benchmarkPriceDataProcessor)
                 .writer(benchmarkPriceDataWriter)
+                .faultTolerant()
+                .retryLimit(3)
+                .retry(Exception.class)
                 .build();
     }
 

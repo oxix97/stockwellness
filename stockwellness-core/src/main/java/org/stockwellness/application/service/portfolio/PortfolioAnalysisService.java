@@ -6,19 +6,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.PortfolioAnalysisUseCase;
 import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.result.*;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.internal.*;
-import org.stockwellness.domain.portfolio.AssetType;
-import org.stockwellness.domain.portfolio.BacktestStrategy;
-import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.portfolio.RebalancingPeriod;
+import org.stockwellness.domain.portfolio.*;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.BenchmarkType;
@@ -32,12 +28,7 @@ import org.stockwellness.global.util.PortfolioMapperUtil;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -94,13 +85,14 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
         AnalysisContext context = dataLoader.loadContext(portfolioId, memberId);
         List<String> symbols = context.getStockSymbols();
-        SimulationData data = simulationDataProvider.loadData(symbols, BenchmarkType.KOSPI.getTicker(), startDate, endDate);
-        
+        List<String> benchmarkTickers = BenchmarkType.defaultSimulationBenchmarkTickers();
+        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, startDate, endDate);
+
         Map<String, BigDecimal> weights = context.portfolio().getItems().stream()
                 .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
-        
-        BacktestResult performanceResult = backtestEngine.runLumpSum(data, weights, BigDecimal.valueOf(10000000), RebalancingPeriod.NONE, BenchmarkType.KOSPI.getTicker(), BigDecimal.valueOf(3.0));
-        
+
+        BacktestResult performanceResult = backtestEngine.runLumpSum(data, weights, BigDecimal.valueOf(10000000), RebalancingPeriod.NONE, benchmarkTickers.getFirst(), BigDecimal.valueOf(3.0), true);
+
         return new PortfolioAnalysisSummaryResult(
                 calculateValuation(context, performanceResult),
                 calculateDiversification(context),
@@ -132,27 +124,27 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     @Override
     public BacktestResult runBacktest(BacktestPortfolioCommand command) {
         AnalysisContext context = dataLoader.loadContext(command.portfolioId(), command.memberId());
-        
+
         // 종목별 목표 비중 추출 (사용자 입력 가중치가 있으면 우선 사용, 없으면 포트폴리오 기본 비중 사용)
         Map<String, BigDecimal> weights = (command.weights() != null && !command.weights().isEmpty()) ?
                 normalizeWeights(command.weights()) :
                 context.portfolio().getItems().stream().collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
-        
+
         List<String> symbols = new ArrayList<>(weights.keySet());
 
-        // 최근 2년치 시세 데이터 로딩 및 시뮬레이션 실행
+        // 선택된 기간에 따른 시세 데이터 로딩 및 시뮬레이션 실행
         LocalDate end = LocalDate.now();
-        LocalDate start = end.minusYears(2);
-        String primaryTicker = command.benchmarkTickers().getFirst();
-        SimulationData data = simulationDataProvider.loadData(symbols, primaryTicker, start, end);
+        LocalDate start = command.period().calculateStartDate(end);
+        List<String> benchmarkTickers = command.benchmarkTickers();
+        String primaryTicker = benchmarkTickers.getFirst();
+        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, start, end);
 
         BacktestStrategy strategy = BacktestStrategy.valueOf(command.strategy().toUpperCase());
 
         // 투자 방식에 따른 시뮬레이션 엔진 실행 (LumpSum: 거치식, DCA: 적립식)
         BacktestResult result = (strategy == BacktestStrategy.DCA) ?
-                backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0)) :
-                backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0));
-        
+                backtestEngine.runDCA(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0), command.dividendReinvested()) :
+                backtestEngine.runLumpSum(data, weights, command.amount(), command.rebalancingPeriod(), primaryTicker, BigDecimal.valueOf(3.0), command.dividendReinvested());
         // AI 어드바이저가 백테스트 결과를 분석하여 조언 생성
         String aiComment = aiAdvisorUseCase.generateBacktestAdvice(result, command.strategy(), primaryTicker);
         
@@ -219,7 +211,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 .toList();
 
         if (stockItems.isEmpty()) {
-            return new PortfolioInceptionChartResult(portfolio.getInceptionDate(), List.of(), List.of());
+            return new PortfolioInceptionChartResult(portfolio.getInceptionDate(), 0, List.of(), List.of());
         }
 
         LocalDate inceptionDate = portfolio.getInceptionDate();
@@ -235,7 +227,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 .toList();
 
         if (dates.isEmpty()) {
-            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+            return new PortfolioInceptionChartResult(inceptionDate, 0, List.of(), List.of());
         }
 
         Map<String, Map<LocalDate, BigDecimal>> stockCloseMap = stockPriceMap.entrySet().stream()
@@ -321,8 +313,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         }
 
         if (dailyResults.isEmpty()) {
-            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+            return new PortfolioInceptionChartResult(inceptionDate, 0, List.of(), List.of());
         }
+
+        long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(inceptionDate, LocalDate.now());
 
         Map<String, BigDecimal> finalBenchmarkReturns = dailyResults.get(dailyResults.size() - 1).benchmarkReturnRates();
         List<PortfolioInceptionChartResult.IndexComparison> comparisons = benchmarks.stream()
@@ -333,7 +327,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 ))
                 .toList();
 
-        return new PortfolioInceptionChartResult(inceptionDate, dailyResults, comparisons);
+        return new PortfolioInceptionChartResult(inceptionDate, daysElapsed, dailyResults, comparisons);
     }
 
     public BigDecimal calculateBenchmarkReturn(String ticker, LocalDate startDate, LocalDate endDate) {

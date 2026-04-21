@@ -80,5 +80,7 @@ public interface StockPricePort {
 
     Optional<LocalDate> findLatestInvestorTradeDate();
 
+    boolean existsByBaseDate(LocalDate date);
+
     void saveAll(List<StockPrice> stockPrices);
 }

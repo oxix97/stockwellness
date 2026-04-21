@@ -27,12 +27,10 @@ public class SectorEodJobListener implements JobExecutionListener {
     @Override
     public void afterJob(JobExecution jobExecution) {
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-            log.info("SectorEodJob 성공적으로 완료. 캐시를 무효화하고 프리워밍을 시작합니다.");
+            log.info("SectorEodJob 성공적으로 완료. 캐시 프리워밍을 시작합니다.");
             
-            // 1. 캐시 무효화 (안전하게 처리)
-            evictSectorCaches();
-            
-            // 2. 캐시 프리워밍 (상위 10개 기준)
+            // 1. 캐시 프리워밍 (상위 10개 기준)
+            // 지우지 않고 덮어쓰기(Warm-up) 방식을 사용하여 서비스 중단 없는 안전한 갱신 구현
             LocalDate today = LocalDate.now();
             try {
                 sectorInsightUseCase.getTopSectorsByFluctuation(today, null, 10);

@@ -44,6 +44,7 @@ public class StockChartService implements StockPriceUseCase {
             int limit
     ) {
         Optional<LocalDate> effectiveDate = stockPricePort.findLatestInvestorTradeDate();
+        log.info("[수급 랭킹 조회] direction={}, limit={}, effectiveDate={}", direction, limit, effectiveDate.orElse(null));
 
         if (effectiveDate.isEmpty()) {
             return new StockSupplyRankingResponse(null, null, List.of(), List.of());
@@ -59,6 +60,8 @@ public class StockChartService implements StockPriceUseCase {
                 direction,
                 limit
         );
+        log.info("[수급 랭킹 조회] direction={}, limit={}, effectiveDate={}, institutionCount={}, foreignCount={}",
+                direction, limit, effectiveDate.get(), institutionItems.size(), foreignItems.size());
 
         return new StockSupplyRankingResponse(null, effectiveDate.get(), institutionItems, foreignItems);
     }

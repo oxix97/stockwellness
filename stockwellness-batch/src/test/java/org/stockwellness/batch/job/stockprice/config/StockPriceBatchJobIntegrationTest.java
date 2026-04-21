@@ -6,10 +6,10 @@ import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
-import org.stockwellness.adapter.out.external.kis.dto.KisInvestorPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
@@ -36,6 +36,9 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
     @Autowired
     private StockAdapter stockAdapter;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @MockitoBean
     private KisDailyPriceAdapter kisDailyPriceAdapter;
 
@@ -46,29 +49,28 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
         Stock samsung = StockFixture.createSamsung();
         stockAdapter.save(samsung);
 
-        // 일별 시세(과거 이력)에 대한 Mock API 응답 설정
-        KisDailyPriceDetail dailyDetail = new KisDailyPriceDetail(
-                LocalDate.of(2024, 1, 1),
-                new BigDecimal("70000"), new BigDecimal("71000"), new BigDecimal("69000"), new BigDecimal("70500"),
-                1000000L, new BigDecimal("70500000000"),
-                "00", "1.0", "N", "2", new BigDecimal("500"), "00"
+        KisMultiStockPriceDetail multiPriceDetail = new KisMultiStockPriceDetail(
+                "005930",
+                "삼성전자",
+                new BigDecimal("70500"),
+                new BigDecimal("500"),
+                new BigDecimal("1.0"),
+                new BigDecimal("70000"),
+                new BigDecimal("71000"),
+                new BigDecimal("69000"),
+                1_000_000L,
+                new BigDecimal("70500000000"),
+                new BigDecimal("70000"),
+                BigDecimal.TEN,
+                BigDecimal.valueOf(20)
         );
-        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), any(LocalDate.class), any(LocalDate.class)))
-                .willReturn(List.of(dailyDetail));
-
-        // 투자자 수급 데이터에 대한 Mock API 응답 설정
-        KisInvestorPriceDetail investorDetail = new KisInvestorPriceDetail(
-                "20240101",
-                new BigDecimal("70500"), "2", new BigDecimal("500"), new BigDecimal("0.71"),
-                1000000L, 5000L, 20000L, 10000L, 
-                new BigDecimal("350000000"), new BigDecimal("1400000000"), new BigDecimal("700000000")
-        );
-        given(kisDailyPriceAdapter.fetchInvestorPrices(any(Stock.class), any(LocalDate.class), any(LocalDate.class)))
-                .willReturn(List.of(investorDetail));
+        given(kisDailyPriceAdapter.fetchMultiStockPrices(any()))
+                .willReturn(List.of(multiPriceDetail));
 
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("startDate", "20240101")
                 .addString("endDate", "20240101")
+                .addString("targetDate", "20240101")
                 .addLong("timestamp", System.currentTimeMillis())
                 .toJobParameters();
 
@@ -77,5 +79,11 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
 
         // 검증
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jobExecution.getStepExecutions())
+                .extracting(StepExecution::getStepName)
+                .containsExactlyInAnyOrder("dailyStockPriceStep", "technicalIndicatorCalculateStep");
+
+        Integer investorTradeCount = jdbcTemplate.queryForObject("select count(*) from stock_investor_trade", Integer.class);
+        assertThat(investorTradeCount).isZero();
     }
 }

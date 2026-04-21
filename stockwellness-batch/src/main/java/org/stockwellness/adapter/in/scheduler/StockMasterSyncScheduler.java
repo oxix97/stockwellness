@@ -26,6 +26,7 @@ public class StockMasterSyncScheduler {
                     null,
                     null,
                     null,
+                    null,
                     false
             ));
         } catch (Exception e) {

@@ -125,7 +125,7 @@ public class PortfolioStatBatchService {
         if (weights.isEmpty()) return;
 
         SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
-        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), RebalancingPeriod.NONE, BenchmarkType.KOSPI.getTicker(), BigDecimal.valueOf(3.0));
+        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), RebalancingPeriod.NONE, BenchmarkType.KOSPI.getTicker(), BigDecimal.valueOf(3.0), true);
         
         BigDecimal mdd = result.mdd();
         BigDecimal sharpe = result.sharpeRatio();

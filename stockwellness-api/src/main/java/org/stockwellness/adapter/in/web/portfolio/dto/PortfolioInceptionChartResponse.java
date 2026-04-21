@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 public record PortfolioInceptionChartResponse(
         LocalDate portfolioInceptionDate,
+        long daysElapsed,
         List<DailyResult> dailyResults,
         List<IndexComparisonResponse> comparisons
 ) {
@@ -31,6 +32,7 @@ public record PortfolioInceptionChartResponse(
     public static PortfolioInceptionChartResponse from(PortfolioInceptionChartResult result) {
         return new PortfolioInceptionChartResponse(
                 result.portfolioInceptionDate(),
+                result.daysElapsed(),
                 result.dailyResults().stream()
                         .map(daily -> new DailyResult(
                                 daily.date(),

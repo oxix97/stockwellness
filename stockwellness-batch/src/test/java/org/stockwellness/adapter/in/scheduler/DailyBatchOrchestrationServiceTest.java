@@ -61,9 +61,10 @@ class DailyBatchOrchestrationServiceTest {
         assertThat(commands).extracting(BatchControlUseCase.BatchLaunchCommand::publishEvent)
                 .containsExactly(false, true, false, false, false, false);
         assertThat(commands.get(1).endDate()).isEqualTo(DateUtil.format(businessDate));
+        assertThat(commands.get(1).targetDate()).isEqualTo(DateUtil.format(businessDate));
         assertThat(commands.get(2).startDate()).isEqualTo(DateUtil.format(businessDate.minusDays(7)));
         assertThat(commands.get(2).endDate()).isEqualTo(DateUtil.format(businessDate));
-        assertThat(commands.get(3).startDate()).isEqualTo(DateUtil.format(businessDate));
+        assertThat(commands.get(3).targetDate()).isEqualTo(DateUtil.format(businessDate));
     }
 
     @Test

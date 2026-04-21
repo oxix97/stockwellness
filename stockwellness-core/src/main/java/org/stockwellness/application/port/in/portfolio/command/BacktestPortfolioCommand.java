@@ -1,6 +1,7 @@
 package org.stockwellness.application.port.in.portfolio.command;
 
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,6 +13,8 @@ public record BacktestPortfolioCommand(
     String strategy, // LUMP_SUM, DCA
     BigDecimal amount,
     List<String> benchmarkTickers,
+    ChartPeriod period,
+    Boolean dividendReinvested,
     RebalancingPeriod rebalancingPeriod,
     Map<String, BigDecimal> weights // Ticker -> Percentage
 ) {}

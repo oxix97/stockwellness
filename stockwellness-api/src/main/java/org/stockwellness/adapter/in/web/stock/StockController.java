@@ -58,7 +58,7 @@ public class StockController {
         Slice<StockSearchResult> result = stockUseCase.searchStocks(query);
 
         // 검색 성공 시 히스토리에 저장 (인증된 사용자만)
-        if (member != null && keyword != null && !keyword.isBlank()) {
+        if (member != null && keyword != null && keyword.matches("^[가-힣a-zA-Z0-9]{2,}$")) {
             stockSearchUseCase.saveSearchHistory(member.id(), keyword);
         }
 

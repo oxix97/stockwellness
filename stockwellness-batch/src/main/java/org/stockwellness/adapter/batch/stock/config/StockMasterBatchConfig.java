@@ -80,8 +80,8 @@ public class StockMasterBatchConfig {
                 .listener(mdcListener)
                 .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
-                .skip(Exception.class)
-                .skipLimit(50)
+                .retryLimit(3)
+                .retry(org.springframework.dao.TransientDataAccessException.class)
                 .build();
     }
 
@@ -108,8 +108,8 @@ public class StockMasterBatchConfig {
                 .listener(mdcListener)
                 .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
-                .skip(Exception.class)
-                .skipLimit(50)
+                .retryLimit(3)
+                .retry(org.springframework.dao.TransientDataAccessException.class)
                 .build();
     }
 

@@ -13,6 +13,8 @@ import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
 
+import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
+
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,7 +25,7 @@ import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 
 @Slf4j
 @Component
-public class KisDailyPriceAdapter {
+public class KisDailyPriceAdapter implements KisDailyPricePort {
 
     private final RestClient kisApiClient;
     private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());

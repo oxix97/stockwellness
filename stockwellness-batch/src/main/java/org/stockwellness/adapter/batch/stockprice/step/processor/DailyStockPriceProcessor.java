@@ -5,7 +5,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.lang.Nullable;
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -21,12 +21,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DailyStockPriceProcessor implements ItemProcessor<List<Stock>, List<StockPrice>> {
 
-    private final KisDailyPriceAdapter kisDailyPriceAdapter;
+    private final KisDailyPricePort kisDailyPricePort;
+    private final LocalDate targetDate;
 
     @Nullable
     @Override
     public List<StockPrice> process(@NonNull List<Stock> stocks) {
-        Map<String, KisMultiStockPriceDetail> priceMap = kisDailyPriceAdapter.fetchMultiStockPrices(
+        Map<String, KisMultiStockPriceDetail> priceMap = kisDailyPricePort.fetchMultiStockPrices(
                         stocks.stream()
                                 .map(Stock::getTicker)
                                 .toList()
@@ -46,13 +47,13 @@ public class DailyStockPriceProcessor implements ItemProcessor<List<Stock>, List
                 .toList();
     }
 
-    private static StockPrice mapToStockPrice(
+    private StockPrice mapToStockPrice(
             Stock stock,
             KisMultiStockPriceDetail dto
     ) {
         return StockPrice.of(
                 stock,
-                LocalDate.now(),
+                targetDate,
                 dto.openPrice(),
                 dto.highPrice(),
                 dto.lowPrice(),

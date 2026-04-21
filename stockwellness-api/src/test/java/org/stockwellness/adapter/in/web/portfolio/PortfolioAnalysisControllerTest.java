@@ -281,10 +281,10 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(1000000),
                 "",
                 "ALL",
+                true,
                 org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
         );
-
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
                 fieldWithPath("data.dailyResults[].date").description("시뮬레이션 일자"),
@@ -335,7 +335,8 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                         fieldWithPath("strategy").description("투자 전략 (LUMP_SUM: 거액 적립, DCA: 정기 적립)"),
                                         fieldWithPath("amount").description("초기 투자 금액 (또는 월간 적립액)"),
                                         fieldWithPath("benchmarkTicker").description("비교 대상 대표 벤치마크 티커 (미입력 시 코스피 200이 기본 비교군의 primary)").optional(),
-                                        fieldWithPath("period").description("클라이언트 기간 필터링 호환용 필드 (서버 계산에는 미반영)").optional(),
+                                        fieldWithPath("period").description("시뮬레이션 기간 (1M, 3M, 6M, 1Y, 3Y, ALL)").optional(),
+                                        fieldWithPath("dividendReinvested").description("배당금 재투자 여부").optional(),
                                         fieldWithPath("rebalancingPeriod").description("리밸런싱 주기 (NONE, MONTHLY, QUARTERLY, YEARLY)").optional(),
                                         subsectionWithPath("weights").description("사용자 정의 종목별 비중 (미입력 시 현재 포트폴리오 비중 유지)").optional()
                                 )
@@ -382,6 +383,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
     void get_inception_chart() throws Exception {
         PortfolioInceptionChartResult result = new PortfolioInceptionChartResult(
                 LocalDate.of(2026, 4, 1),
+                20L,
                 List.of(new PortfolioInceptionChartResult.DailyResult(
                         LocalDate.of(2026, 4, 1),
                         BigDecimal.ZERO,
@@ -400,6 +402,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
                 fieldWithPath("data.portfolioInceptionDate").description("포트폴리오 생성 기준일"),
+                fieldWithPath("data.daysElapsed").description("포트폴리오 생성 후 경과 일수"),
                 fieldWithPath("data.dailyResults[].date").description("기준 일자"),
                 fieldWithPath("data.dailyResults[].portfolioReturnRate").description("포트폴리오 생성 시점 대비 누적 수익률"),
                 subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("비교군별 누적 수익률"),

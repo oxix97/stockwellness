@@ -9,6 +9,7 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,10 +20,12 @@ import org.stockwellness.application.service.batch.StockInvestorTradeDetailBatch
 import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.adapter.batch.investortradedetail.step.processor.StockInvestorTradeDetailProcessor;
 import org.stockwellness.adapter.batch.investortradedetail.step.reader.StockInvestorTradeDetailReader;
+import org.stockwellness.adapter.batch.investortradedetail.step.tasklet.StockInvestorTradeDetailValidationTasklet;
 import org.stockwellness.adapter.batch.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
 import org.stockwellness.batch.support.BatchMdcListener;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @Slf4j
 @Configuration
@@ -38,11 +41,25 @@ public class StockInvestorTradeDetailBatchConfig {
     private final JdbcTemplate jdbcTemplate;
 
     @Bean
-    public Job stockInvestorTradeDetailJob(Step stockInvestorTradeDetailStep) {
+    public Job stockInvestorTradeDetailJob(
+            Step stockInvestorTradeDetailValidationStep,
+            Step stockInvestorTradeDetailStep
+    ) {
         return new JobBuilder("stockInvestorTradeDetailJob", jobRepository)
-                .start(stockInvestorTradeDetailStep)
+                .start(stockInvestorTradeDetailValidationStep)
+                .next(stockInvestorTradeDetailStep)
                 .listener(mdcListener)
                 .listener(commonJobListener)
+                .build();
+    }
+
+    @Bean
+    public Step stockInvestorTradeDetailValidationStep(
+            StockInvestorTradeDetailValidationTasklet stockInvestorTradeDetailValidationTasklet
+    ) {
+        return new StepBuilder("stockInvestorTradeDetailValidationStep", jobRepository)
+                .tasklet(stockInvestorTradeDetailValidationTasklet, transactionManager)
+                .listener(mdcListener)
                 .build();
     }
 
@@ -50,13 +67,15 @@ public class StockInvestorTradeDetailBatchConfig {
     public Step stockInvestorTradeDetailStep(
             StockInvestorTradeDetailReader stockInvestorTradeDetailReader,
             StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor,
-            StockInvestorTradeDetailWriter stockInvestorTradeDetailWriter
+            StockInvestorTradeDetailWriter stockInvestorTradeDetailWriter,
+            StockInvestorTradeDetailStepLoggingListener stockInvestorTradeDetailStepLoggingListener
     ) {
         return new StepBuilder("stockInvestorTradeDetailStep", jobRepository)
                 .<InvestorTradeDetail, InvestorTradeDetailUpdateCommand>chunk(50, transactionManager)
                 .reader(stockInvestorTradeDetailReader)
                 .processor(stockInvestorTradeDetailProcessor)
                 .writer(stockInvestorTradeDetailWriter)
+                .listener(stockInvestorTradeDetailStepLoggingListener)
                 .listener(mdcListener)
                 .build();
     }
@@ -69,13 +88,39 @@ public class StockInvestorTradeDetailBatchConfig {
 
     @Bean
     @StepScope
-    public StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor() {
-        LocalDate marketBaseDate = batchService.resolveMarketBaseDate();
-        return new StockInvestorTradeDetailProcessor(stockRepository, marketBaseDate);
+    public StockInvestorTradeDetailProcessor stockInvestorTradeDetailProcessor(
+            @Value("#{jobExecutionContext['resolvedBaseDate']}") String resolvedBaseDateStr
+    ) {
+        return new StockInvestorTradeDetailProcessor(stockRepository, parseTargetDate(resolvedBaseDateStr));
+    }
+
+    @Bean
+    public StockInvestorTradeDetailStepLoggingListener stockInvestorTradeDetailStepLoggingListener() {
+        return new StockInvestorTradeDetailStepLoggingListener();
+    }
+
+    @Bean
+    @StepScope
+    public StockInvestorTradeDetailValidationTasklet stockInvestorTradeDetailValidationTasklet(
+            @Value("#{jobParameters['targetDate']}") String targetDateStr
+    ) {
+        LocalDate requestedDate = parseTargetDate(targetDateStr);
+        return new StockInvestorTradeDetailValidationTasklet(batchService, requestedDate);
     }
 
     @Bean
     public StockInvestorTradeDetailWriter stockInvestorTradeDetailWriter() {
         return new StockInvestorTradeDetailWriter(jdbcTemplate);
+    }
+
+    private LocalDate parseTargetDate(String targetDateStr) {
+        if (targetDateStr == null || targetDateStr.isBlank()) {
+            return org.stockwellness.global.util.DateUtil.today();
+        }
+        try {
+            return targetDateStr.contains("-") ? LocalDate.parse(targetDateStr) : org.stockwellness.global.util.DateUtil.parse(targetDateStr);
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("잘못된 targetDate 형식입니다: " + targetDateStr, exception);
+        }
     }
 }
