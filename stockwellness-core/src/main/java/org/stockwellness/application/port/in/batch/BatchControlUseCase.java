@@ -38,6 +38,7 @@ public interface BatchControlUseCase {
             String targetTicker,
             String startDate,
             String endDate,
+            String targetDate,
             boolean publishEvent
     ) {
     }

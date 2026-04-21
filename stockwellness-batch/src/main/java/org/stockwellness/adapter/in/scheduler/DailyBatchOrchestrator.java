@@ -32,14 +32,18 @@ public class DailyBatchOrchestrator {
      * 3. 주식 가격 정보 및 기술 지표 동기화 <br>
      */
     public void runDailyStockSync() {
+        runDailyStockSync(org.stockwellness.global.util.DateUtil.today());
+    }
+
+    public void runDailyStockSync(LocalDate targetDate) {
         try {
-            JobExecution stockSync = executeJob(stockMasterSyncJob);
+            JobExecution stockSync = executeJob(stockMasterSyncJob, targetDate);
             if (isFailed(stockSync)) return;
 
-            JobExecution stockPriceSync = executeJob(dailyStockPriceBatchJob);
+            JobExecution stockPriceSync = executeJob(dailyStockPriceBatchJob, targetDate);
             if (isFailed(stockPriceSync)) return;
 
-            JobExecution stockInvestorTradeDetailSync = executeJob(stockInvestorTradeDetailJob);
+            JobExecution stockInvestorTradeDetailSync = executeJob(stockInvestorTradeDetailJob, targetDate);
             if (isFailed(stockInvestorTradeDetailSync)) return;
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,12 +76,16 @@ public class DailyBatchOrchestrator {
     }
 
     private JobExecution executeJob(Job job) throws Exception {
-        LocalDate date = LocalDate.now();
+        return executeJob(job, org.stockwellness.global.util.DateUtil.today());
+    }
+
+    private JobExecution executeJob(Job job, LocalDate targetDate) throws Exception {
         JobParameters params = new JobParametersBuilder()
                 .addLocalDateTime("runTime", LocalDateTime.now()) // 매번 새로운 JobInstance 생성을 위함
                 .addString("publishEvent", "true")
-                .addString("startDate", date.minusDays(7).format(formatter))
-                .addString("endDate", date.format(formatter))
+                .addString("startDate", targetDate.minusDays(7).format(formatter))
+                .addString("endDate", targetDate.format(formatter))
+                .addString("targetDate", targetDate.format(formatter))
                 .toJobParameters();
 
         return jobLauncher.run(job, params);

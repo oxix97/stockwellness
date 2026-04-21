@@ -99,6 +99,7 @@ class BatchOperationsServiceTest {
                 null,
                 null,
                 null,
+                null,
                 false
         ));
 
@@ -116,10 +117,11 @@ class BatchOperationsServiceTest {
                 null,
                 null,
                 null,
+                null,
                 false
         ));
 
-        assertThat(parameters.getString("baseDate")).isNull();
+        assertThat(parameters.getString("targetDate")).isNull();
         assertThat(parameters.getLong("time")).isNotNull();
     }
 
@@ -132,6 +134,7 @@ class BatchOperationsServiceTest {
                 null,
                 "2026-04-01",
                 "20260408",
+                null,
                 false
         ));
 
@@ -148,6 +151,7 @@ class BatchOperationsServiceTest {
 
         BatchControlUseCase.BatchLaunchCommand command = new BatchControlUseCase.BatchLaunchCommand(
                 BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC,
+                null,
                 null,
                 null,
                 null,
@@ -172,6 +176,7 @@ class BatchOperationsServiceTest {
                 null,
                 "20260401",
                 "20260408",
+                null,
                 false
         );
 
@@ -200,6 +205,7 @@ class BatchOperationsServiceTest {
                 null,
                 "20260401",
                 "20260408",
+                null,
                 false
         );
 

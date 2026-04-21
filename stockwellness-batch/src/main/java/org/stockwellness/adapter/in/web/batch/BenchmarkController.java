@@ -47,6 +47,7 @@ public class BenchmarkController {
                 null,
                 startDate,
                 endDate,
+                null,
                 false
         ));
 

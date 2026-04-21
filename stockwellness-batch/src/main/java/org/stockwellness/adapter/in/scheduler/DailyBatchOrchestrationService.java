@@ -82,6 +82,7 @@ public class DailyBatchOrchestrationService {
                         null,
                         DateUtil.format(businessDate.minusDays(7)),
                         DateUtil.format(businessDate),
+                        null,
                         publishEvent
                 );
                 case STOCK_PRICE_SYNC -> new BatchControlUseCase.BatchLaunchCommand(
@@ -89,17 +90,20 @@ public class DailyBatchOrchestrationService {
                         null,
                         null,
                         DateUtil.format(businessDate),
+                        DateUtil.format(businessDate),
                         publishEvent
                 );
                 case STOCK_FOREIGN_INSTITUTION -> new BatchControlUseCase.BatchLaunchCommand(
                         jobType,
                         null,
-                        DateUtil.format(businessDate),
                         null,
+                        null,
+                        DateUtil.format(businessDate),
                         publishEvent
                 );
                 default -> new BatchControlUseCase.BatchLaunchCommand(
                         jobType,
+                        null,
                         null,
                         null,
                         null,

@@ -43,29 +43,29 @@ class StockInvestorTradeDetailBatchServiceTest {
     }
 
     @Test
-    @DisplayName("시장 기준일은 stock_price의 당일 이하 최신 영업일을 사용한다")
-    void resolveMarketBaseDate_usesLatestStockPriceDateOnOrBeforeReferenceDate() {
-        given(stockPricePort.findLatestDateOnOrBefore(LocalDate.of(2026, 4, 12)))
-                .willReturn(java.util.Optional.of(LocalDate.of(2026, 4, 10)));
+    @DisplayName("시장 기준일은 요청한 날짜의 stock_price 데이터가 있으면 그대로 사용한다")
+    void resolveMarketBaseDate_usesRequestedDateWhenStockPriceExists() {
+        given(stockPricePort.existsByBaseDate(LocalDate.of(2026, 4, 12)))
+                .willReturn(true);
 
         StockInvestorTradeDetailBatchService service = new StockInvestorTradeDetailBatchService(kisDailyPriceAdapter, stockPricePort);
 
         LocalDate result = service.resolveMarketBaseDate(LocalDate.of(2026, 4, 12));
 
-        assertThat(result).isEqualTo(LocalDate.of(2026, 4, 10));
+        assertThat(result).isEqualTo(LocalDate.of(2026, 4, 12));
     }
 
     @Test
-    @DisplayName("시장 기준일을 찾지 못하면 배치를 실패시킨다")
-    void resolveMarketBaseDate_throwsWhenStockPriceDateMissing() {
-        given(stockPricePort.findLatestDateOnOrBefore(LocalDate.of(2026, 4, 12)))
-                .willReturn(java.util.Optional.empty());
+    @DisplayName("요청 기준일의 stock_price가 없으면 배치를 실패시킨다")
+    void resolveMarketBaseDate_throwsWhenRequestedDateMissing() {
+        given(stockPricePort.existsByBaseDate(LocalDate.of(2026, 4, 12)))
+                .willReturn(false);
 
         StockInvestorTradeDetailBatchService service = new StockInvestorTradeDetailBatchService(kisDailyPriceAdapter, stockPricePort);
 
         assertThatThrownBy(() -> service.resolveMarketBaseDate(LocalDate.of(2026, 4, 12)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("stock_price 기준 영업일");
+                .hasMessageContaining("요청 기준일의 stock_price 데이터");
     }
 
     private InvestorTradeDetail detail(String ticker, String name) {

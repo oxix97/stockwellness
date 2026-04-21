@@ -44,13 +44,18 @@ public class StockInvestorTradeDetailBatchService {
         return resolveMarketBaseDate(DateUtil.today());
     }
 
-    public LocalDate resolveMarketBaseDate(LocalDate referenceDate) {
-        LocalDate marketBaseDate = stockPricePort.findLatestDateOnOrBefore(referenceDate)
-                .orElseThrow(() -> new IllegalStateException(
-                        "stock_price 기준 영업일을 찾을 수 없어 stockInvestorTradeDetailJob을 실행할 수 없습니다."
-                ));
-        log.info("[투자자 상세 배치] 시장 기준일을 결정했습니다. referenceDate={}, marketBaseDate={}", referenceDate, marketBaseDate);
-        return marketBaseDate;
+    public LocalDate resolveMarketBaseDate(LocalDate requestedDate) {
+        boolean stockPriceExists = stockPricePort.existsByBaseDate(requestedDate);
+        log.info("[투자자 상세 배치] 기준일 검증 requestedDate={}, resolvedBaseDate={}, stockPriceExists={}",
+                requestedDate, requestedDate, stockPriceExists);
+
+        if (!stockPriceExists) {
+            log.warn("[투자자 상세 배치] 요청 기준일의 stock_price 데이터가 없어 실행을 중단합니다. requestedDate={}", requestedDate);
+            throw new IllegalStateException(
+                    "요청 기준일의 stock_price 데이터가 없어 stockInvestorTradeDetailJob을 실행할 수 없습니다. requestedDate=" + requestedDate
+            );
+        }
+        return requestedDate;
     }
 
     private InvestorTradeDetail mergeDetail(InvestorTradeDetail existing, InvestorTradeDetail incoming) {
