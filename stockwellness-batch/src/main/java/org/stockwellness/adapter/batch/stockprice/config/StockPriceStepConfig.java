@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.application.port.out.external.kis.KisPricePort;
+import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.adapter.batch.stockprice.step.processor.DailyStockPriceProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.processor.StockInvestorTradeProcessor;
@@ -107,27 +107,27 @@ public class StockPriceStepConfig {
     @Bean
     @StepScope
     public DailyStockPriceProcessor dailyStockPriceProcessor(
-            KisPricePort kisPricePort,
+            KisDailyPricePort kisDailyPricePort,
             @Value("#{jobParameters['targetDate']}") String targetDateStr
     ) {
         LocalDate targetDate = DateUtil.parse(targetDateStr);
         if (targetDate == null) {
             targetDate = LocalDate.now();
         }
-        return new DailyStockPriceProcessor(kisPricePort, targetDate);
+        return new DailyStockPriceProcessor(kisDailyPricePort, targetDate);
     }
 
     @Bean
     @StepScope
     public StockInvestorTradeProcessor stockInvestorTradeProcessor(
-            KisPricePort kisPricePort,
+            KisDailyPricePort kisDailyPricePort,
             @Value("#{jobParameters['targetDate']}") String targetDateStr
     ) {
         LocalDate targetDate = DateUtil.parse(targetDateStr);
         if (targetDate == null) {
             targetDate = LocalDate.now();
         }
-        return new StockInvestorTradeProcessor(kisPricePort, targetDate);
+        return new StockInvestorTradeProcessor(kisDailyPricePort, targetDate);
     }
 
     @Bean
