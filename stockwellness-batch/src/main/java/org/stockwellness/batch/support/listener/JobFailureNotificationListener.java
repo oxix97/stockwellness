@@ -55,14 +55,15 @@ public class JobFailureNotificationListener implements JobExecutionListener {
             errorMessage = jobExecution.getExitStatus().getExitDescription();
         }
 
-        String title = String.format("🔴 [Batch Failure] %s", jobName);
+        String title = String.format("🔴 [Batch Failure] %s (ID: %d)", jobName, jobExecution.getId());
         String content = String.format(
                 "작업명: %s\n" +
+                "ID: %d\n" +
                 "상태: %s\n" +
                 "실행시간: %d초\n" +
                 "처리현황: Read(%d), Write(%d), Skip(%d)\n" +
                 "에러메시지: %s",
-                jobName, status, executionTime, readCount, writeCount, skipCount, errorMessage
+                jobName, jobExecution.getId(), status, executionTime, readCount, writeCount, skipCount, errorMessage
         );
 
         log.info("배치 실패 알림 전송 - Job: {}", jobName);

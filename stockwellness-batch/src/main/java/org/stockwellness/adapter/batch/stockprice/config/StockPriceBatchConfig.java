@@ -117,18 +117,24 @@ public class StockPriceBatchConfig {
      */
     @Bean
     public Step technicalIndicatorCalculateStep(
-            JpaPagingItemReader<Stock> technicalIndicatorReader,
+            StockListReader technicalIndicatorListReader,
             TechnicalIndicatorProcessor technicalIndicatorProcessor,
-            StockPriceWriter technicalIndicatorWriter,
+            StockPriceListWriter technicalIndicatorListWriter,
             TaskExecutor batchExecutor
     ) {
         return new StepBuilder("technicalIndicatorCalculateStep", jobRepository)
-                .<Stock, StockPrice>chunk(300, txManager)
-                .reader(technicalIndicatorReader)
+                .<List<Stock>, List<StockPrice>>chunk(1, txManager)
+                .reader(technicalIndicatorListReader)
                 .processor(technicalIndicatorProcessor)
-                .writer(technicalIndicatorWriter)
+                .writer(technicalIndicatorListWriter)
                 .taskExecutor(batchExecutor)
                 .build();
+    }
+
+    @Bean
+    @StepScope
+    public StockListReader technicalIndicatorListReader(JpaPagingItemReader<Stock> technicalIndicatorReader) {
+        return new StockListReader(technicalIndicatorReader, 30);
     }
 
     @Bean
