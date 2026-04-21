@@ -7,6 +7,7 @@ import java.util.Map;
 
 public record PortfolioInceptionChartResult(
         LocalDate portfolioInceptionDate,
+        long daysElapsed,
         List<DailyResult> dailyResults,
         List<IndexComparison> comparisons
 ) {

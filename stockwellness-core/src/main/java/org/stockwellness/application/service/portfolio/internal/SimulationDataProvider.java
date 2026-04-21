@@ -7,11 +7,10 @@ import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.stockwellness.domain.stock.BenchmarkType;
 
 @Component
 @RequiredArgsConstructor
@@ -22,9 +21,9 @@ public class SimulationDataProvider {
 
     public SimulationData loadData(List<String> symbols, List<String> benchmarkTickers, LocalDate start, LocalDate end) {
         Map<String, List<StockPriceResult>> stockPrices = stockPricePort.loadPricesByTickers(symbols, start, end);
-        
+
         Map<String, List<StockPriceResult>> benchmarkPrices = new HashMap<>();
-        for (String ticker : benchmarkTickers) {
+        for (String ticker : benchmarkTickers == null ? Collections.<String>emptyList() : benchmarkTickers) {
             List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(ticker, start, end);
             if (!prices.isEmpty()) {
                 benchmarkPrices.put(ticker, prices);

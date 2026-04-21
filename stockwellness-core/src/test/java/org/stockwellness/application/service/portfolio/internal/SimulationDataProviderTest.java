@@ -37,7 +37,7 @@ class SimulationDataProviderTest {
     void load_simulation_data() {
         // given
         List<String> symbols = List.of("AAPL", "005930");
-        String benchmark = "KOSPI";
+        List<String> benchmarkTickers = List.of("KOSPI");
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusYears(2);
 
@@ -49,11 +49,29 @@ class SimulationDataProviderTest {
         given(loadBenchmarkPort.loadBenchmarkPrices(anyString(), any(LocalDate.class), any(LocalDate.class))).willReturn(List.of(benchmarkPrice));
 
         // when
-        SimulationData data = simulationDataProvider.loadData(symbols, benchmark, start, end);
+        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, start, end);
 
         // then
         assertThat(data.stockPrices().get("AAPL")).hasSize(1);
         assertThat(data.benchmarkPrices()).containsKey("KOSPI");
         assertThat(data.benchmarkPrices().get("KOSPI").get(0).baseDate()).isEqualTo(start);
+    }
+
+    @Test
+    @DisplayName("벤치마크 티커가 없으면 주가 데이터만 로딩한다")
+    void load_simulation_data_without_benchmarks() {
+        List<String> symbols = List.of("AAPL");
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusYears(2);
+
+        StockPriceResult aaplPrice = new StockPriceResult(start, BigDecimal.valueOf(100), BigDecimal.valueOf(105), BigDecimal.valueOf(95), BigDecimal.valueOf(102), BigDecimal.valueOf(102), 1000L, null, null, null, null, null);
+
+        given(stockPricePort.loadPricesByTickers(anyList(), any(LocalDate.class), any(LocalDate.class)))
+                .willReturn(Map.of("AAPL", List.of(aaplPrice)));
+
+        SimulationData data = simulationDataProvider.loadData(symbols, null, start, end);
+
+        assertThat(data.stockPrices().get("AAPL")).hasSize(1);
+        assertThat(data.benchmarkPrices()).isEmpty();
     }
 }

@@ -383,6 +383,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
     void get_inception_chart() throws Exception {
         PortfolioInceptionChartResult result = new PortfolioInceptionChartResult(
                 LocalDate.of(2026, 4, 1),
+                20L,
                 List.of(new PortfolioInceptionChartResult.DailyResult(
                         LocalDate.of(2026, 4, 1),
                         BigDecimal.ZERO,
@@ -401,6 +402,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
         responseFields.addAll(List.of(
                 fieldWithPath("data.portfolioInceptionDate").description("포트폴리오 생성 기준일"),
+                fieldWithPath("data.daysElapsed").description("포트폴리오 생성 후 경과 일수"),
                 fieldWithPath("data.dailyResults[].date").description("기준 일자"),
                 fieldWithPath("data.dailyResults[].portfolioReturnRate").description("포트폴리오 생성 시점 대비 누적 수익률"),
                 subsectionWithPath("data.dailyResults[].benchmarkReturnRates").description("비교군별 누적 수익률"),

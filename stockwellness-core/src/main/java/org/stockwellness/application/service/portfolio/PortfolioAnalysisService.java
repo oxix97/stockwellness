@@ -211,7 +211,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 .toList();
 
         if (stockItems.isEmpty()) {
-            return new PortfolioInceptionChartResult(portfolio.getInceptionDate(), List.of(), List.of());
+            return new PortfolioInceptionChartResult(portfolio.getInceptionDate(), 0, List.of(), List.of());
         }
 
         LocalDate inceptionDate = portfolio.getInceptionDate();
@@ -227,7 +227,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 .toList();
 
         if (dates.isEmpty()) {
-            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+            return new PortfolioInceptionChartResult(inceptionDate, 0, List.of(), List.of());
         }
 
         Map<String, Map<LocalDate, BigDecimal>> stockCloseMap = stockPriceMap.entrySet().stream()
@@ -313,8 +313,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         }
 
         if (dailyResults.isEmpty()) {
-            return new PortfolioInceptionChartResult(inceptionDate, List.of(), List.of());
+            return new PortfolioInceptionChartResult(inceptionDate, 0, List.of(), List.of());
         }
+
+        long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(inceptionDate, LocalDate.now());
 
         Map<String, BigDecimal> finalBenchmarkReturns = dailyResults.get(dailyResults.size() - 1).benchmarkReturnRates();
         List<PortfolioInceptionChartResult.IndexComparison> comparisons = benchmarks.stream()
@@ -325,7 +327,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 ))
                 .toList();
 
-        return new PortfolioInceptionChartResult(inceptionDate, dailyResults, comparisons);
+        return new PortfolioInceptionChartResult(inceptionDate, daysElapsed, dailyResults, comparisons);
     }
 
     public BigDecimal calculateBenchmarkReturn(String ticker, LocalDate startDate, LocalDate endDate) {
