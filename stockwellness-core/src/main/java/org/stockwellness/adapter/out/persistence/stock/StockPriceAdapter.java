@@ -120,6 +120,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                 ));
     }
 
+    @Override
+    public List<StockPrice> findRecentPricesWithDateByStock(Stock stock, LocalDate date, int limit) {
+        return stockPriceRepository.findRecentPricesByStock(stock, date, PageRequest.of(0, limit));
+    }
+
 
     @Override
     public Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks) {

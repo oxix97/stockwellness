@@ -167,6 +167,38 @@ class StockPriceRepositoryTest {
     }
 
     @Test
+    @DisplayName("단일 종목의 최근 가격 리스트를 limit 개수만큼 조회한다")
+    void findRecentPricesByStock_Success() {
+        Stock otherStock = Stock.of("ONE", "ISIN_ONE", "단일종목", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        stockRepository.save(otherStock);
+
+        LocalDate d1 = LocalDate.of(2026, 1, 10);
+        LocalDate d2 = LocalDate.of(2026, 1, 9);
+        LocalDate d3 = LocalDate.of(2026, 1, 8);
+        LocalDate d4 = LocalDate.of(2026, 1, 7);
+
+        stockPriceRepository.saveAll(List.of(
+                StockPrice.of(otherStock, d1, BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), BigDecimal.valueOf(100), 100L, BigDecimal.ZERO, null),
+                StockPrice.of(otherStock, d2, BigDecimal.valueOf(101), BigDecimal.valueOf(101), BigDecimal.valueOf(101), BigDecimal.valueOf(101), BigDecimal.valueOf(101), BigDecimal.valueOf(101), 100L, BigDecimal.ZERO, null),
+                StockPrice.of(otherStock, d3, BigDecimal.valueOf(102), BigDecimal.valueOf(102), BigDecimal.valueOf(102), BigDecimal.valueOf(102), BigDecimal.valueOf(102), BigDecimal.valueOf(102), 100L, BigDecimal.ZERO, null),
+                StockPrice.of(otherStock, d4, BigDecimal.valueOf(103), BigDecimal.valueOf(103), BigDecimal.valueOf(103), BigDecimal.valueOf(103), BigDecimal.valueOf(103), BigDecimal.valueOf(103), 100L, BigDecimal.ZERO, null)
+        ));
+        stockPriceRepository.flush();
+
+        List<StockPrice> recentPrices = stockPriceRepository.findRecentPricesByStock(
+                otherStock,
+                d1.plusDays(1),
+                org.springframework.data.domain.PageRequest.of(0, 3)
+        );
+
+        assertThat(recentPrices)
+                .extracting(price -> price.getId().getBaseDate())
+                .containsExactly(d1, d2, d3);
+        assertThat(recentPrices)
+                .allSatisfy(price -> assertThat(entityManagerFactory.getPersistenceUnitUtil().isLoaded(price.getStock())).isTrue());
+    }
+
+    @Test
     @DisplayName("기관 수급 랭킹 BUY 조회는 StockInvestorTrade 금액 기준으로 정렬한다")
     void findTopInstitutionStocksBySupply_BuyFiltersPositiveAmountOnly() {
         LocalDate baseDate = LocalDate.of(2026, 4, 7);

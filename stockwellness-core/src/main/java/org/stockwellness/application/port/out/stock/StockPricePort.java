@@ -76,6 +76,11 @@ public interface StockPricePort {
      */
     Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit);
 
+    /**
+     * 특정 종목의 과거 시세 엔티티 리스트를 조회합니다. (지표 계산용 날짜 포함)
+     */
+    List<StockPrice> findRecentPricesWithDateByStock(Stock stock, LocalDate date, int limit);
+
     Optional<LocalDate> findLatestDateOnOrBefore(LocalDate date);
 
     Optional<LocalDate> findLatestInvestorTradeDate();
