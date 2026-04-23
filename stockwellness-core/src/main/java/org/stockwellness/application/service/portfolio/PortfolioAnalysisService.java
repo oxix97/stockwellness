@@ -84,17 +84,9 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     @Override
     public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
         AnalysisContext context = dataLoader.loadContext(portfolioId, memberId);
-        List<String> symbols = context.getStockSymbols();
-        List<String> benchmarkTickers = BenchmarkType.defaultSimulationBenchmarkTickers();
-        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, startDate, endDate);
-
-        Map<String, BigDecimal> weights = context.portfolio().getItems().stream()
-                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
-
-        BacktestResult performanceResult = backtestEngine.runLumpSum(data, weights, BigDecimal.valueOf(10000000), RebalancingPeriod.NONE, benchmarkTickers.getFirst(), BigDecimal.valueOf(3.0), true);
 
         return new PortfolioAnalysisSummaryResult(
-                calculateValuation(context, performanceResult),
+                calculateSummaryValuation(context),
                 calculateDiversification(context),
                 calculateRebalancing(context),
                 calculateItemContributions(context)
@@ -366,6 +358,13 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     }
 
     // ── 내부 계산 로직 (Private Helpers) ──────────────────────────────────────────
+
+    /**
+     * 실시간 시세를 반영한 총 평가 금액 및 손익 지표(누적/일별) 계산 로직
+     */
+    private PortfolioValuationResult calculateSummaryValuation(AnalysisContext context) {
+        return calculateValuation(context, null);
+    }
 
     /**
      * 실시간 시세를 반영한 총 평가 금액 및 손익 지표(누적/일별) 계산 로직
