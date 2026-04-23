@@ -11,6 +11,7 @@ import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -35,7 +36,10 @@ public class SectorMarketIndexItemReader implements ItemReader<MarketIndex> {
     @Override
     public MarketIndex read() {
         if (marketIndexIterator == null) {
-            LocalDate targetDate = targetDateStr != null ? LocalDate.parse(targetDateStr) : LocalDate.now();
+            LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
+            if (targetDate == null) {
+                targetDate = DateUtil.today();
+            }
             List<MarketIndex> allIndexes = marketIndexPort.findAll();
             List<MarketIndex> indexes = allIndexes.stream()
                     .filter(index -> isKisEligibleIndexCode(index.getIndexCode()))

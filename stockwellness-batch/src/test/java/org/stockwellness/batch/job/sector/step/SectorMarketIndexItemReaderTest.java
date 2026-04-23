@@ -54,4 +54,23 @@ class SectorMarketIndexItemReaderTest {
                 List.of("0002", "1014")
         );
     }
+
+    @Test
+    @DisplayName("compact targetDate도 동일하게 파싱한다")
+    void read_supportsCompactTargetDate() {
+        ReflectionTestUtils.setField(reader, "targetDateStr", "20260409");
+        given(marketIndexPort.findAll()).willReturn(List.of(
+                MarketIndex.of("0002", "대형주")
+        ));
+
+        MarketIndex first = reader.read();
+        MarketIndex second = reader.read();
+
+        assertThat(first.getIndexCode()).isEqualTo("0002");
+        assertThat(second).isNull();
+        verify(sectorDailyDetailPort).deleteByBaseDateAndSectorCodeNotIn(
+                java.time.LocalDate.of(2026, 4, 9),
+                List.of("0002")
+        );
+    }
 }

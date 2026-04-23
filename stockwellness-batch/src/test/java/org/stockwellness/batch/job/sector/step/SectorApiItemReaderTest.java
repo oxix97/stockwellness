@@ -91,6 +91,23 @@ class SectorApiItemReaderTest {
         verify(sectorEodSyncUseCase).prepareSync(today, List.of("0029"));
     }
 
+    @Test
+    @DisplayName("compact targetDate도 동일하게 파싱한다")
+    void readsData_withCompactTargetDate() {
+        LocalDate today = LocalDate.of(2026, 4, 9);
+        ReflectionTestUtils.setField(reader, "targetDateStr", "20260409");
+
+        given(sectorDailyDetailPort.findByBaseDate(today)).willReturn(List.of(
+                newDetail("0029", "전기전자", today, 100L, 50L)
+        ));
+
+        var result = reader.read();
+
+        assertThat(result).isNotNull();
+        assertThat(result.sectorCode()).isEqualTo("0029");
+        verify(sectorEodSyncUseCase).prepareSync(today, List.of("0029"));
+    }
+
     private SectorDailyDetail newDetail(String sectorCode, String sectorName, LocalDate baseDate, long foreign, long inst) {
         return SectorDailyDetail.of(
                 sectorCode,

@@ -12,6 +12,7 @@ import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.Iterator;
@@ -34,7 +35,10 @@ public class SectorApiItemReader implements ItemReader<SectorApiDto> {
     @Override
     public SectorApiDto read() {
         if (sectorDataIterator == null) {
-            LocalDate targetDate = targetDateStr != null ? LocalDate.parse(targetDateStr) : LocalDate.now();
+            LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
+            if (targetDate == null) {
+                targetDate = DateUtil.today();
+            }
             log.info("업종별 시세 상세 데이터 로드 시작. targetDate={}", targetDate);
 
             List<SectorDailyDetail> allDetails = sectorDailyDetailPort.findByBaseDate(targetDate);
