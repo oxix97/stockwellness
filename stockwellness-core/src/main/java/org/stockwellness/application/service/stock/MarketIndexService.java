@@ -2,6 +2,7 @@ package org.stockwellness.application.service.stock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.stock.MarketIndexUseCase;
@@ -34,6 +35,7 @@ public class MarketIndexService implements MarketIndexUseCase {
     private final MarketWeatherClassifier marketWeatherClassifier;
 
     @Override
+    @Cacheable(value = "marketDashboard:v1", key = "'all'")
     public MarketDashboardResult getMarketIndexes() {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(MarketWeatherPolicy.LOOKBACK_DAYS);

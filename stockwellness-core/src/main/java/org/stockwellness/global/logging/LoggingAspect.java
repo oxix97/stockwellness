@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 public class LoggingAspect {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
+    private static final ThreadLocal<Boolean> IS_LOGGING = ThreadLocal.withInitial(() -> false);
     private final ObjectMapper objectMapper = MaskingObjectMapper.create();
 
     @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
@@ -35,6 +36,10 @@ public class LoggingAspect {
 
     @Around("logExecutionTarget()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
+        if (IS_LOGGING.get()) {
+            return joinPoint.proceed();
+        }
+
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
@@ -43,6 +48,7 @@ public class LoggingAspect {
         Throwable exception = null;
 
         try {
+            IS_LOGGING.set(true);
             result = joinPoint.proceed();
             return result;
         } catch (Throwable e) {
@@ -63,6 +69,7 @@ public class LoggingAspect {
             );
 
             writeLog(event);
+            IS_LOGGING.remove();
         }
     }
 
