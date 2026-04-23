@@ -5,7 +5,7 @@ spring:
     username: ${DB_USERNAME:myuser}
     password: ${DB_PASSWORD:secret}
     hikari:
-      maximum-pool-size: 30
+      maximum-pool-size: 50
       minimum-idle: 10
   data:
     redis:
