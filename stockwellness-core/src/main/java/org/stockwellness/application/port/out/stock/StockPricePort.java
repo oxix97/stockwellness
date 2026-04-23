@@ -40,6 +40,11 @@ public interface StockPricePort {
      */
     List<StockPrice> findAllByDate(LocalDate date);
 
+    /**
+     * 시장 등락 분포 계산을 위한 최소 데이터를 조회합니다.
+     */
+    List<MarketBreadthItem> findAllBreadthItemsByDate(LocalDate date);
+
     Optional<StockPrice> findLateststockPrice(String isinCode);
 
     /**

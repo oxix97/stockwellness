@@ -35,7 +35,7 @@ public class MarketIndexService implements MarketIndexUseCase {
     private final MarketWeatherClassifier marketWeatherClassifier;
 
     @Override
-    @Cacheable(value = "marketDashboard:v1", key = "'all'")
+    @Cacheable(value = "marketDashboard:v1", key = "'all'", sync = true)
     public MarketDashboardResult getMarketIndexes() {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(MarketWeatherPolicy.LOOKBACK_DAYS);
@@ -107,7 +107,7 @@ public class MarketIndexService implements MarketIndexUseCase {
         LocalDate breadthDate = stockPricePort.findLatestDateOnOrBefore(benchmarkDate).orElse(null);
         MarketBreadthSnapshot breadth = breadthDate == null
                 ? null
-                : marketBreadthCalculator.summarize(stockPricePort.findAllByDate(breadthDate));
+                : marketBreadthCalculator.summarize(stockPricePort.findAllBreadthItemsByDate(breadthDate));
 
         LocalDate asOfDate = breadthDate != null ? breadthDate : benchmarkDate;
         return marketWeatherClassifier.classify(kospi.fluctuationRate(), kosdaq.fluctuationRate(), breadth, asOfDate);

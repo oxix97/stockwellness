@@ -11,6 +11,7 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
@@ -136,6 +137,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<StockPrice> findAllByDate(LocalDate date) {
         return stockPriceRepository.findAllByDateWithStock(date);
+    }
+
+    @Override
+    public List<MarketBreadthItem> findAllBreadthItemsByDate(LocalDate date) {
+        return stockPriceRepository.findAllBreadthItemsByDate(date);
     }
 
     @Override

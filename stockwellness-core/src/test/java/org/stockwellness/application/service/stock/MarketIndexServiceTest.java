@@ -12,6 +12,7 @@ import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherReason;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
@@ -80,11 +81,11 @@ class MarketIndexServiceTest {
                         new BigDecimal("1.00")
                 )));
         given(stockPricePort.findLatestDateOnOrBefore(any())).willReturn(java.util.Optional.of(baseDate));
-        given(stockPricePort.findAllByDate(baseDate)).willReturn(List.of(
-                stockPrice(new BigDecimal("1.2")),
-                stockPrice(new BigDecimal("0.8")),
-                stockPrice(new BigDecimal("0.6")),
-                stockPrice(new BigDecimal("-0.2"))
+        given(stockPricePort.findAllBreadthItemsByDate(baseDate)).willReturn(List.of(
+                breadthItem(new BigDecimal("1.2")),
+                breadthItem(new BigDecimal("0.8")),
+                breadthItem(new BigDecimal("0.6")),
+                breadthItem(new BigDecimal("-0.2"))
         ));
 
         MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
@@ -157,12 +158,12 @@ class MarketIndexServiceTest {
         given(loadBenchmarkPort.loadBenchmarkPrices(org.mockito.ArgumentMatchers.eq(BenchmarkType.KOSDAQ.getTicker()), any(), any()))
                 .willReturn(List.of(priceResult(baseDate, "-0.65")));
         given(stockPricePort.findLatestDateOnOrBefore(any())).willReturn(java.util.Optional.of(baseDate));
-        given(stockPricePort.findAllByDate(baseDate)).willReturn(List.of(
-                stockPrice(new BigDecimal("-1.8")),
-                stockPrice(new BigDecimal("-0.9")),
-                stockPrice(new BigDecimal("-0.6")),
-                stockPrice(new BigDecimal("0.2")),
-                stockPrice(new BigDecimal("0.1"))
+        given(stockPricePort.findAllBreadthItemsByDate(baseDate)).willReturn(List.of(
+                breadthItem(new BigDecimal("-1.8")),
+                breadthItem(new BigDecimal("-0.9")),
+                breadthItem(new BigDecimal("-0.6")),
+                breadthItem(new BigDecimal("0.2")),
+                breadthItem(new BigDecimal("0.1"))
         ));
 
         MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
@@ -182,12 +183,12 @@ class MarketIndexServiceTest {
         given(loadBenchmarkPort.loadBenchmarkPrices(org.mockito.ArgumentMatchers.eq(BenchmarkType.KOSDAQ.getTicker()), any(), any()))
                 .willReturn(List.of(priceResult(baseDate, "-2.40")));
         given(stockPricePort.findLatestDateOnOrBefore(any())).willReturn(java.util.Optional.of(baseDate));
-        given(stockPricePort.findAllByDate(baseDate)).willReturn(List.of(
-                volatileStockPrice("-4.5", "8.0"),
-                volatileStockPrice("-3.7", "6.5"),
-                volatileStockPrice("-3.2", "5.1"),
-                volatileStockPrice("-2.9", "4.8"),
-                stockPrice(new BigDecimal("-0.4"))
+        given(stockPricePort.findAllBreadthItemsByDate(baseDate)).willReturn(List.of(
+                volatileBreadthItem("-4.5", "8.0"),
+                volatileBreadthItem("-3.7", "6.5"),
+                volatileBreadthItem("-3.2", "5.1"),
+                volatileBreadthItem("-2.9", "4.8"),
+                breadthItem(new BigDecimal("-0.4"))
         ));
 
         MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
@@ -214,28 +215,23 @@ class MarketIndexServiceTest {
         );
     }
 
-    private StockPrice stockPrice(BigDecimal rate) {
-        return volatileStockPrice(rate.toPlainString(), "1.5");
+    private MarketBreadthItem breadthItem(BigDecimal rate) {
+        return volatileBreadthItem(rate.toPlainString(), "1.5");
     }
 
-    private StockPrice volatileStockPrice(String rateText, String intradaySwingPercent) {
+    private MarketBreadthItem volatileBreadthItem(String rateText, String intradaySwingPercent) {
         BigDecimal previousClose = new BigDecimal("100");
         BigDecimal close = previousClose.multiply(BigDecimal.ONE.add(new BigDecimal(rateText).divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP)));
         BigDecimal high = previousClose.multiply(BigDecimal.ONE.add(new BigDecimal(intradaySwingPercent).divide(BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP)));
         BigDecimal low = previousClose;
 
-        return StockPrice.of(
-                Stock.of("TEST" + rateText.replace("-", "N").replace(".", ""), null, "테스트", MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE),
+        return new MarketBreadthItem(
                 LocalDate.now(),
                 previousClose,
                 high,
                 low,
                 close,
-                close,
-                previousClose,
-                1000L,
-                BigDecimal.ZERO,
-                TechnicalIndicators.empty()
+                previousClose
         );
     }
 }

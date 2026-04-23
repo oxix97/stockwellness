@@ -57,12 +57,17 @@ public class LoggingAspect {
         } finally {
             long executionTime = System.currentTimeMillis() - start;
 
+            Object logResult = result;
+            if (result instanceof java.util.Collection<?> col && col.size() > 100) {
+                logResult = String.format("[Large Collection: size=%d]", col.size());
+            }
+
             LogEvent event = new LogEvent(
                     MDC.get("traceId"),
                     className,
                     methodName,
                     joinPoint.getArgs(),
-                    exception == null ? result : null,
+                    exception == null ? logResult : null,
                     executionTime,
                     exception != null ? exception.getClass().getSimpleName() : null,
                     exception != null ? exception.getMessage() : null

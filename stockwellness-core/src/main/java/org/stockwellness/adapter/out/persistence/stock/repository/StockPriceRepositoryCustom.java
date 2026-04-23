@@ -2,6 +2,7 @@ package org.stockwellness.adapter.out.persistence.stock.repository;
 
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -66,6 +67,11 @@ public interface StockPriceRepositoryCustom {
      * 지정된 날짜의 모든 종목 시세 데이터를 fetch join으로 조회합니다.
      */
     List<StockPrice> findAllByDateWithStock(LocalDate baseDate);
+
+    /**
+     * 시장 등락 분포 계산을 위한 최소 데이터를 조회합니다.
+     */
+    List<MarketBreadthItem> findAllBreadthItemsByDate(LocalDate baseDate);
 
 
     /**

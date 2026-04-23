@@ -9,6 +9,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -251,6 +252,22 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
         return queryFactory
                 .selectFrom(stockPrice)
                 .join(stockPrice.stock, stock).fetchJoin()
+                .where(stockPrice.id.baseDate.eq(baseDate))
+                .fetch();
+    }
+
+    @Override
+    public List<MarketBreadthItem> findAllBreadthItemsByDate(LocalDate baseDate) {
+        return queryFactory
+                .select(Projections.constructor(MarketBreadthItem.class,
+                        stockPrice.id.baseDate,
+                        stockPrice.openPrice,
+                        stockPrice.highPrice,
+                        stockPrice.lowPrice,
+                        stockPrice.closePrice,
+                        stockPrice.previousClosePrice
+                ))
+                .from(stockPrice)
                 .where(stockPrice.id.baseDate.eq(baseDate))
                 .fetch();
     }
