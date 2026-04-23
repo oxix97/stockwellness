@@ -34,6 +34,19 @@ public class DateUtil {
     }
 
     /**
+     * "yyyyMMdd" 또는 "yyyy-MM-dd" 문자열을 LocalDate로 파싱합니다.
+     */
+    public static LocalDate parseFlexible(String dateStr) {
+        if (dateStr == null || dateStr.isBlank() || "null".equalsIgnoreCase(dateStr)) {
+            return null;
+        }
+        if (dateStr.contains("-")) {
+            return LocalDate.parse(dateStr);
+        }
+        return parse(dateStr);
+    }
+
+    /**
      * LocalDate를 "yyyyMMdd" 문자열로 포맷팅합니다.
      */
     public static String format(LocalDate date) {

@@ -38,6 +38,13 @@ class DateUtilTest {
     }
 
     @Test
+    @DisplayName("유연한 날짜 파서는 yyyyMMdd와 yyyy-MM-dd를 모두 지원한다")
+    void parseFlexible_supportsCompactAndIsoDates() {
+        assertThat(DateUtil.parseFlexible("20260303")).isEqualTo(LocalDate.of(2026, 3, 3));
+        assertThat(DateUtil.parseFlexible("2026-03-03")).isEqualTo(LocalDate.of(2026, 3, 3));
+    }
+
+    @Test
     @DisplayName("잘못된 입력(null, empty, 'null')은 null을 반환한다")
     void parse_edge_cases() {
         assertThat(DateUtil.parse(null)).isNull();
