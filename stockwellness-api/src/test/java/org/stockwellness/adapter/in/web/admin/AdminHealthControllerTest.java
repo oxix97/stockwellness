@@ -15,6 +15,10 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.payload.JsonFieldType.ARRAY;
+import static org.springframework.restdocs.payload.JsonFieldType.BOOLEAN;
+import static org.springframework.restdocs.payload.JsonFieldType.NUMBER;
+import static org.springframework.restdocs.payload.JsonFieldType.STRING;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,17 +59,17 @@ class AdminHealthControllerTest extends RestDocsSupport {
                                 .summary("시스템 헬스 체크")
                                 .description("DB, Redis, Kafka의 연결 상태를 통합 조회합니다.")
                                 .responseFields(
-                                        fieldWithPath("success").description("성공 여부"),
-                                        fieldWithPath("status").description("HTTP 상태 코드"),
-                                        fieldWithPath("code").description("비즈니스 상세 코드"),
-                                        fieldWithPath("message").description("응답 메시지"),
-                                        fieldWithPath("data.status").description("전체 상태 (UP/DOWN)"),
-                                        fieldWithPath("data.components.db").description("데이터베이스 상태"),
-                                        fieldWithPath("data.components.redis").description("Redis 캐시 상태"),
-                                        fieldWithPath("data.components.kafka").description("Kafka 메시지 브로커 상태"),
-                                        fieldWithPath("timestamp").description("응답 시간"),
-                                        fieldWithPath("traceId").description("에러 추적 ID").optional(),
-                                        fieldWithPath("errors").description("상세 에러 리스트").optional()
+                                        fieldWithPath("success").type(BOOLEAN).description("성공 여부"),
+                                        fieldWithPath("status").type(NUMBER).description("HTTP 상태 코드"),
+                                        fieldWithPath("code").type(STRING).description("비즈니스 상세 코드"),
+                                        fieldWithPath("message").type(STRING).description("응답 메시지"),
+                                        fieldWithPath("data.status").type(STRING).description("전체 상태 (UP/DOWN)"),
+                                        fieldWithPath("data.components.db").type(STRING).description("데이터베이스 상태"),
+                                        fieldWithPath("data.components.redis").type(STRING).description("Redis 캐시 상태"),
+                                        fieldWithPath("data.components.kafka").type(STRING).description("Kafka 메시지 브로커 상태"),
+                                        fieldWithPath("timestamp").type(STRING).description("응답 시간"),
+                                        fieldWithPath("traceId").type(STRING).description("에러 추적 ID").optional(),
+                                        fieldWithPath("errors").type(ARRAY).description("상세 에러 리스트").optional()
                                 )
                                 .build())
                 ));

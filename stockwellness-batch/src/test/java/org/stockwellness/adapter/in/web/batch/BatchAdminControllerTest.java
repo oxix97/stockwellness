@@ -1,6 +1,5 @@
 package org.stockwellness.adapter.in.web.batch;
 
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -153,7 +152,7 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.code").value("S000"))
                 .andExpect(jsonPath("$.message").value("요청이 성공적으로 처리되었습니다."))
-                .andExpect(jsonPath("$.data").value(Matchers.nullValue()));
+                .andExpect(jsonPath("$.data").doesNotExist());
 
         verify(dailyBatchOrchestrationService).runDailyFullSync(LocalDate.of(2026, 4, 10));
     }

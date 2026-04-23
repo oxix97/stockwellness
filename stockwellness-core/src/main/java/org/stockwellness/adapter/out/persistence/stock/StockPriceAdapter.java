@@ -12,6 +12,7 @@ import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResu
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.MarketBreadthItem;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
@@ -145,6 +146,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    public MarketBreadthSnapshot summarizeBreadthByDate(LocalDate date) {
+        return stockPriceRepository.summarizeBreadthByDate(date);
+    }
+
+    @Override
     public Optional<StockPrice> findLateststockPrice(String isinCode) {
         return Optional.empty();
     }
@@ -214,5 +220,10 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<StockPriceResult> loadBenchmarkPrices(String benchmarkTicker, LocalDate start, LocalDate end) {
         return benchmarkRepository.findBenchmarkPrices(benchmarkTicker, start, end);
+    }
+
+    @Override
+    public List<StockPriceResult> loadBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end) {
+        return benchmarkRepository.findBenchmarkPricesIn(tickers, start, end);
     }
 }

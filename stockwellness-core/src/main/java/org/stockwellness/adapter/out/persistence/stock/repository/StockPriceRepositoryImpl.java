@@ -4,12 +4,14 @@ import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.MarketBreadthItem;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
@@ -66,9 +68,6 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
         );
     }
 
-    /**
-     * 종목명(name)으로 해당 종목의 가장 최신 StockPrice 1건 조회
-     */
     @Override
     public Optional<StockPrice> findLatestPriceByName(String name) {
         return Optional.ofNullable(
@@ -127,7 +126,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                 .when(stockPrice.previousClosePrice.isNull().or(stockPrice.previousClosePrice.eq(BigDecimal.ZERO)))
                 .then(BigDecimal.ZERO)
                 .otherwise(currentPrice.subtract(stockPrice.previousClosePrice)
-                        .divide(stockPrice.previousClosePrice)
+                        .divide(stockPrice.previousClosePrice.nullif(BigDecimal.ZERO))
                         .multiply(BigDecimal.valueOf(100)));
 
         return queryFactory
@@ -218,8 +217,6 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
 
     @Override
     public List<StockPrice> findRecentPricesByStocks(List<Stock> stocks, LocalDate date, int limit) {
-        // [수정] 30개 종목에 대해 각각 최근 limit(120일)치를 충분히 가져오도록 개선
-        // 특정 종목의 데이터가 적을 수 있으므로 전체 조회 시 넉넉하게 limit * 1.5배를 가져오도록 함
         long totalLimit = (long) stocks.size() * limit;
         long safetyBuffer = (long) (totalLimit * 1.5);
 
@@ -239,7 +236,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     public List<StockPrice> findByStockInAndIdBaseDate(List<Stock> stocks, LocalDate baseDate) {
         return queryFactory
                 .selectFrom(stockPrice)
-                .join(stockPrice.stock, stock).fetchJoin() // N+1 방지
+                .join(stockPrice.stock, stock).fetchJoin()
                 .where(
                         stock.in(stocks),
                         stockPrice.id.baseDate.eq(baseDate)
@@ -273,6 +270,68 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     }
 
     @Override
+    public MarketBreadthSnapshot summarizeBreadthByDate(LocalDate baseDate) {
+        NumberExpression<BigDecimal> base = Expressions.asNumber(
+                new CaseBuilder()
+                        .when(stockPrice.previousClosePrice.isNotNull().and(stockPrice.previousClosePrice.gt(BigDecimal.ZERO)))
+                        .then(stockPrice.previousClosePrice)
+                        .otherwise(stockPrice.openPrice)
+        );
+
+        NumberExpression<BigDecimal> fluctuationRate = stockPrice.closePrice.subtract(base)
+                .divide(base.nullif(BigDecimal.ZERO))
+                .multiply(BigDecimal.valueOf(100));
+
+        NumberExpression<BigDecimal> intradaySwing = stockPrice.highPrice.subtract(stockPrice.lowPrice)
+                .divide(base.nullif(BigDecimal.ZERO))
+                .multiply(BigDecimal.valueOf(100));
+
+        Tuple counts = queryFactory
+                .select(
+                        stockPrice.count(),
+                        new CaseBuilder().when(fluctuationRate.gt(new BigDecimal("0.15"))).then(1).otherwise(0).sum(),
+                        new CaseBuilder().when(fluctuationRate.lt(new BigDecimal("-0.15"))).then(1).otherwise(0).sum(),
+                        new CaseBuilder().when(fluctuationRate.abs().loe(new BigDecimal("0.15"))).then(1).otherwise(0).sum(),
+                        new CaseBuilder()
+                                .when(fluctuationRate.abs().goe(new BigDecimal("3.00"))
+                                        .or(intradaySwing.goe(new BigDecimal("4.00"))))
+                                .then(1).otherwise(0).sum()
+                )
+                .from(stockPrice)
+                .where(stockPrice.id.baseDate.eq(baseDate))
+                .fetchOne();
+
+        if (counts == null || counts.get(0, Long.class) == 0) {
+            return null;
+        }
+
+        long total = counts.get(0, Long.class);
+        int advancing = counts.get(1, Integer.class) != null ? counts.get(1, Integer.class) : 0;
+        int declining = counts.get(2, Integer.class) != null ? counts.get(2, Integer.class) : 0;
+        int unchanged = counts.get(3, Integer.class) != null ? counts.get(3, Integer.class) : 0;
+        int highVolatility = counts.get(4, Integer.class) != null ? counts.get(4, Integer.class) : 0;
+
+        BigDecimal totalDecimal = BigDecimal.valueOf(total);
+        return new MarketBreadthSnapshot(
+                (int) total,
+                advancing,
+                declining,
+                unchanged,
+                highVolatility,
+                ratio(advancing, totalDecimal),
+                ratio(declining, totalDecimal),
+                ratio(highVolatility, totalDecimal)
+        );
+    }
+
+    private BigDecimal ratio(int count, BigDecimal total) {
+        if (total.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(count).divide(total, 4, java.math.RoundingMode.HALF_UP);
+    }
+
+    @Override
     public List<StockPriceResult> findAllByTickerAndYear(String ticker, int year) {
         LocalDate start = LocalDate.of(year, 1, 1);
         LocalDate end = LocalDate.of(year, 12, 31);
@@ -294,7 +353,9 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stockPrice.indicators.ma5,
                         stockPrice.indicators.ma20,
                         stockPrice.indicators.ma60,
-                        stockPrice.indicators.ma120
+                        stockPrice.indicators.ma120,
+                        Expressions.asNumber(BigDecimal.ZERO),
+                        stock.ticker
                 ))
                 .from(stockPrice)
                 .join(stockPrice.stock, stock)
@@ -312,8 +373,6 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
             return Map.of();
         }
 
-        // [N+1 해결] 모든 티커의 최근 데이터를 한 번에 조회한 후 메모리에서 그룹화
-        // ticker와 base_date DESC 인덱스를 타게 하여 성능 극대화
         List<StockPrice> allPrices = queryFactory
                 .selectFrom(stockPrice)
                 .join(stockPrice.stock, stock).fetchJoin()
@@ -337,8 +396,6 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
             return Map.of();
         }
 
-        // [최적화] 복잡한 OR 조건 대신 각 티커별 최신 1건만 가져와서 맵핑
-        // 데이터 양이 아주 많지 않은 경우(티커 수 < 100), 애플리케이션 레벨 필터링이 DB의 복잡한 윈도우 함수보다 빠름
         List<StockPrice> latests = queryFactory
                 .selectFrom(stockPrice)
                 .join(stockPrice.stock, stock).fetchJoin()
@@ -346,12 +403,11 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                 .orderBy(stock.ticker.asc(), stockPrice.id.baseDate.desc())
                 .fetch();
 
-        // 각 티커별 첫 번째(최신) 데이터만 추출
         return latests.stream()
                 .collect(Collectors.toMap(
                         p -> p.getStock().getTicker(),
                         p -> p.getClosePrice() != null ? p.getClosePrice() : BigDecimal.ZERO,
-                        (existing, replacement) -> existing // 이미 최신순 정렬되어 있으므로 첫 번째 값 유지
+                        (existing, replacement) -> existing
                 ));
     }
 }

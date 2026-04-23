@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherReason;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

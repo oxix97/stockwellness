@@ -19,6 +19,11 @@ public class BenchmarkRepositoryImpl implements BenchmarkRepository {
 
     @Override
     public List<StockPriceResult> findBenchmarkPrices(String ticker, LocalDate start, LocalDate end) {
+        return findBenchmarkPricesIn(List.of(ticker), start, end);
+    }
+
+    @Override
+    public List<StockPriceResult> findBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end) {
         return queryFactory
                 .select(Projections.constructor(StockPriceResult.class,
                         benchmarkPrice.baseDate,
@@ -26,18 +31,19 @@ public class BenchmarkRepositoryImpl implements BenchmarkRepository {
                         benchmarkPrice.highPrice,
                         benchmarkPrice.lowPrice,
                         benchmarkPrice.closePrice,
-                        benchmarkPrice.closePrice.as("adjClosePrice"), // 지수는 수정종가 개념이 없으므로 종가 사용
+                        benchmarkPrice.closePrice.as("adjClosePrice"),
                         benchmarkPrice.volume,
-                        benchmarkPrice.closePrice.multiply(benchmarkPrice.volume).as("transactionAmt"), // 간이 계산
-                        benchmarkPrice.closePrice.as("ma5"), // 필요 시 연산 추가 가능하나 현재는 기본값
+                        benchmarkPrice.closePrice.multiply(benchmarkPrice.volume).as("transactionAmt"),
+                        benchmarkPrice.closePrice.as("ma5"),
                         benchmarkPrice.closePrice.as("ma20"),
                         benchmarkPrice.closePrice.as("ma60"),
                         benchmarkPrice.closePrice.as("ma120"),
-                        benchmarkPrice.changeRate
+                        benchmarkPrice.changeRate,
+                        benchmarkPrice.ticker // Ticker 정보도 포함하여 반환 (그룹화 용도)
                 ))
                 .from(benchmarkPrice)
                 .where(
-                        benchmarkPrice.ticker.eq(ticker),
+                        benchmarkPrice.ticker.in(tickers),
                         benchmarkPrice.baseDate.between(start, end)
                 )
                 .orderBy(benchmarkPrice.baseDate.asc())

@@ -1,4 +1,4 @@
-package org.stockwellness.application.service.stock;
+package org.stockwellness.application.port.out.stock;
 
 import java.math.BigDecimal;
 

@@ -84,9 +84,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     @Override
     public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
         AnalysisContext context = dataLoader.loadContext(portfolioId, memberId);
+        BacktestResult performanceResult = calculateSummaryPerformance(context, startDate, endDate);
 
         return new PortfolioAnalysisSummaryResult(
-                calculateSummaryValuation(context),
+                calculateValuation(context, performanceResult),
                 calculateDiversification(context),
                 calculateRebalancing(context),
                 calculateItemContributions(context)
@@ -359,11 +360,30 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
     // ── 내부 계산 로직 (Private Helpers) ──────────────────────────────────────────
 
-    /**
-     * 실시간 시세를 반영한 총 평가 금액 및 손익 지표(누적/일별) 계산 로직
-     */
-    private PortfolioValuationResult calculateSummaryValuation(AnalysisContext context) {
-        return calculateValuation(context, null);
+    private BacktestResult calculateSummaryPerformance(AnalysisContext context, LocalDate startDate, LocalDate endDate) {
+        List<PortfolioItem> stockItems = context.portfolio().getItems().stream()
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .toList();
+
+        if (stockItems.isEmpty()) {
+            return null;
+        }
+
+        Map<String, BigDecimal> weights = normalizeWeights(stockItems.stream()
+                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight)));
+        List<String> symbols = new ArrayList<>(weights.keySet());
+        List<String> benchmarkTickers = BenchmarkType.defaultSimulationBenchmarkTickers();
+        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, startDate, endDate);
+
+        return backtestEngine.runLumpSum(
+                data,
+                weights,
+                context.portfolio().calculateTotalPurchaseAmount(),
+                RebalancingPeriod.NONE,
+                benchmarkTickers.getFirst(),
+                BigDecimal.valueOf(3.0),
+                false
+        );
     }
 
     /**
