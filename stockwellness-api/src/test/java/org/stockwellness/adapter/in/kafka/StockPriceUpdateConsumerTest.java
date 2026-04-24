@@ -28,6 +28,7 @@ import static org.stockwellness.domain.common.cache.CacheType.MARKET_BREADTH;
 import static org.stockwellness.domain.common.cache.CacheType.MARKET_DASHBOARD;
 import static org.stockwellness.domain.common.cache.CacheType.SECTOR_RANKING;
 import static org.stockwellness.domain.common.cache.CacheType.SECTOR_SUPPLY;
+import static org.stockwellness.domain.common.cache.CacheType.STOCK_SUPPLY_RANKING;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -77,6 +78,7 @@ class StockPriceUpdateConsumerTest {
                 verify(cacheManager).getCache(SECTOR_SUPPLY.getCacheName());
                 verify(cacheManager).getCache(MARKET_DASHBOARD.getCacheName());
                 verify(cacheManager).getCache(MARKET_BREADTH.getCacheName());
+                verify(cacheManager).getCache(STOCK_SUPPLY_RANKING.getCacheName());
                 verify(cacheManager).getCache(AI_ANALYSIS.getCacheName());
                 verify(mockCache, atLeastOnce()).clear();
                 verify(mockCache, atLeastOnce()).evict(anyLong());
