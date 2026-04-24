@@ -22,17 +22,21 @@ cd /Users/chan/Desktop/gongbu/stockwellness-project/stockwellness/k6
 모드별 실행:
 
 ```bash
+./run-all.sh quick
+./run-all.sh short
 ./run-all.sh standard
+./run-all.sh stress
 ./run-all.sh write
-./run-all.sh heavy
 ./run-all.sh all
 ```
 
 의미:
-- `standard`: `smoke` + 공개 읽기 API + 인증 읽기 API
+- `quick`: 시나리오당 10초, 인증/기능 검증
+- `short`: 시나리오당 2분, 빠른 성능 회귀 확인
+- `standard`: 시나리오당 5분, 성과 기록용 부하 측정
+- `stress`: 시나리오당 10분, 고부하 안정성 확인
 - `write`: `auth-login`, `portfolio-create`, `watchlist-group-create`
-- `heavy`: `backtest-heavy`, `auth-reissue-burst`
-- `all`: 위 항목 전체
+- `all`: `standard` + `write`
 
 동작:
 - threshold 실패가 나도 다음 시나리오를 계속 실행한다.

@@ -6,9 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/compose.k6.yaml"
 RESULTS_DIR="$SCRIPT_DIR/results"
 MODE="${1:-standard}"
-K6_MODE="standard"
-if [[ "$MODE" == "quick" ]]; then
-  K6_MODE="quick"
+K6_MODE="$MODE"
+if [[ "$MODE" == "write" || "$MODE" == "all" ]]; then
+  K6_MODE="standard"
 fi
 RUN_TS="$(date '+%Y%m%d-%H%M%S')"
 SUMMARY_FILE="$RESULTS_DIR/run-all-summary-${RUN_TS}.md"
@@ -62,11 +62,13 @@ WRITE_SCENARIOS=(
 usage() {
   cat <<'EOH'
 Usage:
-  ./run-all.sh [standard|quick|write|all]
+  ./run-all.sh [quick|short|standard|stress|write|all]
 
 Modes:
-  standard  Full load test (smoke + public read + auth read)
   quick     Short smoke test for verification (smoke + public read + auth read)
+  short     Fast performance regression test (smoke + public read + auth read)
+  standard  Report-grade load test (smoke + public read + auth read)
+  stress    High-load stability test (smoke + public read + auth read)
   write     One-shot write helper scenarios only
   all       standard + write
 EOH
@@ -129,6 +131,9 @@ require_file() {
 run_scenario() {
   local scenario_name="$1"
   local result_name="$2"
+  if [[ "$K6_MODE" != "standard" && "$result_name" == *-standard ]]; then
+    result_name="${result_name%-standard}-${K6_MODE}"
+  fi
   local result_file="$RESULTS_DIR/${result_name}.json"
   local log_file="$LOG_DIR/${result_name}.log"
   local exit_code=0
@@ -173,7 +178,7 @@ run_group() {
 }
 
 main() {
-  if [[ "$MODE" == "standard" || "$MODE" == "quick" || "$MODE" == "all" ]]; then
+  if [[ "$MODE" == "standard" || "$MODE" == "quick" || "$MODE" == "short" || "$MODE" == "stress" || "$MODE" == "all" ]]; then
     "$SCRIPT_DIR/refresh-token.sh"
   fi
   require_file "$COMPOSE_FILE"
@@ -182,7 +187,7 @@ main() {
   mkdir -p "$LOG_DIR"
 
   case "$MODE" in
-    standard|quick)
+    standard|quick|short|stress)
       run_group "Smoke" "${SMOKE_SCENARIOS[@]}"
       run_group "Public Read APIs" "${PUBLIC_READ_SCENARIOS[@]}"
       run_group "Authenticated Read APIs" "${AUTH_READ_SCENARIOS[@]}"

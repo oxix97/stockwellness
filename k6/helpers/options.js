@@ -1,15 +1,31 @@
 export function readOptions(name) {
+  const mode = __ENV.K6_MODE || 'standard';
+  const stagesByMode = {
+    short: [
+      { duration: '30s', target: 10 },
+      { duration: '1m', target: 20 },
+      { duration: '30s', target: 0 },
+    ],
+    standard: [
+      { duration: '1m', target: 10 },
+      { duration: '2m', target: 20 },
+      { duration: '1m', target: 30 },
+      { duration: '1m', target: 0 },
+    ],
+    stress: [
+      { duration: '2m', target: 20 },
+      { duration: '4m', target: 40 },
+      { duration: '2m', target: 60 },
+      { duration: '2m', target: 0 },
+    ],
+  };
+
   return {
     scenarios: {
       [name]: {
         executor: 'ramping-vus',
         startVUs: 0,
-        stages: [
-          { duration: '1m', target: 10 },
-          { duration: '3m', target: 20 },
-          { duration: '3m', target: 30 },
-          { duration: '1m', target: 0 },
-        ],
+        stages: stagesByMode[mode] || stagesByMode.standard,
         gracefulRampDown: '30s',
       },
     },
