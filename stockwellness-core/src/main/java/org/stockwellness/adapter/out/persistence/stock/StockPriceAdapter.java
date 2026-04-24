@@ -2,6 +2,7 @@ package org.stockwellness.adapter.out.persistence.stock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
@@ -146,6 +147,7 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     }
 
     @Override
+    @Cacheable(cacheNames = "marketBreadth:v1", key = "#date.toString()", unless = "#result == null")
     public MarketBreadthSnapshot summarizeBreadthByDate(LocalDate date) {
         return stockPriceRepository.summarizeBreadthByDate(date);
     }
