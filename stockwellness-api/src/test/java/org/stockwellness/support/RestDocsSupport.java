@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.restdocs.payload.FieldDescriptor;
+import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
@@ -72,13 +73,13 @@ public abstract class RestDocsSupport {
      */
     protected List<FieldDescriptor> commonResponseFields() {
         return List.of(
-                fieldWithPath("success").description("성공 여부"),
-                fieldWithPath("status").description("HTTP 상태 코드"),
-                fieldWithPath("code").description("비즈니스 상세 코드"),
-                fieldWithPath("message").description("결과 메시지"),
-                fieldWithPath("timestamp").description("응답 시간"),
-                fieldWithPath("traceId").description("에러 추적용 ID (성공 시 null)").optional(),
-                fieldWithPath("errors").description("상세 필드 에러 목록 (성공 시 빈 리스트)").optional()
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+                fieldWithPath("status").type(JsonFieldType.NUMBER).description("HTTP 상태 코드"),
+                fieldWithPath("code").type(JsonFieldType.STRING).description("비즈니스 상세 코드"),
+                fieldWithPath("message").type(JsonFieldType.STRING).description("결과 메시지"),
+                fieldWithPath("timestamp").type(JsonFieldType.STRING).description("응답 시간"),
+                fieldWithPath("traceId").type(JsonFieldType.STRING).description("에러 추적용 ID (성공 시 null)").optional(),
+                fieldWithPath("errors").type(JsonFieldType.ARRAY).description("상세 필드 에러 목록 (성공 시 빈 리스트)").optional()
         );
     }
 
@@ -87,7 +88,7 @@ public abstract class RestDocsSupport {
      */
     protected List<FieldDescriptor> commonResponseFieldsWithNoData() {
         List<FieldDescriptor> fields = new ArrayList<>(commonResponseFields());
-        fields.add(fieldWithPath("data").description("응답 데이터 (null)").optional());
+        fields.add(fieldWithPath("data").type(JsonFieldType.NULL).description("응답 데이터 (null)").optional());
         return fields;
     }
 }

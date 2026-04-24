@@ -7,7 +7,13 @@ import java.util.List;
 
 public interface LoadBenchmarkPort {
     /**
-     * 벤치마크 지수의 기간별 데이터를 로드합니다.
+     * 지수(Benchmark) 데이터를 조회합니다.
      */
     List<StockPriceResult> loadBenchmarkPrices(String benchmarkTicker, LocalDate start, LocalDate end);
+
+    /**
+     * 여러 지수(Benchmark) 데이터를 한 번에 조회합니다.
+     */
+    List<StockPriceResult> loadBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end);
 }
+

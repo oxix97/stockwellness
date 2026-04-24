@@ -5,6 +5,9 @@
 
 ## 개발 환경
 
+성능 측정 가이드는 [k6/README.md](/Users/chan/Desktop/gongbu/stockwellness-project/stockwellness/k6/README.md)를 참고합니다.
+백엔드 개발 작업 가이드는 [docs/backend-development-guide.md](/Users/chan/Desktop/gongbu/stockwellness-project/stockwellness/docs/backend-development-guide.md)를 참고합니다.
+
 ### Language
 ![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
 

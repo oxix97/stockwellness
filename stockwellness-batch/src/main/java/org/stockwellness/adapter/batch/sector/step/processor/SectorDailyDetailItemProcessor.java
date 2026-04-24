@@ -10,6 +10,7 @@ import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.application.port.out.stock.SectorDataPort;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.Objects;
@@ -27,7 +28,10 @@ public class SectorDailyDetailItemProcessor implements ItemProcessor<MarketIndex
 
     @Override
     public SectorDailyDetail process(MarketIndex marketIndex) {
-        LocalDate targetDate = targetDateStr != null ? LocalDate.parse(targetDateStr) : LocalDate.now();
+        LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
+        if (targetDate == null) {
+            targetDate = DateUtil.today();
+        }
 
         if (!isKisEligibleIndexCode(marketIndex.getIndexCode())) {
             log.info("KIS 호출 대상이 아닌 market_index는 건너뜀. marketIndexCode={}, marketIndexName={}",

@@ -10,4 +10,9 @@ public interface BenchmarkRepository {
      * 지수(Benchmark) 데이터를 조회합니다.
      */
     List<StockPriceResult> findBenchmarkPrices(String ticker, LocalDate start, LocalDate end);
+
+    /**
+     * 여러 지수(Benchmark) 데이터를 한 번에 조회합니다.
+     */
+    List<StockPriceResult> findBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end);
 }

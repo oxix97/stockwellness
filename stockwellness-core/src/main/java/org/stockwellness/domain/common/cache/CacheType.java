@@ -18,7 +18,13 @@ public enum CacheType {
     SECTOR_RANKING("sectorRanking:v3", Duration.ofHours(24), false),
     SECTOR_SUPPLY("sectorSupply:v3", Duration.ofHours(24), false),
     SECTOR_DETAIL("sectorDetail:v3", Duration.ofHours(24), false),
-    SECTOR_COMPARISON("sectorComparison:v3", Duration.ofHours(24), false);
+    SECTOR_COMPARISON("sectorComparison:v3", Duration.ofHours(24), false),
+    MARKET_DASHBOARD("marketDashboard:v1", Duration.ofMinutes(5), false),
+
+    // 시세 및 시장 지표 (성능 최적화용)
+    STOCK_PRICE_YEAR("stockPriceYear:v1", Duration.ofHours(24), false),
+    MARKET_BREADTH("marketBreadth:v1", Duration.ofHours(24), false),
+    STOCK_SUPPLY_RANKING("stockSupplyRanking:v1", Duration.ofMinutes(10), false);
 
     private final String cacheName;
     private final Duration ttl;

@@ -118,7 +118,7 @@ public class StockInvestorTradeDetailBatchConfig {
             return org.stockwellness.global.util.DateUtil.today();
         }
         try {
-            return targetDateStr.contains("-") ? LocalDate.parse(targetDateStr) : org.stockwellness.global.util.DateUtil.parse(targetDateStr);
+            return org.stockwellness.global.util.DateUtil.parseFlexible(targetDateStr);
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException("잘못된 targetDate 형식입니다: " + targetDateStr, exception);
         }

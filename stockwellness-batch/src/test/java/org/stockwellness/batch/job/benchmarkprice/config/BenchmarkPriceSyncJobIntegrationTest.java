@@ -101,4 +101,30 @@ class BenchmarkPriceSyncJobIntegrationTest extends BatchIntegrationTestSupport {
 
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
     }
+
+    @Test
+    @DisplayName("ISO 날짜 파라미터도 허용한다")
+    void benchmarkPriceSyncJob_acceptsIsoDateParameters() throws Exception {
+        BenchmarkPriceData mockData = mock(BenchmarkPriceData.class);
+        given(mockData.baseDate()).willReturn(LocalDate.of(2024, 1, 1));
+        given(mockData.closePrice()).willReturn(new BigDecimal("2500.00"));
+        given(mockData.prdyVrss()).willReturn(new BigDecimal("10.00"));
+        given(mockData.prdyCtrt()).willReturn(new BigDecimal("0.4"));
+        given(mockData.volume()).willReturn(1000000L);
+
+        given(kisDailyPriceAdapter.fetchIndexDailyPrices(anyString(), any(), any()))
+                .willReturn(List.of(mockData));
+        given(kisDailyPriceAdapter.fetchOverseasIndexDailyPrices(anyString(), any(), any()))
+                .willReturn(List.of(mockData));
+
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addString("startDate", "2024-01-01")
+                .addString("endDate", "2024-01-02")
+                .addLong("timestamp", System.currentTimeMillis())
+                .toJobParameters();
+
+        JobExecution jobExecution = jobLauncher.run(job, jobParameters);
+
+        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+    }
 }

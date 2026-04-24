@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 public class LoggingAspect {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
+    private static final ThreadLocal<Boolean> IS_LOGGING = ThreadLocal.withInitial(() -> false);
     private final ObjectMapper objectMapper = MaskingObjectMapper.create();
 
     @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
@@ -35,6 +36,10 @@ public class LoggingAspect {
 
     @Around("logExecutionTarget()")
     public Object log(ProceedingJoinPoint joinPoint) throws Throwable {
+        if (IS_LOGGING.get()) {
+            return joinPoint.proceed();
+        }
+
         long start = System.currentTimeMillis();
         String className = joinPoint.getTarget().getClass().getSimpleName();
         String methodName = joinPoint.getSignature().getName();
@@ -43,6 +48,7 @@ public class LoggingAspect {
         Throwable exception = null;
 
         try {
+            IS_LOGGING.set(true);
             result = joinPoint.proceed();
             return result;
         } catch (Throwable e) {
@@ -51,18 +57,24 @@ public class LoggingAspect {
         } finally {
             long executionTime = System.currentTimeMillis() - start;
 
+            Object logResult = result;
+            if (result instanceof java.util.Collection<?> col && col.size() > 100) {
+                logResult = String.format("[Large Collection: size=%d]", col.size());
+            }
+
             LogEvent event = new LogEvent(
                     MDC.get("traceId"),
                     className,
                     methodName,
                     joinPoint.getArgs(),
-                    exception == null ? result : null,
+                    exception == null ? logResult : null,
                     executionTime,
                     exception != null ? exception.getClass().getSimpleName() : null,
                     exception != null ? exception.getMessage() : null
             );
 
             writeLog(event);
+            IS_LOGGING.remove();
         }
     }
 

@@ -19,7 +19,8 @@ public record StockPriceResult(
         BigDecimal ma20,
         BigDecimal ma60,
         BigDecimal ma120,
-        BigDecimal changeRate
+        BigDecimal changeRate,
+        String ticker
 ) {
     public StockPriceResult(
             LocalDate baseDate,
@@ -35,6 +36,24 @@ public record StockPriceResult(
             BigDecimal ma60,
             BigDecimal ma120
     ) {
-        this(baseDate, openPrice, highPrice, lowPrice, closePrice, adjClosePrice, volume, transactionAmt, ma5, ma20, ma60, ma120, BigDecimal.ZERO);
+        this(baseDate, openPrice, highPrice, lowPrice, closePrice, adjClosePrice, volume, transactionAmt, ma5, ma20, ma60, ma120, BigDecimal.ZERO, null);
+    }
+
+    public StockPriceResult(
+            LocalDate baseDate,
+            BigDecimal openPrice,
+            BigDecimal highPrice,
+            BigDecimal lowPrice,
+            BigDecimal closePrice,
+            BigDecimal adjClosePrice,
+            Long volume,
+            BigDecimal transactionAmt,
+            BigDecimal ma5,
+            BigDecimal ma20,
+            BigDecimal ma60,
+            BigDecimal ma120,
+            BigDecimal changeRate
+    ) {
+        this(baseDate, openPrice, highPrice, lowPrice, closePrice, adjClosePrice, volume, transactionAmt, ma5, ma20, ma60, ma120, changeRate, null);
     }
 }

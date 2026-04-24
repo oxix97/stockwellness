@@ -23,6 +23,12 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 import static org.stockwellness.config.KafkaTopicConfig.STOCK_PRICE_UPDATED_TOPIC;
+import static org.stockwellness.domain.common.cache.CacheType.AI_ANALYSIS;
+import static org.stockwellness.domain.common.cache.CacheType.MARKET_BREADTH;
+import static org.stockwellness.domain.common.cache.CacheType.MARKET_DASHBOARD;
+import static org.stockwellness.domain.common.cache.CacheType.SECTOR_RANKING;
+import static org.stockwellness.domain.common.cache.CacheType.SECTOR_SUPPLY;
+import static org.stockwellness.domain.common.cache.CacheType.STOCK_SUPPLY_RANKING;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -68,9 +74,12 @@ class StockPriceUpdateConsumerTest {
             .atMost(10, TimeUnit.SECONDS)
             .pollInterval(200, TimeUnit.MILLISECONDS)
             .untilAsserted(() -> {
-                verify(cacheManager).getCache("sectorRanking:v3");
-                verify(cacheManager).getCache("sectorSupply:v3");
-                verify(cacheManager).getCache("ai_analysis:v2");
+                verify(cacheManager).getCache(SECTOR_RANKING.getCacheName());
+                verify(cacheManager).getCache(SECTOR_SUPPLY.getCacheName());
+                verify(cacheManager).getCache(MARKET_DASHBOARD.getCacheName());
+                verify(cacheManager).getCache(MARKET_BREADTH.getCacheName());
+                verify(cacheManager).getCache(STOCK_SUPPLY_RANKING.getCacheName());
+                verify(cacheManager).getCache(AI_ANALYSIS.getCacheName());
                 verify(mockCache, atLeastOnce()).clear();
                 verify(mockCache, atLeastOnce()).evict(anyLong());
             });

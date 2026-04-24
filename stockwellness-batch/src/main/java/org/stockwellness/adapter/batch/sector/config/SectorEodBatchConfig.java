@@ -36,6 +36,7 @@ import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -132,7 +133,10 @@ public class SectorEodBatchConfig {
     public JpaPagingItemReader<SectorInsight> sectorReader(
             @Value("#{jobParameters['targetDate']}") String targetDateStr
     ) {
-        LocalDate targetDate = (targetDateStr != null) ? LocalDate.parse(targetDateStr) : LocalDate.now();
+        LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
+        if (targetDate == null) {
+            targetDate = DateUtil.today();
+        }
 
         return new JpaPagingItemReaderBuilder<SectorInsight>()
                 .name("sectorReader")

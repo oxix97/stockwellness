@@ -2,6 +2,7 @@ package org.stockwellness.application.service.stock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.stock.MarketIndexUseCase;
@@ -11,6 +12,7 @@ import org.stockwellness.application.port.in.stock.result.MarketIndexResult.Hist
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.exception.StockPriceException;
@@ -21,6 +23,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,32 +37,32 @@ public class MarketIndexService implements MarketIndexUseCase {
     private final MarketWeatherClassifier marketWeatherClassifier;
 
     @Override
+    @Cacheable(value = "marketDashboard:v1", key = "'all'", sync = true)
     public MarketDashboardResult getMarketIndexes() {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(MarketWeatherPolicy.LOOKBACK_DAYS);
+
+        // 1. 모든 벤치마크 지수를 한 번에 조회 (9번 쿼리 -> 1번 쿼리로 통합)
+        List<String> tickers = java.util.Arrays.stream(BenchmarkType.values())
+                .map(BenchmarkType::getTicker)
+                .toList();
+
+        List<StockPriceResult> allPrices = loadBenchmarkPort.loadBenchmarkPricesIn(tickers, start, end);
+        Map<String, List<StockPriceResult>> priceMap = allPrices.stream()
+                .collect(java.util.stream.Collectors.groupingBy(StockPriceResult::ticker));
 
         List<MarketIndexResult> results = new ArrayList<>();
         List<String> missingTickers = new ArrayList<>();
 
         for (BenchmarkType type : BenchmarkType.values()) {
-            try {
-                // BenchmarkType의 ticker()를 식별자로 사용하여 데이터 로드
-                List<StockPriceResult> prices = loadBenchmarkPort.loadBenchmarkPrices(type.getTicker(), start, end);
-                if (prices.isEmpty()) {
-                    log.warn("[지수 서비스] 조회된 지수 데이터가 없습니다. ticker={}, name={}, range={}~{}",
-                            type.getTicker(), type.getName(), start, end);
-                    missingTickers.add(type.getTicker());
-                    continue;
-                }
-                results.add(toResult(type, prices));
-            } catch (StockPriceException e) {
-                log.warn("[지수 서비스] 시장 지수 조회 실패: {}({}) - {}", type.getName(), type.getTicker(), e.getMessage());
+            List<StockPriceResult> prices = priceMap.get(type.getTicker());
+            if (prices == null || prices.isEmpty()) {
+                log.warn("[지수 서비스] 조회된 지수 데이터가 없습니다. ticker={}, name={}, range={}~{}",
+                        type.getTicker(), type.getName(), start, end);
                 missingTickers.add(type.getTicker());
-            } catch (Exception e) {
-                log.error("[지수 서비스] 시장 지수 조회 중 예기치 않은 오류 발생: {}({}) - {}",
-                        type.getName(), type.getTicker(), e.getMessage());
-                missingTickers.add(type.getTicker());
+                continue;
             }
+            results.add(toResult(type, prices));
         }
 
         if (!missingTickers.isEmpty()) {
@@ -75,23 +78,20 @@ public class MarketIndexService implements MarketIndexUseCase {
     private MarketIndexResult toResult(BenchmarkType type, List<StockPriceResult> prices) {
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
-        BigDecimal fluctuationRate = latest.changeRate() != null ? 
+        BigDecimal fluctuationRate = latest.changeRate() != null ?
                 latest.changeRate().setScale(MarketWeatherPolicy.DISPLAY_SCALE, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        
-        // fluctuationAmount = currentPrice - prevPrice
-        // prevPrice = currentPrice / (1 + fluctuationRate/100)
+
         BigDecimal fluctuationAmount = BigDecimal.ZERO;
         if (fluctuationRate.compareTo(BigDecimal.ZERO) != 0) {
             BigDecimal rateMultiplier = fluctuationRate.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP);
             BigDecimal divisor = BigDecimal.ONE.add(rateMultiplier);
-            
+
             if (divisor.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal prevPrice = currentPrice.divide(divisor, 4, RoundingMode.HALF_UP);
                 fluctuationAmount = currentPrice.subtract(prevPrice);
             }
         }
 
-        // 전체 날짜 대신 가장 최근 날짜의 시세만 배열에 담아 반환 (페이로드 최적화)
         List<HistoryPoint> history = List.of(new HistoryPoint(latest.baseDate(), latest.closePrice()));
 
         return new MarketIndexResult(type.getTicker(), type.getName(), currentPrice, fluctuationRate, fluctuationAmount, history);
@@ -103,9 +103,11 @@ public class MarketIndexService implements MarketIndexUseCase {
 
         LocalDate benchmarkDate = kospi.history().isEmpty() ? LocalDate.now() : kospi.history().getFirst().date();
         LocalDate breadthDate = stockPricePort.findLatestDateOnOrBefore(benchmarkDate).orElse(null);
-        MarketBreadthSnapshot breadth = breadthDate == null
+
+        // 2. 전 종목 시세 데이터를 가져와서 앱 서버에서 계산하던 로직을 DB 집계로 전환
+        MarketBreadthSnapshot breadth = (breadthDate == null)
                 ? null
-                : marketBreadthCalculator.summarize(stockPricePort.findAllByDate(breadthDate));
+                : stockPricePort.summarizeBreadthByDate(breadthDate);
 
         LocalDate asOfDate = breadthDate != null ? breadthDate : benchmarkDate;
         return marketWeatherClassifier.classify(kospi.fluctuationRate(), kosdaq.fluctuationRate(), breadth, asOfDate);

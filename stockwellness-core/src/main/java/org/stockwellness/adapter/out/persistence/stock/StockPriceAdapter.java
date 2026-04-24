@@ -2,6 +2,7 @@ package org.stockwellness.adapter.out.persistence.stock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
@@ -11,6 +12,8 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
@@ -120,6 +123,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
                 ));
     }
 
+    @Override
+    public List<StockPrice> findRecentPricesWithDateByStock(Stock stock, LocalDate date, int limit) {
+        return stockPriceRepository.findRecentPricesByStock(stock, date, PageRequest.of(0, limit));
+    }
+
 
     @Override
     public Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks) {
@@ -131,6 +139,17 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<StockPrice> findAllByDate(LocalDate date) {
         return stockPriceRepository.findAllByDateWithStock(date);
+    }
+
+    @Override
+    public List<MarketBreadthItem> findAllBreadthItemsByDate(LocalDate date) {
+        return stockPriceRepository.findAllBreadthItemsByDate(date);
+    }
+
+    @Override
+    @Cacheable(cacheNames = "marketBreadth:v1", key = "#date.toString()", unless = "#result == null")
+    public MarketBreadthSnapshot summarizeBreadthByDate(LocalDate date) {
+        return stockPriceRepository.summarizeBreadthByDate(date);
     }
 
     @Override
@@ -203,5 +222,10 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public List<StockPriceResult> loadBenchmarkPrices(String benchmarkTicker, LocalDate start, LocalDate end) {
         return benchmarkRepository.findBenchmarkPrices(benchmarkTicker, start, end);
+    }
+
+    @Override
+    public List<StockPriceResult> loadBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end) {
+        return benchmarkRepository.findBenchmarkPricesIn(tickers, start, end);
     }
 }

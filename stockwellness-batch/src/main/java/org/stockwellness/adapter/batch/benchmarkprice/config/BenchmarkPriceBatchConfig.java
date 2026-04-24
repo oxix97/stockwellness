@@ -21,9 +21,9 @@ import org.stockwellness.adapter.batch.benchmarkprice.step.writer.BenchmarkPrice
 import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
+import org.stockwellness.global.util.DateUtil;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Configuration
@@ -36,8 +36,6 @@ public class BenchmarkPriceBatchConfig {
     private final KisDailyPriceAdapter kisAdapter;
     private final BenchmarkPriceSyncUseCase benchmarkPriceSyncUseCase;
     private final BenchmarkPricePort benchmarkPricePort;
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @Bean
     public Job benchmarkPriceSyncJob(Step benchmarkPriceSyncStep) {
@@ -70,8 +68,14 @@ public class BenchmarkPriceBatchConfig {
             @Value("#{jobParameters['startDate']}") String startDateParam,
             @Value("#{jobParameters['endDate']}") String endDateParam) {
 
-        LocalDate startDate = startDateParam != null ? LocalDate.parse(startDateParam, DATE_FORMATTER) : LocalDate.now().minusYears(2);
-        LocalDate endDate = endDateParam != null ? LocalDate.parse(endDateParam, DATE_FORMATTER) : LocalDate.now();
+        LocalDate startDate = DateUtil.parseFlexible(startDateParam);
+        LocalDate endDate = DateUtil.parseFlexible(endDateParam);
+        if (startDate == null) {
+            startDate = DateUtil.today().minusYears(2);
+        }
+        if (endDate == null) {
+            endDate = DateUtil.today();
+        }
 
         return new BenchmarkPriceDataReader(kisAdapter, startDate, endDate);
     }

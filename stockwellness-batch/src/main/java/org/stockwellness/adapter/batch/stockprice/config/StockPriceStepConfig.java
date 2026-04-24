@@ -14,16 +14,14 @@ import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilde
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.adapter.batch.stockprice.step.processor.DailyStockPriceProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.processor.TechnicalIndicatorProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.reader.StockListReader;
+import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceJdbcItemWriter;
 import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceListWriter;
-import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceWriter;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceSql;
 import org.stockwellness.domain.stock.Stock;
@@ -45,7 +43,6 @@ public class StockPriceStepConfig {
     private final PlatformTransactionManager txManager;
     private final EntityManagerFactory entityManagerFactory;
     private final DataSource dataSource;
-    private final JdbcTemplate jdbcTemplate;
 
     /**
      * [Step 1] 시세 수집 단계: [KIS] 멀티종목시세 조회를 통해 원시 가격 데이터를 저장
@@ -69,17 +66,15 @@ public class StockPriceStepConfig {
      */
     @Bean
     public Step technicalIndicatorCalculateStep(
-            StockListReader technicalIndicatorListReader,
+            JpaPagingItemReader<Stock> technicalIndicatorStockReader,
             TechnicalIndicatorProcessor technicalIndicatorProcessor,
-            StockPriceListWriter technicalIndicatorListWriter,
-            TaskExecutor batchExecutor
+            StockPriceJdbcItemWriter stockPriceJdbcItemWriter
     ) {
         return new StepBuilder("technicalIndicatorCalculateStep", jobRepository)
-                .<List<Stock>, List<StockPrice>>chunk(1, txManager)
-                .reader(technicalIndicatorListReader)
+                .<Stock, StockPrice>chunk(30, txManager)
+                .reader(technicalIndicatorStockReader)
                 .processor(technicalIndicatorProcessor)
-                .writer(technicalIndicatorListWriter)
-                .taskExecutor(batchExecutor)
+                .writer(stockPriceJdbcItemWriter)
                 .build();
     }
 
@@ -119,12 +114,6 @@ public class StockPriceStepConfig {
 
     @Bean
     @StepScope
-    public StockListReader technicalIndicatorListReader(JpaPagingItemReader<Stock> technicalIndicatorReader) {
-        return new StockListReader(technicalIndicatorReader, 30);
-    }
-
-    @Bean
-    @StepScope
     public JpaPagingItemReader<Stock> stockReader(
             @Value("#{jobParameters['targetTicker']}") String targetTicker
     ) {
@@ -143,9 +132,9 @@ public class StockPriceStepConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> technicalIndicatorReader() {
+    public JpaPagingItemReader<Stock> technicalIndicatorStockReader() {
         return new JpaPagingItemReaderBuilder<Stock>()
-                .name("technicalIndicatorReader")
+                .name("technicalIndicatorStockReader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(300)
                 .queryString("select s from Stock s where s.status = org.stockwellness.domain.stock.StockStatus.ACTIVE order by s.id asc")
@@ -155,7 +144,12 @@ public class StockPriceStepConfig {
 
     @Bean
     public StockPriceListWriter stockPriceListWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
-        return new StockPriceListWriter(jdbcTemplate, stockPriceJdbcWriter);
+        return new StockPriceListWriter(stockPriceJdbcWriter);
+    }
+
+    @Bean
+    public StockPriceJdbcItemWriter stockPriceJdbcItemWriter(JdbcBatchItemWriter<StockPrice> stockPriceJdbcWriter) {
+        return new StockPriceJdbcItemWriter(stockPriceJdbcWriter);
     }
 
     @Bean

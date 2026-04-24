@@ -42,9 +42,14 @@ public class StockPriceUpdateConsumer {
     private void invalidateCaches(StockPriceUpdatedEvent event) {
         List<String> symbols = event.symbols();
 
-        // 1. 섹터 관련 인사이트 캐시 전체 무효화 (새로운 시세 기준 순위 재산출 필요)
-        Optional.ofNullable(cacheManager.getCache(CacheType.SECTOR_RANKING.getCacheName())).ifPresent(Cache::clear);
-        Optional.ofNullable(cacheManager.getCache(CacheType.SECTOR_SUPPLY.getCacheName())).ifPresent(Cache::clear);
+        // 1. 시장/섹터 인사이트 캐시 전체 무효화 (시세 기반 응답 재계산 필요)
+        invalidateWholeCaches(
+                CacheType.SECTOR_RANKING,
+                CacheType.SECTOR_SUPPLY,
+                CacheType.MARKET_DASHBOARD,
+                CacheType.MARKET_BREADTH,
+                CacheType.STOCK_SUPPLY_RANKING
+        );
 
         // 2. 영향을 받는 포트폴리오 식별 및 분석 캐시 무효화
         List<Long> affectedPortfolioIds = portfolioPort.findPortfolioIdsBySymbols(symbols);
@@ -55,6 +60,12 @@ public class StockPriceUpdateConsumer {
         }
         
         log.info("업데이트된 종목 시세 관련 캐시 정리 완료");
+    }
+
+    private void invalidateWholeCaches(CacheType... cacheTypes) {
+        for (CacheType cacheType : cacheTypes) {
+            Optional.ofNullable(cacheManager.getCache(cacheType.getCacheName())).ifPresent(Cache::clear);
+        }
     }
 
     private void invalidatePortfolioAnalysisCaches(List<Long> portfolioIds) {

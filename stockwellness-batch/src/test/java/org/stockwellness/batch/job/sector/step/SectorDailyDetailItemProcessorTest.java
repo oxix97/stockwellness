@@ -90,4 +90,17 @@ class SectorDailyDetailItemProcessorTest {
                 20L
         );
     }
+
+    @Test
+    @DisplayName("compact targetDate도 동일하게 파싱해 KIS 호출에 사용한다")
+    void process_supportsCompactTargetDate() {
+        ReflectionTestUtils.setField(processor, "targetDateStr", "20260409");
+        given(sectorDataPort.fetchTodaySectorDetail("0013", LocalDate.of(2026, 4, 9)))
+                .willReturn(snapshot("0013", LocalDate.of(2026, 4, 9)));
+
+        SectorDailyDetail result = processor.process(MarketIndex.of("0013", "전기·전자"));
+
+        assertThat(result).isNotNull();
+        verify(sectorDataPort).fetchTodaySectorDetail("0013", LocalDate.of(2026, 4, 9));
+    }
 }

@@ -281,3 +281,10 @@ logs/
 /docs/
 /.vscode/
 .worktrees/
+/k6/.env
+
+# k6 Load Test
+k6/.env
+k6/results/
+k6_*.log
+auth_debug.log

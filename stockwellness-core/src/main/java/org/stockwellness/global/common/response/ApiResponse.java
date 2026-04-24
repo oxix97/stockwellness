@@ -1,5 +1,6 @@
 package org.stockwellness.global.common.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -21,6 +22,7 @@ import java.util.List;
  * @param traceId     에러 추적을 위한 ID (성공 시 null 가능)
  * @param errors      상세 필드 에러 정보 (성공 시 빈 리스트)
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiResponse<T>(
         @JsonProperty("success")
         boolean isSuccess,
