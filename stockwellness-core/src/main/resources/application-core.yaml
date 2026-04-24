@@ -87,7 +87,7 @@ spring:
 decorator:
   datasource:
     p6spy:
-      enable-logging: true
+      enable-logging: false
 
 
 jwt:
@@ -111,21 +111,19 @@ logging:
     # 1. 전역 설정: 너무 시끄러운 로그는 INFO로 잠재움
     root: INFO
 
-    # 2. 우리 프로젝트 (핵심): 내가 짠 코드의 로그는 다 보여야 함
-    org.stockwellness: DEBUG
+    # 2. 우리 프로젝트 (핵심): 실운영 환경을 고려하여 INFO로 상향
+    org.stockwellness: INFO
 
     # 3. Spring AI & Web (AI 요청/응답 확인용)
-    # RestClient의 요청/응답 헤더 및 바디를 보려면 DEBUG 필요
-    org.springframework.web.client.RestClient: DEBUG
-    org.springframework.ai: DEBUG
+    # 디버깅 시에만 DEBUG로 변경 권장
+    org.springframework.web.client.RestClient: WARN
+    org.springframework.ai: WARN
 
     # 4. Apache HTTP (너무 시끄러움 -> WARN 권장)
-    # DEBUG로 두면 TCP 패킷(Hex dump)까지 찍혀서 콘솔이 터집니다. 연결 문제 있을 때만 DEBUG.
     org.apache.hc.client5.http: WARN
 
     # 5. DB Query (P6Spy 사용 시)
-    # p6spy가 파라미터 바인딩된 SQL을 보여주므로 Hibernate 원본 로그는 끕니다.
-    p6spy: INFO  # P6Spy 자체의 로깅 레벨 (쿼리 로그는 P6Spy 설정파일에서 제어됨)
+    p6spy: OFF
     org.hibernate.SQL: OFF
     org.hibernate.type.descriptor.sql.BasicBinder: OFF
 

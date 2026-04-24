@@ -2,6 +2,7 @@ package org.stockwellness.application.service.stock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.stock.StockPriceUseCase;
@@ -39,6 +40,7 @@ public class StockChartService implements StockPriceUseCase {
     private final StockPort stockPort;
 
     @Override
+    @Cacheable(cacheNames = "stockSupplyRanking:v1", key = "#direction + '_' + #limit", unless = "#result == null")
     public StockSupplyRankingResponse getTopStocksBySupply(
             TradeDirection direction,
             int limit
