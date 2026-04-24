@@ -58,13 +58,14 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     public Optional<LocalDate> findLatestInvestorTradeDate() {
         return Optional.ofNullable(
                 queryFactory
-                        .select(stockInvestorTrade.id.baseDate.max())
+                        .select(stockInvestorTrade.id.baseDate)
                         .from(stockInvestorTrade)
                         .join(stockPrice).on(
                                 stockPrice.stock.eq(stockInvestorTrade.stock)
                                         .and(stockPrice.id.baseDate.eq(stockInvestorTrade.id.baseDate))
                         )
-                        .fetchOne()
+                        .orderBy(stockInvestorTrade.id.baseDate.desc())
+                        .fetchFirst()
         );
     }
 
@@ -119,7 +120,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
     ) {
         NumberExpression<Long> netBuyingQuantity = buyingQty.coalesce(0L);
         NumberExpression<BigDecimal> netBuyingAmount = buyingAmt.coalesce(BigDecimal.ZERO);
-        BooleanExpression directionFilter = getDirectionFilter(netBuyingAmount, direction);
+        BooleanExpression directionFilter = getDirectionFilter(buyingAmt, direction);
         NumberExpression<BigDecimal> currentPrice = stockPrice.closePrice.coalesce(BigDecimal.ZERO);
         NumberExpression<BigDecimal> transactionAmount = stockPrice.transactionAmt.coalesce(BigDecimal.ZERO);
         NumberExpression<BigDecimal> fluctuationRate = new CaseBuilder()
@@ -150,7 +151,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
                         stockInvestorTrade.id.baseDate.eq(date),
                         directionFilter
                 )
-                .orderBy(direction == TradeDirection.BUY ? netBuyingAmount.desc() : netBuyingAmount.asc())
+                .orderBy(direction == TradeDirection.BUY ? buyingAmt.desc() : buyingAmt.asc())
                 .limit(limit)
                 .fetch();
     }

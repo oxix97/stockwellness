@@ -47,7 +47,8 @@ public class StockPriceUpdateConsumer {
                 CacheType.SECTOR_RANKING,
                 CacheType.SECTOR_SUPPLY,
                 CacheType.MARKET_DASHBOARD,
-                CacheType.MARKET_BREADTH
+                CacheType.MARKET_BREADTH,
+                CacheType.STOCK_SUPPLY_RANKING
         );
 
         // 2. 영향을 받는 포트폴리오 식별 및 분석 캐시 무효화
