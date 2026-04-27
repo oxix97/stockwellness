@@ -9,6 +9,7 @@ import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,9 +44,21 @@ public class StockDataAdapter implements StockDataPort {
     }
 
     private StockWellnessDetail convertToDetail(StockPrice stockPrice, AiAnalysisContext context) {
-        String rsiStatus = TechnicalCalculator.analyzeRsiLevel(stockPrice.getIndicators().getRsi14());
-        String aiInsight = null;
+        BigDecimal rsi = stockPrice.getIndicators() != null ? stockPrice.getIndicators().getRsi14() : null;
+        String rsiStatus = TechnicalCalculator.analyzeRsiLevel(rsi);
 
-        return null;
+        // context가 null일 경우를 대비한 방어 로직 및 추세 정보 기반 insight 추출
+        String aiInsight = (context != null && context.technicalSignal() != null)
+                ? context.technicalSignal().trendStatus().getDescription()
+                : "데이터가 부족하여 AI 분석을 제공할 수 없습니다.";
+
+        return new StockWellnessDetail(
+                stockPrice.getStock().getStandardCode(),
+                stockPrice.getClosePrice(),
+                stockPrice.getFluctuationRate(),
+                rsi,
+                rsiStatus,
+                aiInsight
+        );
     }
 }
