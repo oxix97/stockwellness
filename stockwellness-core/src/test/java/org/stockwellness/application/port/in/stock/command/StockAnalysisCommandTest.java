@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,5 +40,13 @@ class StockAnalysisCommandTest {
     void throwExceptionWhenIsinCodeIsNull() {
         assertThatThrownBy(() -> new StockAnalysisCommand(null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"123", "1234567890123", "ABC@", "DEF#", "GHI-"})
+    @DisplayName("ISIN 코드 길이가 4자 미만, 12자 초과이거나 특수문자가 포함되면 InvalidStockCodeException이 발생한다")
+    void throwExceptionWhenIsinCodeIsInvalid(String invalidInput) {
+        assertThatThrownBy(() -> new StockAnalysisCommand(invalidInput))
+                .isInstanceOf(InvalidStockCodeException.class);
     }
 }
