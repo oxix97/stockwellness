@@ -164,6 +164,52 @@ class PortfolioFacadeTest {
             assertThat(endCaptor.getValue()).isBetween(beforeCall, afterCall);
             assertThat(startCaptor.getValue()).isEqualTo(endCaptor.getValue().minusMonths(12));
         }
+
+        @Test
+        @DisplayName("시작일만 있는 경우 종료일은 오늘로 보정한다")
+        void getAnalysisSummary_OnlyStartDate() {
+            PortfolioAnalysisSummaryResult summary = mock(PortfolioAnalysisSummaryResult.class);
+            LocalDate startDate = LocalDate.of(2023, 1, 1);
+            given(portfolioAnalysisUseCase.getAnalysisSummary(
+                    eq(MEMBER_ID),
+                    eq(PORTFOLIO_ID),
+                    eq(startDate),
+                    any(LocalDate.class)
+            )).willReturn(summary);
+
+            LocalDate beforeCall = LocalDate.now();
+            PortfolioAnalysisSummaryResult result = portfolioFacade.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, startDate, null);
+            LocalDate afterCall = LocalDate.now();
+
+            ArgumentCaptor<LocalDate> endCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            verify(portfolioAnalysisUseCase).getAnalysisSummary(
+                    eq(MEMBER_ID),
+                    eq(PORTFOLIO_ID),
+                    eq(startDate),
+                    endCaptor.capture()
+            );
+            assertThat(result).isSameAs(summary);
+            assertThat(endCaptor.getValue()).isBetween(beforeCall, afterCall);
+        }
+
+        @Test
+        @DisplayName("종료일만 있는 경우 시작일은 종료일 기준 12개월 전으로 보정한다")
+        void getAnalysisSummary_OnlyEndDate() {
+            PortfolioAnalysisSummaryResult summary = mock(PortfolioAnalysisSummaryResult.class);
+            LocalDate endDate = LocalDate.of(2023, 12, 31);
+            LocalDate expectedStartDate = endDate.minusMonths(12);
+            given(portfolioAnalysisUseCase.getAnalysisSummary(
+                    MEMBER_ID,
+                    PORTFOLIO_ID,
+                    expectedStartDate,
+                    endDate
+            )).willReturn(summary);
+
+            PortfolioAnalysisSummaryResult result = portfolioFacade.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, null, endDate);
+
+            assertThat(result).isSameAs(summary);
+            verify(portfolioAnalysisUseCase).getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, expectedStartDate, endDate);
+        }
     }
 
     @Nested
