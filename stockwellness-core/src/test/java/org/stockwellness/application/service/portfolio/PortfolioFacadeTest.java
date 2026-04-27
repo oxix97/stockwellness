@@ -18,14 +18,7 @@ import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolio
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
-import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioAnalysisSummaryResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionPerformanceResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
+import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 
 import java.math.BigDecimal;
@@ -35,13 +28,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PortfolioFacade 단위 테스트")
@@ -199,10 +188,10 @@ class PortfolioFacadeTest {
             LocalDate endDate = LocalDate.of(2023, 12, 31);
             LocalDate expectedStartDate = endDate.minusMonths(12);
             given(portfolioAnalysisUseCase.getAnalysisSummary(
-                    MEMBER_ID,
-                    PORTFOLIO_ID,
-                    expectedStartDate,
-                    endDate
+                    eq(MEMBER_ID),
+                    eq(PORTFOLIO_ID),
+                    eq(expectedStartDate),
+                    eq(endDate)
             )).willReturn(summary);
 
             PortfolioAnalysisSummaryResult result = portfolioFacade.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, null, endDate);
@@ -255,5 +244,19 @@ class PortfolioFacadeTest {
     @Nested
     @DisplayName("예외 전파 테스트")
     class ExceptionTests {
+
+        @Test
+        @DisplayName("UseCase에서 발생한 예외는 Facade에서 그대로 전파되어야 한다")
+        void propagateExceptionFromUseCase() {
+            // given
+            CreatePortfolioCommand command = mock(CreatePortfolioCommand.class);
+            String errorMessage = "Domain Error";
+            given(managePortfolioUseCase.createPortfolio(any())).willThrow(new RuntimeException(errorMessage));
+
+            // when & then
+            assertThatThrownBy(() -> portfolioFacade.createPortfolio(command))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessage(errorMessage);
+        }
     }
 }
