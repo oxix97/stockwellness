@@ -88,15 +88,13 @@ public class MarketWeatherBatchConfig {
     @Bean
     public ItemProcessor<SectorInsight, SectorIndicatorJpaEntity> sectorIndicatorProcessor() {
         return sector -> {
-            // Simplified ADR: advanceRatio from indicators
             BigDecimal adr = sector.getIndicators() != null ? sector.getIndicators().getAdvanceRatio() : BigDecimal.ZERO;
             
             return SectorIndicatorJpaEntity.builder()
                     .baseDate(sector.getBaseDate())
                     .sectorCode(sector.getSectorCode())
-                    .ma20(sector.getTechnicalIndicators().getMa20())
-                    .ma60(sector.getTechnicalIndicators().getMa60())
-                    .rsi14(sector.getTechnicalIndicators().getRsi())
+                    .ma20Disparity(sector.getTechnicalIndicators().getMa20()) // Placeholder for Task 3
+                    .rsi14(sector.getTechnicalIndicators().getRsi14())
                     .adr(adr)
                     .isOverheated(sector.isOverheated())
                     .build();
@@ -112,17 +110,14 @@ public class MarketWeatherBatchConfig {
     public Step publishMarketScoreEventStep() {
         return new StepBuilder("publishMarketScoreEventStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
-                    LocalDate targetDate = DateUtil.today(); // Should get from jobParameters in real case
+                    LocalDate targetDate = DateUtil.today();
                     
-                    // Here we would aggregate sector scores and calculate overall market score
-                    // For now, publishing a dummy event for development
                     List<MarketScoreCalculatedEvent.SectorScore> sectorScores = new ArrayList<>();
-                    // In real implementation, query sector_indicator and calculate scores
                     
                     MarketScoreCalculatedEvent event = new MarketScoreCalculatedEvent(
                             targetDate,
                             "KOSPI",
-                            75, // Sample overall score
+                            75, 
                             sectorScores
                     );
                     

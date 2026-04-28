@@ -22,6 +22,9 @@ public class SectorIndicators {
     @Column(name = "avg_fluctuation_rate", precision = 10, scale = 2)
     private BigDecimal avgFluctuationRate;
 
+    @Column(name = "advance_ratio", precision = 10, scale = 2)
+    private BigDecimal advanceRatio;
+
     // [수급 지표]
     @Column(name = "net_foreign_buy_amount")
     private Long netForeignBuyAmount;
@@ -38,6 +41,7 @@ public class SectorIndicators {
     public static SectorIndicators of(
             BigDecimal sectorIndexCurrentPrice,
             BigDecimal avgFluctuationRate,
+            BigDecimal advanceRatio,
             Long netForeignBuyAmount,
             Long netInstBuyAmount,
             Integer foreignConsecutiveBuyDays,
@@ -46,6 +50,7 @@ public class SectorIndicators {
         return new SectorIndicators(
                 sectorIndexCurrentPrice,
                 avgFluctuationRate,
+                advanceRatio,
                 netForeignBuyAmount,
                 netInstBuyAmount,
                 foreignConsecutiveBuyDays,

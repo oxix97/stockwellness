@@ -25,16 +25,10 @@ public class SectorIndicatorJpaEntity extends AbstractEntity {
     private String sectorCode;
 
     @Column(precision = 10, scale = 4)
-    private BigDecimal ma20;
-
-    @Column(precision = 10, scale = 4)
-    private BigDecimal ma60;
+    private BigDecimal ma20Disparity;
 
     @Column(precision = 10, scale = 4)
     private BigDecimal rsi14;
-
-    @Column(precision = 10, scale = 4)
-    private BigDecimal macd;
 
     @Column(precision = 10, scale = 4)
     private BigDecimal adr;
@@ -42,13 +36,11 @@ public class SectorIndicatorJpaEntity extends AbstractEntity {
     private boolean isOverheated = false;
 
     @Builder
-    public SectorIndicatorJpaEntity(LocalDate baseDate, String sectorCode, BigDecimal ma20, BigDecimal ma60, BigDecimal rsi14, BigDecimal macd, BigDecimal adr, boolean isOverheated) {
+    public SectorIndicatorJpaEntity(LocalDate baseDate, String sectorCode, BigDecimal ma20Disparity, BigDecimal rsi14, BigDecimal adr, boolean isOverheated) {
         this.baseDate = baseDate;
         this.sectorCode = sectorCode;
-        this.ma20 = ma20;
-        this.ma60 = ma60;
+        this.ma20Disparity = ma20Disparity;
         this.rsi14 = rsi14;
-        this.macd = macd;
         this.adr = adr;
         this.isOverheated = isOverheated;
     }

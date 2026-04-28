@@ -12,6 +12,7 @@ import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.shared.AbstractEntity;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Entity
@@ -36,14 +37,14 @@ public class MarketWeatherJpaEntity extends AbstractEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String topSectors;
+    private List<SectorSummary> topSectors;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String bottomSectors;
+    private List<SectorSummary> bottomSectors;
 
     @Builder
-    public MarketWeatherJpaEntity(LocalDate baseDate, String marketType, int weatherScore, String weatherState, String aiSummary, String topSectors, String bottomSectors) {
+    public MarketWeatherJpaEntity(LocalDate baseDate, String marketType, int weatherScore, String weatherState, String aiSummary, List<SectorSummary> topSectors, List<SectorSummary> bottomSectors) {
         this.baseDate = baseDate;
         this.marketType = marketType;
         this.weatherScore = weatherScore;
@@ -52,4 +53,11 @@ public class MarketWeatherJpaEntity extends AbstractEntity {
         this.topSectors = topSectors;
         this.bottomSectors = bottomSectors;
     }
+
+    public record SectorSummary(
+        String code,
+        String name,
+        int score,
+        String emoji
+    ) {}
 }

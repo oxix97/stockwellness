@@ -5,13 +5,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.stockwellness.adapter.in.web.insight.dto.MarketWeatherResponse;
+import org.stockwellness.adapter.out.persistence.insight.MarketWeatherJpaEntity;
 import org.stockwellness.adapter.out.persistence.insight.repository.MarketWeatherRepository;
-import org.stockwellness.adapter.out.persistence.insight.repository.SectorWeatherRepository;
 import org.stockwellness.domain.stock.insight.WeatherState;
-import org.stockwellness.global.common.SuccessResponse;
+import org.stockwellness.global.common.response.ApiResponse;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/market-weather")
@@ -19,50 +18,36 @@ import java.util.stream.Collectors;
 public class MarketWeatherController {
 
     private final MarketWeatherRepository marketWeatherRepository;
-    private final SectorWeatherRepository sectorWeatherRepository;
 
     @GetMapping("/latest")
-    public SuccessResponse<MarketWeatherResponse> getLatestWeather() {
+    public ApiResponse<MarketWeatherResponse> getLatestWeather() {
         return marketWeatherRepository.findFirstByMarketTypeOrderByBaseDateDesc("KOSPI")
                 .map(market -> {
-                    var sectorWeathers = sectorWeatherRepository.findByBaseDateOrderByWeatherScoreDesc(market.getBaseDate());
-                    
-                    var topSectors = sectorWeathers.stream()
-                            .limit(3)
-                            .map(this::toSectorDto)
-                            .toList();
-
-                    var bottomSectors = sectorWeathers.stream()
-                            .sorted((a, b) -> Integer.compare(a.getWeatherScore(), b.getWeatherScore()))
-                            .limit(3)
-                            .map(this::toSectorDto)
-                            .toList();
-
                     WeatherState state = WeatherState.fromScore(market.getWeatherScore());
 
-                    return SuccessResponse.success(MarketWeatherResponse.builder()
+                    return ApiResponse.success(MarketWeatherResponse.builder()
                             .baseDate(market.getBaseDate())
                             .marketType(market.getMarketType())
                             .weatherScore(market.getWeatherScore())
                             .weatherState(market.getWeatherState())
                             .weatherEmoji(state.getIconEmoji())
                             .aiSummary(market.getAiSummary())
-                            .topSectors(topSectors)
-                            .bottomSectors(bottomSectors)
+                            .topSectors(toSectorDtos(market.getTopSectors()))
+                            .bottomSectors(toSectorDtos(market.getBottomSectors()))
                             .build());
                 })
-                .orElseGet(() -> SuccessResponse.success(null)); // Or appropriate fallback
+                .orElseGet(() -> ApiResponse.success(null));
     }
 
-    private MarketWeatherResponse.SectorWeatherDto toSectorDto(org.stockwellness.adapter.out.persistence.insight.SectorWeatherJpaEntity entity) {
-        WeatherState state = WeatherState.fromScore(entity.getWeatherScore());
-        return MarketWeatherResponse.SectorWeatherDto.builder()
-                .sectorCode(entity.getSectorCode())
-                .score(entity.getWeatherScore())
-                .state(entity.getWeatherState())
-                .emoji(state.getIconEmoji())
-                .aiTitle(entity.getAiTitle())
-                .aiInsight(entity.getAiInsight())
-                .build();
+    private List<MarketWeatherResponse.SectorWeatherDto> toSectorDtos(List<MarketWeatherJpaEntity.SectorSummary> sectors) {
+        if (sectors == null) return List.of();
+        return sectors.stream()
+                .map(s -> MarketWeatherResponse.SectorWeatherDto.builder()
+                        .sectorCode(s.code())
+                        .sectorName(s.name())
+                        .score(s.score())
+                        .emoji(s.emoji())
+                        .build())
+                .toList();
     }
 }
