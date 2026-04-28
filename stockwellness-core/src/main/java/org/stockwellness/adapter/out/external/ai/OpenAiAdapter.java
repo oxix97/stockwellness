@@ -15,6 +15,7 @@ import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
 import org.stockwellness.application.port.out.sector.SectorAiContext;
+import org.stockwellness.application.port.out.sector.WeatherInsightPort;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.AiReport;
@@ -24,7 +25,7 @@ import java.util.concurrent.*;
 
 @Slf4j
 @Component
-public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort, AiAdviceProviderPort {
+public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSectorAiPort, AiAdviceProviderPort, WeatherInsightPort {
 
     private static final Duration AI_CALL_TIMEOUT = Duration.ofSeconds(12);
     private static final ExecutorService AI_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
@@ -126,6 +127,42 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
     public AdvisorAiResult recoverRebalancingAdvice(Exception e, AdvisorAiContext context) {
         log.error("❌ Portfolio Rebalancing Advice Failed after retries: {}", e.getMessage());
         return AdvisorAiResult.fallback();
+    }
+
+    @Override
+    @Retryable(
+            retryFor = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2.0)
+    )
+    public String generateMarketWeatherSummary(int score, String marketType, String newsContext) {
+        String system = promptTemplateMapper.getMarketWeatherSystemInstruction();
+        String user = promptTemplateMapper.toMarketWeatherPrompt(marketType, score, newsContext);
+
+        try {
+            return executeAiCall(system, user, String.class, "Market Weather Summary");
+        } catch (Exception e) {
+            log.error("❌ Market Weather Summary Failed: {}", e.getMessage());
+            return "현재 시장 지표를 분석 중입니다. 잠시 후 다시 확인해 주세요.";
+        }
+    }
+
+    @Override
+    @Retryable(
+            retryFor = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2.0)
+    )
+    public SectorWeatherInsight generateSectorWeatherInsight(String sectorName, int score, String newsContext) {
+        String system = promptTemplateMapper.getSectorWeatherSystemInstruction();
+        String user = promptTemplateMapper.toSectorWeatherPrompt(sectorName, score, newsContext);
+
+        try {
+            return executeAiCall(system, user, SectorWeatherInsight.class, "Sector Weather Insight");
+        } catch (Exception e) {
+            log.error("❌ Sector Weather Insight Failed: {}", e.getMessage());
+            return new SectorWeatherInsight(sectorName + " 분석", "현재 기술 지표를 분석 중입니다.");
+        }
     }
 
     /**

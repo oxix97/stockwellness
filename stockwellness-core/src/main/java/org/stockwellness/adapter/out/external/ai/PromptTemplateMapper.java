@@ -243,12 +243,60 @@ public class PromptTemplateMapper {
         };
     }
 
-    private String translateSignal(CrossoverSignal signal) {
-        if (signal == null) return "특이사항 없음";
-        return switch (signal) {
-            case GOLDEN_CROSS -> "★ 골든크로스 발생 (단기 매수 신호)";
-            case DEAD_CROSS -> "⚠️ 데드크로스 발생 (단기 매도 신호)";
-            case NONE -> "크로스 신호 없음";
-        };
+    private static final String MARKET_WEATHER_SYSTEM_INSTRUCTION = """
+            당신은 "증시 기상 캐스터" 스타일의 시장 분석 전문가입니다.
+            제공된 시장 건강도 점수(0~100)와 관련 뉴스를 바탕으로 오늘의 증시를 날씨에 비유하여 쉽고 직관적으로 설명합니다.
+            
+            [응답 지침]
+            1. 현재 시장 상황을 날씨 용어를 섞어 한 문장으로 요약하세요.
+            2. 투자자가 오늘 취해야 할 심리적 태도나 주의사항을 덧붙이세요.
+            3. 전체 응답은 150자 이내로 간결하게 작성하세요.
+            """;
+
+    private static final String MARKET_WEATHER_PROMPT_TEMPLATE = """
+            [시장 분석 데이터]
+            - 시장 종류: %s
+            - 시장 건강도 점수: %d / 100
+            
+            [관련 최신 뉴스 컨텍스트]
+            %s
+            
+            위 데이터를 바탕으로 오늘의 증시 기상도를 요약해줘.
+            """;
+
+    private static final String SECTOR_WEATHER_SYSTEM_INSTRUCTION = """
+            당신은 "섹터별 심층 분석가"입니다.
+            특정 섹터의 점수와 뉴스를 분석하여 해당 업종의 '온도'와 '전망'을 전문적으로 설명합니다.
+            
+            [응답 지침]
+            1. title: 섹터의 상황을 관통하는 핵심 제목 (15자 이내)
+            2. insight: 점수와 뉴스를 결합하여 왜 이런 결과가 나왔는지 설명하는 상세 분석 (2~3문장)
+            """;
+
+    private static final String SECTOR_WEATHER_PROMPT_TEMPLATE = """
+            [섹터 데이터]
+            - 섹터명: %s
+            - 섹터 건강도 점수: %d / 100
+            
+            [섹터 관련 뉴스 컨텍스트]
+            %s
+            
+            위 데이터를 바탕으로 섹터의 현재 심리와 전망을 분석해줘.
+            """;
+
+    public String getMarketWeatherSystemInstruction() {
+        return MARKET_WEATHER_SYSTEM_INSTRUCTION;
+    }
+
+    public String toMarketWeatherPrompt(String marketType, int score, String news) {
+        return MARKET_WEATHER_PROMPT_TEMPLATE.formatted(marketType, score, news);
+    }
+
+    public String getSectorWeatherSystemInstruction() {
+        return SECTOR_WEATHER_SYSTEM_INSTRUCTION;
+    }
+
+    public String toSectorWeatherPrompt(String sectorName, int score, String news) {
+        return SECTOR_WEATHER_PROMPT_TEMPLATE.formatted(sectorName, score, news);
     }
 }
