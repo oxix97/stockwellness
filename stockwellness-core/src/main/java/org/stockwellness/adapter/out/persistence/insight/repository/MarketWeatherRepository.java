@@ -1,12 +1,10 @@
 package org.stockwellness.adapter.out.persistence.insight.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.stockwellness.adapter.out.persistence.insight.MarketWeatherJpaEntity;
+import org.stockwellness.adapter.out.persistence.insight.MarketWeather;
 
-import java.time.LocalDate;
 import java.util.Optional;
 
-public interface MarketWeatherRepository extends JpaRepository<MarketWeatherJpaEntity, Long> {
-    Optional<MarketWeatherJpaEntity> findByBaseDateAndMarketType(LocalDate baseDate, String marketType);
-    Optional<MarketWeatherJpaEntity> findFirstByMarketTypeOrderByBaseDateDesc(String marketType);
+public interface MarketWeatherRepository extends JpaRepository<MarketWeather, Long> {
+    Optional<MarketWeather> findFirstByMarketTypeOrderByBaseDateDesc(String marketType);
 }

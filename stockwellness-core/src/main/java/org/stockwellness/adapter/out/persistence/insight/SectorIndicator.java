@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "sector_indicator")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class SectorIndicatorJpaEntity extends AbstractEntity {
+public class SectorIndicator extends AbstractEntity {
 
     @Column(nullable = false)
     private LocalDate baseDate;
@@ -24,7 +24,7 @@ public class SectorIndicatorJpaEntity extends AbstractEntity {
     @Column(nullable = false, length = 20)
     private String sectorCode;
 
-    @Column(precision = 10, scale = 4)
+    @Column(name = "ma20", precision = 10, scale = 4)
     private BigDecimal ma20Disparity;
 
     @Column(precision = 10, scale = 4)
@@ -36,7 +36,7 @@ public class SectorIndicatorJpaEntity extends AbstractEntity {
     private boolean isOverheated = false;
 
     @Builder
-    public SectorIndicatorJpaEntity(LocalDate baseDate, String sectorCode, BigDecimal ma20Disparity, BigDecimal rsi14, BigDecimal adr, boolean isOverheated) {
+    public SectorIndicator(LocalDate baseDate, String sectorCode, BigDecimal ma20Disparity, BigDecimal rsi14, BigDecimal adr, boolean isOverheated) {
         this.baseDate = baseDate;
         this.sectorCode = sectorCode;
         this.ma20Disparity = ma20Disparity;

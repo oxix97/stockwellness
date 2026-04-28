@@ -18,7 +18,7 @@ import java.util.List;
 @Entity
 @Table(name = "market_weather")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MarketWeatherJpaEntity extends AbstractEntity {
+public class MarketWeather extends AbstractEntity {
 
     @Column(nullable = false)
     private LocalDate baseDate;
@@ -44,7 +44,7 @@ public class MarketWeatherJpaEntity extends AbstractEntity {
     private List<SectorSummary> bottomSectors;
 
     @Builder
-    public MarketWeatherJpaEntity(LocalDate baseDate, String marketType, int weatherScore, String weatherState, String aiSummary, List<SectorSummary> topSectors, List<SectorSummary> bottomSectors) {
+    public MarketWeather(LocalDate baseDate, String marketType, int weatherScore, String weatherState, String aiSummary, List<SectorSummary> topSectors, List<SectorSummary> bottomSectors) {
         this.baseDate = baseDate;
         this.marketType = marketType;
         this.weatherScore = weatherScore;

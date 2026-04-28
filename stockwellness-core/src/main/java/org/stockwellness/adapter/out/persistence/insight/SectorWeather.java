@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "sector_weather")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class SectorWeatherJpaEntity extends AbstractEntity {
+public class SectorWeather extends AbstractEntity {
 
     @Column(nullable = false)
     private LocalDate baseDate;
@@ -29,14 +29,14 @@ public class SectorWeatherJpaEntity extends AbstractEntity {
     @Column(nullable = false, length = 20)
     private String weatherState;
 
-    @Column(length = 100)
+    @Column(length = 200)
     private String aiTitle;
 
     @Column(columnDefinition = "TEXT")
     private String aiInsight;
 
     @Builder
-    public SectorWeatherJpaEntity(LocalDate baseDate, String sectorCode, int weatherScore, String weatherState, String aiTitle, String aiInsight) {
+    public SectorWeather(LocalDate baseDate, String sectorCode, int weatherScore, String weatherState, String aiTitle, String aiInsight) {
         this.baseDate = baseDate;
         this.sectorCode = sectorCode;
         this.weatherScore = weatherScore;

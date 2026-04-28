@@ -16,78 +16,69 @@ import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilde
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.persistence.insight.SectorIndicator;
 import org.stockwellness.adapter.out.persistence.insight.repository.SectorIndicatorRepository;
-import org.stockwellness.application.port.out.messaging.MarketScoreCalculatedEvent;
-import org.stockwellness.application.service.insight.WeatherScoreCalculator;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.global.util.DateUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class MarketWeatherBatchConfig {
+public class MarketWeatherBackfillConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final SectorIndicatorRepository sectorIndicatorRepository;
-    private final WeatherScoreCalculator weatherScoreCalculator;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Bean
-    public Job dailyMarketWeatherJob(
-            Step calculateSectorIndicatorStep,
-            Step publishMarketScoreEventStep
-    ) {
-        return new JobBuilder("dailyMarketWeatherJob", jobRepository)
-                .start(calculateSectorIndicatorStep)
-                .next(publishMarketScoreEventStep)
+    public Job backfillMarketWeatherJob(Step backfillSectorIndicatorStep) {
+        return new JobBuilder("backfillMarketWeatherJob", jobRepository)
+                .start(backfillSectorIndicatorStep)
                 .build();
     }
 
     @Bean
-    public Step calculateSectorIndicatorStep(
-            JpaPagingItemReader<SectorInsight> sectorInsightReader,
-            ItemProcessor<SectorInsight, SectorIndicator> sectorIndicatorProcessor,
-            ItemWriter<SectorIndicator> sectorIndicatorWriter
+    public Step backfillSectorIndicatorStep(
+            JpaPagingItemReader<SectorInsight> backfillReader,
+            ItemProcessor<SectorInsight, SectorIndicator> backfillProcessor,
+            ItemWriter<SectorIndicator> backfillWriter
     ) {
-        return new StepBuilder("calculateSectorIndicatorStep", jobRepository)
-                .<SectorInsight, SectorIndicator>chunk(20, transactionManager)
-                .reader(sectorInsightReader)
-                .processor(sectorIndicatorProcessor)
-                .writer(sectorIndicatorWriter)
+        return new StepBuilder("backfillSectorIndicatorStep", jobRepository)
+                .<SectorInsight, SectorIndicator>chunk(50, transactionManager)
+                .reader(backfillReader)
+                .processor(backfillProcessor)
+                .writer(backfillWriter)
                 .build();
     }
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<SectorInsight> sectorInsightReader(
-            @Value("#{jobParameters['targetDate']}") String targetDateStr
+    public JpaPagingItemReader<SectorInsight> backfillReader(
+            @Value("#{jobParameters['startDate']}") String startDateStr
     ) {
-        LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
-        if (targetDate == null) targetDate = DateUtil.today();
+        LocalDate startDate = DateUtil.parseFlexible(startDateStr);
+        if (startDate == null) startDate = DateUtil.today().minusDays(365);
+
+        log.info("🚀 Starting Market Weather Backfill from {}", startDate);
 
         return new JpaPagingItemReaderBuilder<SectorInsight>()
-                .name("sectorInsightReader")
+                .name("backfillReader")
                 .entityManagerFactory(entityManagerFactory)
-                .queryString("SELECT s FROM SectorInsight s WHERE s.baseDate = :targetDate")
-                .parameterValues(Map.of("targetDate", targetDate))
-                .pageSize(20)
+                .queryString("SELECT s FROM SectorInsight s WHERE s.baseDate >= :startDate ORDER BY s.baseDate ASC")
+                .parameterValues(Map.of("startDate", startDate))
+                .pageSize(50)
                 .build();
     }
 
     @Bean
-    public ItemProcessor<SectorInsight, SectorIndicator> sectorIndicatorProcessor() {
+    public ItemProcessor<SectorInsight, SectorIndicator> backfillProcessor() {
         return insight -> {
             BigDecimal disparity = BigDecimal.ZERO;
             if (insight.getIndicators() != null && insight.getIndicators().getSectorIndexCurrentPrice() != null 
@@ -114,31 +105,7 @@ public class MarketWeatherBatchConfig {
     }
 
     @Bean
-    public ItemWriter<SectorIndicator> sectorIndicatorWriter() {
+    public ItemWriter<SectorIndicator> backfillWriter() {
         return items -> sectorIndicatorRepository.saveAll(items);
-    }
-
-    @Bean
-    public Step publishMarketScoreEventStep() {
-        return new StepBuilder("publishMarketScoreEventStep", jobRepository)
-                .tasklet((contribution, chunkContext) -> {
-                    LocalDate targetDate = DateUtil.today();
-                    
-                    // TODO: Calculate actual market score from all sector indicators
-                    List<MarketScoreCalculatedEvent.SectorScore> sectorScores = new ArrayList<>();
-                    
-                    MarketScoreCalculatedEvent event = new MarketScoreCalculatedEvent(
-                            targetDate,
-                            "KOSPI",
-                            75, 
-                            sectorScores
-                    );
-                    
-                    kafkaTemplate.send("market-score-calculated", event);
-                    log.info("🚀 Published MarketScoreCalculatedEvent for {}", targetDate);
-                    
-                    return null;
-                }, transactionManager)
-                .build();
     }
 }

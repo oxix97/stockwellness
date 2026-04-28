@@ -1,4 +1,4 @@
-package org.stockwellness.adapter.in.web.insight.dto;
+package org.stockwellness.application.service.insight.dto;
 
 import lombok.Builder;
 import org.stockwellness.domain.stock.insight.WeatherState;
