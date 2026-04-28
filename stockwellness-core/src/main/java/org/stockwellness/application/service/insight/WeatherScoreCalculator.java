@@ -21,6 +21,7 @@ public class WeatherScoreCalculator {
         if (ma60 == null || ma60.compareTo(BigDecimal.ZERO) == 0) return new BigDecimal("50");
         BigDecimal ratio = price.divide(ma60, 4, RoundingMode.HALF_UP).subtract(BigDecimal.ONE).multiply(new BigDecimal("100"));
         // Example: +10% above ma60 -> 100, -10% below -> 0
-        return ratio.add(new BigDecimal("5")).multiply(new BigDecimal("5")).clamp(BigDecimal.ZERO, new BigDecimal("100"));
+        BigDecimal score = ratio.add(new BigDecimal("5")).multiply(new BigDecimal("5"));
+        return score.max(BigDecimal.ZERO).min(new BigDecimal("100"));
     }
 }

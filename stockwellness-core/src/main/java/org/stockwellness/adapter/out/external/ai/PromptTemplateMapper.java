@@ -129,7 +129,7 @@ public class PromptTemplateMapper {
                 .map(b -> String.format("   - %s: %s (%s%%)", b.name(),
                         FinanceFormatUtil.formatDecimal(b.currentPrice()),
                         FinanceFormatUtil.formatRate(b.fluctuationRate())))
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.<String>joining("\n"));
 
         String holdingsInfo = context.holdings().stream()
                 .map(h -> {
@@ -151,7 +151,7 @@ public class PromptTemplateMapper {
                             translateSignal(tech.signal())
                     );
                 })
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.<String>joining("\n"));
 
         return ADVISOR_PROMPT_TEMPLATE.formatted(
                 context.portfolioName(),
@@ -185,7 +185,7 @@ public class PromptTemplateMapper {
                 .map(s -> String.format("   - %s (%s%%, 수급: %s)", s.name(), 
                         FinanceFormatUtil.formatRate(s.fluctuationRate()), 
                         FinanceFormatUtil.formatAmount(s.transactionAmt())))
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.<String>joining("\n"));
 
         return SECTOR_PROMPT_TEMPLATE.formatted(
                 context.sectorName(),
@@ -240,6 +240,15 @@ public class PromptTemplateMapper {
             case INVERSE -> "역배열 (강한 하락 추세)";
             case NEUTRAL -> "혼조세 (박스권 또는 방향 탐색 중)";
             default -> "중립";
+        };
+    }
+
+    private String translateSignal(CrossoverSignal signal) {
+        if (signal == null) return "없음";
+        return switch (signal) {
+            case GOLDEN_CROSS -> "골든크로스 (상승 전환 신호)";
+            case DEAD_CROSS -> "데드크로스 (하락 전환 신호)";
+            case NONE -> "특이 신호 없음";
         };
     }
 
