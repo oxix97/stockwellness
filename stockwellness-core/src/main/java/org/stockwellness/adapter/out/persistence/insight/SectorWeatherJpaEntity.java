@@ -1,0 +1,47 @@
+package org.stockwellness.adapter.out.persistence.insight;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.stockwellness.domain.shared.AbstractEntity;
+
+import java.time.LocalDate;
+
+@Getter
+@Entity
+@Table(name = "sector_weather")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class SectorWeatherJpaEntity extends AbstractEntity {
+
+    @Column(nullable = false)
+    private LocalDate baseDate;
+
+    @Column(nullable = false, length = 20)
+    private String sectorCode;
+
+    @Column(nullable = false)
+    private int weatherScore;
+
+    @Column(nullable = false, length = 20)
+    private String weatherState;
+
+    @Column(length = 100)
+    private String aiTitle;
+
+    @Column(columnDefinition = "TEXT")
+    private String aiInsight;
+
+    @Builder
+    public SectorWeatherJpaEntity(LocalDate baseDate, String sectorCode, int weatherScore, String weatherState, String aiTitle, String aiInsight) {
+        this.baseDate = baseDate;
+        this.sectorCode = sectorCode;
+        this.weatherScore = weatherScore;
+        this.weatherState = weatherState;
+        this.aiTitle = aiTitle;
+        this.aiInsight = aiInsight;
+    }
+}
