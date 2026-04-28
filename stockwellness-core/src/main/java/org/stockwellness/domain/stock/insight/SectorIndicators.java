@@ -41,6 +41,25 @@ public class SectorIndicators {
     public static SectorIndicators of(
             BigDecimal sectorIndexCurrentPrice,
             BigDecimal avgFluctuationRate,
+            Long netForeignBuyAmount,
+            Long netInstBuyAmount,
+            Integer foreignConsecutiveBuyDays,
+            Integer instConsecutiveBuyDays
+    ) {
+        return of(
+                sectorIndexCurrentPrice,
+                avgFluctuationRate,
+                BigDecimal.ZERO,
+                netForeignBuyAmount,
+                netInstBuyAmount,
+                foreignConsecutiveBuyDays,
+                instConsecutiveBuyDays
+        );
+    }
+
+    public static SectorIndicators of(
+            BigDecimal sectorIndexCurrentPrice,
+            BigDecimal avgFluctuationRate,
             BigDecimal advanceRatio,
             Long netForeignBuyAmount,
             Long netInstBuyAmount,
