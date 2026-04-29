@@ -80,6 +80,8 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1
+        forkEvery = 100 // 주기적으로 JVM 재시작하여 메모리 효율 관리
         finalizedBy(tasks.jacocoTestReport)
     }
 }
