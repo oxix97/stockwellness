@@ -35,6 +35,9 @@ spring:
         spring.json.trusted.packages: "*"
     properties:
       max.block.ms: 500 # 연결 대기 시간을 0.5초로 극단적으로 단축
+  docker:
+    compose:
+      enabled: false
   data:
     redis:
       host: localhost

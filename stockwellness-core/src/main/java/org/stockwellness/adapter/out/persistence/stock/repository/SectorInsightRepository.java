@@ -46,4 +46,6 @@ public interface SectorInsightRepository extends JpaRepository<SectorInsight, Lo
 
     @Query("SELECT MAX(s.baseDate) FROM SectorInsight s")
     Optional<LocalDate> findMaxBaseDate();
+
+    Optional<SectorInsight> findFirstBySectorCodeOrderByBaseDateDesc(String sectorCode);
 }

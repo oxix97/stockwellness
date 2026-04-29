@@ -59,4 +59,31 @@ public class BasicScoringPolicies {
             return 0;
         }
     }
+
+    @Component
+    public static class AdxPolicy implements ScoringPolicy {
+        @Override
+        public int evaluate(TechnicalScoreService.IndicatorSnapshot snapshot) {
+            if (snapshot.adx() == null || snapshot.adx().compareTo(BigDecimal.valueOf(25)) <= 0) {
+                return 0;
+            }
+            if (snapshot.alignment() == null) return 0;
+            return switch (snapshot.alignment()) {
+                case PERFECT -> 5;
+                case REVERSE -> -5;
+                default -> 0;
+            };
+        }
+    }
+
+    @Component
+    public static class MacdPolicy implements ScoringPolicy {
+        @Override
+        public int evaluate(TechnicalScoreService.IndicatorSnapshot snapshot) {
+            if (!snapshot.isMacdCross() || snapshot.macd() == null || snapshot.macdSignal() == null) {
+                return 0;
+            }
+            return snapshot.macd().compareTo(snapshot.macdSignal()) > 0 ? 10 : -10;
+        }
+    }
 }
