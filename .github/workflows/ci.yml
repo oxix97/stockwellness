@@ -53,7 +53,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build & Test (all modules)
-        run: ./gradlew clean build
+        run: ./gradlew build --no-daemon
 
       - name: Upload JaCoCo report
         if: always()

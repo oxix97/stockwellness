@@ -63,7 +63,12 @@ class StockPriceUpdateConsumerTest {
 
         // 컨슈머가 파티션을 할당받을 때까지 대기
         for (MessageListenerContainer messageListenerContainer : kafkaListenerEndpointRegistry.getListenerContainers()) {
-            ContainerTestUtils.waitForAssignment(messageListenerContainer, embeddedKafkaBroker.getPartitionsPerTopic());
+            if (messageListenerContainer.getContainerProperties().getTopics() != null) {
+                List<String> topics = List.of(messageListenerContainer.getContainerProperties().getTopics());
+                if (topics.contains(STOCK_PRICE_UPDATED_TOPIC)) {
+                    ContainerTestUtils.waitForAssignment(messageListenerContainer, embeddedKafkaBroker.getPartitionsPerTopic());
+                }
+            }
         }
 
         // when

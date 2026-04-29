@@ -36,4 +36,4 @@ server:
 
 slack:
   webhook:
-    url: ${SLACK_WEBHOOK_URL_BATCH}
+    url: ${SLACK_WEBHOOK_URL_BATCH:}

@@ -18,9 +18,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.stockwellness.application.port.out.external.SearchApiPort;
 import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
+import org.stockwellness.application.port.out.sector.WeatherInsightPort;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 
 import java.util.ArrayList;
@@ -47,6 +49,12 @@ public abstract class RestDocsSupport {
 
     @MockitoBean
     protected LlmClientPort llmClientPort;
+
+    @MockitoBean
+    protected WeatherInsightPort weatherInsightPort;
+
+    @MockitoBean
+    protected SearchApiPort searchApiPort;
 
     @MockitoBean
     protected RateLimiter kisRateLimiter;

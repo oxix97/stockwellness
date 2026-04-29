@@ -19,6 +19,11 @@ spring:
       initialize-schema: always
     job:
       enabled: false
+  docker:
+    compose:
+      enabled: false
+  kafka:
+    bootstrap-servers: localhost:9092
 
 management:
   health:

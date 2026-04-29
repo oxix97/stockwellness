@@ -22,6 +22,9 @@ spring:
       api-key: "dummy-key"
   kafka:
     bootstrap-servers: localhost:9092
+  docker:
+    compose:
+      enabled: false
   data:
     redis:
       host: localhost
