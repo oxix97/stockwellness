@@ -2,8 +2,6 @@ name: CD - Batch
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
       - 'batch-v*.*.*'   # 예: batch-v1.0.0
