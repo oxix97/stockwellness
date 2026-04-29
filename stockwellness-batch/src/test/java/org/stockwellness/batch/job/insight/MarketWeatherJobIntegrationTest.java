@@ -7,12 +7,14 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.kafka.consumer.group-id=batch-test-group")
 @ActiveProfiles("test")
+@EmbeddedKafka(partitions = 1, topics = {"market-score-calculated"})
 class MarketWeatherJobIntegrationTest {
 
     @Autowired
