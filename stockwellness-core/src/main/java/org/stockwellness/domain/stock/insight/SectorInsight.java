@@ -48,7 +48,7 @@ public class SectorInsight extends AbstractEntity {
     private SectorIndicators indicators;
 
     @Embedded
-    private TechnicalIndicators technicalIndicators;
+    private SectorTechnicalIndicators technicalIndicators;
 
     private boolean isOverheated = false;
 
@@ -65,7 +65,7 @@ public class SectorInsight extends AbstractEntity {
             MarketType marketType,
             LocalDate baseDate,
             SectorIndicators indicators,
-            TechnicalIndicators technicalIndicators,
+            SectorTechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
         var entity = new SectorInsight();
@@ -89,7 +89,7 @@ public class SectorInsight extends AbstractEntity {
 
     public void update(
             SectorIndicators indicators,
-            TechnicalIndicators technicalIndicators,
+            SectorTechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
         this.indicators = indicators;

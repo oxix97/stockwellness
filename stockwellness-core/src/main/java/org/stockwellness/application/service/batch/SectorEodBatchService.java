@@ -15,8 +15,8 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -175,18 +175,5 @@ public class SectorEodBatchService implements SectorEodSyncUseCase {
                 .filter(code -> !code.isBlank())
                 .distinct()
                 .toList();
-    }
-
-    private TrendStatus resolveTrendStatus(TechnicalIndicators indicators) {
-        if (indicators == null || indicators.getMa5() == null || indicators.getMa20() == null || indicators.getMa60() == null) {
-            return TrendStatus.NEUTRAL;
-        }
-        if (indicators.getMa5().compareTo(indicators.getMa20()) > 0 && indicators.getMa20().compareTo(indicators.getMa60()) > 0) {
-            return TrendStatus.REGULAR;
-        }
-        if (indicators.getMa5().compareTo(indicators.getMa20()) < 0 && indicators.getMa20().compareTo(indicators.getMa60()) < 0) {
-            return TrendStatus.INVERSE;
-        }
-        return TrendStatus.NEUTRAL;
     }
 }
