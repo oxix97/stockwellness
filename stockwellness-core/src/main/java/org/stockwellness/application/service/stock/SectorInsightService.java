@@ -12,10 +12,10 @@ import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.out.stock.*;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.domain.stock.analysis.DiagnosisStatus;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.error.ErrorCode;
 
 import java.math.BigDecimal;
@@ -180,7 +180,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     private String generateDiagnosisMessage(SectorInsight insight) {
-        TechnicalIndicators indicators = insight.getTechnicalIndicators();
+        SectorTechnicalIndicators indicators = insight.getTechnicalIndicators();
         if (indicators == null || indicators.getRsi14() == null) return DiagnosisStatus.DATA_INSUFFICIENT.getMessage();
 
         boolean rsiOver = indicators.getRsi14().compareTo(new BigDecimal("70")) > 0;

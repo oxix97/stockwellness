@@ -10,6 +10,7 @@ import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
@@ -89,7 +90,7 @@ public class SectorAnalysisService {
                 resolveMarketType(sectorCode),
                 currentData.baseDate(),
                 indicators,
-                calculated,
+                SectorTechnicalIndicators.from(calculated),
                 isOverheated
         );
         insight.updateLeadingStocks(leadingStocks);
