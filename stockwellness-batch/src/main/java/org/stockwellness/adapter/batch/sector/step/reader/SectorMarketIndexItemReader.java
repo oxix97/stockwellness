@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.batch.sector.step.reader;
 
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -12,12 +18,6 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.util.DateUtil;
-
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Component

@@ -1,5 +1,12 @@
 package org.stockwellness.adapter.batch.insight;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +31,6 @@ import org.stockwellness.application.port.out.messaging.MarketScoreCalculatedEve
 import org.stockwellness.application.service.insight.WeatherScoreCalculator;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.global.util.DateUtil;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Configuration

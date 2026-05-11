@@ -1,17 +1,16 @@
 package org.stockwellness.batch.job.stockmaster.support.parser;
 
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.application.parser.MarketIndexMstParser;
-import org.stockwellness.domain.stock.insight.MarketIndex;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.application.parser.MarketIndexMstParser;
+import org.stockwellness.domain.stock.insight.MarketIndex;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j

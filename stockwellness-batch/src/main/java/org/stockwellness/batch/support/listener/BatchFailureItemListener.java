@@ -1,15 +1,14 @@
 package org.stockwellness.batch.support.listener;
 
-import org.springframework.batch.core.ItemWriteListener;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.annotation.BeforeStep;
-import org.springframework.batch.item.Chunk;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+
+import org.springframework.batch.core.ItemWriteListener;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.annotation.BeforeStep;
+import org.springframework.batch.item.Chunk;
 
 /**
  * 쓰기 에러 발생 시 실패한 아이템의 ID를 수집하여 StepExecutionContext에 저장하는 리스너

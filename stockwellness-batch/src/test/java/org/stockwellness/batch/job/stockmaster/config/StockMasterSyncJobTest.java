@@ -1,5 +1,7 @@
 package org.stockwellness.batch.job.stockmaster.config;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -18,9 +20,6 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.support.BatchIntegrationTestSupport;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 

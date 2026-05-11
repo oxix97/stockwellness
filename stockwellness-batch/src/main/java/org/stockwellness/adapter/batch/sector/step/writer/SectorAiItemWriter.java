@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.batch.sector.step.writer;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
@@ -7,8 +9,6 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.domain.stock.insight.SectorInsight;
-
-import java.util.List;
 
 @Slf4j
 @Component

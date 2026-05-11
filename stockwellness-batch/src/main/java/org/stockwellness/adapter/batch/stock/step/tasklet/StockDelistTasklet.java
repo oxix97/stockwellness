@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.batch.stock.step.tasklet;
 
+import java.util.Set;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.ExitStatus;
@@ -7,12 +9,10 @@ import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
-import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.adapter.batch.stock.step.reader.KosdaqMasterItemReader;
 import org.stockwellness.adapter.batch.stock.step.reader.KospiMasterItemReader;
+import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.MarketType;
-
-import java.util.Set;
 
 /**
  * 상장폐지 종목 일괄 처리 Tasklet.

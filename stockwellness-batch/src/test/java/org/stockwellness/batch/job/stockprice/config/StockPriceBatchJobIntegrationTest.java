@@ -1,5 +1,8 @@
 package org.stockwellness.batch.job.stockprice.config;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.*;
@@ -14,11 +17,6 @@ import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.support.BatchIntegrationTestSupport;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;

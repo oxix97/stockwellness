@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.batch.investortradedetail.step.writer;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
@@ -7,10 +11,6 @@ import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.global.util.DateUtil;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.List;
 
 @RequiredArgsConstructor
 public class StockInvestorTradeDetailWriter implements ItemWriter<InvestorTradeDetailUpdateCommand> {

@@ -1,5 +1,7 @@
 package org.stockwellness.application.portfolio.config;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -17,8 +19,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.in.batch.PortfolioStatsRebuildUseCase;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.batch.support.BatchMdcListener;
-
-import java.util.List;
 
 @Slf4j
 @Configuration

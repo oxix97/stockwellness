@@ -3,16 +3,18 @@ package org.stockwellness.support;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
+import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.outbox.OutboxEventRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.AdvisorReportRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioItemRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
-import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.SectorInsightRepository;
@@ -75,10 +77,10 @@ public abstract class BatchIntegrationTestSupport extends InfrastructureTestSupp
     protected KisMasterClient kisMasterClient;
 
     @MockitoBean
-    protected org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
+    protected KafkaTemplate<String, Object> kafkaTemplate;
 
     @MockitoBean
-    protected org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
+    protected LettuceConnectionFactory redisConnectionFactory;
 
     @BeforeEach
     void cleanDatabase() {

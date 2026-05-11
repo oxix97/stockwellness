@@ -1,13 +1,13 @@
 package org.stockwellness.adapter.out.kafka.batch;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
 import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Slf4j
 @Component

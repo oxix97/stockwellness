@@ -1,14 +1,5 @@
 package org.stockwellness.batch.job.stockprice.listener;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.batch.item.Chunk;
-import org.stockwellness.adapter.out.kafka.batch.KafkaEventPublisher;
-import org.stockwellness.adapter.batch.stockprice.listener.StockPriceSyncEventListener;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +7,18 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.item.Chunk;
+import org.stockwellness.adapter.batch.stockprice.listener.StockPriceSyncEventListener;
+import org.stockwellness.adapter.out.kafka.batch.KafkaEventPublisher;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockPrice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StockPriceSyncEventListenerTest {
@@ -64,13 +67,13 @@ class StockPriceSyncEventListenerTest {
         // StockPriceSyncEventListener 내부의 updatedSymbols 접근은 리플렉션이나 afterJob을 통해 검증 가능
         // 하지만 여기서는 public API인 afterJob 호출 시점에 kafkaEventPublisher에 전달되는 리스트 크기로 검증
         
-        org.springframework.batch.core.JobExecution jobExecution = Mockito.mock(org.springframework.batch.core.JobExecution.class);
-        org.springframework.batch.core.JobParameters jobParameters = new org.springframework.batch.core.JobParametersBuilder()
+        JobExecution jobExecution = Mockito.mock(JobExecution.class);
+        JobParameters jobParameters = new JobParametersBuilder()
                 .addString("publishEvent", "true")
                 .toJobParameters();
         
         Mockito.when(jobExecution.getJobParameters()).thenReturn(jobParameters);
-        Mockito.when(jobExecution.getStatus()).thenReturn(org.springframework.batch.core.BatchStatus.COMPLETED);
+        Mockito.when(jobExecution.getStatus()).thenReturn(BatchStatus.COMPLETED);
 
         listener.afterJob(jobExecution);
 

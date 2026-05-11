@@ -1,13 +1,13 @@
 package org.stockwellness.adapter.batch.stockprice.step.reader;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemStreamReader;
 import org.stockwellness.domain.stock.Stock;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 기존 ItemReader의 결과물을 지정된 크기(size)만큼 리스트로 묶어서 반환함.

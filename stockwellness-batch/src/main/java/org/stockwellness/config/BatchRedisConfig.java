@@ -1,5 +1,10 @@
 package org.stockwellness.config;
 
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -14,16 +19,12 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.stockwellness.domain.common.cache.CacheType;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-
 @Configuration
 @EnableCaching
 public class BatchRedisConfig {
 
     @Bean(name = "batchRedisTemplate")
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(name = "batchRedisTemplate")
+    @ConditionalOnMissingBean(name = "batchRedisTemplate")
     public RedisTemplate<String, Object> batchRedisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);

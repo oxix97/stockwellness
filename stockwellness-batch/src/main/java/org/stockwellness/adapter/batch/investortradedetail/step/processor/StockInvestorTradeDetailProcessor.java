@@ -1,14 +1,14 @@
 package org.stockwellness.adapter.batch.investortradedetail.step.processor;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.item.ItemProcessor;
-import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
-import org.stockwellness.domain.stock.Stock;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemProcessor;
+import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
+import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.domain.stock.Stock;
 
 @Slf4j
 public class StockInvestorTradeDetailProcessor implements ItemProcessor<InvestorTradeDetail, InvestorTradeDetailUpdateCommand> {

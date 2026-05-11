@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.batch.stock.config;
 
+import java.util.ArrayList;
+import java.util.Objects;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -12,13 +15,14 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
-import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.adapter.batch.stock.step.processor.StockItemProcessor;
 import org.stockwellness.adapter.batch.stock.step.reader.KosdaqMasterItemReader;
 import org.stockwellness.adapter.batch.stock.step.reader.KospiMasterItemReader;
 import org.stockwellness.adapter.batch.stock.step.tasklet.StockDelistTasklet;
+import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.batch.support.BatchMdcListener;
 import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
 import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
@@ -26,9 +30,6 @@ import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-
-import java.util.ArrayList;
-import java.util.Objects;
 
 /**
  * 종목 마스터 동기화 Spring Batch Job 설정
@@ -81,7 +82,7 @@ public class StockMasterBatchConfig {
                 .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .retryLimit(3)
-                .retry(org.springframework.dao.TransientDataAccessException.class)
+                .retry(TransientDataAccessException.class)
                 .build();
     }
 
@@ -109,7 +110,7 @@ public class StockMasterBatchConfig {
                 .listener(commonBatchStepLoggingListener)
                 .faultTolerant()
                 .retryLimit(3)
-                .retry(org.springframework.dao.TransientDataAccessException.class)
+                .retry(TransientDataAccessException.class)
                 .build();
     }
 

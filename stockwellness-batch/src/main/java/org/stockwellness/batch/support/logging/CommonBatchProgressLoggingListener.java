@@ -1,14 +1,15 @@
 package org.stockwellness.batch.support.logging;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
+
+import org.springframework.batch.core.ItemWriteListener;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.scope.context.StepSynchronizationManager;
-import org.springframework.batch.core.ItemWriteListener;
 import org.springframework.batch.item.Chunk;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Component
 public class CommonBatchProgressLoggingListener implements ItemWriteListener<Object> {
@@ -87,11 +88,11 @@ public class CommonBatchProgressLoggingListener implements ItemWriteListener<Obj
         if (startTime == null) {
             return 0L;
         }
-        return java.time.Duration.between(startTime, LocalDateTime.now()).toMillis();
+        return Duration.between(startTime, LocalDateTime.now()).toMillis();
     }
 
     private long elapsedSince(LocalDateTime time) {
-        return java.time.Duration.between(time, LocalDateTime.now()).toMillis();
+        return Duration.between(time, LocalDateTime.now()).toMillis();
     }
 
     private Long getLong(JobExecution jobExecution, String key) {

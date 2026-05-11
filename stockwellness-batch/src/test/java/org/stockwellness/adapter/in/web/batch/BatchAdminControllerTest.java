@@ -1,9 +1,11 @@
 package org.stockwellness.adapter.in.web.batch;
 
-import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+
 import jakarta.servlet.ServletException;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -17,7 +19,6 @@ import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.global.error.ErrorCode;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -60,8 +61,8 @@ class BatchAdminControllerTest {
                 new BigDecimal("69000"), new BigDecimal("71000"), new BigDecimal("68000"), 1000000L, new BigDecimal("70000000000"),
                 new BigDecimal("69000"), new BigDecimal("500000000"), new BigDecimal("300000000")
         );
-        when(kisDailyPriceAdapter.fetchMultiStockPrices(java.util.List.of("005930")))
-                .thenReturn(java.util.List.of(detail));
+        when(kisDailyPriceAdapter.fetchMultiStockPrices(List.of("005930")))
+                .thenReturn(List.of(detail));
 
         mockMvc.perform(get("/api/v1/admin/batch/fetch-multi-prices")
                         .param("tickers", "005930")
@@ -98,7 +99,7 @@ class BatchAdminControllerTest {
     @Test
     void testIntegrityCheckResponseFormat() throws Exception {
         when(batchMonitoringUseCase.checkDataIntegrity(any(), any())).thenReturn(
-                new BatchMonitoringUseCase.DataIntegrityResult(0, java.util.List.of())
+                new BatchMonitoringUseCase.DataIntegrityResult(0, List.of())
         );
 
         mockMvc.perform(get("/api/v1/admin/batch/integrity-check")
