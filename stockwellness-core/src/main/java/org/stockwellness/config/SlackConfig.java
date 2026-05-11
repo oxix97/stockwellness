@@ -10,7 +10,7 @@ import org.springframework.web.client.RestClient;
 
 @EnableAsync
 @Configuration
-public class ApiAsyncConfig {
+public class SlackConfig {
 
     @Bean(name = "alertExecutor")
     public Executor alertExecutor() {

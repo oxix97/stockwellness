@@ -70,7 +70,7 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("G004"));
 
-        verify(slackAlertService).sendInternalServerErrorAlert(anyString(), any(Exception.class));
+        verify(slackAlertService).sendErrorAlert(any(Exception.class), anyString(), any());
     }
 
     @Test
@@ -80,6 +80,7 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
+        verify(slackAlertService, never()).sendErrorAlert(any(), anyString(), any());
         verify(slackAlertService, never()).sendInternalServerErrorAlert(anyString(), any());
     }
 

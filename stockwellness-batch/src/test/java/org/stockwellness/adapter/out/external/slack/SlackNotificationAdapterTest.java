@@ -4,55 +4,67 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestClient;
+import org.stockwellness.global.alert.NotificationContext;
+import org.stockwellness.global.alert.SlackNotificationService;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class SlackNotificationAdapterTest {
 
     @Mock
-    private RestClient restClient;
-
-    @Mock
-    private RestClient.Builder restClientBuilder;
-
-    @Mock
-    private RestClient.RequestBodyUriSpec requestBodyUriSpec;
-
-    @Mock
-    private RestClient.RequestBodySpec requestBodySpec;
-
-    @Mock
-    private RestClient.ResponseSpec responseSpec;
+    private SlackNotificationService slackNotificationService;
 
     private SlackNotificationAdapter slackNotificationAdapter;
 
     @BeforeEach
     void setUp() {
-        lenient().when(restClientBuilder.build()).thenReturn(restClient);
-        
-        lenient().when(restClient.post()).thenReturn(requestBodyUriSpec);
-        lenient().when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.contentType(any())).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.body(any())).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        
-        slackNotificationAdapter = new SlackNotificationAdapter(restClientBuilder, "http://hooks.slack.com/services/test");
+        slackNotificationAdapter = new SlackNotificationAdapter(slackNotificationService);
     }
 
     @Test
-    @DisplayName("Slack Webhook으로 알림 메시지를 전송한다")
-    void sendNotification() {
+    @DisplayName("성공 알림은 SUCCESS 타입으로 전송한다")
+    void sendSuccessNotification() {
         // given
-        String title = "Batch Failed";
-        String content = "Stock price sync job failed for ID: STK001";
+        String title = "Batch Success";
+        String content = "Total: 100\nSuccess: 100";
 
-        // when & then
+        // when
         assertDoesNotThrow(() -> slackNotificationAdapter.send(title, content));
-        verify(restClient, atLeastOnce()).post();
+
+        // then
+        ArgumentCaptor<NotificationContext> contextCaptor = ArgumentCaptor.forClass(NotificationContext.class);
+        verify(slackNotificationService).sendNotification(contextCaptor.capture());
+        
+        NotificationContext context = contextCaptor.getValue();
+        assertThat(context.type()).isEqualTo(NotificationContext.NotificationType.SUCCESS);
+        assertThat(context.title()).isEqualTo(title);
+        assertThat(context.details()).containsEntry("Total", "100");
+        assertThat(context.details()).containsEntry("Success", "100");
+    }
+
+    @Test
+    @DisplayName("실패 알림은 ERROR 타입으로 전송한다")
+    void sendFailureNotification() {
+        // given
+        String title = "🔴 [Batch Failure] Sync Job";
+        String content = "상태: FAILED\n에러메시지: Network Timeout";
+
+        // when
+        assertDoesNotThrow(() -> slackNotificationAdapter.send(title, content));
+
+        // then
+        ArgumentCaptor<NotificationContext> contextCaptor = ArgumentCaptor.forClass(NotificationContext.class);
+        verify(slackNotificationService).sendNotification(contextCaptor.capture());
+
+        NotificationContext context = contextCaptor.getValue();
+        assertThat(context.type()).isEqualTo(NotificationContext.NotificationType.ERROR);
+        assertThat(context.details()).containsEntry("상태", "FAILED");
+        assertThat(context.details()).containsEntry("에러메시지", "Network Timeout");
     }
 }
