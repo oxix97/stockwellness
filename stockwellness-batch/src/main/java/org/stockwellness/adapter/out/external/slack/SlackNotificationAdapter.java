@@ -34,7 +34,6 @@ public class SlackNotificationAdapter implements NotificationPort {
                     .build();
 
             slackNotificationService.sendNotification(context);
-            log.info("Slack 알림 전송 위임 성공: {}", title);
         } catch (Exception e) {
             log.error("Slack 알림 처리 중 오류 발생: {}", e.getMessage(), e);
         }
@@ -55,20 +54,19 @@ public class SlackNotificationAdapter implements NotificationPort {
             return details;
         }
 
-        String[] lines = content.split("\n");
-        for (String line : lines) {
+        content.lines().forEach(line -> {
             int colonIndex = line.indexOf(':');
             // "Key: Value" 형태이면서 Key가 한 단어인 경우만 details로 추출 (배치 통계 등)
             if (colonIndex > 0 && colonIndex < line.length() - 1) {
                 String key = line.substring(0, colonIndex).trim();
                 String value = line.substring(colonIndex + 1).trim();
 
-                // Key가 너무 길거나 공백이 많으면 일반 텍스트로 간주
-                if (key.length() < 20 && !key.contains("  ")) {
+                // Key가 너무 길거나 공백이 많으면 일반 텍스트로 간주 (방어 로직)
+                if (key.length() < 20 && !key.contains(" ")) {
                     details.put(key, value);
                 }
             }
-        }
+        });
         return details;
     }
 }
