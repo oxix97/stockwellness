@@ -2,7 +2,6 @@ package org.stockwellness.global.alert;
 
 import java.net.URI;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
@@ -11,13 +10,21 @@ import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SlackNotificationService {
 
     private final SlackAlertProperties properties;
     private final SlackMessageBuilder messageBuilder;
-    @Qualifier("slackRestClient")
     private final RestClient restClient;
+
+    public SlackNotificationService(
+            SlackAlertProperties properties,
+            SlackMessageBuilder messageBuilder,
+            @Qualifier("slackRestClient") RestClient restClient
+    ) {
+        this.properties = properties;
+        this.messageBuilder = messageBuilder;
+        this.restClient = restClient;
+    }
 
     @Async("alertExecutor")
     public void sendNotification(NotificationContext context) {
