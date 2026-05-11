@@ -8,6 +8,7 @@ public record NotificationContext(
     String title,
     String content,
     String traceId,
+    String time,
     String userId,
     String url,
     String exceptionType,

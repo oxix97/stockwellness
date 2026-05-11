@@ -18,6 +18,7 @@ public class SlackMessageBuilder {
         
         List<Map<String, Object>> fields = new ArrayList<>();
         if (context.traceId() != null) fields.add(field("Trace ID", "`" + context.traceId() + "`"));
+        if (context.time() != null) fields.add(field("Time", context.time()));
         if (context.userId() != null) fields.add(field("User ID", context.userId()));
         if (context.url() != null) fields.add(field("URL", context.url()));
         

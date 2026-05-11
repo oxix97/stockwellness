@@ -67,6 +67,7 @@ class SlackMessageBuilderTest {
             .title("API 오류 발생")
             .content("내부 서버 오류가 발생했습니다.")
             .traceId("trace-123")
+            .time("2024-05-20 10:00:00")
             .userId("user-456")
             .url("/api/v1/test")
             .exceptionType("RuntimeException")
@@ -94,6 +95,7 @@ class SlackMessageBuilderTest {
         assertThat(fields).extracting(f -> f.get("text").toString())
             .containsExactlyInAnyOrder(
                 "*Trace ID:*\n`trace-123`",
+                "*Time:*\n2024-05-20 10:00:00",
                 "*User ID:*\nuser-456",
                 "*URL:*\n/api/v1/test"
             );
