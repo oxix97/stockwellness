@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler {
             NoResourceFoundException.class,
             Exception.class
     })
-    public ResponseEntity<ApiResponse<Void>> handleAllExceptions(Exception e) {
+    public ResponseEntity<ApiResponse<Void>> handleAllExceptions(Exception e, HttpServletRequest request) {
         String traceId = generateTraceId();
 
         return switch (e) {
@@ -52,7 +53,7 @@ public class GlobalExceptionHandler {
             case ExpiredJwtException ignored -> createErrorResponse(ErrorCode.EXPIRED_JWT, traceId);
             case JwtException ignored -> createErrorResponse(ErrorCode.INVALID_JWT, traceId);
             case NoResourceFoundException ignored -> createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, traceId);
-            default -> handleUnexpectedException(e, traceId);
+            default -> handleUnexpectedException(e, traceId, request);
         };
     }
 
@@ -94,9 +95,9 @@ public class GlobalExceptionHandler {
         return createErrorResponse(ErrorCode.INVALID_INPUT_VALUE, traceId, fieldErrors);
     }
 
-    private ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception e, String traceId) {
+    private ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception e, String traceId, HttpServletRequest request) {
         log.error("[{}] Unexpected Exception: ", traceId, e);
-        slackAlertService.sendInternalServerErrorAlert(traceId, e);
+        slackAlertService.sendErrorAlert(e, traceId, request);
         return createErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, traceId);
     }
 

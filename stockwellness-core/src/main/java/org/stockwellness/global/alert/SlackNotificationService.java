@@ -28,15 +28,27 @@ public class SlackNotificationService {
 
     @Async("alertExecutor")
     public void sendNotification(NotificationContext context) {
-        if (properties.webhookUrl() == null || properties.webhookUrl().isBlank()) {
-            log.warn("[SlackAlert] webhook URL 미설정. 알림 스킵: title={}", context.title());
-            return;
-        }
-
         try {
+            String webhookUrl = properties.webhookUrl();
+            if (webhookUrl == null || webhookUrl.isBlank()) {
+                log.warn("[SlackAlert] webhook URL 미설정. 알림 스킵: title={}", context.title());
+                return;
+            }
+
+            URI uri;
+            try {
+                if (!webhookUrl.startsWith("http")) {
+                    throw new IllegalArgumentException("URL must start with http or https");
+                }
+                uri = URI.create(webhookUrl);
+            } catch (IllegalArgumentException e) {
+                log.error("[SlackAlert] 잘못된 webhook URL 형식: {}. 알림 스킵", webhookUrl);
+                return;
+            }
+
             Map<String, Object> payload = messageBuilder.build(context);
             restClient.post()
-                    .uri(URI.create(properties.webhookUrl()))
+                    .uri(uri)
                     .body(payload)
                     .retrieve()
                     .toBodilessEntity();

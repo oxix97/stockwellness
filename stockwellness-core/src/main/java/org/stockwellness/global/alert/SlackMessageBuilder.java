@@ -13,7 +13,7 @@ public class SlackMessageBuilder {
     private final Environment env;
 
     public Map<String, Object> build(NotificationContext context) {
-        String activeProfile = env.getProperty("spring.profiles.active", "local").toUpperCase();
+        String activeProfile = getActiveProfile();
         String color = context.type() == NotificationContext.NotificationType.ERROR ? "#E01E5A" : "#2EB67D";
         
         List<Map<String, Object>> fields = new ArrayList<>();
@@ -30,7 +30,7 @@ public class SlackMessageBuilder {
         blocks.add(header(String.format("%s [%s] %s", getEmoji(context.type()), activeProfile, context.title())));
         
         if (!fields.isEmpty()) {
-            blocks.add(sectionFields(fields));
+            addFieldsInSections(blocks, fields);
         }
         
         if (context.exceptionType() != null) {
@@ -55,6 +55,22 @@ public class SlackMessageBuilder {
                 )
             )
         );
+    }
+
+    private String getActiveProfile() {
+        String[] profiles = env.getActiveProfiles();
+        if (profiles.length == 0) {
+            return "LOCAL";
+        }
+        return String.join(", ", profiles).toUpperCase();
+    }
+
+    private void addFieldsInSections(List<Map<String, Object>> blocks, List<Map<String, Object>> fields) {
+        final int MAX_FIELDS = 10;
+        for (int i = 0; i < fields.size(); i += MAX_FIELDS) {
+            int end = Math.min(i + MAX_FIELDS, fields.size());
+            blocks.add(sectionFields(fields.subList(i, end)));
+        }
     }
 
     private Map<String, Object> header(String text) {
