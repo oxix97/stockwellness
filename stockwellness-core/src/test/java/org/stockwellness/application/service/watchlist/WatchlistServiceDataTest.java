@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.watchlist;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,12 +22,6 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;

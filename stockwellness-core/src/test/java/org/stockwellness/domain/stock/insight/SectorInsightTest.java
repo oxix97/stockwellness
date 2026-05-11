@@ -1,14 +1,13 @@
 package org.stockwellness.domain.stock.insight;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.analysis.InvestmentDecision;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.analysis.InvestmentDecision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SectorInsightTest {

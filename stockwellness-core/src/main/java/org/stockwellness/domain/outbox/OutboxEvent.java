@@ -1,12 +1,11 @@
 package org.stockwellness.domain.outbox;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.time.LocalDateTime;
-
 import static lombok.AccessLevel.PROTECTED;
 
 @Getter

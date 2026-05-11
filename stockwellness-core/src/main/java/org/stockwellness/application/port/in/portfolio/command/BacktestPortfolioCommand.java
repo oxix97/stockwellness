@@ -1,11 +1,11 @@
 package org.stockwellness.application.port.in.portfolio.command;
 
-import org.stockwellness.domain.portfolio.RebalancingPeriod;
-import org.stockwellness.domain.stock.price.ChartPeriod;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 
 public record BacktestPortfolioCommand(
     Long memberId,

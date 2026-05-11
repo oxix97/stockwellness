@@ -1,5 +1,14 @@
 package org.stockwellness.application.service.stock;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -16,19 +25,11 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.insight.MarketWeatherPolicy;
 import org.stockwellness.domain.stock.insight.MarketWeatherScore;
 import org.stockwellness.domain.stock.insight.RollingPercentileCalculator;
-import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.global.error.ErrorCode;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,7 +48,7 @@ public class MarketIndexService implements MarketIndexUseCase {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(30); // 대시보드용 최근 30일
 
-        List<String> tickers = java.util.Arrays.stream(BenchmarkType.values())
+        List<String> tickers = Arrays.stream(BenchmarkType.values())
                 .map(BenchmarkType::getTicker)
                 .toList();
 

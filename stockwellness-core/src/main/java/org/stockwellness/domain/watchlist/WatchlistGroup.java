@@ -1,5 +1,9 @@
 package org.stockwellness.domain.watchlist;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,11 +20,6 @@ import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 import static lombok.AccessLevel.PROTECTED;
 
 @Getter

@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,23 +11,19 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.config.JpaConfig;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @Import({QueryDslConfig.class, JpaConfig.class})
 @ActiveProfiles("test")
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 @DisplayName("StockRepository 통합 테스트")
 class StockRepositoryTest {
 

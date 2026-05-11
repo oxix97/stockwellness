@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.out.external.ai;
 
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioAiContext;
@@ -9,8 +11,6 @@ import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
 import org.stockwellness.global.util.FinanceFormatUtil;
-
-import java.util.stream.Collectors;
 
 @Component
 public class PromptTemplateMapper {

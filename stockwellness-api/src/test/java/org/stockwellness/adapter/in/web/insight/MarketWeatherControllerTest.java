@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.in.web.insight;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
@@ -7,15 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.stockwellness.application.service.insight.dto.MarketWeatherResponse;
 import org.stockwellness.application.port.in.insight.MarketWeatherUseCase;
+import org.stockwellness.application.service.insight.dto.MarketWeatherResponse;
 import org.stockwellness.support.RestDocsSupport;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.BDDMockito.given;

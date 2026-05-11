@@ -1,13 +1,13 @@
 package org.stockwellness.adapter.out.external.slack;
 
+import java.util.Map;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.application.port.out.notification.NotificationPort;
-
-import java.util.Map;
 
 /**
  * Slack Webhook을 사용하여 외부 알림을 전송하는 어댑터

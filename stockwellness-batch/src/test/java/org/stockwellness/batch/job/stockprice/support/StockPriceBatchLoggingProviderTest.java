@@ -1,11 +1,16 @@
 package org.stockwellness.batch.job.stockprice.support;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.TypedQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -23,11 +28,6 @@ import org.stockwellness.batch.support.logging.BatchStartSummary;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.StockPriceId;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -69,8 +69,8 @@ class StockPriceBatchLoggingProviderTest {
         );
 
         when(entityManagerFactory.createEntityManager()).thenReturn(entityManager);
-        when(entityManager.createQuery(anyString(), org.mockito.ArgumentMatchers.<Class<Long>>any())).thenReturn(typedQuery);
-        when(typedQuery.setParameter(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(typedQuery);
+        when(entityManager.createQuery(anyString(), ArgumentMatchers.<Class<Long>>any())).thenReturn(typedQuery);
+        when(typedQuery.setParameter(anyString(), ArgumentMatchers.any())).thenReturn(typedQuery);
         when(typedQuery.getSingleResult()).thenReturn(7L);
 
         BatchStartSummary summary = provider.initialize(jobExecution);

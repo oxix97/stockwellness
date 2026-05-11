@@ -1,5 +1,7 @@
 package org.stockwellness.global.security.handler;
 
+import java.io.IOException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +15,6 @@ import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.io.IOException;
 
 @Slf4j
 @Component

@@ -1,9 +1,9 @@
 package org.stockwellness.batch.support.logging;
 
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.stereotype.Component;
 
 @Component
 public class BatchProviderResolver {

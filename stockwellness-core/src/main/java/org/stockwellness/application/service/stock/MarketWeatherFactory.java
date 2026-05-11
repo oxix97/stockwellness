@@ -1,11 +1,11 @@
 package org.stockwellness.application.service.stock;
 
+import java.time.LocalDate;
+
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherReason;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
-
-import java.time.LocalDate;
 
 @Component
 public class MarketWeatherFactory {

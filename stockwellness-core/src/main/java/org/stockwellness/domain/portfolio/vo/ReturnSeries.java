@@ -1,14 +1,16 @@
 package org.stockwellness.domain.portfolio.vo;
 
-import org.stockwellness.domain.portfolio.math.FinancialMath;
-
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import org.stockwellness.domain.portfolio.math.FinancialMath;
 
 /**
  * 수익률 시계열 데이터를 관리하는 일급 컬렉션
@@ -64,7 +66,7 @@ public record ReturnSeries(Map<LocalDate, BigDecimal> dailyReturns) {
             if (peak.compareTo(BigDecimal.ZERO) > 0) {
                 // (Peak - Value) / Peak * 100
                 BigDecimal drawdown = peak.subtract(value)
-                        .divide(peak, new java.math.MathContext(16))
+                        .divide(peak, new MathContext(16))
                         .multiply(BigDecimal.valueOf(100));
                 if (drawdown.compareTo(maxMDD) > 0) maxMDD = drawdown;
             }
@@ -78,7 +80,7 @@ public record ReturnSeries(Map<LocalDate, BigDecimal> dailyReturns) {
     public BigDecimal calculateMDDFromReturns() {
         if (dailyReturns.isEmpty()) return BigDecimal.ZERO;
         
-        List<BigDecimal> values = new java.util.ArrayList<>();
+        List<BigDecimal> values = new ArrayList<>();
         BigDecimal current = BigDecimal.valueOf(100);
         values.add(current);
         

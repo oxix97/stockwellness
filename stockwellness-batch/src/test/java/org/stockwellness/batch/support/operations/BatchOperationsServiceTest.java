@@ -1,15 +1,21 @@
 package org.stockwellness.batch.support.operations;
 
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
@@ -22,10 +28,7 @@ import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.service.batch.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
-
-import java.util.List;
-import java.util.Set;
-
+import org.stockwellness.global.error.ErrorCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -147,7 +150,7 @@ class BatchOperationsServiceTest {
     @DisplayName("시세 동기화 배치가 이미 실행 중이면 중복 실행을 차단한다")
     void launchAsync_stockPriceSync_blocksWhenJobAlreadyRunning() throws Exception {
         given(jobExplorer.findRunningJobExecutions("stockPriceBatchJob"))
-                .willReturn(Set.of(org.mockito.Mockito.mock(JobExecution.class)));
+                .willReturn(Set.of(Mockito.mock(JobExecution.class)));
 
         BatchControlUseCase.BatchLaunchCommand command = new BatchControlUseCase.BatchLaunchCommand(
                 BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC,
@@ -160,16 +163,16 @@ class BatchOperationsServiceTest {
 
         assertThatThrownBy(() -> batchOperationsService.launchAsync(command))
                 .isInstanceOfSatisfying(BatchException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(org.stockwellness.global.error.ErrorCode.BATCH_JOB_ALREADY_RUNNING));
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BATCH_JOB_ALREADY_RUNNING));
 
-        verify(asyncJobLauncher, never()).run(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(asyncJobLauncher, never()).run(ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 
     @Test
     @DisplayName("KIS 호출 배치는 이미 실행 중이면 중복 실행을 차단한다")
     void launchAsync_benchmarkSync_blocksWhenJobAlreadyRunning() throws Exception {
         given(jobExplorer.findRunningJobExecutions("benchmarkPriceSyncJob"))
-                .willReturn(Set.of(org.mockito.Mockito.mock(JobExecution.class)));
+                .willReturn(Set.of(Mockito.mock(JobExecution.class)));
 
         BatchControlUseCase.BatchLaunchCommand command = new BatchControlUseCase.BatchLaunchCommand(
                 BatchControlUseCase.BatchJobType.BENCHMARK_PRICE_SYNC,
@@ -182,22 +185,22 @@ class BatchOperationsServiceTest {
 
         assertThatThrownBy(() -> batchOperationsService.launchAsync(command))
                 .isInstanceOfSatisfying(BatchException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(org.stockwellness.global.error.ErrorCode.BATCH_JOB_ALREADY_RUNNING));
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BATCH_JOB_ALREADY_RUNNING));
 
-        verify(asyncJobLauncher, never()).run(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(asyncJobLauncher, never()).run(ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 
     @Test
     @DisplayName("DB 보정 배치는 다른 실행이 있어도 중복 실행 차단 대상이 아니다")
     void launchAsync_prevCloseSync_doesNotBlockWhenJobAlreadyRunning() throws Exception {
-        JobExecution jobExecution = org.mockito.Mockito.mock(JobExecution.class);
+        JobExecution jobExecution = Mockito.mock(JobExecution.class);
         given(jobExecution.getId()).willReturn(99L);
 
-        org.springframework.batch.core.JobInstance jobInstance = org.mockito.Mockito.mock(org.springframework.batch.core.JobInstance.class);
+        JobInstance jobInstance = Mockito.mock(JobInstance.class);
         given(jobExecution.getJobInstance()).willReturn(jobInstance);
         given(jobInstance.getJobName()).willReturn("stockPriceBatchJob");
-        given(jobExecution.getStatus()).willReturn(org.springframework.batch.core.BatchStatus.COMPLETED);
-        given(asyncJobLauncher.run(org.mockito.ArgumentMatchers.eq(stockPriceBatchJob), org.mockito.ArgumentMatchers.any()))
+        given(jobExecution.getStatus()).willReturn(BatchStatus.COMPLETED);
+        given(asyncJobLauncher.run(ArgumentMatchers.eq(stockPriceBatchJob), ArgumentMatchers.any()))
                 .willReturn(jobExecution);
 
         BatchControlUseCase.BatchLaunchCommand command = new BatchControlUseCase.BatchLaunchCommand(
@@ -213,7 +216,7 @@ class BatchOperationsServiceTest {
 
         assertThat(result.jobName()).isEqualTo("stockPriceBatchJob");
         verifyNoInteractions(jobExplorer);
-        verify(asyncJobLauncher).run(org.mockito.ArgumentMatchers.eq(stockPriceBatchJob), org.mockito.ArgumentMatchers.any());
+        verify(asyncJobLauncher).run(ArgumentMatchers.eq(stockPriceBatchJob), ArgumentMatchers.any());
     }
 
     @Test

@@ -1,18 +1,18 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.stock.StockPricePort;
-import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
-import org.stockwellness.application.port.out.watchlist.StockDataPort;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.watchlist.StockDataPort;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 @Component
 @RequiredArgsConstructor

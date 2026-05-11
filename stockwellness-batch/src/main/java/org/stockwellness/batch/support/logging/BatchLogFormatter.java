@@ -1,7 +1,5 @@
 package org.stockwellness.batch.support.logging;
 
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -11,6 +9,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
 
 @Component
 public class BatchLogFormatter {

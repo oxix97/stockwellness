@@ -1,15 +1,14 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
-import java.math.BigDecimal;
 
 /**
  * 섹터 전용 기술 지표 모델 (다이어트 버전)

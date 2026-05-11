@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.out.auth;
 
+import java.time.LocalDateTime;
+
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.MemberRole;
-
-import java.time.LocalDateTime;
 
 public interface GenerateTokenPort {
     String generateAccessToken(Member member);

@@ -1,18 +1,17 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 @Converter

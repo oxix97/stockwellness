@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.in.scheduler;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -8,10 +12,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import org.stockwellness.global.util.DateUtil;
 
 @Slf4j
 @Component
@@ -32,7 +33,7 @@ public class DailyBatchOrchestrator {
      * 3. 주식 가격 정보 및 기술 지표 동기화 <br>
      */
     public void runDailyStockSync() {
-        runDailyStockSync(org.stockwellness.global.util.DateUtil.today());
+        runDailyStockSync(DateUtil.today());
     }
 
     public void runDailyStockSync(LocalDate targetDate) {
@@ -76,7 +77,7 @@ public class DailyBatchOrchestrator {
     }
 
     private JobExecution executeJob(Job job) throws Exception {
-        return executeJob(job, org.stockwellness.global.util.DateUtil.today());
+        return executeJob(job, DateUtil.today());
     }
 
     private JobExecution executeJob(Job job, LocalDate targetDate) throws Exception {

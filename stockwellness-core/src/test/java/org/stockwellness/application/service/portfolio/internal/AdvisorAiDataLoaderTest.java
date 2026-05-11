@@ -1,5 +1,11 @@
 package org.stockwellness.application.service.portfolio.internal;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,13 +22,6 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -53,7 +52,7 @@ class AdvisorAiDataLoaderTest {
         // given
         Long portfolioId = 1L;
         Portfolio portfolio = Portfolio.create(1L, "테스트", "");
-        PortfolioItem item = PortfolioItem.createStock("AAPL", BigDecimal.TEN, new BigDecimal("150"), "USD", new BigDecimal("100"), java.time.LocalDate.now());
+        PortfolioItem item = PortfolioItem.createStock("AAPL", BigDecimal.TEN, new BigDecimal("150"), "USD", new BigDecimal("100"), LocalDate.now());
         portfolio.updateItems(List.of(item));
 
         given(portfolioPort.findById(portfolioId)).willReturn(Optional.of(portfolio));

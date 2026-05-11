@@ -1,5 +1,7 @@
 package org.stockwellness.batch.support.listener;
 
+import java.util.Arrays;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.listener.CompositeJobExecutionListener;
@@ -8,8 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.stockwellness.batch.support.BatchMdcListener;
 import org.stockwellness.batch.support.lifecycle.BatchLifecycleKafkaListener;
 import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
-
-import java.util.Arrays;
 
 @Configuration
 @RequiredArgsConstructor

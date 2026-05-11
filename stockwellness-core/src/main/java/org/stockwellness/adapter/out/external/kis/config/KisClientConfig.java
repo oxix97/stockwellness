@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.out.external.kis.config;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,23 +18,20 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.adapter.KisTokenAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 
 @Slf4j
 @Configuration
@@ -125,7 +126,7 @@ public class KisClientConfig {
     }
 
     private ClientHttpResponse executeWithRetry(
-            org.springframework.http.HttpRequest request,
+            HttpRequest request,
             byte[] body,
             ClientHttpRequestExecution execution,
             KisTokenAdapter tokenAdapter,

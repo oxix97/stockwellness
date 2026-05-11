@@ -1,7 +1,8 @@
 package org.stockwellness.application.port.out.portfolio;
 
-import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import java.util.Optional;
+
+import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 
 /**
  * AI 어드바이저 보고서 조회 포트

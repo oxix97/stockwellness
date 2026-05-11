@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.portfolio.dto;
 
-import org.stockwellness.domain.portfolio.AssetType;
-import org.stockwellness.domain.portfolio.PortfolioItem;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+
+import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.domain.portfolio.PortfolioItem;
 
 public record PortfolioItemResponse(
     String symbol,

@@ -7,8 +7,6 @@ import org.stockwellness.domain.stock.price.ChartFrequency;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.price.TradeDirection;
 
-import java.time.LocalDate;
-
 /**
  * 주식 가격 조회 및 수익률 계산을 담당하는 통합 유스케이스
  */

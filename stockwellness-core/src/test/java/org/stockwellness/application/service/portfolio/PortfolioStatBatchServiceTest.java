@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,18 +27,14 @@ import org.stockwellness.application.service.portfolio.internal.BacktestEngine;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 import org.stockwellness.application.service.portfolio.internal.SimulationData;
 import org.stockwellness.application.service.portfolio.internal.SimulationDataProvider;
+import org.stockwellness.config.JpaConfig;
+import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
 import org.stockwellness.global.util.JsonUtil;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -45,7 +46,7 @@ import static org.mockito.Mockito.verify;
         "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
-@Import({PortfolioStatBatchService.class, JsonUtil.class, org.stockwellness.config.QueryDslConfig.class, org.stockwellness.config.JpaConfig.class})
+@Import({PortfolioStatBatchService.class, JsonUtil.class, QueryDslConfig.class, JpaConfig.class})
 class PortfolioStatBatchServiceTest {
 
     @Autowired

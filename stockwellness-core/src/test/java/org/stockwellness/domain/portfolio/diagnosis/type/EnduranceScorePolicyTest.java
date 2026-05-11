@@ -1,8 +1,9 @@
 package org.stockwellness.domain.portfolio.diagnosis.type;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class EnduranceScorePolicyTest {

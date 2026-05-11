@@ -1,10 +1,10 @@
 package org.stockwellness.global.common.util;
 
+import java.math.BigDecimal;
+
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.math.BigDecimal;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

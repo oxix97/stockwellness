@@ -1,16 +1,16 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.TradeDirection;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TradeDirection;
 
 public interface StockPricePort {
 

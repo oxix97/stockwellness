@@ -1,14 +1,13 @@
 package org.stockwellness.adapter.out.persistence.watchlist;
 
+import java.util.List;
+
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
-
-import java.util.List;
-
 import static org.stockwellness.domain.stock.QStock.stock;
 import static org.stockwellness.domain.watchlist.QWatchlistGroup.watchlistGroup;
 import static org.stockwellness.domain.watchlist.QWatchlistItem.watchlistItem;

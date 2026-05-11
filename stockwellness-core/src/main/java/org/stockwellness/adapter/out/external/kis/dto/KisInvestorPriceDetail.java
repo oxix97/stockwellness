@@ -1,8 +1,8 @@
 package org.stockwellness.adapter.out.external.kis.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.math.BigDecimal;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 주식 일자별 투자자 매매 추이 상세 (output)

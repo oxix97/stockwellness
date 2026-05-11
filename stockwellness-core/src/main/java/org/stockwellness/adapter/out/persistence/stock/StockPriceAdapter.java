@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,11 +24,6 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -88,7 +88,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.countByBaseDate(date) > 0;
     }
 
-
     @Override
     public void saveAll(List<StockPrice> stockPrices) {
         stockPriceRepository.saveAll(stockPrices);
@@ -102,7 +101,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     ) {
         return stockPriceRepository.findTopForeignStocksBySupply(date, direction, limit);
     }
-
 
     @Override
     public Map<Long, List<StockPrice>> findRecentPricesWithDateByStocks(List<Stock> stocks, LocalDate date, int limit) {
@@ -128,13 +126,11 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         return stockPriceRepository.findRecentPricesByStock(stock, date, PageRequest.of(0, limit));
     }
 
-
     @Override
     public Map<Long, LocalDate> findLatestBaseDatesByStocks(List<Stock> stocks) {
         // QueryDSL로 직접 Map 반환받음
         return stockPriceRepository.findLatestBaseDatesByStocks(stocks);
     }
-
 
     @Override
     public List<StockPrice> findAllByDate(LocalDate date) {
@@ -167,7 +163,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
         // [N+1 해결] 여러 티커의 최신 종가를 한 번의 QueryDSL 쿼리로 조회
         return stockPriceRepository.findLatestPricesByTickers(tickers);
     }
-
 
     @Override
     public Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit) {

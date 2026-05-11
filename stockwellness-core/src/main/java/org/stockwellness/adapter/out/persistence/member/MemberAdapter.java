@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.out.persistence.member;
 
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
@@ -7,8 +9,6 @@ import org.stockwellness.application.port.out.member.SaveMemberPort;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.shared.Email;
-
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor

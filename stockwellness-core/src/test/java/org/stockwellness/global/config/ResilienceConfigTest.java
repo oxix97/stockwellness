@@ -1,16 +1,14 @@
 package org.stockwellness.global.config;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.ResourceAccessException;
-import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
-
 import org.stockwellness.adapter.out.external.kis.config.ResilienceConfig;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
+import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

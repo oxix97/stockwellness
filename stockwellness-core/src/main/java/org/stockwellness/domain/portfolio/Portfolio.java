@@ -1,22 +1,22 @@
 package org.stockwellness.domain.portfolio;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
+import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.global.util.FinanceCalculationUtil;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import static jakarta.persistence.CascadeType.ALL;
 import static jakarta.persistence.FetchType.LAZY;
 import static lombok.AccessLevel.PROTECTED;
@@ -129,8 +129,8 @@ public class Portfolio extends AbstractEntity {
         if (sum.compareTo(BigDecimal.ZERO) == 0) return;
 
         // 비중 설정이 시작되었다면 정확히 100%여야 함 (소수점 4자리 정밀도까지 확인)
-        BigDecimal targetSum = BigDecimal.valueOf(100).setScale(4, java.math.RoundingMode.HALF_UP);
-        if (sum.setScale(4, java.math.RoundingMode.HALF_UP).compareTo(targetSum) != 0) {
+        BigDecimal targetSum = BigDecimal.valueOf(100).setScale(4, RoundingMode.HALF_UP);
+        if (sum.setScale(4, RoundingMode.HALF_UP).compareTo(targetSum) != 0) {
             throw new InvalidPortfolioException();
         }
     }

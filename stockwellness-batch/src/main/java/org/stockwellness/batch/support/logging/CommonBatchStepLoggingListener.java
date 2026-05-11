@@ -1,13 +1,13 @@
 package org.stockwellness.batch.support.logging;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
+
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Component
 public class CommonBatchStepLoggingListener implements StepExecutionListener {

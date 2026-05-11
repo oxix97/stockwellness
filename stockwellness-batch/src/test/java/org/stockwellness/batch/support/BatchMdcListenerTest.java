@@ -6,7 +6,6 @@ import org.slf4j.MDC;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.StepExecution;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BatchMdcListenerTest {

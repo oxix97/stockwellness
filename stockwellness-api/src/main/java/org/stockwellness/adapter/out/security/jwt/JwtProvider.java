@@ -1,10 +1,14 @@
 package org.stockwellness.adapter.out.security.jwt;
 
+import java.time.LocalDateTime;
+import java.util.Date;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,10 +17,6 @@ import org.stockwellness.application.port.out.auth.ValidateTokenPort;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.MemberRole;
-
-import javax.crypto.SecretKey;
-import java.time.LocalDateTime;
-import java.util.Date;
 
 @Slf4j
 @Component

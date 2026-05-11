@@ -1,5 +1,10 @@
 package org.stockwellness.batch.job.sector;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,11 +25,6 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.price.StockPrice;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -72,9 +72,9 @@ class SectorEodBatchServiceTest {
         given(stockPricePort.findAllByDate(targetDate)).willReturn(List.of(price));
         given(stockPort.findBySectorCode(null)).willReturn(List.of(stock));
         given(marketIndexPort.findAll()).willReturn(List.of(marketIndex));
-        given(sectorInsightPort.findLatestBeforeByCodes(List.of("0029"), targetDate)).willReturn(java.util.Map.of("0029", previousInsight));
+        given(sectorInsightPort.findLatestBeforeByCodes(List.of("0029"), targetDate)).willReturn(Map.of("0029", previousInsight));
         given(sectorInsightPort.findPastPricesByCodes(List.of("0029"), targetDate, 119))
-                .willReturn(java.util.Map.of("0029", List.of(BigDecimal.valueOf(900), BigDecimal.valueOf(800))));
+                .willReturn(Map.of("0029", List.of(BigDecimal.valueOf(900), BigDecimal.valueOf(800))));
         given(sectorAnalysisService.analyze(eq(marketIndex), any(), eq(previousInsight), eq(List.of(BigDecimal.valueOf(900), BigDecimal.valueOf(800))), eq(List.of(price))))
                 .willReturn(analyzed);
 
@@ -98,8 +98,8 @@ class SectorEodBatchServiceTest {
         given(stockPricePort.findAllByDate(targetDate)).willReturn(List.of());
         given(stockPort.findBySectorCode(null)).willReturn(List.of());
         given(marketIndexPort.findAll()).willReturn(List.of());
-        given(sectorInsightPort.findLatestBeforeByCodes(List.of("9999"), targetDate)).willReturn(java.util.Map.of());
-        given(sectorInsightPort.findPastPricesByCodes(List.of("9999"), targetDate, 119)).willReturn(java.util.Map.of());
+        given(sectorInsightPort.findLatestBeforeByCodes(List.of("9999"), targetDate)).willReturn(Map.of());
+        given(sectorInsightPort.findPastPricesByCodes(List.of("9999"), targetDate, 119)).willReturn(Map.of());
 
         SectorEodSyncUseCase.SectorEodResult result = sectorEodBatchService.syncSector(
                 new SectorEodSyncUseCase.SectorSyncCommand(

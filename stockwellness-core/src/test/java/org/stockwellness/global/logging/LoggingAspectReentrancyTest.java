@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(classes = LoggingAspectReentrancyTest.TestConfig.class)

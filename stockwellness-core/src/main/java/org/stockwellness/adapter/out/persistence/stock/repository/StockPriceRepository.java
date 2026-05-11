@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,12 +13,6 @@ import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.StockPriceId;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 
 public interface StockPriceRepository extends JpaRepository<StockPrice, StockPriceId>, StockPriceRepositoryCustom {
     @Query("SELECT s.closePrice FROM StockPrice s WHERE s.stock = :stock AND s.id.baseDate < :date ORDER BY s.id.baseDate DESC")

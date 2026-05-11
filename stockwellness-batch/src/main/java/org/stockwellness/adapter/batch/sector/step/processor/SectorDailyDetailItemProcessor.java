@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.batch.sector.step.processor;
 
+import java.time.LocalDate;
+import java.util.Objects;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -11,9 +14,6 @@ import org.stockwellness.application.port.out.stock.SectorDataPort;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.global.util.DateUtil;
-
-import java.time.LocalDate;
-import java.util.Objects;
 
 @Slf4j
 @Component

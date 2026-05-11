@@ -1,6 +1,12 @@
 package org.stockwellness.adapter.batch.stockprice.config;
 
+import java.sql.Types;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Step;
@@ -15,8 +21,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.adapter.batch.stockprice.step.processor.DailyStockPriceProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.processor.TechnicalIndicatorProcessor;
 import org.stockwellness.adapter.batch.stockprice.step.reader.StockListReader;
@@ -24,15 +28,12 @@ import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceJdbcItem
 import org.stockwellness.adapter.batch.stockprice.step.writer.StockPriceListWriter;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceSql;
+import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.DateUtil;
-
-import javax.sql.DataSource;
-import java.sql.Types;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Configuration
@@ -137,7 +138,7 @@ public class StockPriceStepConfig {
                 .name("technicalIndicatorStockReader")
                 .entityManagerFactory(entityManagerFactory)
                 .pageSize(300)
-                .queryString("select s from Stock s where s.status = org.stockwellness.domain.stock.StockStatus.ACTIVE order by s.id asc")
+                .queryString("select s from Stock s where s.status = StockStatus.ACTIVE order by s.id asc")
                 .saveState(false)
                 .build();
     }

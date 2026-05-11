@@ -1,9 +1,9 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+
+import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 
 public record PortfolioValuationResponse(
     BigDecimal totalPurchaseAmount,

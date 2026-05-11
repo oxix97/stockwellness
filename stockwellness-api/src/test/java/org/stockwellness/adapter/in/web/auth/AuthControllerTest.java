@@ -1,27 +1,26 @@
 package org.stockwellness.adapter.in.web.auth;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.stockwellness.support.annotation.MockMember;
-import org.stockwellness.application.port.in.auth.dto.LoginRequest;
-import org.stockwellness.application.port.in.auth.dto.ReissueRequest;
 import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
+import org.stockwellness.application.port.in.auth.dto.LoginRequest;
+import org.stockwellness.application.port.in.auth.dto.ReissueRequest;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.in.auth.result.ReissueResult;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.support.RestDocsSupport;
-import org.springframework.restdocs.payload.FieldDescriptor;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
+import org.stockwellness.support.annotation.MockMember;
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;

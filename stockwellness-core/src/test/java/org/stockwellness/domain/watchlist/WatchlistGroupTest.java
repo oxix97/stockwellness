@@ -7,7 +7,6 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

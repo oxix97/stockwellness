@@ -1,13 +1,13 @@
 package org.stockwellness.adapter.batch.investortradedetail.step.tasklet;
 
+import java.time.LocalDate;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.stockwellness.application.service.batch.StockInvestorTradeDetailBatchService;
-
-import java.time.LocalDate;
 
 @RequiredArgsConstructor
 public class StockInvestorTradeDetailValidationTasklet implements Tasklet {

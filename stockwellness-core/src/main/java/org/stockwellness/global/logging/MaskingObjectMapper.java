@@ -1,5 +1,8 @@
 package org.stockwellness.global.logging;
 
+import java.util.List;
+import java.util.Set;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,11 +11,9 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import java.util.List;
-import java.util.Set;
-
 import static com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_BEANS;
 import static com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS;
 
@@ -38,8 +39,8 @@ public final class MaskingObjectMapper {
     public static ObjectMapper create() {
         ObjectMapper mapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
-                .registerModule(new com.fasterxml.jackson.datatype.jdk8.Jdk8Module())
-                .registerModule(new com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module())
+                .registerModule(new Jdk8Module())
+                .registerModule(new Hibernate6Module())
                 .disable(WRITE_DATES_AS_TIMESTAMPS)
                 .disable(FAIL_ON_EMPTY_BEANS);
 

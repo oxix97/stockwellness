@@ -1,10 +1,12 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.stockwellness.domain.portfolio.math.FinancialMath;
-import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.List;
+
+import org.stockwellness.domain.portfolio.math.FinancialMath;
+import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 
 /**
  * 효율성 지표 계산기 (Sharpe Ratio, Sortino Ratio 등)
@@ -60,7 +62,7 @@ public class EfficiencyCalculator implements IndicatorCalculator<EfficiencyCalcu
         BigDecimal cumulative = BigDecimal.ONE;
         for (BigDecimal r : series.getReturnsOnly()) {
             BigDecimal multiplier = BigDecimal.ONE.add(r.divide(BigDecimal.valueOf(100), 16, RoundingMode.HALF_UP));
-            cumulative = cumulative.multiply(multiplier, new java.math.MathContext(16));
+            cumulative = cumulative.multiply(multiplier, new MathContext(16));
         }
         
         // 누적 수익률을 바탕으로 CAGR 역산

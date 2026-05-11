@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.persistence.insight;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -10,9 +13,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @Getter
 @Entity

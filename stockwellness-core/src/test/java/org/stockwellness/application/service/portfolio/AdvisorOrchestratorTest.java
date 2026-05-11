@@ -1,23 +1,22 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
+import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SaveAdvisorPort;
 import org.stockwellness.application.service.portfolio.internal.AdvisorAiDataLoader;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
-
-import java.util.List;
-import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -83,7 +82,7 @@ class AdvisorOrchestratorTest {
         given(portfolioPort.findById(id2)).willReturn(Optional.of(p2));
 
         // 데이터 로더와 조언 제공자 Stubbing (generateAndSaveAdvice 내부용)
-        lenient().when(dataLoader.loadContext(anyLong())).thenReturn(mock(org.stockwellness.application.port.out.portfolio.AdvisorAiContext.class));
+        lenient().when(dataLoader.loadContext(anyLong())).thenReturn(mock(AdvisorAiContext.class));
         lenient().when(aiAdviceProviderPort.getRebalancingAdvice(any())).thenReturn(new AiAdviceProviderPort.AdvisorAiResult("", "", "", "내용", AdviceAction.REBALANCE));
         
         // when

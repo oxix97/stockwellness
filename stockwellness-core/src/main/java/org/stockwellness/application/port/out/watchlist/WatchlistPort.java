@@ -1,13 +1,12 @@
 package org.stockwellness.application.port.out.watchlist;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCount;
-import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
-
-import java.util.List;
-import java.util.Optional;
 
 public interface WatchlistPort {
     List<WatchlistGroup> findAllGroupsByMemberId(Long memberId);

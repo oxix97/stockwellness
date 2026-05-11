@@ -1,5 +1,7 @@
 package org.stockwellness.global.security.jwt;
 
+import java.io.IOException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -13,8 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.error.ErrorCode;
-
-import java.io.IOException;
 
 @Slf4j
 @Component

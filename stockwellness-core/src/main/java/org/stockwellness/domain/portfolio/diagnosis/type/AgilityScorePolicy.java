@@ -1,9 +1,9 @@
 package org.stockwellness.domain.portfolio.diagnosis.type;
 
+import java.util.Arrays;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.util.Arrays;
 
 @Getter
 @RequiredArgsConstructor

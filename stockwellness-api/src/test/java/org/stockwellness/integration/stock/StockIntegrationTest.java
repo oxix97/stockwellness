@@ -4,16 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.integration.common.BaseIntegrationTest;
-
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,7 +38,7 @@ class StockIntegrationTest extends BaseIntegrationTest {
                         .param("keyword", "삼성")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(APPLICATION_JSON))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].ticker").value("005930"))
                 .andExpect(jsonPath("$.data.content[0].name").value("삼성전자"));
@@ -56,7 +51,7 @@ class StockIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/v1/stocks/{ticker}", "005930")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(APPLICATION_JSON))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.ticker").value("005930"))
                 .andExpect(jsonPath("$.data.name").value("삼성전자"));

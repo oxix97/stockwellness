@@ -1,5 +1,7 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -11,8 +13,6 @@ import org.stockwellness.application.service.portfolio.internal.AdvisorAiDataLoa
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
-
-import java.util.List;
 
 @Slf4j
 @Service

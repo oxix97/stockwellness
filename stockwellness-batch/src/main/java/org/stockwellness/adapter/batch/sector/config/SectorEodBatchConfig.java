@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.batch.sector.config;
 
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.concurrent.Future;
+
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +24,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.adapter.batch.sector.listener.SectorEodJobListener;
 import org.stockwellness.adapter.batch.sector.step.processor.SectorAiItemProcessor;
 import org.stockwellness.adapter.batch.sector.step.processor.SectorDailyDetailItemProcessor;
@@ -30,6 +33,7 @@ import org.stockwellness.adapter.batch.sector.step.reader.SectorMarketIndexItemR
 import org.stockwellness.adapter.batch.sector.step.writer.SectorAiItemWriter;
 import org.stockwellness.adapter.batch.sector.step.writer.SectorDailyDetailItemWriter;
 import org.stockwellness.adapter.batch.sector.step.writer.SectorInsightItemWriter;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
 import org.stockwellness.batch.support.BatchMdcListener;
 import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
 import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
@@ -37,10 +41,6 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.global.util.DateUtil;
-
-import java.time.LocalDate;
-import java.util.Map;
-import java.util.concurrent.Future;
 
 @Slf4j
 @Configuration

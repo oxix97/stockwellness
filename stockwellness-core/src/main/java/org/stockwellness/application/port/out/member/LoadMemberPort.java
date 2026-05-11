@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.out.member;
 
+import java.util.Optional;
+
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.shared.Email;
-
-import java.util.Optional;
 
 public interface LoadMemberPort {
     Optional<Member> loadMember(Long memberId);

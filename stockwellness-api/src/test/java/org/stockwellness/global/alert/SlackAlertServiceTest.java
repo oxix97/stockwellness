@@ -1,10 +1,13 @@
 package org.stockwellness.global.alert;
 
+import java.net.URI;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.web.client.RestClient;
-
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -42,8 +45,8 @@ class SlackAlertServiceTest {
     void noExceptionPropagationOnSendFailure() {
         RestClient restClient = mock(RestClient.class, Answers.RETURNS_DEEP_STUBS);
         RestClient.RequestBodyUriSpec uriSpec = mock(RestClient.RequestBodyUriSpec.class);
-        org.mockito.Mockito.when(restClient.post()).thenReturn(uriSpec);
-        org.mockito.Mockito.when(uriSpec.uri(org.mockito.ArgumentMatchers.any(java.net.URI.class)))
+        Mockito.when(restClient.post()).thenReturn(uriSpec);
+        Mockito.when(uriSpec.uri(ArgumentMatchers.any(URI.class)))
                 .thenThrow(new RuntimeException("Slack 연결 실패"));
 
         SlackAlertService service = new SlackAlertService(

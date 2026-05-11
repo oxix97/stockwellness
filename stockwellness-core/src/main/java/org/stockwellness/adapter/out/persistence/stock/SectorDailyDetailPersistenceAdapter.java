@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import static java.util.stream.Collectors.toMap;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,13 +13,6 @@ import org.stockwellness.adapter.out.persistence.stock.repository.SectorDailyDet
 import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.stream.Collectors.toMap;
 
 @Component
 @RequiredArgsConstructor

@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import java.time.Duration;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,8 +14,6 @@ import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.adapter.out.external.kis.exception.KisAuthenticationException;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.time.Duration;
 
 @Slf4j
 @Component

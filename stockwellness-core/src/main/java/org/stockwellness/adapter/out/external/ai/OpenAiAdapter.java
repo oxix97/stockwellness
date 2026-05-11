@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.external.ai;
 
+import java.time.Duration;
+import java.util.concurrent.*;
+
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,9 +22,6 @@ import org.stockwellness.application.port.out.sector.WeatherInsightPort;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.analysis.AiReport;
-
-import java.time.Duration;
-import java.util.concurrent.*;
 
 @Slf4j
 @Component

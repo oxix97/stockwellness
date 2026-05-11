@@ -1,9 +1,9 @@
 package org.stockwellness.domain.stock.insight;
 
-import org.stockwellness.domain.stock.price.StockPrice;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
+
+import org.stockwellness.domain.stock.price.StockPrice;
 
 public record LeadingStock(
         String name,

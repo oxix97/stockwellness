@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.watchlist.dto;
 
-import org.stockwellness.application.port.out.watchlist.StockDataPort;
-import org.stockwellness.domain.watchlist.WatchlistItem;
-
 import java.math.BigDecimal;
 import java.util.List;
+
+import org.stockwellness.application.port.out.watchlist.StockDataPort;
+import org.stockwellness.domain.watchlist.WatchlistItem;
 
 public record WatchlistItemListResponse(
         String groupName,

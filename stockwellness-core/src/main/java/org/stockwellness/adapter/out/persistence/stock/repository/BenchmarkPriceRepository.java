@@ -1,12 +1,12 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.domain.Pageable;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
 public interface BenchmarkPriceRepository extends JpaRepository<BenchmarkPrice, Long> {
     Optional<BenchmarkPrice> findByTickerAndBaseDate(String ticker, LocalDate baseDate);

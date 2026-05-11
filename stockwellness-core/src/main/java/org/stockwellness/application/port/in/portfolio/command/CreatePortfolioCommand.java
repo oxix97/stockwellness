@@ -1,8 +1,9 @@
 package org.stockwellness.application.port.in.portfolio.command;
 
-import org.stockwellness.domain.portfolio.AssetType;
 import java.math.BigDecimal;
 import java.util.List;
+
+import org.stockwellness.domain.portfolio.AssetType;
 
 public record CreatePortfolioCommand(
     Long memberId,

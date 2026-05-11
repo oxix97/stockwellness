@@ -1,15 +1,14 @@
 package org.stockwellness.adapter.batch.stock.step.reader;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.StepExecutionListener;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.support.ListItemReader;
-import org.stockwellness.domain.stock.KospiItem;
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
+import org.springframework.batch.item.support.ListItemReader;
+import org.stockwellness.domain.stock.KospiItem;
 
 /**
  * 코스피 마스터 ItemReader.

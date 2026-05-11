@@ -1,16 +1,18 @@
 package org.stockwellness.application.service.stock;
 
+import java.time.LocalDate;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-import org.stockwellness.domain.stock.analysis.AiReport;
+import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
 import org.stockwellness.application.port.in.stock.command.StockAnalysisCommand;
 import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
-import org.stockwellness.application.port.in.stock.StockAnalysisUseCase;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.analysis.AiReport;
 
 @Slf4j
 @Service
@@ -35,7 +37,7 @@ public class StockAnalysisService implements StockAnalysisUseCase {
     @Override
     @Cacheable(
             value = "ai_analysis:v2",
-            key = "#p0.isinCode() + ':' + T(java.time.LocalDate).now().toString()",
+            key = "#p0.isinCode() + ':' + T(LocalDate).now().toString()",
             unless = "#result == null"
     )
     public StockAnalysisResult analyze(StockAnalysisCommand command) {

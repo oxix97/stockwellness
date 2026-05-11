@@ -1,12 +1,5 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
-import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.Tuple;
-import com.querydsl.core.types.dsl.DateExpression;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import lombok.RequiredArgsConstructor;
-import org.stockwellness.domain.stock.insight.SectorInsight;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -14,6 +7,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.DateExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import lombok.RequiredArgsConstructor;
+import org.stockwellness.domain.stock.insight.SectorInsight;
 import static org.stockwellness.domain.stock.insight.QSectorInsight.sectorInsight;
 
 @RequiredArgsConstructor

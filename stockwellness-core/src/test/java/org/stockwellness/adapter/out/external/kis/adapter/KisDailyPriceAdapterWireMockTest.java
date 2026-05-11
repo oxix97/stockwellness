@@ -1,19 +1,19 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
-
-import java.time.LocalDate;
-import java.util.List;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -34,7 +34,7 @@ class KisDailyPriceAdapterWireMockTest {
     private KisTokenAdapter kisTokenAdapter;
 
     @MockitoBean
-    private org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
+    private LettuceConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("국내 주식 일별 시세를 KIS API로부터 정상적으로 가져온다")

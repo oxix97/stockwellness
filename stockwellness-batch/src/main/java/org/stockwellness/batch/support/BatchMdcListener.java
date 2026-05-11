@@ -1,5 +1,7 @@
 package org.stockwellness.batch.support;
 
+import java.util.UUID;
+
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.batch.core.ExitStatus;
@@ -8,8 +10,6 @@ import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 /**
  * 배치 로그에 Job 및 Step 정보를 MDC에 주입하여 추적성을 강화하는 리스너

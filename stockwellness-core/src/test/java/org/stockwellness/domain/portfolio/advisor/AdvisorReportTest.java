@@ -3,7 +3,6 @@ package org.stockwellness.domain.portfolio.advisor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.portfolio.Portfolio;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("AdvisorReport 도메인 단위 테스트")

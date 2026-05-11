@@ -1,14 +1,13 @@
 package org.stockwellness.domain.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 import static jakarta.persistence.FetchType.LAZY;
 import static lombok.AccessLevel.PROTECTED;
 

@@ -1,8 +1,8 @@
 package org.stockwellness.application.port.in.portfolio;
 
-import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
-
 import java.util.List;
+
+import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 
 public interface LoadPortfolioUseCase {
     PortfolioResponse getPortfolio(Long memberId, Long portfolioId);
