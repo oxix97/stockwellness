@@ -1,13 +1,13 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
 
 public record PortfolioInceptionChartResponse(
         LocalDate portfolioInceptionDate,

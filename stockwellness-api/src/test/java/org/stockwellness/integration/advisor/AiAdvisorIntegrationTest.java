@@ -3,6 +3,7 @@ package org.stockwellness.integration.advisor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
@@ -17,7 +18,7 @@ import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 import org.stockwellness.global.security.CustomUserDetailsService;
 import org.stockwellness.global.security.MemberPrincipal;
 import org.stockwellness.support.RestDocsSupport;
-
+import org.stockwellness.support.annotation.MockMember;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -46,11 +47,11 @@ class AiAdvisorIntegrationTest extends RestDocsSupport {
     private CustomUserDetailsService customUserDetailsService;
 
     @MockitoBean
-    private org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
+    private LettuceConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("포트폴리오 조언 생성부터 API 조회까지의 전체 흐름을 검증한다")
-    @org.stockwellness.support.annotation.MockMember(id = 1L)
+    @MockMember(id = 1L)
     void advisor_e2e_flow_success() throws Exception {
         // given
         Long memberId = 1L;

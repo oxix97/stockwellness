@@ -1,24 +1,22 @@
 package org.stockwellness.integration.auth;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.application.port.in.auth.dto.LoginRequest;
 import org.stockwellness.application.port.in.auth.dto.ReissueRequest;
+import org.stockwellness.domain.auth.RefreshToken;
 import org.stockwellness.domain.member.LoginType;
+import org.stockwellness.domain.shared.Email;
 import org.stockwellness.fixture.AuthFixture;
-import org.stockwellness.fixture.MemberFixture;
+import org.stockwellness.global.util.DateUtil;
 import org.stockwellness.integration.common.BaseIntegrationTest;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,7 +29,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private MemberRepository memberRepository;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUp() {
         memberRepository.deleteAll();
     }
@@ -48,14 +46,14 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").exists())
                 .andExpect(jsonPath("$.data.refreshToken").exists())
                 .andExpect(jsonPath("$.data.email").value(email));
 
         // DB 저장 확인
-        assertThat(memberRepository.findByEmail(new org.stockwellness.domain.shared.Email(email))).isPresent();
+        assertThat(memberRepository.findByEmail(new Email(email))).isPresent();
     }
 
     @Test
@@ -67,7 +65,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andReturn().getResponse().getContentAsString();
         
         var jsonNode = objectMapper.readTree(loginResponse);
@@ -79,8 +77,8 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         Long memberId = jsonNode.get("data").get("memberId").asLong();
         ReissueRequest reissueRequest = new ReissueRequest(refreshToken);
 
-        given(refreshTokenPort.findByMemberId(org.mockito.ArgumentMatchers.any())).willReturn(
-                org.stockwellness.domain.auth.RefreshToken.create(memberId, refreshToken, org.stockwellness.global.util.DateUtil.now().plusDays(1))
+        given(refreshTokenPort.findByMemberId(ArgumentMatchers.any())).willReturn(
+                RefreshToken.create(memberId, refreshToken, DateUtil.now().plusDays(1))
         );
 
         // when & then
@@ -88,7 +86,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                         .with(csrf())
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reissueRequest)))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").exists())
                 .andExpect(jsonPath("$.data.refreshToken").exists());

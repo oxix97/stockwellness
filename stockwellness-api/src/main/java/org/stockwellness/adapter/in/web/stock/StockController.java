@@ -1,9 +1,11 @@
 package org.stockwellness.adapter.in.web.stock;
 
+import java.util.Collections;
+import java.util.List;
+
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -13,18 +15,14 @@ import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.in.stock.StockUseCase;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.in.stock.result.*;
-import org.stockwellness.domain.stock.price.ChartFrequency;
-import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.price.ChartFrequency;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.common.response.SliceResponse;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
 
 @RestController
 @Validated

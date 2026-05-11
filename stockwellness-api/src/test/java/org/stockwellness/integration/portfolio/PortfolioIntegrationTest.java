@@ -1,37 +1,27 @@
 package org.stockwellness.integration.portfolio;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
-import org.stockwellness.domain.member.LoginType;
-import org.stockwellness.domain.member.Member;
-import org.stockwellness.domain.member.MemberRole;
-import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.integration.common.BaseIntegrationTest;
-import org.stockwellness.support.annotation.MockMember;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -50,7 +40,7 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
     private PortfolioRepository portfolioRepository;
 
     @Autowired
-    private org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository stockPriceRepository;
+    private StockPriceRepository stockPriceRepository;
 
     private String accessToken;
 
@@ -71,25 +61,25 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
         stockRepository.saveAndFlush(kospi);
 
         // 시세 데이터 생성 (어제, 오늘)
-        java.time.LocalDate today = java.time.LocalDate.now();
-        java.time.LocalDate yesterday = today.minusDays(1);
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
 
-        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+        stockPriceRepository.save(StockPrice.of(
                 samsung, yesterday, new BigDecimal("50000"), new BigDecimal("51000"), new BigDecimal("49000"),
                 new BigDecimal("50500"), new BigDecimal("50500"), new BigDecimal("50000"), 1000000L, 
                 new BigDecimal("50000000000"), null));
         
-        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+        stockPriceRepository.save(StockPrice.of(
                 samsung, today, new BigDecimal("50500"), new BigDecimal("52000"), new BigDecimal("50000"),
                 new BigDecimal("51500"), new BigDecimal("51500"), new BigDecimal("50500"), 1200000L, 
                 new BigDecimal("60000000000"), null));
 
-        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+        stockPriceRepository.save(StockPrice.of(
                 kospi, yesterday, new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"),
                 new BigDecimal("2505"), new BigDecimal("2505"), new BigDecimal("2500"), 500000L, 
                 new BigDecimal("100000000000"), null));
 
-        stockPriceRepository.save(org.stockwellness.domain.stock.price.StockPrice.of(
+        stockPriceRepository.save(StockPrice.of(
                 kospi, today, new BigDecimal("2505"), new BigDecimal("2530"), new BigDecimal("2500"),
                 new BigDecimal("2520"), new BigDecimal("2520"), new BigDecimal("2505"), 600000L, 
                 new BigDecimal("120000000000"), null));
@@ -141,7 +131,7 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
 
         // [Given] 2. 백테스트 요청 데이터
         BacktestRequest backtestRequest = new BacktestRequest(
-                "LUMP_SUM", BigDecimal.valueOf(10000000), "KOSPI", "ALL", true, org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, null
+                "LUMP_SUM", BigDecimal.valueOf(10000000), "KOSPI", "ALL", true, RebalancingPeriod.MONTHLY, null
         );
 
         // [When] 3. 백테스트 실행

@@ -1,11 +1,11 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
 
 public record PortfolioDiversificationResponse(
     BigDecimal totalValue,

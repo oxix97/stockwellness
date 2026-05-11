@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.in.kafka;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,10 +18,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioAdapter;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
-
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;

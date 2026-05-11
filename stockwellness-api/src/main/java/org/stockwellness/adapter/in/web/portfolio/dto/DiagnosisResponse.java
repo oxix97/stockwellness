@@ -1,10 +1,10 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 
 /**
  * 포트폴리오 진단 결과 응답 DTO

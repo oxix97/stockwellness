@@ -16,7 +16,6 @@ import org.stockwellness.global.security.jwt.JwtAccessDeniedHandler;
 import org.stockwellness.global.security.jwt.JwtAuthenticationEntryPoint;
 import org.stockwellness.global.security.jwt.JwtAuthenticationFilter;
 import org.stockwellness.global.security.jwt.JwtExceptionFilter;
-
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Slf4j

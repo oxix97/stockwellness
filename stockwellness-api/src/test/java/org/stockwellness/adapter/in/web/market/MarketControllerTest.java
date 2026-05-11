@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.in.web.market;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
@@ -14,12 +19,6 @@ import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherReason;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.support.RestDocsSupport;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.BDDMockito.given;

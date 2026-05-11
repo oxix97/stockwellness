@@ -1,11 +1,11 @@
 package org.stockwellness.fixture;
 
+import java.time.LocalDateTime;
+
+import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.dto.LoginRequest;
 import org.stockwellness.application.port.in.auth.dto.ReissueRequest;
-import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.domain.auth.RefreshToken;
-
-import java.time.LocalDateTime;
 
 public class AuthFixture extends MemberFixture {
 
