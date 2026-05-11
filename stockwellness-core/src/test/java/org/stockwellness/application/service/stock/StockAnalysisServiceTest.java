@@ -1,9 +1,14 @@
 package org.stockwellness.application.service.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,11 +21,6 @@ import org.stockwellness.domain.stock.analysis.AiReport;
 import org.stockwellness.domain.stock.analysis.CrossoverSignal;
 import org.stockwellness.domain.stock.analysis.InvestmentDecision;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,7 +55,7 @@ class StockAnalysisServiceTest {
                 "상승 추세가 확인됩니다."
         );
         given(technicalDataPort.loadTechnicalContext("005930")).willReturn(context);
-        given(llmClientPort.generateInsight(anyString(), org.mockito.ArgumentMatchers.eq(context))).willReturn(report);
+        given(llmClientPort.generateInsight(anyString(), ArgumentMatchers.eq(context))).willReturn(report);
 
         StockAnalysisResult result = stockAnalysisService.analyze(command);
 
@@ -64,7 +64,7 @@ class StockAnalysisServiceTest {
         assertThat(result.report()).isSameAs(report);
         assertThat(result.analyzedAt()).isNotNull();
         verify(technicalDataPort).loadTechnicalContext("005930");
-        verify(llmClientPort).generateInsight(anyString(), org.mockito.ArgumentMatchers.eq(context));
+        verify(llmClientPort).generateInsight(anyString(), ArgumentMatchers.eq(context));
     }
 
     @Test
@@ -74,12 +74,12 @@ class StockAnalysisServiceTest {
         AiAnalysisContext context = createContext("000660", TrendStatus.NEUTRAL);
         AiReport report = AiReport.fallback();
         given(technicalDataPort.loadTechnicalContext("000660")).willReturn(context);
-        given(llmClientPort.generateInsight(anyString(), org.mockito.ArgumentMatchers.eq(context))).willReturn(report);
+        given(llmClientPort.generateInsight(anyString(), ArgumentMatchers.eq(context))).willReturn(report);
 
         stockAnalysisService.analyze(command);
 
         ArgumentCaptor<String> instructionCaptor = ArgumentCaptor.forClass(String.class);
-        verify(llmClientPort).generateInsight(instructionCaptor.capture(), org.mockito.ArgumentMatchers.eq(context));
+        verify(llmClientPort).generateInsight(instructionCaptor.capture(), ArgumentMatchers.eq(context));
         assertThat(instructionCaptor.getValue())
                 .contains("퀀트 트레이더")
                 .contains("JSON 포맷")
@@ -106,7 +106,7 @@ class StockAnalysisServiceTest {
         AiAnalysisContext context = createContext("005930", TrendStatus.INVERSE);
         RuntimeException exception = new IllegalStateException("LLM 장애");
         given(technicalDataPort.loadTechnicalContext("005930")).willReturn(context);
-        given(llmClientPort.generateInsight(anyString(), org.mockito.ArgumentMatchers.eq(context))).willThrow(exception);
+        given(llmClientPort.generateInsight(anyString(), ArgumentMatchers.eq(context))).willThrow(exception);
 
         assertThatThrownBy(() -> stockAnalysisService.analyze(command))
                 .isSameAs(exception);

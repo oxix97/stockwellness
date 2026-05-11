@@ -1,9 +1,10 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 
 /**
  * 포트폴리오 성과 지표 계산을 위한 공통 인터페이스

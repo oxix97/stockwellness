@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,7 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
+import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.config.JpaConfig;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.Currency;
@@ -20,14 +28,6 @@ import org.stockwellness.domain.stock.price.StockInvestorTrade;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.domain.stock.price.TradeDirection;
-import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
@@ -188,7 +188,7 @@ class StockPriceRepositoryTest {
         List<StockPrice> recentPrices = stockPriceRepository.findRecentPricesByStock(
                 otherStock,
                 d1.plusDays(1),
-                org.springframework.data.domain.PageRequest.of(0, 3)
+                PageRequest.of(0, 3)
         );
 
         assertThat(recentPrices)

@@ -1,10 +1,5 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.domain.portfolio.vo.ReturnSeries;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -12,6 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.domain.portfolio.math.FinancialMath;
+import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Indicator Calculators 단위 테스트")
@@ -40,7 +40,7 @@ class IndicatorCalculatorTest {
         BigDecimal initialAmount = BigDecimal.valueOf(100);
         BigDecimal finalAmount = BigDecimal.valueOf(103.02);
         double years = 2.0 / 252.0;
-        BigDecimal portfolioCagr = org.stockwellness.domain.portfolio.math.FinancialMath.calculateCAGR(initialAmount, finalAmount, years);
+        BigDecimal portfolioCagr = FinancialMath.calculateCAGR(initialAmount, finalAmount, years);
 
         context = new IndicatorCalculator.IndicatorContext(
             new ReturnSeries(portfolioReturns),

@@ -1,12 +1,12 @@
 package org.stockwellness.application.service.stock;
 
-import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.stock.MarketBreadthItem;
-import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+
+import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.stock.MarketBreadthItem;
+import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
 
 @Component
 public class MarketBreadthCalculator {

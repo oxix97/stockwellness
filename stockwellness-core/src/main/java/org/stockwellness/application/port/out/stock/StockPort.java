@@ -1,11 +1,11 @@
 package org.stockwellness.application.port.out.stock;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Slice;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.domain.stock.Stock;
-
-import java.util.List;
-import java.util.Optional;
 
 public interface StockPort {
     /**

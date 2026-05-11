@@ -1,7 +1,7 @@
 package org.stockwellness.domain.stock.exception;
 
-import org.stockwellness.global.error.exception.BusinessException;
 import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.BusinessException;
 
 public class StockDomainException extends BusinessException {
     public StockDomainException(ErrorCode errorCode) {

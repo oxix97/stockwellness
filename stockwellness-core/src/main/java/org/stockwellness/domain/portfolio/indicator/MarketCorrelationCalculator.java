@@ -1,11 +1,13 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.stockwellness.domain.portfolio.math.FinancialMath;
-import org.stockwellness.domain.portfolio.vo.ReturnSeries;
-
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.stockwellness.domain.portfolio.math.FinancialMath;
+import org.stockwellness.domain.portfolio.vo.ReturnSeries;
 
 /**
  * 시장 상관성 지표 계산기 (Alpha, Beta 등)
@@ -49,8 +51,8 @@ public class MarketCorrelationCalculator implements IndicatorCalculator<Map<Stri
         // (1 + r1) * (1 + r2) * ... - 1
         BigDecimal cumulative = BigDecimal.ONE;
         for (BigDecimal r : series.getReturnsOnly()) {
-            BigDecimal multiplier = BigDecimal.ONE.add(r.divide(BigDecimal.valueOf(100), 16, java.math.RoundingMode.HALF_UP));
-            cumulative = cumulative.multiply(multiplier, new java.math.MathContext(16));
+            BigDecimal multiplier = BigDecimal.ONE.add(r.divide(BigDecimal.valueOf(100), 16, RoundingMode.HALF_UP));
+            cumulative = cumulative.multiply(multiplier, new MathContext(16));
         }
         
         return cumulative.subtract(BigDecimal.ONE).multiply(BigDecimal.valueOf(100));

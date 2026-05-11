@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,20 +19,13 @@ import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.service.portfolio.internal.*;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
+import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
+import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
+import org.stockwellness.fixture.PortfolioFixture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-
-import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
-import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
-import org.stockwellness.fixture.PortfolioFixture;
 
 @ExtendWith(MockitoExtension.class)
 class PortfolioDiagnosisServiceTest {

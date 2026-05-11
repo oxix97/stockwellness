@@ -1,9 +1,9 @@
 package org.stockwellness.adapter.out.persistence.portfolio;
 
-import org.stockwellness.domain.portfolio.Portfolio;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.stockwellness.domain.portfolio.Portfolio;
 
 public interface PortfolioCustomRepository {
     Optional<Portfolio> findWithItems(Long id, Long memberId);

@@ -1,6 +1,5 @@
 package org.stockwellness.fixture;
 
-
 import org.stockwellness.domain.stock.*;
 
 public class StockFixture {

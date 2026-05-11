@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -11,12 +17,6 @@ import org.stockwellness.domain.stock.analysis.MarketCondition;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 import org.stockwellness.domain.stock.exception.StockDataNotFoundException;
 import org.stockwellness.domain.stock.price.StockPrice;
-
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor

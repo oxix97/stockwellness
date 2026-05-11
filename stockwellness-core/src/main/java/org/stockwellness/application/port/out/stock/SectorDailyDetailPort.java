@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.domain.stock.insight.SectorDailyDetail;
-
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 
 public interface SectorDailyDetailPort {
 

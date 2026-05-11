@@ -1,14 +1,12 @@
 package org.stockwellness.domain.shared;
 
+import java.util.regex.Pattern;
+
 import jakarta.persistence.Embeddable;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import org.stockwellness.domain.member.exception.InvalidEmailException;
-
-import java.util.regex.Pattern;
-
 import static lombok.AccessLevel.PROTECTED;
 
 @Embeddable

@@ -1,6 +1,5 @@
 package org.stockwellness.domain.stock;
 
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 

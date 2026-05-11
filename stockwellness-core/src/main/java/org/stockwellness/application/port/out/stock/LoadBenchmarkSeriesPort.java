@@ -1,8 +1,9 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
 /**
  * 캘린더 정렬을 지원하는 벤치마크 지수 시리즈 조회를 위한 출력 포트

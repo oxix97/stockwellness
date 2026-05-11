@@ -1,13 +1,16 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.AiAdvisorUseCase;
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
-import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
+import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.LoadAdvisorPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.service.portfolio.internal.AdvisorAiDataLoader;
@@ -16,9 +19,6 @@ import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedExcepti
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * AI 어드바이저 서비스

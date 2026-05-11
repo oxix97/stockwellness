@@ -1,5 +1,7 @@
 package org.stockwellness.domain.member;
 
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -12,9 +14,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.shared.Email;
-
-import java.time.LocalDateTime;
-
 import static jakarta.persistence.EnumType.STRING;
 import static lombok.AccessLevel.PROTECTED;
 import static org.stockwellness.domain.member.MemberStatus.ACTIVE;

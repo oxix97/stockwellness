@@ -1,11 +1,10 @@
 package org.stockwellness.global.common;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.global.common.response.ApiResponse;
-
-import java.time.LocalDateTime;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ApiResponseTest {

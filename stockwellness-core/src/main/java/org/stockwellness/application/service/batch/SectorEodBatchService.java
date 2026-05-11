@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.batch;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,16 +17,9 @@ import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.stock.SectorAnalysisService;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.analysis.TrendStatus;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
-import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.domain.stock.price.StockPrice;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

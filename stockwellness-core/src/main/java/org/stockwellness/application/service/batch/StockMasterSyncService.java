@@ -1,22 +1,22 @@
 package org.stockwellness.application.service.batch;
 
+import java.util.List;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.application.parser.KosdaqMstParser;
 import org.stockwellness.application.parser.KospiMstParser;
+import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
 import org.stockwellness.domain.stock.insight.MarketIndex;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service

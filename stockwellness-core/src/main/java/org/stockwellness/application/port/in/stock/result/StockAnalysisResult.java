@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.in.stock.result;
 
+import java.time.LocalDateTime;
+
 import org.stockwellness.domain.stock.analysis.AiReport;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
-
-import java.time.LocalDateTime;
 
 /**
  * AI 분석 결과를 담는 불변 객체 (Output DTO)

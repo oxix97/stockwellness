@@ -1,13 +1,13 @@
 package org.stockwellness.application.service.stock;
 
+import java.time.Duration;
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.stockwellness.application.port.in.stock.StockSearchUseCase;
 import org.stockwellness.application.port.out.stock.PopularSearchPort;
 import org.stockwellness.application.port.out.stock.SearchHistoryPort;
-
-import java.time.Duration;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

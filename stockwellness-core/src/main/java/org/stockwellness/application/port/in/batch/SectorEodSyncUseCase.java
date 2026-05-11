@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.batch;
 
-import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
-import org.stockwellness.domain.stock.insight.SectorInsight;
-
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
+import org.stockwellness.domain.stock.insight.SectorInsight;
 
 public interface SectorEodSyncUseCase {
 

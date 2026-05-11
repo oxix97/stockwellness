@@ -1,13 +1,12 @@
 package org.stockwellness.domain.stock;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-
 import static jakarta.persistence.EnumType.STRING;
 import static lombok.AccessLevel.PROTECTED;
 

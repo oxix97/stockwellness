@@ -1,9 +1,9 @@
 package org.stockwellness.domain.common.cache;
 
+import java.time.Duration;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.time.Duration;
 
 @Getter
 @RequiredArgsConstructor

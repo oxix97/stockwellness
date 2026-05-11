@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,10 +16,6 @@ import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.exception.StockPriceException;
-
-import java.util.List;
-import java.util.Optional;
-
 import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
 
 @Component
@@ -69,11 +68,9 @@ public class StockAdapter implements StockPort {
         return stockRepository.save(stock);
     }
 
-
     public Optional<Stock> findByTicker(String ticker) {
         return stockRepository.findByTicker(ticker);
     }
-
 
     public List<Stock> findByMarketTypeAndStatus(MarketType marketType, StockStatus status) {
         return stockRepository.findByMarketTypeAndStatus(marketType, status);
@@ -87,7 +84,6 @@ public class StockAdapter implements StockPort {
     public List<Stock> findByIsinCodeIn(List<String> isinCodes) {
         return stockRepository.findAllByTickerIn(isinCodes);
     }
-
 
     public Slice<Stock> searchByCondition(String keyword, MarketType marketType, StockStatus status, String sectorCode, String sectorName, Pageable pageable) {
         return stockRepository.searchByCondition(keyword, marketType, status, sectorCode, sectorName, pageable);

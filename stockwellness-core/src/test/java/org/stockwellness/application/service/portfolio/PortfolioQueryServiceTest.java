@@ -1,25 +1,27 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.fixture.PortfolioFixture;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -35,7 +37,7 @@ class PortfolioQueryServiceTest {
     private PortfolioPort portfolioPort;
 
     @Mock
-    private org.stockwellness.application.port.out.stock.StockPricePort stockPricePort;
+    private StockPricePort stockPricePort;
 
     @Mock
     private StockPort stockPort;
@@ -54,9 +56,9 @@ class PortfolioQueryServiceTest {
             );
             given(portfolioPort.loadPortfolio(PortfolioFixture.PORTFOLIO_ID, PortfolioFixture.MEMBER_ID))
                     .willReturn(Optional.of(portfolio));
-            given(stockPricePort.findAllLatestByTickers(org.mockito.ArgumentMatchers.anyList()))
-                    .willReturn(java.util.Map.of());
-            given(stockPort.loadStocksByTickers(org.mockito.ArgumentMatchers.anyList()))
+            given(stockPricePort.findAllLatestByTickers(ArgumentMatchers.anyList()))
+                    .willReturn(Map.of());
+            given(stockPort.loadStocksByTickers(ArgumentMatchers.anyList()))
                     .willReturn(List.of());
 
             // when
@@ -109,9 +111,9 @@ class PortfolioQueryServiceTest {
             );
             given(portfolioPort.loadAllPortfolios(PortfolioFixture.MEMBER_ID))
                     .willReturn(List.of(portfolio));
-            given(stockPricePort.findAllLatestByTickers(org.mockito.ArgumentMatchers.anyList()))
-                    .willReturn(java.util.Map.of());
-            given(stockPort.loadStocksByTickers(org.mockito.ArgumentMatchers.anyList()))
+            given(stockPricePort.findAllLatestByTickers(ArgumentMatchers.anyList()))
+                    .willReturn(Map.of());
+            given(stockPort.loadStocksByTickers(ArgumentMatchers.anyList()))
                     .willReturn(List.of());
 
             // when

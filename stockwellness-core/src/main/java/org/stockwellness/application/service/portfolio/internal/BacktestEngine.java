@@ -1,5 +1,16 @@
 package org.stockwellness.application.service.portfolio.internal;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
@@ -11,17 +22,6 @@ import org.stockwellness.domain.portfolio.strategy.DCAModel;
 import org.stockwellness.domain.portfolio.strategy.LumpSumModel;
 import org.stockwellness.domain.portfolio.strategy.RebalancingStrategy;
 import org.stockwellness.domain.portfolio.vo.ReturnSeries;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 /**
  * 포트폴리오의 과거 수익률을 시뮬레이션하는 백테스트 엔진입니다.

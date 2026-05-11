@@ -1,11 +1,17 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
@@ -16,11 +22,6 @@ import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameExcept
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
@@ -41,7 +42,7 @@ class PortfolioCommandServiceTest {
     private StockPort stockPort;
 
     @Mock
-    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private ApplicationEventPublisher eventPublisher;
 
     private static final Long MEMBER_ID = 1L;
     private static final Long PORTFOLIO_ID = 100L;
@@ -58,7 +59,7 @@ class PortfolioCommandServiceTest {
         given(stockPort.existsByTicker("005930")).willReturn(true);
         given(portfolioPort.savePortfolio(any(Portfolio.class))).willAnswer(invocation -> {
             Portfolio portfolio = invocation.getArgument(0);
-            org.springframework.test.util.ReflectionTestUtils.setField(portfolio, "id", PORTFOLIO_ID);
+            ReflectionTestUtils.setField(portfolio, "id", PORTFOLIO_ID);
             return portfolio;
         });
 

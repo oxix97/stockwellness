@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.batch;
 
-import org.stockwellness.domain.stock.BenchmarkType;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
 public interface BenchmarkPriceSyncUseCase {
 

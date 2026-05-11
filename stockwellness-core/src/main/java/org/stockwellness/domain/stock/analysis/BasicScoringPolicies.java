@@ -1,8 +1,8 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.springframework.stereotype.Component;
-import org.stockwellness.domain.stock.price.AlignmentStatus;
 import java.math.BigDecimal;
+
+import org.springframework.stereotype.Component;
 
 /**
  * 기본 기술적 점수 산출 정책 모음

@@ -1,13 +1,12 @@
 package org.stockwellness.application.service.stock;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.domain.stock.insight.MarketWeatherScore;
-
-import java.time.LocalDate;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MarketWeatherClassifierTest {

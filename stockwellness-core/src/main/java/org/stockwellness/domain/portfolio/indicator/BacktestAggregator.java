@@ -1,13 +1,13 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.stockwellness.application.service.portfolio.internal.BacktestResult;
-import org.stockwellness.domain.portfolio.vo.ReturnSeries;
-import org.stockwellness.domain.stock.BenchmarkType;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.application.service.portfolio.internal.BacktestResult;
+import org.stockwellness.domain.portfolio.vo.ReturnSeries;
+import org.stockwellness.domain.stock.BenchmarkType;
 
 /**
  * 분리된 지표 계산기들을 사용하여 최종 BacktestResult를 조합하는 애그리게이터

@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.persistence.watchlist;
 
+import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.watchlist.WatchlistPort;
@@ -7,9 +10,6 @@ import org.stockwellness.application.port.out.watchlist.dto.WatchlistGroupWithCo
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
-
-import java.util.List;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor

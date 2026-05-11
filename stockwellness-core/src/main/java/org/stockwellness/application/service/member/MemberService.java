@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.member;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,15 +22,7 @@ import org.stockwellness.domain.member.exception.MemberNotFoundException;
 import org.stockwellness.domain.member.exception.NicknameDuplicateException;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import static org.stockwellness.global.error.ErrorCode.*;
 
 @Slf4j

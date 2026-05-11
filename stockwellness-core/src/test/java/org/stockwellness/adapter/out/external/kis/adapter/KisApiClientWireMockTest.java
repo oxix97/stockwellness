@@ -1,10 +1,16 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.List;
+
+import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
@@ -13,15 +19,9 @@ import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.List;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -43,7 +43,7 @@ class KisApiClientWireMockTest {
     private StringRedisTemplate redisTemplate;
 
     @MockitoBean
-    private org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
+    private LettuceConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("만료된 KIS 토큰이면 캐시를 무효화하고 새 토큰으로 1회 재시도한다")
@@ -113,10 +113,10 @@ class KisApiClientWireMockTest {
         assertThat(result.get(0).closePrice()).isEqualByComparingTo("70500");
         verify(redisTemplate).delete("stockwellness:kis:token");
         verify(valueOperations).set("stockwellness:kis:token", "refreshed-token", Duration.ofSeconds(3300));
-        com.github.tomakehurst.wiremock.client.WireMock.verify(1, postRequestedFor(urlEqualTo("/oauth2/tokenP")));
-        com.github.tomakehurst.wiremock.client.WireMock.verify(1, getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
+        WireMock.verify(1, postRequestedFor(urlEqualTo("/oauth2/tokenP")));
+        WireMock.verify(1, getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
                 .withHeader("Authorization", equalTo("Bearer expired-token")));
-        com.github.tomakehurst.wiremock.client.WireMock.verify(1, getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
+        WireMock.verify(1, getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
                 .withHeader("Authorization", equalTo("Bearer refreshed-token")));
     }
 
@@ -182,7 +182,7 @@ class KisApiClientWireMockTest {
 
         verify(redisTemplate, never()).delete("stockwellness:kis:token");
         // 기본 Retry 설정이 maxAttempts=3 이므로 3번 호출되어야 함
-        com.github.tomakehurst.wiremock.client.WireMock.verify(3,
+        WireMock.verify(3,
                 getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
                         .withHeader("Authorization", equalTo("Bearer " + rateLimitToken)));
     }

@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
@@ -14,10 +17,6 @@ import org.springframework.util.StringUtils;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-
-import java.util.Collections;
-import java.util.List;
-
 import static org.stockwellness.domain.stock.QStock.stock;
 
 @RequiredArgsConstructor

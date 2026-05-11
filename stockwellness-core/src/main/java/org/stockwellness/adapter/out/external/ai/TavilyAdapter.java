@@ -1,14 +1,14 @@
 package org.stockwellness.adapter.out.external.ai;
 
+import java.util.List;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.application.port.out.external.SearchApiPort;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component

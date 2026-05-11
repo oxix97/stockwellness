@@ -1,8 +1,9 @@
 package org.stockwellness.application.service.insight;
 
-import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+
+import org.springframework.stereotype.Component;
 
 @Component
 public class WeatherScoreCalculator {

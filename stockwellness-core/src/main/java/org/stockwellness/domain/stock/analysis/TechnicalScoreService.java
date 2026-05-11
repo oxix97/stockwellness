@@ -1,13 +1,13 @@
 package org.stockwellness.domain.stock.analysis;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.stockwellness.domain.stock.price.AlignmentStatus;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.stockwellness.domain.stock.price.AlignmentStatus;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 /**
  * Java 21의 Record와 전략 패턴을 활용한 기술적 점수 산출 서비스

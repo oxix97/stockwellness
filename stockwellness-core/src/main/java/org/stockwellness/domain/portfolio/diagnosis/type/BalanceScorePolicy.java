@@ -1,11 +1,11 @@
 package org.stockwellness.domain.portfolio.diagnosis.type;
 
+import java.util.Arrays;
+import java.util.Set;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.domain.stock.MarketType;
-
-import java.util.Arrays;
-import java.util.Set;
 
 public class BalanceScorePolicy {
 

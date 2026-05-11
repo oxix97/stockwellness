@@ -1,20 +1,20 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.config.JpaConfig;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
@@ -76,7 +76,7 @@ class SectorDailyDetailRepositoryTest {
         return SectorDailyDetail.of(
                 sectorCode,
                 sectorName,
-                new org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot(
+                new SectorDailyDetailSnapshot(
                         sectorCode,
                         baseDate,
                         new BigDecimal("1000.12"),

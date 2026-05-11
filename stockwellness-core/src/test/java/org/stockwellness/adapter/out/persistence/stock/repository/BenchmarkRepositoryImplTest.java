@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +14,6 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.config.JpaConfig;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest

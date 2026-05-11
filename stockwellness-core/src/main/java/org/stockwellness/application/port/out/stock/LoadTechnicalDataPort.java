@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 
 public interface LoadTechnicalDataPort {
     /**

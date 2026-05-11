@@ -1,16 +1,16 @@
 package org.stockwellness.application.service.insight;
 
+import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.application.service.insight.dto.MarketWeatherResponse;
 import org.stockwellness.adapter.out.persistence.insight.MarketWeather;
 import org.stockwellness.adapter.out.persistence.insight.repository.MarketWeatherRepository;
 import org.stockwellness.application.port.in.insight.MarketWeatherUseCase;
+import org.stockwellness.application.service.insight.dto.MarketWeatherResponse;
 import org.stockwellness.domain.stock.insight.WeatherState;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

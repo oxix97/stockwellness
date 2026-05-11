@@ -1,6 +1,10 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.in.portfolio.ManagePortfolioUseCase;
@@ -11,16 +15,11 @@ import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.portfolio.event.PortfolioUpdatedEvent;
 import org.stockwellness.domain.portfolio.exception.DuplicatePortfolioNameException;
 import org.stockwellness.domain.portfolio.exception.PortfolioAccessDeniedException;
 import org.stockwellness.domain.portfolio.exception.PortfolioNotFoundException;
 import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
-
-import java.time.LocalDate;
-import java.util.List;
-
-import org.springframework.context.ApplicationEventPublisher;
-import org.stockwellness.domain.portfolio.event.PortfolioUpdatedEvent;
 
 @Service
 @RequiredArgsConstructor

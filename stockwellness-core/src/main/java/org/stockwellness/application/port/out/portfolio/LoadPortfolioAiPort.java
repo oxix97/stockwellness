@@ -1,7 +1,6 @@
 package org.stockwellness.application.port.out.portfolio;
 
 import org.stockwellness.application.port.in.portfolio.result.PortfolioAiResult;
-import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 
 public interface LoadPortfolioAiPort {
     /**

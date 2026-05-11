@@ -1,4 +1,5 @@
 package org.stockwellness.adapter.in.web;
+
 import org.springframework.stereotype.Component;
 
 @Component

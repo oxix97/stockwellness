@@ -1,5 +1,8 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -10,9 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * KIS 업종 API에서 수집한 원천 일별 스냅샷.

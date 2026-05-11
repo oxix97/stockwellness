@@ -1,11 +1,10 @@
 package org.stockwellness.global.common.response;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.global.error.ErrorCode;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ApiResponseTest {

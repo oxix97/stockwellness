@@ -1,8 +1,5 @@
 package org.stockwellness.application.parser;
 
-import lombok.extern.slf4j.Slf4j;
-import org.stockwellness.domain.stock.insight.MarketIndex;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -10,6 +7,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
+import org.stockwellness.domain.stock.insight.MarketIndex;
 
 /**
  * 업종/지수 마스터 파일(idxcode.mst) 파서

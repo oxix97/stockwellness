@@ -1,12 +1,15 @@
 package org.stockwellness.application.service.watchlist;
 
+import java.util.List;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistGroupResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse.WatchlistItemDetail;
-import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.application.port.out.member.LoadMemberPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
@@ -18,9 +21,6 @@ import org.stockwellness.domain.watchlist.WatchlistGroup;
 import org.stockwellness.domain.watchlist.WatchlistItem;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor

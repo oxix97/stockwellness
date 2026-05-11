@@ -1,5 +1,12 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +31,6 @@ import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.util.FinanceCalculationUtil;
 import org.stockwellness.global.util.PortfolioMapperUtil;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 포트폴리오 분석 서비스
@@ -309,7 +310,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             return new PortfolioInceptionChartResult(inceptionDate, 0, List.of(), List.of());
         }
 
-        long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(inceptionDate, LocalDate.now());
+        long daysElapsed = ChronoUnit.DAYS.between(inceptionDate, LocalDate.now());
 
         Map<String, BigDecimal> finalBenchmarkReturns = dailyResults.get(dailyResults.size() - 1).benchmarkReturnRates();
         List<PortfolioInceptionChartResult.IndexComparison> comparisons = benchmarks.stream()

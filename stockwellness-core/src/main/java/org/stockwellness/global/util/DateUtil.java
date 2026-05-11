@@ -1,16 +1,17 @@
 package org.stockwellness.global.util;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-
-import java.time.Duration;
+import java.sql.Date;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * 전역 날짜/시간 유틸리티 클래스.
@@ -59,11 +60,11 @@ public class DateUtil {
     /**
      * LocalDate를 java.sql.Date로 변환합니다. (JDBC 연동용)
      */
-    public static java.sql.Date toSqlDate(LocalDate date) {
+    public static Date toSqlDate(LocalDate date) {
         if (date == null) {
             return null;
         }
-        return java.sql.Date.valueOf(date);
+        return Date.valueOf(date);
     }
 
     /**

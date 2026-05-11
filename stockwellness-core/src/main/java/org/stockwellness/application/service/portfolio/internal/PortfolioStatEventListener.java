@@ -1,18 +1,16 @@
 package org.stockwellness.application.service.portfolio.internal;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.service.portfolio.PortfolioStatBatchService;
-import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.event.PortfolioUpdatedEvent;
-
-import java.util.List;
 
 /**
  * 포트폴리오 변경 이벤트를 구독하여 실시간으로 통계 지표를 재계산하는 리스너입니다.

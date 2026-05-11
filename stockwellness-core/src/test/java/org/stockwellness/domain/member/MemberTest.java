@@ -8,7 +8,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.stockwellness.domain.member.exception.InvalidEmailException;
 import org.stockwellness.domain.member.exception.MemberDomainException;
 import org.stockwellness.domain.shared.Email;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

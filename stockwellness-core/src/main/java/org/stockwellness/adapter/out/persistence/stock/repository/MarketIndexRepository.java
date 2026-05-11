@@ -1,11 +1,11 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.stockwellness.domain.stock.insight.MarketIndex;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.stockwellness.domain.stock.insight.MarketIndex;
 
 public interface MarketIndexRepository extends JpaRepository<MarketIndex, Long> {
 

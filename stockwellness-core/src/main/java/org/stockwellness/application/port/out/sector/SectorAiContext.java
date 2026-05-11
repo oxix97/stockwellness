@@ -1,12 +1,12 @@
 package org.stockwellness.application.port.out.sector;
 
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.analysis.TrendStatus;
-import org.stockwellness.domain.stock.insight.LeadingStock;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.analysis.TrendStatus;
+import org.stockwellness.domain.stock.insight.LeadingStock;
 
 /**
  * 섹터 AI 분석을 위한 데이터 컨텍스트 (Port Out)

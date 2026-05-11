@@ -1,12 +1,12 @@
 package org.stockwellness.global.util;
 
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
 /**
  * 순수 금융 수치 계산을 위한 유틸리티
@@ -20,7 +20,7 @@ public class FinanceCalculationUtil {
         if (denominator == null || denominator.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return numerator.divide(denominator, new java.math.MathContext(16))
+        return numerator.divide(denominator, new MathContext(16))
                 .multiply(BigDecimal.valueOf(100));
     }
 
@@ -40,7 +40,7 @@ public class FinanceCalculationUtil {
             BigDecimal prev = sorted.get(i - 1);
             if (prev.compareTo(BigDecimal.ZERO) > 0) {
                 returns.add(sorted.get(i).subtract(prev)
-                        .divide(prev, new java.math.MathContext(16))
+                        .divide(prev, new MathContext(16))
                         .multiply(BigDecimal.valueOf(100)));
             }
         }

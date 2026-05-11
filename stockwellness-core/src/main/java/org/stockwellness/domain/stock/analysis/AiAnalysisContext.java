@@ -1,10 +1,10 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 public record AiAnalysisContext(
         String isinCode,            // 종목 코드
