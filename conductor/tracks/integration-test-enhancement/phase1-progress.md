@@ -13,10 +13,10 @@
 - **조치:** 현재는 코드 작성 단계까지 완료하였으며, 테스트 실행 환경 문제는 별도의 인프라/설정 개선 작업으로 분리하여 해결 권장.
 
 ## 3. 남은 작업 (Phase 1)
-- [ ] `SectorRepositoryTest` 작성
-- [ ] `WatchlistRepositoryTest` 작성
-- [ ] QueryDSL 기반 복잡한 쿼리(필터링, N+1 방지 등) 검증 테스트 보강
-- [ ] 테스트 실행 환경 안정화 (빈 주입 오류 해결)
+- [x] `SectorRepositoryTest` 작성
+- [x] `WatchlistRepositoryTest` 작성
+- [x] QueryDSL 기반 복잡한 쿼리(필터링, N+1 방지 등) 검증 테스트 보강
+- [x] 테스트 실행 환경 안정화 (빈 주입 오류 해결)
 
 ## 4. 향후 계획
 - Phase 2: API End-to-End 통합 테스트 (`stockwellness-api`)

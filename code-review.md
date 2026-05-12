@@ -24,3 +24,36 @@
 ## 4. Assessment
 - **Score: 90/100**
 - 전반적으로 프로젝트의 기술 스택에 부합하는 깔끔하고 효율적인 구현임. 특히 비동기 알림 처리와 상세한 에러 컨텍스트 수집은 운영 단계에서 매우 유용할 것으로 판단됨. 보안 측면에서의 데이터 마스킹만 보완한다면 상용 수준의 견고한 알림 시스템이 될 것임.
+
+---
+
+# Code Review — Task 3 공통 SlackNotificationService 구현
+
+## 요약
+`NotificationContext`와 `SlackMessageBuilder`를 도입하여 구조화된 Slack Block Kit 메시지를 비동기로 전송하는 공통 서비스를 구현했습니다.
+
+## 심각도 기준
+- 🔴 BLOCKER: 머지 전 반드시 수정
+- 🟡 MAJOR: 강력 권고 수정
+- 🟢 MINOR: 선택적 개선
+
+## 리뷰 항목
+
+### 🟡 MAJOR
+1. **모듈 간 의존성 및 빈 설정 불일치**: `SlackNotificationService`는 `core` 모듈에 위치하지만, 이를 위해 필요한 `alertExecutor`와 `slackRestClient` 빈은 `api` 모듈의 `ApiAsyncConfig`에만 정의되어 있습니다. 이로 인해 `batch` 모듈 등에서 해당 서비스를 주입받으려 할 때 `NoSuchBeanDefinitionException`이 발생하게 됩니다.
+   - **권장 사항**: 해당 인프라 빈 설정(`Executor`, `RestClient`)을 `core` 모듈 내의 공통 설정 클래스(예: `org.stockwellness.config.SlackConfig`)로 이동하거나, 각 모듈에서 중복 정의되지 않도록 구조를 개선해야 합니다.
+
+2. **Slack Block Kit 필드 개수 제한**: `SlackMessageBuilder`에서 `NotificationContext`의 `details`와 기본 필드들을 하나의 `section` 블록의 `fields` 배열에 모두 추가하고 있습니다. Slack API 명세상 한 `section` 내의 `fields`는 최대 10개까지만 허용됩니다. `details`가 많아질 경우 전송이 실패할 수 있습니다.
+   - **권장 사항**: `fields`의 개수가 10개를 초과할 경우 여러 개의 `section` 블록으로 나누어 생성하도록 로직을 보완해야 합니다.
+
+3. **테스트 커버리지 부족**: `SlackMessageBuilder`에 대한 단위 테스트는 잘 작성되어 있으나, `SlackNotificationService` 자체에 대한 테스트가 누락되었습니다. 비동기 동작 및 `RestClient` 호출 로직에 대한 검증이 필요합니다.
+
+### 🟢 MINOR
+1. **활성 프로필 표기 로직**: `env.getProperty("spring.profiles.active")`는 여러 프로필이 설정된 경우 콤마로 구분된 문자열(예: `dev,local`)을 반환합니다. 헤더에 표시할 때 첫 번째 프로필만 추출하거나 더 깔끔하게 포맷팅하는 것을 고려해 보세요.
+2. **URI 생성 예외 처리**: `URI.create(properties.webhookUrl())` 호출 시 URL 형식이 잘못되면 `IllegalArgumentException`이 발생합니다. 현재는 `catch (Exception ex)`에서 처리되고 있으나, 빈 설정 시점이나 프로퍼티 로딩 시점에 유효성을 검증하는 것이 더 안전합니다.
+3. **기존 서비스 정리**: `api` 모듈에 기존 `SlackAlertService`가 잔류하고 있습니다. 신규 서비스로 완전히 대체 가능하다면 `@Deprecated`를 붙이거나 삭제 일정을 확정하는 것이 좋습니다.
+
+## 결론
+구조적으로 잘 분리된 알림 엔진입니다. 다만, 공통 모듈(`core`)로서의 역할을 온전히 수행하기 위해 인프라 빈 설정의 위치를 조정하고, Slack API의 제약 사항(Max 10 fields)을 고려한 방어 로직을 추가하면 완벽할 것 같습니다.
+
+**STATUS: REQUEST CHANGES (Major issues found)**

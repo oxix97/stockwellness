@@ -68,6 +68,28 @@ BASE_URL=http://host.docker.internal:8080
 
 실서버용 전체 예시는 [k6/.env.live.example](/Users/chan/Desktop/gongbu/stockwellness-project/stockwellness/k6/.env.live.example) 참고.
 
+## 결과 시각화 (Visualization)
+측정된 Before/After 성과를 직관적으로 비교하기 위해 Python 기반의 차트 생성 도구를 제공합니다.
+
+### 1. 사전 준비
+Python 3.x가 설치되어 있어야 하며, 필요한 라이브러리를 설치합니다.
+```bash
+pip install -r k6/requirements.txt
+```
+
+### 2. 차트 생성 실행
+`results/` 디렉토리에 `[시나리오명]-before-*.json` 및 `[시나리오명]-after-*.json` 파일들이 존재해야 합니다.
+```bash
+python k6/generate_charts.py
+```
+
+### 3. 결과 확인
+`k6/results/charts/` 디렉토리에 각 시나리오별로 다음 두 종류의 차트가 생성됩니다.
+- `[시나리오명]-latency.png`: p95 응답 속도 비교 (낮을수록 우수)
+- `[시나리오명]-throughput.png`: 총 처리량 비교 (높을수록 우수)
+
+생성된 차트에는 성능 개선율(%)이 자동으로 계산되어 표시됩니다.
+
 ## 시나리오 명명 기준
 실행 기준 이름은 아래로 통일한다.
 
