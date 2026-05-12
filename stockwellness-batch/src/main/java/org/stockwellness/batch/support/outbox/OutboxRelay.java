@@ -1,5 +1,7 @@
 package org.stockwellness.batch.support.outbox;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -8,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.out.outbox.OutboxEventPublisherPort;
 import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.domain.outbox.OutboxEvent;
-
-import java.util.List;
 
 @Slf4j
 @Component

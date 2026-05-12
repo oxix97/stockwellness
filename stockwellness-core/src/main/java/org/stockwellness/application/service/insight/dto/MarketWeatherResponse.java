@@ -1,10 +1,9 @@
 package org.stockwellness.application.service.insight.dto;
 
-import lombok.Builder;
-import org.stockwellness.domain.stock.insight.WeatherState;
-
 import java.time.LocalDate;
 import java.util.List;
+
+import lombok.Builder;
 
 @Builder
 public record MarketWeatherResponse(

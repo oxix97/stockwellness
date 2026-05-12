@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.in.web.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
@@ -14,14 +19,7 @@ import org.stockwellness.application.port.in.stock.StockUseCase;
 import org.stockwellness.application.port.in.stock.result.*;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.support.RestDocsSupport;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;

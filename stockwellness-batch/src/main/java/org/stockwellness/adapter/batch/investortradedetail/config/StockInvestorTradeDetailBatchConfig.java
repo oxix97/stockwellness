@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.batch.investortradedetail.config;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -14,18 +17,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.application.service.batch.StockInvestorTradeDetailBatchService;
 import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.adapter.batch.investortradedetail.step.processor.StockInvestorTradeDetailProcessor;
 import org.stockwellness.adapter.batch.investortradedetail.step.reader.StockInvestorTradeDetailReader;
 import org.stockwellness.adapter.batch.investortradedetail.step.tasklet.StockInvestorTradeDetailValidationTasklet;
 import org.stockwellness.adapter.batch.investortradedetail.step.writer.StockInvestorTradeDetailWriter;
+import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.application.service.batch.StockInvestorTradeDetailBatchService;
 import org.stockwellness.batch.support.BatchMdcListener;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
+import org.stockwellness.global.util.DateUtil;
 
 @Slf4j
 @Configuration
@@ -115,10 +116,10 @@ public class StockInvestorTradeDetailBatchConfig {
 
     private LocalDate parseTargetDate(String targetDateStr) {
         if (targetDateStr == null || targetDateStr.isBlank()) {
-            return org.stockwellness.global.util.DateUtil.today();
+            return DateUtil.today();
         }
         try {
-            return org.stockwellness.global.util.DateUtil.parseFlexible(targetDateStr);
+            return DateUtil.parseFlexible(targetDateStr);
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException("잘못된 targetDate 형식입니다: " + targetDateStr, exception);
         }

@@ -1,8 +1,8 @@
 package org.stockwellness.global.common.response;
 
-import org.springframework.data.domain.Slice;
-
 import java.util.List;
+
+import org.springframework.data.domain.Slice;
 
 public record SliceResponse<T>(
         List<T> content,

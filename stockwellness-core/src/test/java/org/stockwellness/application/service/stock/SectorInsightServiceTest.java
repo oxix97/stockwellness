@@ -1,5 +1,9 @@
 package org.stockwellness.application.service.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,19 +12,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
+import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
+import org.stockwellness.global.error.ErrorCode;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
-import org.stockwellness.global.error.ErrorCode;
 
 @ExtendWith(MockitoExtension.class)
 class SectorInsightServiceTest {

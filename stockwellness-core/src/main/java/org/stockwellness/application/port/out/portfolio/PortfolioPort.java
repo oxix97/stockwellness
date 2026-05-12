@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.out.portfolio;
 
-import org.stockwellness.domain.portfolio.Portfolio;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.stockwellness.domain.portfolio.Portfolio;
 
 public interface PortfolioPort {
     // Load methods

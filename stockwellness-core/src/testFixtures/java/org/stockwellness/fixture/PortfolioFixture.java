@@ -1,17 +1,17 @@
 package org.stockwellness.fixture;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.test.util.ReflectionTestUtils;
+import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
-import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 public class PortfolioFixture {
 

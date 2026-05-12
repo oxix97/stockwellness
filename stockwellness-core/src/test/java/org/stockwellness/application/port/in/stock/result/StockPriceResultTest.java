@@ -1,8 +1,9 @@
 package org.stockwellness.application.port.in.stock.result;
 
-import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+
+import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StockPriceResultTest {

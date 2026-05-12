@@ -15,7 +15,7 @@
 **Files:**
 - Create: `k6/scenarios/data-setup.js`
 
-- [ ] **Step 1: 통합 데이터 셋업 스크립트 작성**
+- [x] **Step 1: 통합 데이터 셋업 스크립트 작성**
 
 새로운 파일 `k6/scenarios/data-setup.js`를 생성하고 다음 코드를 작성합니다:
 

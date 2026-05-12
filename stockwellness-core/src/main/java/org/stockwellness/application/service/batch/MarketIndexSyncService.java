@@ -1,5 +1,12 @@
 package org.stockwellness.application.service.batch;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -7,13 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.application.parser.MarketIndexMstParser;
 import org.stockwellness.domain.stock.insight.MarketIndex;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service

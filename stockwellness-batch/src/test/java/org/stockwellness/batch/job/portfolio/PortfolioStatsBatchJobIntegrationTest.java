@@ -16,7 +16,6 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.fixture.MemberFixture;
 import org.stockwellness.support.BatchIntegrationTestSupport;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("PortfolioStatsBatchJob 통합 테스트")

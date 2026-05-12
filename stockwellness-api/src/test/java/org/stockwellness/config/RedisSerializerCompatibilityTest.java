@@ -1,5 +1,10 @@
 package org.stockwellness.config;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
@@ -7,12 +12,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

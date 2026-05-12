@@ -1,5 +1,9 @@
 package org.stockwellness.global.logging;
 
+import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,9 +13,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(classes = LoggingAspectTest.TestConfig.class)
@@ -57,9 +58,9 @@ class LoggingAspectTest {
                 .build();
 
         // When
-        com.fasterxml.jackson.databind.ObjectMapper mapper = MaskingObjectMapper.create();
+        ObjectMapper mapper = MaskingObjectMapper.create();
         String json = mapper.writeValueAsString(dto);
-        Map<String, Object> resultMap = mapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+        Map<String, Object> resultMap = mapper.readValue(json, new TypeReference<>() {});
 
         // Then
         assertThat(resultMap.get("username")).isEqualTo("user1");

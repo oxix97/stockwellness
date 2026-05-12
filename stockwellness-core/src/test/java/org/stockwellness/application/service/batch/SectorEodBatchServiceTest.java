@@ -1,5 +1,11 @@
 package org.stockwellness.application.service.batch;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,13 +26,6 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorIndicators;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.price.StockPrice;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;

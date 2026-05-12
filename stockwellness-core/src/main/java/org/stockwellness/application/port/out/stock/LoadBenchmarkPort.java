@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
 public interface LoadBenchmarkPort {
     /**

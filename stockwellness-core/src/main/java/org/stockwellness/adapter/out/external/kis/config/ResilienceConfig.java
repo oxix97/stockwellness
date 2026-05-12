@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.out.external.kis.config;
 
+import java.time.Duration;
+
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterConfig;
@@ -13,8 +15,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClientException;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.adapter.out.external.kis.exception.KisAuthenticationException;
-
-import java.time.Duration;
 
 @Configuration
 public class ResilienceConfig {

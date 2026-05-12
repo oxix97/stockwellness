@@ -3,7 +3,6 @@ package org.stockwellness.global.error.exception;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.global.error.ErrorCode;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BusinessExceptionTest {

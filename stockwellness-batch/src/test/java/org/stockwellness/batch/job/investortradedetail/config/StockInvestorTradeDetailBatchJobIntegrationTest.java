@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.support.BatchIntegrationTestSupport;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("StockInvestorTradeDetailJob 통합 테스트")

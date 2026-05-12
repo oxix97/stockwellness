@@ -1,12 +1,11 @@
 package org.stockwellness.domain.stock.analysis;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
-
-import java.math.BigDecimal;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("기본 기술적 점수 정책 단위 테스트")

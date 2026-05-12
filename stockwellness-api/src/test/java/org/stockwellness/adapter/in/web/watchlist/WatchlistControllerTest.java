@@ -1,5 +1,9 @@
 package org.stockwellness.adapter.in.web.watchlist;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
@@ -8,16 +12,11 @@ import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.in.web.watchlist.dto.*;
+import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistGroupResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
-import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;

@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.stockwellness.domain.shared.AbstractEntity;
-
 import static lombok.AccessLevel.PROTECTED;
 
 @Getter

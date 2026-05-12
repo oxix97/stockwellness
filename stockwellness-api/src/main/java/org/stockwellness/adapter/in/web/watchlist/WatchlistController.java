@@ -1,5 +1,7 @@
 package org.stockwellness.adapter.in.web.watchlist;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -7,14 +9,12 @@ import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.watchlist.dto.AddWatchlistItemRequest;
 import org.stockwellness.adapter.in.web.watchlist.dto.CreateWatchlistGroupRequest;
 import org.stockwellness.adapter.in.web.watchlist.dto.UpdateWatchlistItemNoteRequest;
+import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistGroupResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
-import org.stockwellness.application.port.in.watchlist.WatchlistUseCase;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.common.response.SuccessCode;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/watchlist")

@@ -1,5 +1,13 @@
 package org.stockwellness.application.service.stock;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,21 +19,12 @@ import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.application.port.out.stock.*;
 import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.insight.SectorInsight;
-import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.domain.stock.analysis.DiagnosisStatus;
+import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
+import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
 import org.stockwellness.global.error.ErrorCode;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -180,7 +179,7 @@ public class SectorInsightService implements SectorInsightUseCase {
     }
 
     private String generateDiagnosisMessage(SectorInsight insight) {
-        TechnicalIndicators indicators = insight.getTechnicalIndicators();
+        SectorTechnicalIndicators indicators = insight.getTechnicalIndicators();
         if (indicators == null || indicators.getRsi14() == null) return DiagnosisStatus.DATA_INSUFFICIENT.getMessage();
 
         boolean rsiOver = indicators.getRsi14().compareTo(new BigDecimal("70")) > 0;

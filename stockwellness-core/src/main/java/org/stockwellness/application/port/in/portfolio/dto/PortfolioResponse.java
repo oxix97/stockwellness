@@ -1,13 +1,13 @@
 package org.stockwellness.application.port.in.portfolio.dto;
 
-import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.stock.Stock;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+
+import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.stock.Stock;
 
 public record PortfolioResponse(
         Long id,

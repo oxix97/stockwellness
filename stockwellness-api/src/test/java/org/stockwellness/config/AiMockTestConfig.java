@@ -8,7 +8,6 @@ import org.stockwellness.adapter.out.external.ai.OpenAiAdapter;
 import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
 import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
-
 import static org.mockito.Mockito.withSettings;
 
 @TestConfiguration

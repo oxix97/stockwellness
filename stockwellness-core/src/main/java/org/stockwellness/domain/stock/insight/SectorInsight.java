@@ -1,5 +1,10 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -8,12 +13,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 사용자 조회와 분석 결과 제공을 위한 섹터 집계 엔티티.
@@ -48,7 +47,7 @@ public class SectorInsight extends AbstractEntity {
     private SectorIndicators indicators;
 
     @Embedded
-    private TechnicalIndicators technicalIndicators;
+    private SectorTechnicalIndicators technicalIndicators;
 
     private boolean isOverheated = false;
 
@@ -65,7 +64,7 @@ public class SectorInsight extends AbstractEntity {
             MarketType marketType,
             LocalDate baseDate,
             SectorIndicators indicators,
-            TechnicalIndicators technicalIndicators,
+            SectorTechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
         var entity = new SectorInsight();
@@ -89,7 +88,7 @@ public class SectorInsight extends AbstractEntity {
 
     public void update(
             SectorIndicators indicators,
-            TechnicalIndicators technicalIndicators,
+            SectorTechnicalIndicators technicalIndicators,
             boolean isOverheated
     ) {
         this.indicators = indicators;

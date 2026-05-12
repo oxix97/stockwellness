@@ -1,5 +1,7 @@
 package org.stockwellness.application.service.insight;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,8 +15,6 @@ import org.stockwellness.application.port.out.external.SearchApiPort;
 import org.stockwellness.application.port.out.messaging.MarketScoreCalculatedEvent;
 import org.stockwellness.application.port.out.sector.WeatherInsightPort;
 import org.stockwellness.domain.stock.insight.WeatherState;
-
-import java.util.List;
 
 @Slf4j
 @Service

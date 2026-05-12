@@ -11,7 +11,6 @@ import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
 @RequiredArgsConstructor
 public class StockwellnessScheduler {
 
-    //    private final DailyBatchOrchestrationService dailyBatchOrchestrationService;
     private final AdvisorOrchestrator advisorOrchestrator;
     private final DailyBatchOrchestrator dailyBatchOrchestrator;
 
@@ -23,7 +22,6 @@ public class StockwellnessScheduler {
         dailyBatchOrchestrator.runDailyStockSync();
         dailyBatchOrchestrator.runDailySectorInsightSync();
         dailyBatchOrchestrator.runDailyMarketSync();
-//        dailyBatchOrchestrationService.runDailyFullSync();
     }
 
     @Scheduled(cron = "0 15 16 * * MON-FRI", zone = "America/New_York")

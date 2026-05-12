@@ -1,8 +1,8 @@
 package org.stockwellness.domain.auth;
 
-import org.stockwellness.global.util.DateUtil;
-
 import java.time.LocalDateTime;
+
+import org.stockwellness.global.util.DateUtil;
 
 public record RefreshToken(
         Long memberId,

@@ -1,5 +1,8 @@
 package org.stockwellness.batch.job.sector.step;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,13 +10,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.stockwellness.adapter.batch.sector.step.reader.SectorMarketIndexItemReader;
 import org.stockwellness.application.port.out.stock.MarketIndexPort;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
-import org.stockwellness.adapter.batch.sector.step.reader.SectorMarketIndexItemReader;
 import org.stockwellness.domain.stock.insight.MarketIndex;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -50,7 +50,7 @@ class SectorMarketIndexItemReaderTest {
         assertThat(second.getIndexCode()).isEqualTo("1014");
         assertThat(third).isNull();
         verify(sectorDailyDetailPort).deleteByBaseDateAndSectorCodeNotIn(
-                java.time.LocalDate.of(2026, 4, 9),
+                LocalDate.of(2026, 4, 9),
                 List.of("0002", "1014")
         );
     }
@@ -69,7 +69,7 @@ class SectorMarketIndexItemReaderTest {
         assertThat(first.getIndexCode()).isEqualTo("0002");
         assertThat(second).isNull();
         verify(sectorDailyDetailPort).deleteByBaseDateAndSectorCodeNotIn(
-                java.time.LocalDate.of(2026, 4, 9),
+                LocalDate.of(2026, 4, 9),
                 List.of("0002")
         );
     }

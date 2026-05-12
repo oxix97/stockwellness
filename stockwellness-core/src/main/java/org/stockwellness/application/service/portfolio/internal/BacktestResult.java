@@ -2,6 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,7 @@ public record BacktestResult(
 ) {
     public static BacktestResult empty() {
         return new BacktestResult(
-            java.util.Collections.emptyList(),
+            Collections.emptyList(),
             BigDecimal.ZERO, // cagr
             BigDecimal.ZERO, // mdd
             BigDecimal.ZERO, // relativeMdd
@@ -34,8 +35,8 @@ public record BacktestResult(
             BigDecimal.ZERO, // beta
             BigDecimal.ZERO, // bestYearRate
             BigDecimal.ZERO, // worstYearRate
-            java.util.Collections.emptyMap(),
-            java.util.Collections.emptyList(),
+            Collections.emptyMap(),
+            Collections.emptyList(),
             null
         );
     }

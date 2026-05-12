@@ -1,7 +1,5 @@
 package org.stockwellness.application.parser;
 
-import org.stockwellness.domain.stock.KospiItem;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -10,6 +8,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.stockwellness.domain.stock.KospiItem;
 
 /**
  * 코스피 종목 마스터 파일(kospi_code.mst) 파서

@@ -1,8 +1,16 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.retry.Retry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,15 +25,6 @@ import org.stockwellness.application.port.out.stock.SectorDailySnapshot;
 import org.stockwellness.application.port.out.stock.SectorDataPort;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
 import org.stockwellness.global.error.ErrorCode;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component

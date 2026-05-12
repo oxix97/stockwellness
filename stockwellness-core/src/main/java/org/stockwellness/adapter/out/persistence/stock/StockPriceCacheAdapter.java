@@ -1,12 +1,12 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor

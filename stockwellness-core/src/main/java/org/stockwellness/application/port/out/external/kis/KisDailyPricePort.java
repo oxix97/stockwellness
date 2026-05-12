@@ -1,9 +1,10 @@
 package org.stockwellness.application.port.out.external.kis;
 
-import org.stockwellness.adapter.out.external.kis.dto.*;
-import org.stockwellness.domain.stock.Stock;
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.adapter.out.external.kis.dto.*;
+import org.stockwellness.domain.stock.Stock;
 
 public interface KisDailyPricePort {
     List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);

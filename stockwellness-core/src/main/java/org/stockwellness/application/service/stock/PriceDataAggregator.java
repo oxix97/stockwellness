@@ -1,8 +1,5 @@
 package org.stockwellness.application.service.stock;
 
-import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -11,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
 /**
  * 일봉 데이터를 주봉/월봉으로 변환하는 유틸리티 클래스

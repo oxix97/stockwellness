@@ -1,11 +1,11 @@
 package org.stockwellness.application.port.in.member.result;
 
+import java.time.LocalDateTime;
+
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.member.RiskLevel;
-
-import java.time.LocalDateTime;
 
 public record MemberResult(
         Long id,

@@ -1,5 +1,11 @@
 package org.stockwellness.domain.stock.analysis;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
@@ -16,13 +22,6 @@ import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.num.Num;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import static org.stockwellness.global.util.QuantMapper.toBigDecimal;
 
 /**

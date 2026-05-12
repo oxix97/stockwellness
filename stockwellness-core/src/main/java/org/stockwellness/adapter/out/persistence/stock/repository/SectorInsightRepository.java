@@ -1,16 +1,16 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.SectorInsight;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
 
 public interface SectorInsightRepository extends JpaRepository<SectorInsight, Long>, SectorInsightRepositoryCustom {
     Optional<SectorInsight> findBySectorCodeAndBaseDate(String sectorCode, LocalDate baseDate);

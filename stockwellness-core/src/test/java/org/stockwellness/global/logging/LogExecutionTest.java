@@ -1,11 +1,11 @@
 package org.stockwellness.global.logging;
 
-import org.junit.jupiter.api.Test;
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.annotation.ElementType;
 
+import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LogExecutionTest {

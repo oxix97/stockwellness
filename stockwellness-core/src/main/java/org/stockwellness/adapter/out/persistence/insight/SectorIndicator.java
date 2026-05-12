@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.out.persistence.insight;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -8,9 +11,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Getter
 @Entity

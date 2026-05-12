@@ -1,14 +1,14 @@
 package org.stockwellness.adapter.batch.benchmarkprice.step.reader;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.item.ItemReader;
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
-import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
-import org.stockwellness.domain.stock.BenchmarkType;
-
 import java.time.LocalDate;
 import java.util.*;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemReader;
+import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
+import org.stockwellness.domain.stock.BenchmarkType;
 
 /**
  * [Reader] 모든 BenchmarkType을 순회하며 KIS API로부터 시세를 읽어오는 클래스

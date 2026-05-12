@@ -1,5 +1,7 @@
 package org.stockwellness.application.service.member;
 
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,9 +15,6 @@ import org.stockwellness.domain.member.RiskLevel;
 import org.stockwellness.fixture.MemberFixture;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
-
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 

@@ -1,15 +1,18 @@
 package org.stockwellness.adapter.in.web.admin;
 
+import java.util.Map;
+
+import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.boot.actuate.health.CompositeHealth;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
-
-import java.util.Map;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.BDDMockito.given;
@@ -34,8 +37,8 @@ class AdminHealthControllerTest extends RestDocsSupport {
     @DisplayName("시스템 상태 조회: DB, Redis, Kafka 연결 상태를 확인한다")
     void get_health() throws Exception {
         // given
-        org.springframework.boot.actuate.health.CompositeHealth mockHealth = mock(org.springframework.boot.actuate.health.CompositeHealth.class);
-        given(mockHealth.getStatus()).willReturn(org.springframework.boot.actuate.health.Status.UP);
+        CompositeHealth mockHealth = mock(CompositeHealth.class);
+        given(mockHealth.getStatus()).willReturn(Status.UP);
         given(mockHealth.getComponents()).willReturn(Map.of(
                 "db", Health.up().build(),
                 "redis", Health.up().build(),
@@ -54,7 +57,7 @@ class AdminHealthControllerTest extends RestDocsSupport {
                 .andExpect(jsonPath("$.code").value("S000"))
                 .andExpect(jsonPath("$.data.status").value("UP"))
                 .andDo(document("admin-health",
-                        resource(com.epages.restdocs.apispec.ResourceSnippetParameters.builder()
+                        resource(ResourceSnippetParameters.builder()
                                 .tag("Admin")
                                 .summary("시스템 헬스 체크")
                                 .description("DB, Redis, Kafka의 연결 상태를 통합 조회합니다.")
@@ -76,6 +79,6 @@ class AdminHealthControllerTest extends RestDocsSupport {
     }
     
     private <T> T mock(Class<T> type) {
-        return org.mockito.Mockito.mock(type);
+        return Mockito.mock(type);
     }
 }

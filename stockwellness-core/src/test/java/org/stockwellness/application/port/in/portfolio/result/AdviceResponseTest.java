@@ -1,11 +1,10 @@
 package org.stockwellness.application.port.in.portfolio.result;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.portfolio.advisor.AdviceAction;
-
-import java.time.LocalDateTime;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("AdviceResponse DTO 단위 테스트")

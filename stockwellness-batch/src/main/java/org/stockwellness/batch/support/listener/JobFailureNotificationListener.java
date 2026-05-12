@@ -1,5 +1,10 @@
 package org.stockwellness.batch.support.listener;
 
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
@@ -8,11 +13,6 @@ import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.notification.NotificationPort;
-
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * 모든 배치 Job에 공통으로 적용 가능한 실패 알림 리스너.

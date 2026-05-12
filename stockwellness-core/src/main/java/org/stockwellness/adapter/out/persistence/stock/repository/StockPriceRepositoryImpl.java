@@ -1,5 +1,13 @@
 package org.stockwellness.adapter.out.persistence.stock.repository;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -16,14 +24,6 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import static org.stockwellness.domain.stock.QStock.stock;
 import static org.stockwellness.domain.stock.price.QStockInvestorTrade.stockInvestorTrade;
 import static org.stockwellness.domain.stock.price.QStockPrice.stockPrice;
@@ -329,7 +329,7 @@ public class StockPriceRepositoryImpl implements StockPriceRepositoryCustom {
         if (total.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return BigDecimal.valueOf(count).divide(total, 4, java.math.RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(count).divide(total, 4, RoundingMode.HALF_UP);
     }
 
     @Override

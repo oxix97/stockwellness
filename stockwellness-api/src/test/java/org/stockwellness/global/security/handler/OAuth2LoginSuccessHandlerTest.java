@@ -1,5 +1,9 @@
 package org.stockwellness.global.security.handler;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.Collections;
+
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,11 +16,6 @@ import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.io.IOException;
-import java.time.LocalDate;
-import java.util.Collections;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;

@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.out.kafka.batch;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -20,13 +26,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.config.TestNotificationConfig;
 import org.stockwellness.domain.stock.event.StockPriceUpdatedEvent;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = "slack.webhook.url=http://localhost/test-webhook")

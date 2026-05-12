@@ -1,19 +1,19 @@
 package org.stockwellness.application.service.stock;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
-import org.stockwellness.domain.stock.insight.SectorDailyDetail;
-import org.stockwellness.domain.stock.*;
-import org.stockwellness.domain.stock.insight.LeadingStock;
-import org.stockwellness.domain.stock.insight.MarketIndex;
-import org.stockwellness.domain.stock.insight.SectorInsight;
-import org.stockwellness.domain.stock.price.StockPrice;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.adapter.out.external.kis.dto.SectorApiDto;
+import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
+import org.stockwellness.domain.stock.*;
+import org.stockwellness.domain.stock.insight.LeadingStock;
+import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.SectorDailyDetail;
+import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.price.StockPrice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -84,7 +84,7 @@ class SectorAnalysisServiceTest {
         SectorDailyDetail detail = SectorDailyDetail.of(
                 "0029",
                 "전기전자",
-                new org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot(
+                new SectorDailyDetailSnapshot(
                         "0029",
                         today,
                         new BigDecimal("1000.12"),

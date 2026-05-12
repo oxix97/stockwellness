@@ -1,11 +1,11 @@
 package org.stockwellness.global.security.userinfo;
 
+import java.util.Map;
+
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.global.security.userinfo.google.GoogleOAuth2Response;
 import org.stockwellness.global.security.userinfo.kakao.KakaoOAuth2Response;
-
-import java.util.Map;
 
 public class OAuth2UserInfoFactory {
     public static OAuth2UserInfo getOAuth2UserInfo(LoginType loginType, Map<String, Object> attributes) {

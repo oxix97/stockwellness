@@ -1,12 +1,11 @@
 package org.stockwellness.domain.stock.price;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-import org.stockwellness.domain.stock.exception.InvalidPeriodException;
-
 import java.time.LocalDate;
 import java.util.function.Function;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.stockwellness.domain.stock.exception.InvalidPeriodException;
 
 /**
  * 차트 조회 기간 및 시작일 계산 로직을 관리하는 Enum

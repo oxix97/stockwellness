@@ -1,12 +1,13 @@
 package org.stockwellness.adapter.batch.stockprice.step.writer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.stockwellness.domain.stock.price.StockPrice;
-import java.util.ArrayList;
-import java.util.List;
 
 @RequiredArgsConstructor
 public class StockPriceListWriter implements ItemWriter<List<StockPrice>> {

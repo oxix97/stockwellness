@@ -4,23 +4,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
+import org.stockwellness.adapter.in.web.watchlist.dto.AddWatchlistItemRequest;
+import org.stockwellness.adapter.in.web.watchlist.dto.CreateWatchlistGroupRequest;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.adapter.out.persistence.watchlist.WatchlistGroupRepository;
-import org.stockwellness.adapter.in.web.watchlist.dto.CreateWatchlistGroupRequest;
-import org.stockwellness.adapter.in.web.watchlist.dto.AddWatchlistItemRequest;
-import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.integration.common.BaseIntegrationTest;
-import org.stockwellness.support.annotation.MockMember;
-
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -80,7 +73,7 @@ class WatchlistIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/v1/watchlist/groups")
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(APPLICATION_JSON))
-                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("내 관심그룹"));
     }

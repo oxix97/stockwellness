@@ -1,5 +1,9 @@
 package org.stockwellness.application.service.batch;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,11 +15,6 @@ import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;

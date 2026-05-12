@@ -1,10 +1,10 @@
 package org.stockwellness.adapter.in.web.portfolio.dto;
 
-import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionPerformanceResult;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+
+import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionPerformanceResult;
 
 public record PortfolioInceptionPerformanceResponse(
     BigDecimal portfolioTotalReturn,

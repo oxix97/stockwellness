@@ -1,29 +1,5 @@
 package org.stockwellness.application.service.portfolio;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
-import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
-import org.stockwellness.application.port.out.outbox.OutboxPort;
-import org.stockwellness.application.service.portfolio.internal.*;
-import org.stockwellness.config.KafkaTopicConfig;
-import org.stockwellness.domain.outbox.OutboxEvent;
-import org.stockwellness.domain.portfolio.AssetType;
-import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.portfolio.PortfolioStats;
-import org.stockwellness.domain.portfolio.RebalancingPeriod;
-import org.stockwellness.domain.portfolio.event.PortfolioAnalysisCompletedEvent;
-import org.stockwellness.domain.stock.BenchmarkType;
-import org.stockwellness.global.util.FinanceCalculationUtil;
-import org.stockwellness.global.util.JsonUtil;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -34,6 +10,28 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.outbox.OutboxPort;
+import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.application.service.portfolio.internal.*;
+import org.stockwellness.config.KafkaTopicConfig;
+import org.stockwellness.domain.outbox.OutboxEvent;
+import org.stockwellness.domain.portfolio.AssetType;
+import org.stockwellness.domain.portfolio.Portfolio;
+import org.stockwellness.domain.portfolio.PortfolioItem;
+import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
+import org.stockwellness.domain.portfolio.event.PortfolioAnalysisCompletedEvent;
+import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.global.util.JsonUtil;
 
 @Slf4j
 @Service
@@ -161,6 +159,5 @@ public class PortfolioStatBatchService {
         });
         return new SimulationData(filteredStockPrices, sharedData.benchmarkPrices());
     }
-
 
 }

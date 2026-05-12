@@ -1,14 +1,14 @@
 package org.stockwellness.global.util;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
+import java.sql.Date;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DateUtilTest {
@@ -64,7 +64,7 @@ class DateUtilTest {
     @DisplayName("LocalDate를 java.sql.Date로 정확히 변환한다")
     void toSqlDate_test() {
         LocalDate input = LocalDate.of(2026, 3, 3);
-        java.sql.Date result = DateUtil.toSqlDate(input);
+        Date result = DateUtil.toSqlDate(input);
         assertThat(result.toString()).isEqualTo("2026-03-03");
     }
 

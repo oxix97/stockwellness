@@ -7,7 +7,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
-
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 

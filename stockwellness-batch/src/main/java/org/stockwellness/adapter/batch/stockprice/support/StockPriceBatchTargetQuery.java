@@ -1,9 +1,9 @@
 package org.stockwellness.adapter.batch.stockprice.support;
 
-import org.springframework.util.StringUtils;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.springframework.util.StringUtils;
 
 public final class StockPriceBatchTargetQuery {
 

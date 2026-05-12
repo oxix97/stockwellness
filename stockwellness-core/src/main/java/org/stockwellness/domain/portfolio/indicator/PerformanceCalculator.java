@@ -1,14 +1,13 @@
 package org.stockwellness.domain.portfolio.indicator;
 
-import org.stockwellness.application.service.portfolio.internal.BacktestResult;
-import org.stockwellness.domain.portfolio.math.FinancialMath;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+
+import org.stockwellness.domain.portfolio.math.FinancialMath;
 
 /**
  * 수익성 지표 계산기 (CAGR, 총 수익률 등)

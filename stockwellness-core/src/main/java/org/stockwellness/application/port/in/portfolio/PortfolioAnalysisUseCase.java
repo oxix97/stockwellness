@@ -1,12 +1,12 @@
 package org.stockwellness.application.port.in.portfolio;
 
-import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
-import org.stockwellness.application.port.in.portfolio.result.*;
-import org.stockwellness.application.service.portfolio.internal.BacktestResult;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
+
+import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.result.*;
+import org.stockwellness.application.service.portfolio.internal.BacktestResult;
 
 public interface PortfolioAnalysisUseCase {
     PortfolioValuationResult getValuation(Long memberId, Long portfolioId);

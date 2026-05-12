@@ -1,12 +1,12 @@
 package org.stockwellness.global.filter;
 
+import java.io.IOException;
+import java.util.UUID;
+
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.util.UUID;
 
 /**
  * Filter to inject a unique traceId into MDC for each request.

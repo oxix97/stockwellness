@@ -1,5 +1,8 @@
 package org.stockwellness.application.service.auth;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.adapter.out.security.jwt.JwtProperties;
 import org.stockwellness.adapter.out.security.jwt.JwtProvider;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
@@ -22,11 +26,6 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.fixture.AuthFixture;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.BusinessException;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

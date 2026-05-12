@@ -1,12 +1,11 @@
 package org.stockwellness.application.service.insight;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.domain.stock.insight.RollingPercentileCalculator;
-
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.domain.stock.insight.RollingPercentileCalculator;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RollingPercentileCalculatorTest {

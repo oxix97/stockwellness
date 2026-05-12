@@ -1,15 +1,13 @@
 package org.stockwellness.domain.stock.insight;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.analysis.InvestmentDecision;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.analysis.InvestmentDecision;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SectorInsightTest {
@@ -26,7 +24,7 @@ class SectorInsightTest {
                 3,
                 2
         );
-        TechnicalIndicators technical = TechnicalIndicators.empty();
+        SectorTechnicalIndicators technical = SectorTechnicalIndicators.empty();
         LocalDate now = LocalDate.now();
 
         // when
@@ -70,7 +68,7 @@ class SectorInsightTest {
         return SectorInsight.of(
                 "테스트", "TEST", MarketType.KOSPI, LocalDate.now(),
                 SectorIndicators.of(BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L, 0, 0),
-                TechnicalIndicators.empty(),
+                SectorTechnicalIndicators.empty(),
                 false
         );
     }

@@ -1,89 +1,83 @@
 package org.stockwellness.global.alert;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-
-import java.net.URI;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SlackAlertService {
 
     private static final int MAX_STACK_TRACE_LINES = 5;
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
 
-    private final SlackAlertProperties properties;
-    private final RestClient restClient;
+    private final SlackNotificationService slackNotificationService;
 
-    public SlackAlertService(SlackAlertProperties properties, @Qualifier("slackRestClient") RestClient restClient) {
-        this.properties = properties;
-        this.restClient = restClient;
+    /**
+     * API 시스템 에러 알림 전송 (GlobalExceptionHandler용)
+     */
+    public void sendErrorAlert(Exception e, String traceId, HttpServletRequest request) {
+        String userId = getUserId();
+        String url = request.getRequestURI();
+        if (request.getQueryString() != null) {
+            url += "?" + request.getQueryString();
+        }
+
+        NotificationContext context = NotificationContext.builder()
+                .title("API 시스템 에러 (500)")
+                .content(e.getMessage() != null ? e.getMessage() : "No message available")
+                .traceId(traceId)
+                .time(ZonedDateTime.now(ZoneId.of("Asia/Seoul")).format(FORMATTER))
+                .userId(userId)
+                .url(url)
+                .exceptionType(e.getClass().getSimpleName())
+                .stackTrace(extractStackTrace(e))
+                .type(NotificationContext.NotificationType.ERROR)
+                .build();
+
+        slackNotificationService.sendNotification(context);
     }
 
-    @Async("alertExecutor")
+    /**
+     * 기존 메서드 호환성 유지용 (필요 시)
+     */
     public void sendInternalServerErrorAlert(String traceId, Exception e) {
-        if (properties.webhookUrl() == null || properties.webhookUrl().isBlank()) {
-            log.warn("[SlackAlert] webhook URL 미설정. 알림 스킵: traceId={}", traceId);
-            return;
-        }
+        NotificationContext context = NotificationContext.builder()
+                .title("API 시스템 에러 (500)")
+                .content(e.getMessage() != null ? e.getMessage() : "No message available")
+                .traceId(traceId)
+                .time(ZonedDateTime.now(ZoneId.of("Asia/Seoul")).format(FORMATTER))
+                .exceptionType(e.getClass().getSimpleName())
+                .stackTrace(extractStackTrace(e))
+                .type(NotificationContext.NotificationType.ERROR)
+                .build();
 
-        try {
-            Map<String, Object> payload = buildPayload(traceId, e);
-            restClient.post()
-                    .uri(URI.create(properties.webhookUrl()))
-                    .body(payload)
-                    .retrieve()
-                    .toBodilessEntity();
-            log.info("[SlackAlert] 알림 전송 성공: traceId={}", traceId);
-        } catch (Exception ex) {
-            log.error("[SlackAlert] 알림 전송 실패: traceId={}, reason={}", traceId, ex.getMessage());
-        }
+        slackNotificationService.sendNotification(context);
     }
 
-    private Map<String, Object> buildPayload(String traceId, Exception e) {
-        String stackTrace = Arrays.stream(e.getStackTrace())
+    private String getUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return "GUEST";
+        }
+        return authentication.getName();
+    }
+
+    private String extractStackTrace(Exception e) {
+        return Arrays.stream(e.getStackTrace())
                 .limit(MAX_STACK_TRACE_LINES)
                 .map(StackTraceElement::toString)
                 .collect(Collectors.joining("\n    at "));
-
-        String time = ZonedDateTime.now(ZoneId.of("Asia/Seoul")).format(FORMATTER);
-        String exceptionType = e.getClass().getSimpleName();
-        String exceptionMessage = e.getMessage() != null ? e.getMessage() : "No message available";
-
-        return Map.of(
-                "blocks", List.of(
-                        Map.of(
-                                "type", "header",
-                                "text", Map.of("type", "plain_text", "text", "🚨 API 시스템 에러 (500)")
-                        ),
-                        Map.of(
-                                "type", "section",
-                                "fields", List.of(
-                                        Map.of("type", "mrkdwn", "text", "*Trace ID:*\n`" + traceId + "`"),
-                                        Map.of("type", "mrkdwn", "text", "*발생 시각:*\n" + time)
-                                )
-                        ),
-                        Map.of(
-                                "type", "section",
-                                "text", Map.of("type", "mrkdwn", "text", String.format("*오류 요약:*\n*`%s`*\n> %s", exceptionType, exceptionMessage))
-                        ),
-                        Map.of("type", "divider"),
-                        Map.of(
-                                "type", "section",
-                                "text", Map.of("type", "mrkdwn", "text", String.format("*Stack Trace (Top %d):*\n```\n    at %s\n```", MAX_STACK_TRACE_LINES, stackTrace))
-                        )
-                )
-        );
     }
 }

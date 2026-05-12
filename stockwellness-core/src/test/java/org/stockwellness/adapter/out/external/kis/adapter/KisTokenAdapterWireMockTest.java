@@ -1,27 +1,26 @@
 package org.stockwellness.adapter.out.external.kis.adapter;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.stockwellness.adapter.out.external.kis.dto.KisProperties;
 import org.stockwellness.adapter.out.external.kis.exception.KisAuthenticationException;
-
-import java.time.Duration;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "kis.base-url=http://localhost:${wiremock.server.port}",
@@ -39,7 +38,7 @@ class KisTokenAdapterWireMockTest {
     private StringRedisTemplate redisTemplate;
 
     @MockitoBean
-    private org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory redisConnectionFactory;
+    private LettuceConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("캐시된 토큰이 없으면 KIS API를 호출하여 새 토큰을 발급받고 Redis에 저장한다")

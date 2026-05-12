@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,17 +19,10 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalanci
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.support.RestDocsSupport;
 import org.stockwellness.support.annotation.MockMember;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
@@ -282,7 +281,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 "",
                 "ALL",
                 true,
-                org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY,
+                RebalancingPeriod.MONTHLY,
                 Map.of("005930", BigDecimal.valueOf(100))
         );
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());

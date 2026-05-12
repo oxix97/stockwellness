@@ -1,11 +1,12 @@
 package org.stockwellness.adapter.in.web.error;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,10 +15,6 @@ import org.stockwellness.global.alert.SlackAlertService;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.GlobalExceptionHandler;
 import org.stockwellness.global.error.exception.GlobalException;
-
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -73,7 +70,7 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("G004"));
 
-        verify(slackAlertService).sendInternalServerErrorAlert(anyString(), any(Exception.class));
+        verify(slackAlertService).sendErrorAlert(any(Exception.class), anyString(), any());
     }
 
     @Test
@@ -83,6 +80,7 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
+        verify(slackAlertService, never()).sendErrorAlert(any(), anyString(), any());
         verify(slackAlertService, never()).sendInternalServerErrorAlert(anyString(), any());
     }
 

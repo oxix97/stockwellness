@@ -1,5 +1,11 @@
 package org.stockwellness.batch.job.stockmaster.support.parser;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,13 +13,6 @@ import org.stockwellness.application.parser.KosdaqMstParser;
 import org.stockwellness.application.parser.KospiMstParser;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j

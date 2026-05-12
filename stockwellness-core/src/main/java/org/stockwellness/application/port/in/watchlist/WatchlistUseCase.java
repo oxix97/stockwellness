@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.watchlist;
 
+import java.util.List;
+
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistGroupResponse;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
 import org.stockwellness.domain.member.Member;
-
-import java.util.List;
 
 public interface WatchlistUseCase {
     Long createGroup(Long memberId, String name);

@@ -1,17 +1,16 @@
 package org.stockwellness.batch.job.sector.step;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
-import org.stockwellness.adapter.batch.sector.step.processor.SectorAiItemProcessor;
-import org.stockwellness.domain.stock.MarketType;
-import org.stockwellness.domain.stock.insight.SectorIndicators;
-import org.stockwellness.domain.stock.insight.SectorInsight;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.stockwellness.adapter.batch.sector.step.processor.SectorAiItemProcessor;
+import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.insight.SectorIndicators;
+import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -48,7 +47,7 @@ class SectorAiItemProcessorTest {
         return SectorInsight.of(
                 "테스트", "001", MarketType.KOSPI, LocalDate.now(),
                 SectorIndicators.of(BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L, 0, 0),
-                TechnicalIndicators.empty(),
+                SectorTechnicalIndicators.empty(),
                 false
         );
     }

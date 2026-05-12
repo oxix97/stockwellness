@@ -1,10 +1,10 @@
 package org.stockwellness.domain.portfolio.diagnosis.type;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor

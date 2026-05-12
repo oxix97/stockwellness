@@ -1,16 +1,18 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.in.web.portfolio.dto.DiagnosisResponse;
+import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
+import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioResponse;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioUpdateRequest;
-import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCommand;
-import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.result.AdviceResponse;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioHealthResult;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
@@ -18,8 +20,6 @@ import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.common.response.SuccessCode;
 import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.util.List;
 
 /**
  * 포트폴리오 상태성 API 컨트롤러.

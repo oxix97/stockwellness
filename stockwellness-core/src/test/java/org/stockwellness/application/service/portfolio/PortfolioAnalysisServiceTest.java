@@ -1,5 +1,12 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,22 +27,15 @@ import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.portfolio.internal.*;
-import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.BenchmarkType;
-import org.stockwellness.domain.stock.Country;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.fixture.StockFixture;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -173,7 +173,7 @@ class PortfolioAnalysisServiceTest {
     @DisplayName("백테스팅 실행: 선택한 전략에 따라 백테스팅 엔진을 호출하고 결과를 반환한다")
     void runBacktest_Success() {
         // given
-        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), org.stockwellness.domain.stock.price.ChartPeriod.ONE_YEAR, true, org.stockwellness.domain.portfolio.RebalancingPeriod.MONTHLY, Map.of());
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000), List.of("005930"), ChartPeriod.ONE_YEAR, true, RebalancingPeriod.MONTHLY, Map.of());
         
         Portfolio portfolio = Portfolio.create(MEMBER_ID, "테스트", "설명");
         portfolio.updateItems(List.of(PortfolioItem.createStock("005930", BigDecimal.ONE, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())));
@@ -186,7 +186,7 @@ class PortfolioAnalysisServiceTest {
                 Collections.emptyList(), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
                 BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "AI 조언입니다.");
-        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(org.stockwellness.domain.portfolio.RebalancingPeriod.class), anyString(), any(), anyBoolean())).willReturn(mockEngineResult);
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(RebalancingPeriod.class), anyString(), any(), anyBoolean())).willReturn(mockEngineResult);
         given(aiAdvisorUseCase.generateBacktestAdvice(any(), anyString(), anyString())).willReturn("AI 조언입니다.");
 
         // when
@@ -265,7 +265,7 @@ class PortfolioAnalysisServiceTest {
                 PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(70000), "KRW", BigDecimal.valueOf(100), inception)
         ));
 
-        given(portfolioPort.loadPortfolio(PORTFOLIO_ID, MEMBER_ID)).willReturn(java.util.Optional.of(portfolio));
+        given(portfolioPort.loadPortfolio(PORTFOLIO_ID, MEMBER_ID)).willReturn(Optional.of(portfolio));
         given(stockPricePort.loadPricesByTickers(List.of("005930"), inception, LocalDate.now()))
                 .willReturn(Map.of(
                         "005930", List.of(

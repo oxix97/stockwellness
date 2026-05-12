@@ -1,5 +1,9 @@
 package org.stockwellness.application.service.batch;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,11 +17,6 @@ import org.stockwellness.adapter.out.persistence.stock.repository.StockRepositor
 import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.MarketIndex;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;

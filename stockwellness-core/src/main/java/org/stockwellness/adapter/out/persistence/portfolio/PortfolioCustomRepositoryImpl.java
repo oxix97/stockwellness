@@ -1,16 +1,14 @@
 package org.stockwellness.adapter.out.persistence.portfolio;
 
+import java.util.List;
+import java.util.Optional;
+
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.stockwellness.domain.portfolio.Portfolio;
-
-import java.util.List;
-import java.util.Optional;
-
 import static org.stockwellness.domain.portfolio.QPortfolio.portfolio;
 import static org.stockwellness.domain.portfolio.QPortfolioItem.portfolioItem;
-import static org.stockwellness.domain.portfolio.advisor.QAdvisorReport.advisorReport;
 
 @RequiredArgsConstructor
 public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository {

@@ -26,9 +26,9 @@
 - 포트폴리오 메인 화면 기준 신규 엔드포인트는 추가하지 않습니다.
 
 ## Acceptance Criteria
-- [ ] 명시된 모든 엔드포인트에 대한 REST Docs 테스트가 현재 백엔드 응답을 정확히 반영하여 통과해야 합니다.
-- [ ] `docs/specs/screen-api-mapping/portfolio.md` 문서가 실제 API 응답 스키마와 100% 일치하도록 업데이트되어야 합니다.
-- [ ] 불필요한 레거시 필드가 응답 DTO나 문서에 포함되지 않았음을 확인해야 합니다.
+- [x] 명시된 모든 엔드포인트에 대한 REST Docs 테스트가 현재 백엔드 응답을 정확히 반영하여 통과해야 합니다.
+- [x] `docs/specs/screen-api-mapping/portfolio.md` 문서가 실제 API 응답 스키마와 100% 일치하도록 업데이트되어야 합니다.
+- [x] 불필요한 레거시 필드가 응답 DTO나 문서에 포함되지 않았음을 확인해야 합니다.
 
 ## Out of Scope
 - `PortfolioRebalancingResponse` 확장 (제품 요구로 리밸런싱 산출 시각이 명시적으로 필요해질 때까지 보류)

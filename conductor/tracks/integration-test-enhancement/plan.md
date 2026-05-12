@@ -19,18 +19,18 @@
 ### Phase 2: API End-to-End 통합 테스트 (`stockwellness-api`)
 - **대상:** Controller부터 Service, DB까지 이어지는 전체 흐름
 - **작업 내용:**
-    - [ ] `AuthIntegrationTest` 구축 (로그인/토큰 재발급 흐름)
+    - [x] `AuthIntegrationTest` 구축 (로그인/토큰 재발급 흐름)
     - [ ] `MemberIntegrationTest` 구축 (회원 정보 수정/탈퇴 흐름)
-    - [ ] `StockIntegrationTest` 구축 (종목 검색/상세 조회 흐름)
-    - [ ] `WatchlistIntegrationTest` 구축 (관심종목 CRUD 흐름)
+    - [x] `StockIntegrationTest` 구축 (종목 검색/상세 조회 흐름)
+    - [x] `WatchlistIntegrationTest` 구축 (관심종목 CRUD 흐름)
 - **검증:** Security Filter, Exception Handler, 실제 비즈니스 로직과 DB 간의 정합성 확인
 
 ### Phase 3: Batch Job 통합 테스트 (`stockwellness-batch`)
 - **대상:** Batch Job 실행 흐름 (Reader -> Processor -> Writer)
 - **작업 내용:**
-    - [ ] `BenchmarkPriceSyncJobIntegrationTest` 작성
-    - [ ] `StockPriceSyncJobIntegrationTest` 작성
-    - [ ] `PortfolioStatsBatchJobIntegrationTest` 작성
+    - [x] `BenchmarkPriceSyncJobIntegrationTest` 작성
+    - [x] `StockPriceSyncJobIntegrationTest` 작성
+    - [x] `PortfolioStatsBatchJobIntegrationTest` 작성
     - [ ] **배치 실패 알림 리스너(JobExecutionListener) 구현 및 검증**
 - **검증:** `JobLauncherTestUtils`를 사용하여 전체 Job 성공 여부 및 DB 데이터 적재 결과 확인
 

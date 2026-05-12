@@ -1,5 +1,7 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -8,8 +10,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
-
-import java.math.BigDecimal;
 
 @Entity
 @Table(

@@ -2,8 +2,8 @@ package org.stockwellness.adapter.batch.benchmarkprice.step.processor;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.ItemProcessor;
-import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
+import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
 /**

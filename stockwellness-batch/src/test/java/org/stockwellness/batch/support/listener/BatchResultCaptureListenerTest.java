@@ -1,5 +1,8 @@
 package org.stockwellness.batch.support.listener;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,14 +15,8 @@ import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.item.ExecutionContext;
 import org.stockwellness.application.port.out.batch.BatchResultEventPort;
-import org.stockwellness.application.port.out.notification.NotificationPort;
 import org.stockwellness.domain.shared.event.BatchResultEvent;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;

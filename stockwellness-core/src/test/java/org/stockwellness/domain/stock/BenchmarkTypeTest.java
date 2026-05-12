@@ -2,7 +2,6 @@ package org.stockwellness.domain.stock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("BenchmarkType 테스트")

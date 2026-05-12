@@ -1,5 +1,7 @@
 package org.stockwellness.integration.common;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +17,6 @@ import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.member.RiskLevel;
 import org.stockwellness.support.annotation.MockMember;
-
-import java.time.LocalDateTime;
-
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

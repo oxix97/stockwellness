@@ -1,5 +1,7 @@
 package org.stockwellness.global.security.handler;
 
+import java.io.IOException;
+
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,9 +10,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.IOException;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OAuth2LoginFailureHandlerTest {

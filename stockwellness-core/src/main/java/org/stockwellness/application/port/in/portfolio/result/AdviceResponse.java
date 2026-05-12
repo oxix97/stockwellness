@@ -1,7 +1,8 @@
 package org.stockwellness.application.port.in.portfolio.result;
 
-import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 import java.time.LocalDateTime;
+
+import org.stockwellness.domain.portfolio.advisor.AdviceAction;
 
 /**
  * AI 어드바이저 조언 결과 DTO

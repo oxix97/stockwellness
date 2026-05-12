@@ -1,12 +1,12 @@
 package org.stockwellness.application.port.in.stock;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.domain.stock.MarketType;
-
-import java.time.LocalDate;
-import java.util.List;
 
 public interface SectorInsightUseCase {
     /**

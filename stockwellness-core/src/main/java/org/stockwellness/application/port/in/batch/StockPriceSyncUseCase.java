@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.batch;
 
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.StockInvestorTrade;
-
 import java.util.List;
+
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockInvestorTrade;
+import org.stockwellness.domain.stock.price.StockPrice;
 
 public interface StockPriceSyncUseCase {
 

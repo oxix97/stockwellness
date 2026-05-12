@@ -1,5 +1,9 @@
 package org.stockwellness.batch.job.sector.step;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,16 +11,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.stockwellness.adapter.batch.sector.step.reader.SectorApiItemReader;
 import org.stockwellness.application.port.in.batch.SectorEodSyncUseCase;
 import org.stockwellness.application.port.out.stock.SectorDailyDetailPort;
-import org.stockwellness.adapter.batch.sector.step.reader.SectorApiItemReader;
+import org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot;
 import org.stockwellness.domain.stock.insight.SectorDailyDetail;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -112,7 +112,7 @@ class SectorApiItemReaderTest {
         return SectorDailyDetail.of(
                 sectorCode,
                 sectorName,
-                new org.stockwellness.application.port.out.stock.SectorDailyDetailSnapshot(
+                new SectorDailyDetailSnapshot(
                         sectorCode,
                         baseDate,
                         new BigDecimal("1000.12"),

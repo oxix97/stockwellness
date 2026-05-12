@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.in.batch;
 
-import org.stockwellness.domain.stock.Stock;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+
+import org.stockwellness.domain.stock.Stock;
 
 public interface StockPriceRepairUseCase {
 

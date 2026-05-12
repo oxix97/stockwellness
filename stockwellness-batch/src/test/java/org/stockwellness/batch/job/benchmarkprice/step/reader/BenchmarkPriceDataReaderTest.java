@@ -1,21 +1,20 @@
 package org.stockwellness.batch.job.benchmarkprice.step.reader;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
-import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
-import org.stockwellness.adapter.batch.benchmarkprice.step.reader.BenchmarkPriceDataReader;
-import org.stockwellness.domain.stock.BenchmarkType;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.adapter.batch.benchmarkprice.model.BenchmarkPriceDataWrapper;
+import org.stockwellness.adapter.batch.benchmarkprice.step.reader.BenchmarkPriceDataReader;
+import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
+import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
+import org.stockwellness.domain.stock.BenchmarkType;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

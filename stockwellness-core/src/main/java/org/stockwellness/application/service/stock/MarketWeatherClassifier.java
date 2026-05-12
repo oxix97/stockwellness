@@ -1,13 +1,13 @@
 package org.stockwellness.application.service.stock;
 
+import java.time.LocalDate;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherReason;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.domain.stock.insight.MarketWeatherScore;
-
-import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor

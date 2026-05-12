@@ -1,10 +1,11 @@
 package org.stockwellness.adapter.in.web.member;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
-import org.stockwellness.support.annotation.MockMember;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.in.web.member.dto.UpdateMemberRequest;
 import org.stockwellness.application.port.in.member.MemberUseCase;
 import org.stockwellness.application.port.in.member.result.MemberResult;
@@ -12,9 +13,7 @@ import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.member.RiskLevel;
 import org.stockwellness.support.RestDocsSupport;
-
-import java.time.LocalDateTime;
-
+import org.stockwellness.support.annotation.MockMember;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;

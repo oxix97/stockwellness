@@ -1,10 +1,10 @@
 package org.stockwellness.batch.support;
 
-import org.springframework.batch.item.Chunk;
-import org.springframework.batch.item.ItemWriter;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
 
 /**
  * Processor가 List<T>를 반환할 때, 이를 평탄화(Flatten)하여 실제 Writer에게 전달하는 래퍼 클래스

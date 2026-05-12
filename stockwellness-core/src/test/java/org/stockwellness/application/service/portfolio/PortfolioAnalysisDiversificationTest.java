@@ -1,5 +1,10 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
+import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,8 +12,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
-import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.service.portfolio.internal.AnalysisContext;
 import org.stockwellness.application.service.portfolio.internal.PortfolioAnalysisDataLoader;
@@ -17,12 +20,6 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.price.StockPrice;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -79,7 +76,7 @@ class PortfolioAnalysisDiversificationTest {
         
         // 자산군 비중 합계 검증 (STOCK + CASH = 100%)
         double totalAssetRatio = result.assetRatios().values().stream().mapToDouble(BigDecimal::doubleValue).sum();
-        assertThat(totalAssetRatio).isCloseTo(100.0, org.assertj.core.data.Offset.offset(0.1));
+        assertThat(totalAssetRatio).isCloseTo(100.0, Offset.offset(0.1));
         
         // 특정 자산 존재 여부만 검증 (NPE 방지)
         assertThat(result.assetRatios()).containsKey("STOCK");
@@ -87,6 +84,6 @@ class PortfolioAnalysisDiversificationTest {
         
         // 국가/업종 비중 합계 검증
         double totalCountryRatio = result.countryRatios().values().stream().mapToDouble(BigDecimal::doubleValue).sum();
-        assertThat(totalCountryRatio).isCloseTo(100.0, org.assertj.core.data.Offset.offset(0.1));
+        assertThat(totalCountryRatio).isCloseTo(100.0, Offset.offset(0.1));
     }
 }

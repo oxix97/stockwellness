@@ -1,10 +1,10 @@
 package org.stockwellness.adapter.out.persistence.p6spy;
 
+import java.util.Locale;
+
 import com.p6spy.engine.spy.appender.MessageFormattingStrategy;
 import org.hibernate.engine.jdbc.internal.FormatStyle;
 import org.springframework.util.StringUtils;
-
-import java.util.Locale;
 
 public class P6SpyFormatter implements MessageFormattingStrategy {
 

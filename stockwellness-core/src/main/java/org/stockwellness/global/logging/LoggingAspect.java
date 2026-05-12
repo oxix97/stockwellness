@@ -1,5 +1,7 @@
 package org.stockwellness.global.logging;
 
+import java.util.Collection;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
+import org.stockwellness.global.logging.LogExecution;
 
 /**
  * 전역 로깅 Aspect.
@@ -26,8 +29,8 @@ public class LoggingAspect {
     private static final ThreadLocal<Boolean> IS_LOGGING = ThreadLocal.withInitial(() -> false);
     private final ObjectMapper objectMapper = MaskingObjectMapper.create();
 
-    @Pointcut("@within(org.stockwellness.global.logging.LogExecution) || " +
-            "@annotation(org.stockwellness.global.logging.LogExecution) || " +
+    @Pointcut("@within(LogExecution) || " +
+            "@annotation(LogExecution) || " +
             "within(org.stockwellness..*Service) || " +
             "within(org.stockwellness..*Controller) || " +
             "within(org.stockwellness..*Adapter*)")
@@ -58,7 +61,7 @@ public class LoggingAspect {
             long executionTime = System.currentTimeMillis() - start;
 
             Object logResult = result;
-            if (result instanceof java.util.Collection<?> col && col.size() > 100) {
+            if (result instanceof Collection<?> col && col.size() > 100) {
                 logResult = String.format("[Large Collection: size=%d]", col.size());
             }
 

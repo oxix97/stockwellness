@@ -1,9 +1,9 @@
 package org.stockwellness.application.port.out.portfolio;
 
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-
 import java.math.BigDecimal;
 import java.util.List;
+
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 
 /**
  * AI 리밸런싱 조언을 위해 필요한 데이터 컨텍스트

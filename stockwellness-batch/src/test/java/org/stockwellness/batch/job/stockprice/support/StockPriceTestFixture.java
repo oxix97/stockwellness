@@ -1,12 +1,12 @@
 package org.stockwellness.batch.job.stockprice.support;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.domain.stock.*;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 public class StockPriceTestFixture {
 

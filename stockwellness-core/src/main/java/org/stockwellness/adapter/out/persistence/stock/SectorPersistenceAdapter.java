@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -12,11 +17,6 @@ import org.stockwellness.application.port.out.stock.SectorInsightPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.SectorInsight;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component

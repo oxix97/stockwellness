@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.batch.insight;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,11 +19,11 @@ import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.batch.repeat.RepeatStatus;
 import org.stockwellness.adapter.out.persistence.insight.MarketWeather;
 import org.stockwellness.adapter.out.persistence.insight.SectorIndicator;
 import org.stockwellness.adapter.out.persistence.insight.SectorWeather;
@@ -28,12 +34,6 @@ import org.stockwellness.adapter.out.persistence.stock.repository.SectorInsightR
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.domain.stock.insight.WeatherState;
 import org.stockwellness.global.util.DateUtil;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Configuration

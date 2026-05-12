@@ -1,14 +1,13 @@
 package org.stockwellness.batch.support.listener;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.test.MetaDataInstanceFactory;
-
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class BatchFailureItemListenerTest {

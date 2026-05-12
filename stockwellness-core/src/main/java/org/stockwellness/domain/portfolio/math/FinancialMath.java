@@ -3,6 +3,7 @@ package org.stockwellness.domain.portfolio.math;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.List;
 
 /**
  * 정밀한 금융 수치 계산을 위한 BigDecimal 기반 유틸리티
@@ -64,7 +65,7 @@ public class FinancialMath {
     /**
      * 표준편차를 계산합니다.
      */
-    public static BigDecimal calculateStandardDeviation(java.util.List<BigDecimal> values) {
+    public static BigDecimal calculateStandardDeviation(List<BigDecimal> values) {
         if (values == null || values.size() < 2) return BigDecimal.ZERO;
 
         BigDecimal sum = BigDecimal.ZERO;
@@ -84,7 +85,7 @@ public class FinancialMath {
     /**
      * 두 데이터셋의 공분산을 계산합니다.
      */
-    public static BigDecimal calculateCovariance(java.util.List<BigDecimal> values1, java.util.List<BigDecimal> values2) {
+    public static BigDecimal calculateCovariance(List<BigDecimal> values1, List<BigDecimal> values2) {
         if (values1 == null || values2 == null || values1.size() != values2.size() || values1.size() < 2) {
             return BigDecimal.ZERO;
         }
@@ -112,7 +113,7 @@ public class FinancialMath {
     /**
      * 베타(Beta)를 계산합니다: Cov(Rp, Rm) / Var(Rm)
      */
-    public static BigDecimal calculateBeta(java.util.List<BigDecimal> portfolioReturns, java.util.List<BigDecimal> benchmarkReturns) {
+    public static BigDecimal calculateBeta(List<BigDecimal> portfolioReturns, List<BigDecimal> benchmarkReturns) {
         if (portfolioReturns == null || benchmarkReturns == null || portfolioReturns.size() != benchmarkReturns.size() || portfolioReturns.isEmpty()) {
             return BigDecimal.ONE;
         }

@@ -1,5 +1,8 @@
 package org.stockwellness.domain.stock.insight;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
@@ -10,10 +13,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.stock.analysis.InvestmentDecision;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static lombok.AccessLevel.PRIVATE;
 import static lombok.AccessLevel.PROTECTED;
 

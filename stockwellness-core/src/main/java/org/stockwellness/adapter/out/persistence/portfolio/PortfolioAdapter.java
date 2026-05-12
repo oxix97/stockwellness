@@ -1,15 +1,16 @@
 package org.stockwellness.adapter.out.persistence.portfolio;
 
+import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.portfolio.LoadAdvisorPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SaveAdvisorPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
-
-import java.util.List;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -47,7 +48,7 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
     public List<Long> findAllIds(int offset, int limit) {
         // offset/limit 기반 페이징 처리 (PageRequest 사용)
         int page = offset / limit;
-        return portfolioRepository.findAllIds(org.springframework.data.domain.PageRequest.of(page, limit));
+        return portfolioRepository.findAllIds(PageRequest.of(page, limit));
     }
 
     @Override

@@ -1,5 +1,11 @@
 package org.stockwellness.adapter.in.web.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -10,16 +16,11 @@ import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolio
 import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.service.portfolio.PortfolioFacade;
 import org.stockwellness.application.service.portfolio.internal.BacktestResult;
+import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.global.common.response.ApiResponse;
 import org.stockwellness.global.logging.LogExecution;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 포트폴리오 계산성 분석 API 컨트롤러.
@@ -142,7 +143,7 @@ public class PortfolioAnalysisController {
     }
 
     private List<String> resolveBenchmarkTickers(String benchmarkTicker) {
-        List<String> defaultTickers = org.stockwellness.domain.stock.BenchmarkType.defaultSimulationBenchmarkTickers();
+        List<String> defaultTickers = BenchmarkType.defaultSimulationBenchmarkTickers();
         if (benchmarkTicker == null || benchmarkTicker.isBlank()) {
             return defaultTickers;
         }

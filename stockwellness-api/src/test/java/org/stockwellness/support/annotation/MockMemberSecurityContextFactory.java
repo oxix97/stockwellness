@@ -1,5 +1,7 @@
 package org.stockwellness.support.annotation;
 
+import java.util.Collections;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -9,9 +11,6 @@ import org.springframework.security.test.context.support.WithSecurityContextFact
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.MemberRole;
 import org.stockwellness.global.security.MemberPrincipal;
-
-import java.util.Collections;
-import java.util.List;
 
 public class MockMemberSecurityContextFactory implements WithSecurityContextFactory<MockMember> {
 

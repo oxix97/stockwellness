@@ -1,5 +1,8 @@
 package org.stockwellness.domain.portfolio;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -9,10 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.global.util.FinanceCalculationUtil;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 import static jakarta.persistence.FetchType.LAZY;
 import static lombok.AccessLevel.PROTECTED;
 

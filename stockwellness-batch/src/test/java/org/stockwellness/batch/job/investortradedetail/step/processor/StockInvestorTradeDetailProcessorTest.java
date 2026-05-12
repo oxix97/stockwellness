@@ -1,25 +1,24 @@
 package org.stockwellness.batch.job.investortradedetail.step.processor;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.adapter.batch.investortradedetail.model.InvestorTradeDetailUpdateCommand;
 import org.stockwellness.adapter.batch.investortradedetail.step.processor.StockInvestorTradeDetailProcessor;
+import org.stockwellness.adapter.out.external.kis.dto.InvestorTradeDetail;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
 import org.stockwellness.domain.stock.StockStatus;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 

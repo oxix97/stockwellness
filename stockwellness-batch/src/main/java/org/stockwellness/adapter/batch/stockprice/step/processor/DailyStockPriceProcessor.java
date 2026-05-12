@@ -1,22 +1,21 @@
 package org.stockwellness.adapter.batch.stockprice.step.processor;
 
-
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.lang.Nullable;
-import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
-import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.lang.Nullable;
+import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
+import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
 @RequiredArgsConstructor
 public class DailyStockPriceProcessor implements ItemProcessor<List<Stock>, List<StockPrice>> {

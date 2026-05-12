@@ -1,9 +1,8 @@
 package org.stockwellness.application.port.out.outbox;
 
-import org.stockwellness.domain.outbox.OutboxEvent;
-import org.stockwellness.domain.outbox.OutboxStatus;
-
 import java.util.List;
+
+import org.stockwellness.domain.outbox.OutboxEvent;
 
 public interface OutboxPort {
     void save(OutboxEvent event);

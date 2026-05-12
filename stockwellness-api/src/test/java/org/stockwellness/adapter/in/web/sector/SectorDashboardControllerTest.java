@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.in.web.sector;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.epages.restdocs.apispec.Schema;
 import org.junit.jupiter.api.DisplayName;
@@ -11,15 +16,8 @@ import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
 import org.stockwellness.domain.stock.insight.LeadingStock;
 import org.stockwellness.domain.stock.insight.SectorAiOpinion;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
+import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.support.RestDocsSupport;
-import org.springframework.restdocs.payload.FieldDescriptor;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
@@ -84,7 +82,7 @@ class SectorDashboardControllerTest extends RestDocsSupport {
         SectorDetailResult result = new SectorDetailResult(
                 "001", "조선/해운", LocalDate.of(2026, 2, 26),
                 new BigDecimal("2500.50"), new BigDecimal("3.45"),
-                new TechnicalIndicators(new BigDecimal("2400.00"), new BigDecimal("2350.00"), null, null, new BigDecimal("65.5"), null, null, null, null, null, null, null, null, null, null, null, null, null),
+                SectorTechnicalIndicators.of(new BigDecimal("2400.00"), new BigDecimal("2350.00"), new BigDecimal("65.5"), null, null, null, null, null),
                 true, "현재 섹터는 과열 구간에 진입했습니다. 과매수 상태입니다.",
                 List.of(new LeadingStock("삼성중공업", "010140", new BigDecimal("5.2"), 1500000L, new BigDecimal("12000000000"))),
                 SectorAiOpinion.empty()
@@ -118,22 +116,12 @@ class SectorDashboardControllerTest extends RestDocsSupport {
                                     add(fieldWithPath("data.technicalIndicators").description("기술적 지표").optional());
                                     add(fieldWithPath("data.technicalIndicators.ma5").description("5일 이동평균선").optional());
                                     add(fieldWithPath("data.technicalIndicators.ma20").description("20일 이동평균선").optional());
-                                    add(fieldWithPath("data.technicalIndicators.ma60").description("60일 이동평균선").optional());
-                                    add(fieldWithPath("data.technicalIndicators.ma120").description("120일 이동평균선").optional());
                                     add(fieldWithPath("data.technicalIndicators.rsi14").description("RSI(14) 지표").optional());
-                                    add(fieldWithPath("data.technicalIndicators.macd").description("MACD").optional());
-                                    add(fieldWithPath("data.technicalIndicators.macdSignal").description("MACD Signal").optional());
                                     add(fieldWithPath("data.technicalIndicators.bollingerUpper").description("볼린저 밴드 상단").optional());
                                     add(fieldWithPath("data.technicalIndicators.bollingerMid").description("볼린저 밴드 중앙").optional());
                                     add(fieldWithPath("data.technicalIndicators.bollingerLower").description("볼린저 밴드 하단").optional());
-                                    add(fieldWithPath("data.technicalIndicators.adx").description("ADX").optional());
-                                    add(fieldWithPath("data.technicalIndicators.plusDi").description("Plus DI").optional());
-                                    add(fieldWithPath("data.technicalIndicators.minusDi").description("Minus DI").optional());
-                                    add(fieldWithPath("data.technicalIndicators.alignmentStatus").description("배열 상태").optional());
                                     add(fieldWithPath("data.technicalIndicators.isGoldenCross").description("골든 크로스 여부").optional());
                                     add(fieldWithPath("data.technicalIndicators.isDeadCross").description("데드 크로스 여부").optional());
-                                    add(fieldWithPath("data.technicalIndicators.isMacdCross").description("MACD 크로스 여부").optional());
-                                    add(fieldWithPath("data.technicalIndicators.aiInsight").description("AI 기술적 통찰").optional());
                                     add(fieldWithPath("data.isOverheated").description("과열 진단 여부"));
                                     add(fieldWithPath("data.diagnosisMessage").description("상세 진단 메시지"));
                                     add(fieldWithPath("data.leadingStocks[]").description("주도주 리스트"));

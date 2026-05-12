@@ -1,5 +1,10 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,12 +19,6 @@ import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.StockPriceId;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;

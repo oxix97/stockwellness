@@ -1,5 +1,9 @@
 package org.stockwellness.application.service.portfolio.internal;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.portfolio.result.StockContributionResult;
@@ -9,10 +13,6 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.diagnosis.type.DiagnosisCategory;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.*;
 
 /**
  * 포트폴리오의 건강 상태(오각형 지표)를 계산하는 핵심 컴포넌트입니다.

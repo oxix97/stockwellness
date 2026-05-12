@@ -1,10 +1,10 @@
 package org.stockwellness.application.port.out.stock;
 
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+
+import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
 public interface BenchmarkPricePort {
     Optional<BenchmarkPrice> findByTickerAndBaseDate(String ticker, LocalDate baseDate);

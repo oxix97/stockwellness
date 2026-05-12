@@ -1,8 +1,9 @@
 package org.stockwellness.domain.stock.analysis;
 
-import org.stockwellness.domain.stock.price.StockPrice;
-
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+import org.stockwellness.domain.stock.price.StockPrice;
 
 public class TechnicalCalculator {
 
@@ -95,7 +96,7 @@ public class TechnicalCalculator {
         }
 
         // 2. 이격도 기준 (현재가 / MA20 >= 1.1)
-        BigDecimal disparity = currentPrice.divide(ma20, 4, java.math.RoundingMode.HALF_UP);
+        BigDecimal disparity = currentPrice.divide(ma20, 4, RoundingMode.HALF_UP);
         return disparity.compareTo(new BigDecimal("1.1")) >= 0;
     }
 

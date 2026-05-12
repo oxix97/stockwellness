@@ -1,13 +1,12 @@
 package org.stockwellness.domain.stock;
 
+import java.util.Map;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.stock.insight.MarketIndex;
-
-import java.util.Map;
-
 import static lombok.AccessLevel.PROTECTED;
 
 /**

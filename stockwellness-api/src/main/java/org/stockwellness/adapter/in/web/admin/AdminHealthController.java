@@ -1,5 +1,8 @@
 package org.stockwellness.adapter.in.web.admin;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.health.CompositeHealth;
 import org.springframework.boot.actuate.health.HealthComponent;
@@ -9,9 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.stockwellness.adapter.in.web.admin.dto.AdminHealthResponse;
 import org.stockwellness.global.common.response.ApiResponse;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin/health")

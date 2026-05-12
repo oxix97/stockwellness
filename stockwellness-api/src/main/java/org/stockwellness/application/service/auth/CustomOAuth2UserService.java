@@ -1,5 +1,7 @@
 package org.stockwellness.application.service.auth;
 
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -18,8 +20,6 @@ import org.stockwellness.domain.shared.Email;
 import org.stockwellness.global.security.MemberPrincipal;
 import org.stockwellness.global.security.userinfo.OAuth2UserInfo;
 import org.stockwellness.global.security.userinfo.OAuth2UserInfoFactory;
-
-import java.util.Map;
 
 @Slf4j
 @Service

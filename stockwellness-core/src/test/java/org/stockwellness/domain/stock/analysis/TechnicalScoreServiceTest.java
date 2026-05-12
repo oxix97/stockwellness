@@ -1,14 +1,13 @@
 package org.stockwellness.domain.stock.analysis;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.stock.price.AlignmentStatus;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
-
-import java.math.BigDecimal;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("TechnicalScoreService 단위 테스트")
