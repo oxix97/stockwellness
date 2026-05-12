@@ -1,16 +1,19 @@
 package org.stockwellness.adapter.batch.sector.listener;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.batch.support.BatchLogTemplate;
+import org.stockwellness.domain.common.cache.CacheType;
 
 @Slf4j
 @Component
