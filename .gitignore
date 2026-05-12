@@ -285,6 +285,10 @@ logs/
 
 # k6 Load Test
 k6/.env
-k6/results/
+k6/results/*
+!k6/results/charts/
 k6_*.log
 auth_debug.log
+
+.gemini/
+gha-creds-*.json
