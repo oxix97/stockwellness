@@ -36,4 +36,15 @@ public class SectorEodJobListener implements JobExecutionListener {
             }
         }
     }
+
+    private void evictSectorCaches() {
+        evictCache(CacheType.SECTOR_RANKING.getCacheName());
+        evictCache(CacheType.SECTOR_DETAIL.getCacheName());
+        evictCache(CacheType.SECTOR_COMPARISON.getCacheName());
+        log.info("섹터 관련 Redis 캐시 무효화 완료.");
+    }
+
+    private void evictCache(String cacheName) {
+        Optional.ofNullable(cacheManager.getCache(cacheName)).ifPresent(Cache::clear);
+    }
 }
