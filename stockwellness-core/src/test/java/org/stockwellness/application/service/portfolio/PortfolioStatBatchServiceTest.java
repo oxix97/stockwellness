@@ -102,7 +102,7 @@ class PortfolioStatBatchServiceTest {
         @DisplayName("신규 저장: 통계가 없는 포트폴리오는 새로 생성된다")
         void createNew() {
             // given
-            Long portfolioId = createTestPortfolio("test@test.com", "테스터1");
+            Long portfolioId = createTestPortfolio("test@test.com", "테스터1", "005930");
             Portfolio portfolio = loadPortfolioWithItems(portfolioId);
 
             given(portfolioPort.loadAllWithItems(anyList())).willReturn(List.of(portfolio));
@@ -120,7 +120,7 @@ class PortfolioStatBatchServiceTest {
         @DisplayName("기존 업데이트: 이미 통계가 있는 포트폴리오는 값이 업데이트된다")
         void updateExisting() {
             // given
-            Long portfolioId = createTestPortfolio("update@test.com", "테스터2");
+            Long portfolioId = createTestPortfolio("update@test.com", "테스터2", "005930");
             Portfolio portfolio = loadPortfolioWithItems(portfolioId);
             
             transactionTemplate.executeWithoutResult(status -> {
@@ -141,19 +141,21 @@ class PortfolioStatBatchServiceTest {
         @DisplayName("부분 실패: 일부 포트폴리오 작업 중 예외가 발생해도 다른 포트폴리오는 처리된다")
         void partialFailure() {
             // given
-            Long id1 = createTestPortfolio("user1@test.com", "회원1");
-            Long id2 = createTestPortfolio("user2@test.com", "회원2");
+            Long id1 = createTestPortfolio("user1@test.com", "회원1", "FAIL01");
+            Long id2 = createTestPortfolio("user2@test.com", "회원2", "SUCC01");
             Portfolio p1 = loadPortfolioWithItems(id1);
             Portfolio p2 = loadPortfolioWithItems(id2);
 
             given(portfolioPort.loadAllWithItems(anyList())).willReturn(List.of(p1, p2));
             
-            // 첫 번째 포트폴리오 처리 시 예외 발생 유도
-            given(backtestEngine.runLumpSum(any(), any(), any(), any(), any(), any(), anyBoolean()))
-                    .willThrow(new RuntimeException("엔진 오류")) // 첫 호출
-                    .willReturn(new BacktestResult(List.of(), BigDecimal.ZERO, BigDecimal.valueOf(10.0), BigDecimal.ZERO, BigDecimal.valueOf(1.0), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(1.0), BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), List.of(), null)); // 두 번째 호출
+            // "FAIL01"이 포함된 포트폴리오는 실패, "SUCC01"이 포함된 포트폴리오는 성공하도록 모킹
+            given(backtestEngine.runLumpSum(any(), argThat(m -> m instanceof Map && ((Map<?, ?>) m).containsKey("FAIL01")), any(), any(), any(), any(), anyBoolean()))
+                    .willThrow(new RuntimeException("엔진 오류"));
+            given(backtestEngine.runLumpSum(any(), argThat(m -> m instanceof Map && ((Map<?, ?>) m).containsKey("SUCC01")), any(), any(), any(), any(), anyBoolean()))
+                    .willReturn(new BacktestResult(List.of(), BigDecimal.ZERO, BigDecimal.valueOf(10.0), BigDecimal.ZERO, BigDecimal.valueOf(1.0), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(1.0), BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), List.of(), null));
 
-            given(simulationDataProvider.loadData(anyList(), any(), any(), any())).willReturn(new SimulationData(Map.of("005930", List.of()), Map.of()));
+            given(simulationDataProvider.loadData(anyList(), any(), any(), any()))
+                    .willReturn(new SimulationData(Map.of("FAIL01", List.of(), "SUCC01", List.of()), Map.of()));
             given(portfolioAnalysisService.calculateBenchmarkReturn(anyString(), any(), any())).willReturn(BigDecimal.valueOf(5.0));
 
             // when
@@ -190,13 +192,13 @@ class PortfolioStatBatchServiceTest {
             });
         }
 
-        private Long createTestPortfolio(String email, String nickname) {
+        private Long createTestPortfolio(String email, String nickname, String ticker) {
             return transactionTemplate.execute(status -> {
                 Member member = Member.register(email, nickname, LoginType.GOOGLE);
                 memberRepository.save(member);
 
                 Portfolio portfolio = Portfolio.create(member.getId(), "포트폴리오", "설명");
-                PortfolioItem item = PortfolioItem.createStock("005930", BigDecimal.TEN, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now());
+                PortfolioItem item = PortfolioItem.createStock(ticker, BigDecimal.TEN, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now());
                 portfolio.updateItems(List.of(item));
                 
                 portfolioRepository.save(portfolio);

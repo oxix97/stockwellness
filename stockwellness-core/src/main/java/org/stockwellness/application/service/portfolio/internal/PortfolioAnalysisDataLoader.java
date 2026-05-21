@@ -48,7 +48,8 @@ public class PortfolioAnalysisDataLoader {
         // 1. DB에서 최신 시세 조회
         Map<String, List<StockPrice>> priceMap = new HashMap<>(stockPricePort.loadRecentHistoriesBatch(symbols, 1));
 
-        // 2. [Fallback] DB에 데이터가 없는 종목들은 KIS API로 실시간 시세 조회
+        // 2. [Fallback] DB에 데이터가 없는 종목들은 KIS API로 실시간 시세 조회 (TPS 경합 방지를 위해 제거)
+        /*
         List<String> missingSymbols = symbols.stream()
                 .filter(s -> !priceMap.containsKey(s) || priceMap.get(s).isEmpty())
                 .toList();
@@ -56,6 +57,7 @@ public class PortfolioAnalysisDataLoader {
         if (!missingSymbols.isEmpty()) {
             fetchAndFillMissingPrices(missingSymbols, priceMap, stockMap);
         }
+        */
 
         PortfolioStats stats = portfolioStatsRepository.findByPortfolioId(portfolioId).orElse(null);
 
