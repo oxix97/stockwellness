@@ -13,32 +13,6 @@ jobs:
     permissions:
       contents: read
 
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_DB: mydatabase
-          POSTGRES_USER: myuser
-          POSTGRES_PASSWORD: secret
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: bitnami/redis:latest
-        env:
-          ALLOW_EMPTY_PASSWORD: yes
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
