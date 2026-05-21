@@ -25,6 +25,7 @@ public class DatabaseCleaner {
                     Table table = e.getJavaType().getAnnotation(Table.class);
                     return (table != null && !table.name().isEmpty()) ? table.name() : convertToSnakeCase(e.getName());
                 })
+                .distinct()
                 .collect(Collectors.toList());
     }
 
@@ -35,6 +36,7 @@ public class DatabaseCleaner {
     @Transactional
     public void execute() {
         entityManager.flush();
+        entityManager.clear();
         entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
         for (String tableName : tableNames) {
             entityManager.createNativeQuery("TRUNCATE TABLE " + tableName + " RESTART IDENTITY").executeUpdate();
