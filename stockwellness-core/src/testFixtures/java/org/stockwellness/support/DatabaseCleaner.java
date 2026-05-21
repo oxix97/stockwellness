@@ -37,10 +37,12 @@ public class DatabaseCleaner {
     public void execute() {
         entityManager.flush();
         entityManager.clear();
-        entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
-        for (String tableName : tableNames) {
-            entityManager.createNativeQuery("TRUNCATE TABLE " + tableName + " RESTART IDENTITY").executeUpdate();
+        
+        if (tableNames.isEmpty()) {
+            return;
         }
-        entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
+        
+        String tableNamesJoined = String.join(", ", tableNames);
+        entityManager.createNativeQuery("TRUNCATE TABLE " + tableNamesJoined + " RESTART IDENTITY CASCADE").executeUpdate();
     }
 }
