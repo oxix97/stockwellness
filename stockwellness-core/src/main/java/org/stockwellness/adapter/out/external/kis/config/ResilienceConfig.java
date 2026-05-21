@@ -30,7 +30,7 @@ public class ResilienceConfig {
     public RateLimiter kisRateLimiter() {
         RateLimiterConfig config = RateLimiterConfig.custom()
                 .limitRefreshPeriod(Duration.ofMillis(100))
-                .limitForPeriod(2) // 100ms당 2건 (초당 20건 페이스이나 버스트 제어를 위해 세분화)
+                .limitForPeriod(1) // 100ms당 1건 (초당 10건, 안전 마진 확보)
                 .timeoutDuration(Duration.ofSeconds(30)) // 대기 시간을 30초로 늘려 피크 타임의 요청을 더 수용
                 .build();
         log.info("[KIS 설정] RateLimiter 초기화 limitForPeriod={}, refreshPeriod={}, timeout={}",
