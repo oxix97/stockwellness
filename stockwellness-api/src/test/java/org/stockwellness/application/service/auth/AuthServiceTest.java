@@ -3,6 +3,7 @@ package org.stockwellness.application.service.auth;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -168,7 +169,7 @@ class AuthServiceTest {
             // given
             // [변경] 검증 실패 시 예외 발생
             given(jwtProvider.validateAndGetId(AuthFixture.REFRESH_TOKEN))
-                    .willThrow(new io.jsonwebtoken.JwtException("Invalid Token"));
+                    .willThrow(new JwtException("Invalid Token"));
 
             // when & then
             assertThatThrownBy(() -> authService.reissue(AuthFixture.REFRESH_TOKEN))

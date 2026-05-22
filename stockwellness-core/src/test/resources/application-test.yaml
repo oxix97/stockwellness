@@ -55,6 +55,10 @@ resilience4j:
         limit-for-period: 100
         limit-refresh-period: 100ms
         timeout-duration: 0s
+      kisApi:
+        timeout-duration: 0ms
+        limit-for-period: 1000
+        limit-refresh-period: 1s
 
 management:
   health:
