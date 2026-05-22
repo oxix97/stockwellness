@@ -48,17 +48,21 @@ kis:
   app-key: "dummy-kis-service-key"
   app-secret: "dummy-kis-secret-key"
 
+resilience4j:
+  ratelimiter:
+    instances:
+      kisRateLimiter:
+        limit-for-period: 100
+        limit-refresh-period: 100ms
+        timeout-duration: 0s
+      kisApi:
+        timeout-duration: 0ms
+        limit-for-period: 1000
+        limit-refresh-period: 1s
+
 management:
   health:
     redis:
       enabled: false
     kafka:
       enabled: false
-
-resilience4j:
-  ratelimiter:
-    instances:
-      kisApi:
-        timeout-duration: 0ms
-        limit-for-period: 1000
-        limit-refresh-period: 1s
