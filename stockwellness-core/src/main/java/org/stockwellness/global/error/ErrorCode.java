@@ -22,6 +22,7 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "A005", "리프레시 토큰이 유효하지 않습니다."),
     REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "A006", "리프레시 토큰을 찾을 수 없습니다."),
     OAUTH2_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "A007", "소셜 로그인에 실패했습니다."),
+    REQUIRE_SIGNUP(HttpStatus.UNAUTHORIZED, "A008", "회원가입이 필요한 기능입니다."),
 
     // 회원 (M)
     MEMBER_NOT_FOUND(NOT_FOUND, "M001", "회원을 찾을 수 없습니다."),
