@@ -24,7 +24,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
 
-        ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
+        String requestURI = request.getRequestURI();
+        ErrorCode errorCode = determineErrorCode(requestURI);
         ApiResponse<Void> apiResponse = ApiResponse.error(errorCode, null);
 
         response.setStatus(errorCode.getStatusCode());
@@ -32,5 +33,14 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setCharacterEncoding("UTF-8");
 
         response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+    }
+
+    private ErrorCode determineErrorCode(String requestURI) {
+        if (requestURI.startsWith("/api/v1/portfolios") ||
+            requestURI.startsWith("/api/v1/watchlist") ||
+            requestURI.startsWith("/api/v1/members")) {
+            return ErrorCode.REQUIRE_SIGNUP;
+        }
+        return ErrorCode.UNAUTHORIZED;
     }
 }
