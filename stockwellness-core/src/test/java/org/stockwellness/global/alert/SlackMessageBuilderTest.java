@@ -3,6 +3,7 @@ package org.stockwellness.global.alert;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,7 +116,7 @@ class SlackMessageBuilderTest {
     void build_WhenFieldsExceed10_SplitsIntoMultipleSections() {
         // given
         when(env.getActiveProfiles()).thenReturn(new String[]{"local"});
-        Map<String, String> details = new java.util.LinkedHashMap<>();
+        Map<String, String> details = new LinkedHashMap<>();
         for (int i = 1; i <= 15; i++) {
             details.put("Key" + i, "Value" + i);
         }

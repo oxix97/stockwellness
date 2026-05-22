@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.stockwellness.global.alert.SlackAlertService;
 import org.stockwellness.global.common.response.ApiResponse;
@@ -40,6 +41,7 @@ public class GlobalExceptionHandler {
             ExpiredJwtException.class,
             JwtException.class,
             NoResourceFoundException.class,
+            HttpRequestMethodNotSupportedException.class,
             Exception.class
     })
     public ResponseEntity<ApiResponse<Void>> handleAllExceptions(Exception e, HttpServletRequest request) {
@@ -53,6 +55,7 @@ public class GlobalExceptionHandler {
             case ExpiredJwtException ignored -> createErrorResponse(ErrorCode.EXPIRED_JWT, traceId);
             case JwtException ignored -> createErrorResponse(ErrorCode.INVALID_JWT, traceId);
             case NoResourceFoundException ignored -> createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, traceId);
+            case HttpRequestMethodNotSupportedException ignored -> createErrorResponse(ErrorCode.METHOD_NOT_ALLOWED, traceId);
             default -> handleUnexpectedException(e, traceId, request);
         };
     }

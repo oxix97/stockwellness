@@ -43,10 +43,8 @@ public class SecurityConfig {
                 .sessionManagement((session) -> session
                         .sessionCreationPolicy(STATELESS))
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers(permitPatterns()).permitAll()
-//                        .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/v1/admin/**").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/api/v1/portfolios/**", "/api/v1/watchlist/**", "/api/v1/members/**").authenticated()
+                        .anyRequest().permitAll())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2LoginSuccessHandler)

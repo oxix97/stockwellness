@@ -84,6 +84,17 @@ class GlobalExceptionHandlerTest {
         verify(slackAlertService, never()).sendInternalServerErrorAlert(anyString(), any());
     }
 
+    @Test
+    @DisplayName("지원하지 않는 메서드 호출 시 405 응답을 반환하고 Slack 알림을 전송하지 않는다")
+    void handleMethodNotSupported_test() throws Exception {
+        mockMvc.perform(post("/test/exception")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value("G002"));
+
+        verify(slackAlertService, never()).sendErrorAlert(any(), anyString(), any());
+    }
+
     @RestController
     static class TestController {
         @GetMapping("/test/exception")

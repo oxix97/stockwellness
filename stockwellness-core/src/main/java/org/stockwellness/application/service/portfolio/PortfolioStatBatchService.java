@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
@@ -50,7 +50,6 @@ public class PortfolioStatBatchService {
 
     private static final int MAX_SYMBOLS_PER_LOAD = 50; // 메모리 보호를 위한 임계치
 
-    @Transactional
     public void updatePortfolioStatsBatch(List<Long> portfolioIds) {
         if (portfolioIds.isEmpty()) return;
 
@@ -76,27 +75,29 @@ public class PortfolioStatBatchService {
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
-        // Virtual Thread 기반 병렬 처리 (spring.threads.virtual.enabled: true 전제)
-        List<CompletableFuture<Void>> futures = portfolios.stream()
-                .map(portfolio -> CompletableFuture.runAsync(() -> {
-                    try {
-                        transactionTemplate.executeWithoutResult(status -> {
-                            processSinglePortfolio(portfolio, chunkSharedData, end);
-                        });
-                        successCount.incrementAndGet();
-                    } catch (Exception e) {
-                        log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());
-                        failureCount.incrementAndGet();
-                    }
-                }))
-                .toList();
+        // Virtual Thread 기반 병렬 처리
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<CompletableFuture<Void>> futures = portfolios.stream()
+                    .map(portfolio -> CompletableFuture.runAsync(() -> {
+                        try {
+                            transactionTemplate.executeWithoutResult(status -> {
+                                processSinglePortfolio(portfolio, chunkSharedData, end);
+                            });
+                            successCount.incrementAndGet();
+                        } catch (Exception e) {
+                            log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());
+                            failureCount.incrementAndGet();
+                        }
+                    }, executor))
+                    .toList();
 
-        // 모든 병렬 작업 완료 대기
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            // 모든 병렬 작업 완료 대기
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        }
 
         long duration = System.currentTimeMillis() - startTime;
         log.info("[배치 성능 모니터링] PortfolioStatsBatchJob Chunk 완료. 소요시간: {}ms, 성공: {}, 실패: {}, 총계: {}, 가상스레드사용: {}",
-                duration, successCount.get(), failureCount.get(), totalCount, Thread.currentThread().isVirtual());
+                duration, successCount.get(), failureCount.get(), totalCount, true);
     }
 
     private SimulationData loadPartitionedData(Set<String> allSymbols, LocalDate start, LocalDate end) {
