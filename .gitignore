@@ -292,3 +292,5 @@ auth_debug.log
 
 .gemini/
 gha-creds-*.json
+/docs/superpowers/
+/docs/

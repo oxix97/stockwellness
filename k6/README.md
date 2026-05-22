@@ -3,8 +3,7 @@
 ## 목적
 Stockwellness 백엔드 핵심 API의 성능을 Docker 기반 `grafana/k6`로 측정하고, 개선 전후 수치를 비교해 성과 자료로 활용한다.
 
-최근 측정 결과 보고서는 [PERFORMANCE-REPORT-20260423.md](/Users/chan/Desktop/gongbu/stockwellness-project/stockwellness/k6/PERFORMANCE-REPORT-20260423.md)를 참고한다.
-
+최근 측정 결과 보고서는 [측정 결과 보고서](results/run-all-summary-20260424-151700.md)를 참고한다.
 ## 대상 API
 - `GET /api/v1/auth/test`
 - `GET /actuator/health`
