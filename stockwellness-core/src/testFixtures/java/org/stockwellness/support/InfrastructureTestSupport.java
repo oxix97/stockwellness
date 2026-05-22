@@ -11,13 +11,13 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 public abstract class InfrastructureTestSupport {
 
-    /*
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
 
     @ServiceConnection
     static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
 
+    @ServiceConnection(name = "redis")
     static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
             .withExposedPorts(6379);
 
@@ -26,14 +26,4 @@ public abstract class InfrastructureTestSupport {
         kafka.start();
         redis.start();
     }
-
-    @DynamicPropertySource
-    static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-        
-        // Kafka 속성 설정
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-    }
-    */
 }
