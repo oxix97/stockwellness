@@ -100,6 +100,14 @@ kis:
   app-key: ${KIS_APP_KEY}
   app-secret: ${KIS_APP_SECRET}
 
+resilience4j:
+  ratelimiter:
+    instances:
+      kisRateLimiter:
+        limit-for-period: 1
+        limit-refresh-period: 100ms
+        timeout-duration: 30s
+
 app:
   ai:
     enabled: ${AI_ENABLED:false}
