@@ -1,22 +1,12 @@
 package org.stockwellness.application.service.portfolio;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.outbox.OutboxPort;
@@ -33,6 +23,19 @@ import org.stockwellness.domain.portfolio.event.PortfolioAnalysisCompletedEvent;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.global.util.JsonUtil;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -46,9 +49,20 @@ public class PortfolioStatBatchService {
     private final PortfolioAnalysisService portfolioAnalysisService; // 벤치마크 계산 로직 공유
 
     private final PortfolioPort portfolioPort;
-    private final PlatformTransactionManager transactionManager;
+
+    @Autowired
+    @Lazy
+    private PortfolioStatBatchService self;
+
+    private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     private static final int MAX_SYMBOLS_PER_LOAD = 50; // 메모리 보호를 위한 임계치
+
+    @PreDestroy
+    public void shutdown() {
+        log.info("[배치] PortfolioStatBatchService Executor 종료 중...");
+        virtualThreadExecutor.shutdown();
+    }
 
     public void updatePortfolioStatsBatch(List<Long> portfolioIds) {
         if (portfolioIds.isEmpty()) return;
@@ -73,31 +87,48 @@ public class PortfolioStatBatchService {
         LocalDate start = end.minusYears(2);
         SimulationData chunkSharedData = loadPartitionedData(allSymbols, start, end);
 
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-
         // Virtual Thread 기반 병렬 처리
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            List<CompletableFuture<Void>> futures = portfolios.stream()
-                    .map(portfolio -> CompletableFuture.runAsync(() -> {
-                        try {
-                            transactionTemplate.executeWithoutResult(status -> {
-                                processSinglePortfolio(portfolio, chunkSharedData, end);
-                            });
-                            successCount.incrementAndGet();
-                        } catch (Exception e) {
-                            log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());
-                            failureCount.incrementAndGet();
-                        }
-                    }, executor))
-                    .toList();
+        List<CompletableFuture<Void>> futures = portfolios.stream()
+                .map(portfolio -> CompletableFuture.runAsync(() -> {
+                    try {
+                        self.updateIndividualPortfolioStats(portfolio, chunkSharedData, end);
+                        successCount.incrementAndGet();
+                    } catch (Exception e) {
+                        log.error("[배치] 포트폴리오 {} 통계 업데이트 실패: {}", portfolio.getId(), e.getMessage());
+                        failureCount.incrementAndGet();
+                    }
+                }, virtualThreadExecutor))
+                .toList();
 
-            // 모든 병렬 작업 완료 대기
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        }
+        // 모든 병렬 작업 완료 대기
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         long duration = System.currentTimeMillis() - startTime;
         log.info("[배치 성능 모니터링] PortfolioStatsBatchJob Chunk 완료. 소요시간: {}ms, 성공: {}, 실패: {}, 총계: {}, 가상스레드사용: {}",
                 duration, successCount.get(), failureCount.get(), totalCount, true);
+    }
+
+    public void updateIndividualPortfolioStats(Portfolio portfolio, SimulationData sharedData, LocalDate baseDate) {
+        Map<String, BigDecimal> weights = portfolio.getItems().stream()
+                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
+
+        if (weights.isEmpty()) return;
+
+        SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
+
+        // 1. 무거운 연산 (백테스트 실행) - 트랜잭션 외부에서 수행
+        BacktestResult result = backtestEngine.runLumpSum(
+                filteredData,
+                weights,
+                BigDecimal.valueOf(1000000),
+                RebalancingPeriod.NONE,
+                BenchmarkType.KOSPI.getTicker(),
+                BigDecimal.valueOf(3.0),
+                true
+        );
+
+        // 2. DB 업데이트 및 이벤트 저장을 위한 트랜잭션 메서드 호출
+        self.saveStatsAndEvent(portfolio, result, filteredData, baseDate);
     }
 
     private SimulationData loadPartitionedData(Set<String> allSymbols, LocalDate start, LocalDate end) {
@@ -117,19 +148,12 @@ public class PortfolioStatBatchService {
         return new SimulationData(allStockPrices, benchmarkPrices != null ? benchmarkPrices : Map.of());
     }
 
-    private void processSinglePortfolio(Portfolio portfolio, SimulationData sharedData, LocalDate baseDate) {
-        Map<String, BigDecimal> weights = portfolio.getItems().stream()
-                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight));
-
-        if (weights.isEmpty()) return;
-
-        SimulationData filteredData = filterDataForPortfolio(sharedData, weights.keySet());
-        BacktestResult result = backtestEngine.runLumpSum(filteredData, weights, BigDecimal.valueOf(1000000), RebalancingPeriod.NONE, BenchmarkType.KOSPI.getTicker(), BigDecimal.valueOf(3.0), true);
-        
+    @Transactional
+    public void saveStatsAndEvent(Portfolio portfolio, BacktestResult result, SimulationData filteredData, LocalDate baseDate) {
         BigDecimal mdd = result.mdd();
         BigDecimal sharpe = result.sharpeRatio();
         BigDecimal beta = result.beta();
-        
+
         // 리팩토링된 엔티티 메서드 활용을 위한 시세 맵 구성
         Map<String, BigDecimal> currentPrices = portfolio.getItems().stream()
                 .collect(Collectors.toMap(PortfolioItem::getSymbol, i -> {

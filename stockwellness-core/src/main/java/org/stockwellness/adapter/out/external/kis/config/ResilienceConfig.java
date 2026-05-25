@@ -27,15 +27,12 @@ public class ResilienceConfig {
     }
 
     @Bean
-    public RateLimiter kisRateLimiter() {
-        RateLimiterConfig config = RateLimiterConfig.custom()
-                .limitRefreshPeriod(Duration.ofMillis(100))
-                .limitForPeriod(1) // 100ms당 1건 (초당 10건, 안전 마진 확보)
-                .timeoutDuration(Duration.ofSeconds(30)) // 대기 시간을 30초로 늘려 피크 타임의 요청을 더 수용
-                .build();
-        log.info("[KIS 설정] RateLimiter 초기화 limitForPeriod={}, refreshPeriod={}, timeout={}",
+    public RateLimiter kisRateLimiter(RateLimiterRegistry rateLimiterRegistry) {
+        RateLimiter rateLimiter = rateLimiterRegistry.rateLimiter("kisRateLimiter");
+        RateLimiterConfig config = rateLimiter.getRateLimiterConfig();
+        log.info("[KIS 설정] RateLimiter 초기화(Registry 기반) limitForPeriod={}, refreshPeriod={}, timeout={}",
                 config.getLimitForPeriod(), config.getLimitRefreshPeriod(), config.getTimeoutDuration());
-        return RateLimiterRegistry.of(config).rateLimiter("kisRateLimiter");
+        return rateLimiter;
     }
 
     public static RetryConfig kisRetryConfig() {

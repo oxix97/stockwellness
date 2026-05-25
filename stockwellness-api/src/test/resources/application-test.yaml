@@ -16,7 +16,7 @@ spring:
     enabled: false
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     open-in-view: false
     show-sql: false
   h2:
@@ -88,6 +88,14 @@ kis:
   base-url: https://openapi.koreainvestment.com:9443
   app-key: "dummy-kis-service-key"
   app-secret: "dummy-kis-secret-key"
+
+resilience4j:
+  ratelimiter:
+    instances:
+      kisRateLimiter:
+        timeout-duration: 0ms
+        limit-for-period: 1000
+        limit-refresh-period: 1s
 
 app:
   ai:

@@ -1,8 +1,10 @@
 package org.stockwellness.support;
 
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -12,19 +14,47 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest
 public abstract class InfrastructureTestSupport {
 
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
+    static PostgreSQLContainer<?> postgres;
+    static KafkaContainer kafka;
+    static GenericContainer<?> redis;
 
-    @ServiceConnection
-    static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
+    @DynamicPropertySource
+    static void overrideProps(DynamicPropertyRegistry registry) {
+        if (isDockerAvailable()) {
+            startContainers();
+            registry.add("spring.datasource.url", postgres::getJdbcUrl);
+            registry.add("spring.datasource.username", postgres::getUsername);
+            registry.add("spring.datasource.password", postgres::getPassword);
+            registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
-    @ServiceConnection(name = "redis")
-    static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
-            .withExposedPorts(6379);
+            registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
 
-    static {
-        postgres.start();
-        kafka.start();
-        redis.start();
+            registry.add("spring.data.redis.host", redis::getHost);
+            registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        }
+    }
+
+    private static void startContainers() {
+        if (postgres == null) {
+            postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
+            postgres.start();
+        }
+        if (kafka == null) {
+            kafka = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.0"));
+            kafka.start();
+        }
+        if (redis == null) {
+            redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine")).withExposedPorts(6379);
+            redis.start();
+        }
+    }
+
+    private static boolean isDockerAvailable() {
+        try {
+            DockerClientFactory.instance().client();
+            return true;
+        } catch (Throwable e) {
+            return false;
+        }
     }
 }
