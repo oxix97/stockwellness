@@ -108,6 +108,28 @@ class KisDailyPriceAdapterTest {
     }
 
     @Test
+    @DisplayName("신규 지수 적재 경로는 FHKUP03500100 output2 원문 날짜와 가격을 유지한다")
+    void fetchRawIndexDailyPrices_usesKisDailyIndexChartContract() {
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice")))
+                .andExpect(requestTo(containsString("FID_COND_MRKT_DIV_CODE=U")))
+                .andExpect(requestTo(containsString("FID_INPUT_DATE_1=20260402")))
+                .andExpect(requestTo(containsString("FID_INPUT_DATE_2=20260409")))
+                .andExpect(requestTo(containsString("FID_INPUT_ISCD=0001")))
+                .andExpect(header("tr_id", "FHKUP03500100"))
+                .andRespond(withSuccess("""
+                        {"rtCd":"0","output2":[{"stck_bsop_date":"20260409","bstp_nmix_prpr":"2510.00","acml_vol":"120000"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        var result = adapter.fetchRawIndexDailyPrices("0001", LocalDate.of(2026, 4, 2), LocalDate.of(2026, 4, 9));
+
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.stckBsopDate()).isEqualTo("20260409");
+            assertThat(row.sectorIndexPrice()).isEqualTo("2510.00");
+        });
+        mockServer.verify();
+    }
+
+    @Test
     @DisplayName("해외 지수 일별 시세 조회 성공 테스트")
     void fetchOverseasIndexDailyPrices_success() {
         // given

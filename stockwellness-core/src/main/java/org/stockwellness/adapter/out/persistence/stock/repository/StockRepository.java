@@ -14,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.exception.StockPriceException;
+
+import static org.stockwellness.global.error.ErrorCode.AMBIGUOUS_TICKER;
 
 /**
  * Stock 엔티티(종목 마스터) 접근을 위한 Repository
@@ -24,7 +27,15 @@ public interface StockRepository extends JpaRepository<Stock, Long>, StockCustom
      * 티커(단축코드)로 종목 조회
      * <p>ISIN 코드가 PK이지만, 사용자나 외부 API는 티커를 주로 사용함</p>
      */
-    Optional<Stock> findByTicker(String ticker);
+    default Optional<Stock> findByTicker(String ticker) {
+        List<Stock> matches = findAllByTicker(ticker);
+        if (matches.size() > 1) throw new StockPriceException(AMBIGUOUS_TICKER);
+        return matches.stream().findFirst();
+    }
+
+    List<Stock> findAllByTicker(String ticker);
+
+    Optional<Stock> findByTickerAndMarketCode(String ticker, String marketCode);
 
     /**
      * 특정 시장(KOSPI, KOSDAQ)에 속한 활성 종목 조회

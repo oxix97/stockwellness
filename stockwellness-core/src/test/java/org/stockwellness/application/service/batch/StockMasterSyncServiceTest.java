@@ -18,6 +18,7 @@ import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -38,6 +39,42 @@ class StockMasterSyncServiceTest {
     @Mock
     private MarketIndexRepository marketIndexRepository;
 
+    @Test
+    @DisplayName("KOSPI 마스터 원본 archive bytes를 그대로 반환한다")
+    void downloadKospiMasterArchive_returnsExactClientBytes() {
+        byte[] expected = {1, 2, 3};
+        given(kisMasterClient.downloadKospiMasterArchive()).willReturn(expected);
+
+        byte[] actual = stockMasterSyncService.downloadKospiMasterArchive();
+
+        assertThat(actual).isSameAs(expected);
+    }
+
+    @Test
+    @DisplayName("KOSDAQ 마스터 원본 archive bytes를 그대로 반환한다")
+    void downloadKosdaqMasterArchive_returnsExactClientBytes() {
+        byte[] expected = {4, 5, 6};
+        given(kisMasterClient.downloadKosdaqMasterArchive()).willReturn(expected);
+
+        byte[] actual = stockMasterSyncService.downloadKosdaqMasterArchive();
+
+        assertThat(actual).isSameAs(expected);
+    }
+
+    @Test
+    @DisplayName("KOSPI 마스터 archive의 형식 오류를 거부한다")
+    void parseKospiMasterArchive_rejectsInvalidArchive() {
+        assertThatThrownBy(() -> stockMasterSyncService.parseKospiMasterArchive(new byte[]{1, 2, 3}))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("KOSDAQ 마스터 archive의 형식 오류를 거부한다")
+    void parseKosdaqMasterArchive_rejectsInvalidArchive() {
+        assertThatThrownBy(() -> stockMasterSyncService.parseKosdaqMasterArchive(new byte[]{1, 2, 3}))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Nested
     @DisplayName("KOSPI 종목 업서트(upsertKospi) 테스트")
     class UpsertKospiCases {
@@ -48,7 +85,7 @@ class StockMasterSyncServiceTest {
             // given
             KospiItem item = createKospiItem("005930", "삼성전자", "0029");
             given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0029", MarketIndex.of("0029", "전기전자")));
-            given(stockRepository.findByTicker("005930")).willReturn(Optional.empty());
+            given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
 
             // when
             StockMasterSyncUseCase.StockMasterSyncResult result = stockMasterSyncService.upsertKospi(
@@ -64,6 +101,20 @@ class StockMasterSyncServiceTest {
         }
 
         @Test
+        @DisplayName("정리매매 플래그만으로 상장폐지 상태를 만들지 않는다")
+        void clearingTradeDoesNotDelistStock() {
+            KospiItem item = createKospiItem("005930", "삼성전자", "0029");
+            given(item.clearingTrade()).willReturn("Y");
+            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of());
+            given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
+
+            Stock created = stockMasterSyncService.upsertKospi(
+                    new StockMasterSyncUseCase.KospiMasterSyncCommand(item)).stock();
+
+            assertThat(created.getStatus()).isEqualTo(StockStatus.ACTIVE);
+        }
+
+        @Test
         @DisplayName("기존 종목이면 정보를 업데이트한다")
         void shouldUpdateExistingStock() {
             // given
@@ -72,7 +123,7 @@ class StockMasterSyncServiceTest {
             KospiItem item = createKospiItem("005930", "삼성전자우", "0029");
             
             given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0029", MarketIndex.of("0029", "전기전자")));
-            given(stockRepository.findByTicker("005930")).willReturn(Optional.of(existing));
+            given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.of(existing));
 
             // when
             StockMasterSyncUseCase.StockMasterSyncResult result = stockMasterSyncService.upsertKospi(
@@ -91,7 +142,7 @@ class StockMasterSyncServiceTest {
             // given
             KospiItem item = createKospiItem("005930", "삼성전자", "9999");
             given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of()); // 빈 맵
-            given(stockRepository.findByTicker("005930")).willReturn(Optional.empty());
+            given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
 
             // when
             StockMasterSyncUseCase.StockMasterSyncResult result = stockMasterSyncService.upsertKospi(
@@ -130,7 +181,7 @@ class StockMasterSyncServiceTest {
             // given
             KosdaqItem item = createKosdaqItem("000250", "삼천당제약", "0027");
             given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0027", MarketIndex.of("0027", "제약")));
-            given(stockRepository.findByTicker("000250")).willReturn(Optional.empty());
+            given(stockRepository.findByTickerAndMarketCode("000250", "KOSDAQ")).willReturn(Optional.empty());
 
             // when
             StockMasterSyncUseCase.StockMasterSyncResult result = stockMasterSyncService.upsertKosdaq(
