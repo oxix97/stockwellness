@@ -1,43 +1,55 @@
 package org.stockwellness.batch.job.stockmaster.config;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.test.JobLauncherTestUtils;
-import org.springframework.batch.test.context.SpringBatchTest;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.adapter.batch.stock.snapshot.StockMasterSnapshot;
+import org.stockwellness.batch.job.stockmaster.support.StockMasterArchiveFixture;
+import org.stockwellness.application.service.batch.StockMasterSyncService;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.support.BatchIntegrationTestSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
-@Disabled("의존성 추가로 인한 기존 테스트 컨텍스트 충돌로 일시 비활성화 - 본 트랙 기능과 무관")
-@SpringBatchTest
 class StockMasterSyncJobTest extends BatchIntegrationTestSupport {
 
     @Autowired
-    private JobLauncherTestUtils jobLauncherTestUtils;
+    private JobLauncher jobLauncher;
 
     @Autowired
     private StockRepository stockRepository;
 
     @Autowired
-    private StockPriceRepository stockPriceRepository;
+    private MarketIndexRepository marketIndexRepository;
 
     @Autowired
-    private MarketIndexRepository marketIndexRepository;
+    private KisMasterClient kisMasterClient;
+
+    @MockitoSpyBean
+    private StockMasterSyncService stockMasterSyncService;
 
     @Autowired
     @Qualifier("stockMasterSyncJob")
@@ -45,42 +57,152 @@ class StockMasterSyncJobTest extends BatchIntegrationTestSupport {
 
     @BeforeEach
     void setUp() {
-        jobLauncherTestUtils.setJob(stockMasterSyncJob);
-        try {
-            stockPriceRepository.deleteAllInBatch();
-            marketIndexRepository.deleteAllInBatch();
-            stockRepository.deleteAllInBatch();
-        } catch (Exception ignored) {}
+        stockRepository.deleteAllInBatch();
+        marketIndexRepository.deleteAllInBatch();
     }
 
     @Test
-    @DisplayName("전체 종목 마스터 동기화 Job이 실행되면 Upsert와 상장폐지가 일관되게 처리된다")
-    void testStockMasterSyncJob() throws Exception {
-        // given
-        String t1 = "005930";
-        String t2 = "000660";
-        String t3 = "999999";
-        
-        Stock existingStock = Stock.of(t1, "KR7005930003", "삼성전자", null, null, null, StockStatus.ACTIVE);
-        Stock delistedStock = Stock.of(t3, "KR7999999001", "상장폐지예정", null, null, null, StockStatus.ACTIVE);
-        try {
-            stockRepository.saveAllAndFlush(List.of(existingStock, delistedStock));
-        } catch (Exception ignored) {}
+    void structurallyValidSnapshotsUpsertBothMarketsWithoutDelistingExistingRows() throws Exception {
+        Stock missingKospi = Stock.of("999998", "KR7999998003", "legacy KOSPI",
+                MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        Stock missingKosdaq = Stock.of("999999", "KR7999999001", "legacy KOSDAQ",
+                MarketType.KOSDAQ, Currency.KRW, null, StockStatus.ACTIVE);
+        stockRepository.saveAllAndFlush(List.of(missingKospi, missingKosdaq));
 
-        String line1 = String.format("%-9s%-12s%-40s%s", t1, "KR7005930003", "삼성전자", " ".repeat(300));
-        String line2 = String.format("%-9s%-12s%-40s%s", t2, "KR7000660001", "SK하이닉스", " ".repeat(300));
-        
-        given(kisMasterClient.downloadKospiMaster()).willReturn(List.of(line1, line2));
-        given(kisMasterClient.downloadKosdaqMaster()).willReturn(List.of());
+        given(kisMasterClient.downloadKospiMasterArchive()).willReturn(StockMasterArchiveFixture.kospi(List.of(
+                new StockMasterArchiveFixture.Row("005930", "KR7005930003", "삼성전자"))));
+        given(kisMasterClient.downloadKosdaqMasterArchive()).willReturn(StockMasterArchiveFixture.kosdaq(List.of(
+                new StockMasterArchiveFixture.Row("035900", "KR7035900000", "JYP Ent."))));
 
-        if (marketIndexRepository.findByIndexCode("0001").isEmpty()) {
-            marketIndexRepository.saveAndFlush(MarketIndex.of("0001", "KOSPI"));
-        }
+        JobExecution execution = runWithUniqueParameters();
 
-        // when
-        JobExecution jobExecution = jobLauncherTestUtils.launchJob();
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).isPresent();
+        assertThat(stockRepository.findByTickerAndMarketCode("035900", "KOSDAQ")).isPresent();
+        assertThat(stockRepository.findByTickerAndMarketCode("999998", "KOSPI"))
+                .get().extracting(Stock::getStatus).isEqualTo(StockStatus.ACTIVE);
+        assertThat(stockRepository.findByTickerAndMarketCode("999999", "KOSDAQ"))
+                .get().extracting(Stock::getStatus).isEqualTo(StockStatus.ACTIVE);
+    }
 
-        // then
-        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+    @Test
+    void validKOSPIAndInvalidKOSDAQFailBeforeAnyStockWrite() throws Exception {
+        seedLegacyStocks();
+        givenValidKospi();
+        given(kisMasterClient.downloadKosdaqMasterArchive()).willReturn(new byte[]{1, 2, 3});
+
+        JobExecution execution = runWithUniqueParameters();
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertNoMasterWrites();
+    }
+
+    @Test
+    void validKOSDAQAndInvalidKOSPIFailBeforeAnyStockWrite() throws Exception {
+        seedLegacyStocks();
+        given(kisMasterClient.downloadKospiMasterArchive()).willReturn(new byte[]{1, 2, 3});
+        givenValidKosdaq();
+
+        JobExecution execution = runWithUniqueParameters();
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertNoMasterWrites();
+    }
+
+    @Test
+    void restartReusesTheStagedArchivesWithoutDownloadingAgain() throws Exception {
+        givenValidKospi();
+        givenValidKosdaq();
+        AtomicBoolean failOnce = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            if (failOnce.getAndSet(false)) {
+                throw new IllegalStateException("one-shot test failure after preflight");
+            }
+            return invocation.callRealMethod();
+        }).when(stockMasterSyncService).upsertKospi(any());
+        var parameters = uniqueParameters();
+
+        JobExecution first = jobLauncher.run(stockMasterSyncJob, parameters);
+        assertThat(first.getStatus()).isEqualTo(BatchStatus.FAILED);
+        StockMasterSnapshot firstKospi = snapshot(first, "stockMaster.kospi.snapshot");
+        StockMasterSnapshot firstKosdaq = snapshot(first, "stockMaster.kosdaq.snapshot");
+
+        JobExecution restarted = jobLauncher.run(stockMasterSyncJob, parameters);
+
+        assertThat(restarted.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(snapshot(restarted, "stockMaster.kospi.snapshot")).isEqualTo(firstKospi);
+        assertThat(snapshot(restarted, "stockMaster.kosdaq.snapshot")).isEqualTo(firstKosdaq);
+        verify(kisMasterClient, times(1)).downloadKospiMasterArchive();
+        verify(kisMasterClient, times(1)).downloadKosdaqMasterArchive();
+    }
+
+    @Test
+    void restartFailsBeforeUpsertWhenEitherStagedArchiveHashChanges() throws Exception {
+        givenValidKospi();
+        givenValidKosdaq();
+        AtomicBoolean failOnce = new AtomicBoolean(true);
+        doAnswer(invocation -> {
+            if (failOnce.getAndSet(false)) {
+                throw new IllegalStateException("one-shot test failure after preflight");
+            }
+            return invocation.callRealMethod();
+        }).when(stockMasterSyncService).upsertKospi(any());
+        var parameters = uniqueParameters();
+
+        JobExecution first = jobLauncher.run(stockMasterSyncJob, parameters);
+        assertThat(first.getStatus()).isEqualTo(BatchStatus.FAILED);
+        StockMasterSnapshot kosdaqSnapshot = snapshot(first, "stockMaster.kosdaq.snapshot");
+        byte[] tamperedArchive = Files.readAllBytes(Path.of(kosdaqSnapshot.artifactPath()));
+        tamperedArchive[0] ^= 0x01;
+        Files.write(Path.of(kosdaqSnapshot.artifactPath()), tamperedArchive);
+
+        JobExecution restarted = jobLauncher.run(stockMasterSyncJob, parameters);
+
+        assertThat(restarted.getStatus()).isEqualTo(BatchStatus.FAILED);
+        verify(stockMasterSyncService, times(1)).upsertKospi(any());
+        verify(kisMasterClient, times(1)).downloadKospiMasterArchive();
+        verify(kisMasterClient, times(1)).downloadKosdaqMasterArchive();
+        assertThat(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).isEmpty();
+        assertThat(stockRepository.findByTickerAndMarketCode("035900", "KOSDAQ")).isEmpty();
+    }
+
+    private JobExecution runWithUniqueParameters() throws Exception {
+        return jobLauncher.run(stockMasterSyncJob, uniqueParameters());
+    }
+
+    private static org.springframework.batch.core.JobParameters uniqueParameters() {
+        return new JobParametersBuilder().addString("testRunId", UUID.randomUUID().toString()).toJobParameters();
+    }
+
+    private void seedLegacyStocks() {
+        stockRepository.saveAllAndFlush(List.of(
+                Stock.of("999998", "KR7999998003", "legacy KOSPI",
+                        MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE),
+                Stock.of("999999", "KR7999999001", "legacy KOSDAQ",
+                        MarketType.KOSDAQ, Currency.KRW, null, StockStatus.ACTIVE)));
+    }
+
+    private void assertNoMasterWrites() {
+        assertThat(stockRepository.count()).isEqualTo(2);
+        assertThat(stockRepository.findByTickerAndMarketCode("999998", "KOSPI"))
+                .get().extracting(Stock::getStatus).isEqualTo(StockStatus.ACTIVE);
+        assertThat(stockRepository.findByTickerAndMarketCode("999999", "KOSDAQ"))
+                .get().extracting(Stock::getStatus).isEqualTo(StockStatus.ACTIVE);
+        assertThat(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).isEmpty();
+        assertThat(stockRepository.findByTickerAndMarketCode("035900", "KOSDAQ")).isEmpty();
+    }
+
+    private void givenValidKospi() {
+        given(kisMasterClient.downloadKospiMasterArchive()).willReturn(StockMasterArchiveFixture.kospi(List.of(
+                new StockMasterArchiveFixture.Row("005930", "KR7005930003", "삼성전자"))));
+    }
+
+    private void givenValidKosdaq() {
+        given(kisMasterClient.downloadKosdaqMasterArchive()).willReturn(StockMasterArchiveFixture.kosdaq(List.of(
+                new StockMasterArchiveFixture.Row("035900", "KR7035900000", "JYP Ent."))));
+    }
+
+    private static StockMasterSnapshot snapshot(JobExecution execution, String key) {
+        return (StockMasterSnapshot) execution.getExecutionContext().get(key);
     }
 }

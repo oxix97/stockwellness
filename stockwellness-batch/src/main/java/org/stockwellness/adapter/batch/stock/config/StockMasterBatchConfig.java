@@ -14,15 +14,22 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.batch.stock.step.reader.KosdaqMasterItemReader;
 import org.stockwellness.adapter.batch.stock.step.reader.KospiMasterItemReader;
+import org.stockwellness.adapter.batch.stock.snapshot.StockMasterSnapshot;
+import org.stockwellness.adapter.batch.stock.snapshot.StockMasterSnapshotStore;
 import org.stockwellness.adapter.batch.stock.step.tasklet.StockDelistTasklet;
+import org.stockwellness.adapter.batch.stock.step.tasklet.StockMasterPreflightTasklet;
+import org.stockwellness.adapter.batch.stock.step.tasklet.StockRiskSnapshotTasklet;
 import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockRiskStatusPort;
+import org.stockwellness.application.service.batch.StockRiskStatusMapper;
 import org.stockwellness.batch.support.BatchMdcListener;
 import org.stockwellness.batch.support.logging.CommonBatchJobLoggingListener;
 import org.stockwellness.batch.support.logging.CommonBatchStepLoggingListener;
@@ -52,18 +59,33 @@ public class StockMasterBatchConfig {
 
     @Bean
     public Job stockMasterSyncJob(
+            Step stockMasterPreflightStep,
             Step kospiUpsertStep,
+            Step kospiRiskSnapshotStep,
             Step kospiDelistStep,
             Step kosdaqUpsertStep,
+            Step kosdaqRiskSnapshotStep,
             Step kosdaqDelistStep
     ) {
         return new JobBuilder("stockMasterSyncJob", jobRepository)
                 .listener(commonJobListener)
                 .listener(commonBatchJobLoggingListener)
-                .start(kospiUpsertStep)
+                .start(stockMasterPreflightStep)
+                .next(kospiUpsertStep)
+                .next(kospiRiskSnapshotStep)
                 .next(kospiDelistStep)
                 .next(kosdaqUpsertStep)
+                .next(kosdaqRiskSnapshotStep)
                 .next(kosdaqDelistStep)
+                .build();
+    }
+
+    @Bean
+    public Step stockMasterPreflightStep(StockMasterPreflightTasklet preflightTasklet) {
+        return new StepBuilder("stockMasterPreflightStep", jobRepository)
+                .tasklet(preflightTasklet, txManager)
+                .listener(mdcListener)
+                .listener(commonBatchStepLoggingListener)
                 .build();
     }
 
@@ -96,6 +118,23 @@ public class StockMasterBatchConfig {
     }
 
     @Bean
+    public Step kospiRiskSnapshotStep(StockRiskSnapshotTasklet kospiRiskSnapshotTasklet) {
+        return new StepBuilder("kospiRiskSnapshotStep", jobRepository)
+                .tasklet(kospiRiskSnapshotTasklet, txManager)
+                .listener(mdcListener).listener(commonBatchStepLoggingListener).build();
+    }
+
+    @Bean
+    @StepScope
+    public StockRiskSnapshotTasklet kospiRiskSnapshotTasklet(StockMasterSnapshotStore snapshotStore,
+            @Value("#{jobExecutionContext['stockMaster.kospi.snapshot']}") StockMasterSnapshot kospiSnapshot,
+            @Value("#{jobExecutionContext['stockMaster.kosdaq.snapshot']}") StockMasterSnapshot kosdaqSnapshot,
+            StockRiskStatusMapper mapper, StockRiskStatusPort riskStatusPort) {
+        return new StockRiskSnapshotTasklet(MarketType.KOSPI, kospiSnapshot, kosdaqSnapshot,
+                snapshotStore, stockMasterSyncUseCase, stockPort, mapper, riskStatusPort);
+    }
+
+    @Bean
     public Step kosdaqUpsertStep(
             KosdaqMasterItemReader kosdaqItemReader,
             ItemProcessor<KosdaqItem, Stock> kosdaqItemProcessor,
@@ -124,15 +163,44 @@ public class StockMasterBatchConfig {
     }
 
     @Bean
-    @StepScope
-    public KospiMasterItemReader kospiItemReader() {
-        return new KospiMasterItemReader(stockMasterSyncUseCase.loadKospiItems());
+    public Step kosdaqRiskSnapshotStep(StockRiskSnapshotTasklet kosdaqRiskSnapshotTasklet) {
+        return new StepBuilder("kosdaqRiskSnapshotStep", jobRepository)
+                .tasklet(kosdaqRiskSnapshotTasklet, txManager)
+                .listener(mdcListener).listener(commonBatchStepLoggingListener).build();
     }
 
     @Bean
     @StepScope
-    public KosdaqMasterItemReader kosdaqItemReader() {
-        return new KosdaqMasterItemReader(stockMasterSyncUseCase.loadKosdaqItems());
+    public StockRiskSnapshotTasklet kosdaqRiskSnapshotTasklet(StockMasterSnapshotStore snapshotStore,
+            @Value("#{jobExecutionContext['stockMaster.kospi.snapshot']}") StockMasterSnapshot kospiSnapshot,
+            @Value("#{jobExecutionContext['stockMaster.kosdaq.snapshot']}") StockMasterSnapshot kosdaqSnapshot,
+            StockRiskStatusMapper mapper, StockRiskStatusPort riskStatusPort) {
+        return new StockRiskSnapshotTasklet(MarketType.KOSDAQ, kospiSnapshot, kosdaqSnapshot,
+                snapshotStore, stockMasterSyncUseCase, stockPort, mapper, riskStatusPort);
+    }
+
+    @Bean
+    @StepScope
+    public KospiMasterItemReader kospiItemReader(
+            StockMasterSnapshotStore snapshotStore,
+            @Value("#{jobExecutionContext['stockMaster.kospi.snapshot']}") StockMasterSnapshot kospiSnapshot,
+            @Value("#{jobExecutionContext['stockMaster.kosdaq.snapshot']}") StockMasterSnapshot kosdaqSnapshot
+    ) {
+        snapshotStore.verifyBoth(kospiSnapshot, kosdaqSnapshot);
+        return new KospiMasterItemReader(stockMasterSyncUseCase.parseKospiMasterArchive(
+                snapshotStore.readVerified(kospiSnapshot)));
+    }
+
+    @Bean
+    @StepScope
+    public KosdaqMasterItemReader kosdaqItemReader(
+            StockMasterSnapshotStore snapshotStore,
+            @Value("#{jobExecutionContext['stockMaster.kospi.snapshot']}") StockMasterSnapshot kospiSnapshot,
+            @Value("#{jobExecutionContext['stockMaster.kosdaq.snapshot']}") StockMasterSnapshot kosdaqSnapshot
+    ) {
+        snapshotStore.verifyBoth(kospiSnapshot, kosdaqSnapshot);
+        return new KosdaqMasterItemReader(stockMasterSyncUseCase.parseKosdaqMasterArchive(
+                snapshotStore.readVerified(kosdaqSnapshot)));
     }
 
     @Bean
