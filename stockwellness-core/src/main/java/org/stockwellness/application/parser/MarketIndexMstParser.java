@@ -62,8 +62,7 @@ public class MarketIndexMstParser {
             throw new IllegalArgumentException("필수 데이터 누락");
         }
 
-        // MarketIndex.of(rawCode, indexName) 호출
-        // StockSector 로직에서 trim()을 사용하므로 여기서도 정규화하여 저장
-        return MarketIndex.of(code, name);
+        // Division 0/1은 파일 계약상 KOSPI/KOSDAQ이다. 나머지 division은 미분류로 보존한다.
+        return MarketIndex.of(code, name, div);
     }
 }

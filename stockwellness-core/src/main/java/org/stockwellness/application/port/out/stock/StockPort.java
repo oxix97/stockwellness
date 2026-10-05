@@ -14,6 +14,12 @@ public interface StockPort {
     List<Stock> findBySectorCode(String sectorCode);
 
     Optional<Stock> loadStockByTicker(String ticker);
+    default Optional<Stock> loadStockByTickerAndMarketCode(String ticker, String marketCode) {
+        if (marketCode == null) return loadStockByTicker(ticker);
+        return loadStocksByTickers(List.of(ticker)).stream()
+                .filter(stock -> marketCode.equals(stock.getMarketCode()))
+                .findFirst();
+    }
     List<Stock> loadStocksByTickers(List<String> tickers);
     boolean existsByTicker(String ticker);
     Slice<Stock> searchStocks(SearchStockQuery query);
