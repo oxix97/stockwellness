@@ -100,7 +100,7 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:github-actions
 
-      - name: Trigger n8n webhook (비동기 호출)
+      - name: Trigger n8n webhook
         run: |
           MSG=$(git log -1 --pretty=%B || echo "Release: ${{ github.ref_name }}")
 
@@ -112,15 +112,16 @@ jobs:
             --arg author "${{ github.actor }}" \
             '{image: $img, tag: $tag, commit: $commit, message: $msg, author: $author}')
           
-          # n8n의 Webhook 응답 설정을 'Immediately'로 변경하여 비동기로 호출합니다.
-          # 타임아웃을 피하기 위해 대기 로직을 제거하고 요청 성공 여부만 확인합니다.
+          # n8n이 배포 완료 후 응답하는 설정일 수 있습니다. API 배포는 헬스 체크
+          # (최대 120초)와 안정성 확인(30초)을 수행하므로 Batch와 동일하게 여유를 둡니다.
           curl -s -S -f \
-            --max-time 60 \
+            --max-time 300 \
             --connect-timeout 30 \
             -X POST \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Token: ${{ secrets.N8N_DEPLOY_TOKEN }}" \
             -d "$JSON_DATA" \
+            -w "\nHTTP status: %{http_code}\n" \
             "${{ secrets.N8N_WEBHOOK_URL }}"
 
       - name: Done
