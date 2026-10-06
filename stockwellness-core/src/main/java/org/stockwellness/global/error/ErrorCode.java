@@ -48,6 +48,7 @@ public enum ErrorCode {
     // 주식 (S)
     STOCK_NOT_FOUND(NOT_FOUND, "S001", "종목을 찾을 수 없습니다."),
     PRICE_DATA_NOT_FOUND(NOT_FOUND, "S002", "해당 기간의 시세 데이터를 찾을 수 없습니다."),
+    AMBIGUOUS_TICKER(BAD_REQUEST, "S003", "종목 코드가 여러 시장에 존재합니다. 시장을 지정해 주세요."),
 
     // 섹터 (T)
     SECTOR_NOT_FOUND(NOT_FOUND, "T001", "섹터를 찾을 수 없습니다."),
