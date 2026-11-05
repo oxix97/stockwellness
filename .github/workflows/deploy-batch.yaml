@@ -12,10 +12,36 @@ env:
   IMAGE_BATCH: ghcr.io/${{ github.repository_owner }}/stockwellness-batch
 
 jobs:
+  verify-ci:
+    name: Verify CI for deployment commit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Require a successful CI run for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          runs=$(gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${DEPLOY_SHA}&per_page=100")
+          echo "$runs" | jq -e --arg sha "$DEPLOY_SHA" '
+            [.workflow_runs[]
+              | select(.head_sha == $sha)
+              | select(.event != "pull_request")
+              | select(.status == "completed" and .conclusion == "success")]
+            | length > 0
+          ' >/dev/null || {
+            echo "No successful CI run found for ${DEPLOY_SHA}; refusing deployment."
+            exit 1
+          }
+
   # ── 1. Batch 이미지 빌드 & Push ───────────────────────────────
   build-batch:
     name: Build Batch Image
     runs-on: ubuntu-latest
+    needs: verify-ci
     permissions:
       contents: read
       packages: write
@@ -57,7 +83,8 @@ jobs:
   deploy-batch:
     name: Trigger Batch Deployment
     runs-on: ubuntu-latest
-    needs: build-batch
+    needs: [verify-ci, build-batch]
+    permissions: {}
 
     steps:
       - name: Connect to Tailscale

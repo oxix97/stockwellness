@@ -14,6 +14,7 @@ import org.stockwellness.application.parser.KospiMstParser;
 import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.KosdaqItem;
 import org.stockwellness.domain.stock.KospiItem;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
 import org.stockwellness.domain.stock.insight.MarketIndex;
@@ -28,9 +29,29 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
     private final MarketIndexRepository marketIndexRepository;
 
     @Override
+    public byte[] downloadKospiMasterArchive() {
+        return kisMasterClient.downloadKospiMasterArchive();
+    }
+
+    @Override
+    public byte[] downloadKosdaqMasterArchive() {
+        return kisMasterClient.downloadKosdaqMasterArchive();
+    }
+
+    @Override
+    public List<KospiItem> parseKospiMasterArchive(byte[] archiveBytes) {
+        return KospiMstParser.parseArchive(archiveBytes);
+    }
+
+    @Override
+    public List<KosdaqItem> parseKosdaqMasterArchive(byte[] archiveBytes) {
+        return KosdaqMstParser.parseArchive(archiveBytes);
+    }
+
+    @Override
     public List<KospiItem> loadKospiItems() {
         log.info("[KOSPI] 마스터 파일 다운로드 시작");
-        List<KospiItem> items = KospiMstParser.parseLines(kisMasterClient.downloadKospiMaster());
+        List<KospiItem> items = parseKospiMasterArchive(downloadKospiMasterArchive());
         log.info("[KOSPI] 파싱 완료: {}건", items.size());
         return items;
     }
@@ -38,7 +59,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
     @Override
     public List<KosdaqItem> loadKosdaqItems() {
         log.info("[KOSDAQ] 마스터 파일 다운로드 시작");
-        List<KosdaqItem> items = KosdaqMstParser.parseLines(kisMasterClient.downloadKosdaqMaster());
+        List<KosdaqItem> items = parseKosdaqMasterArchive(downloadKosdaqMasterArchive());
         log.info("[KOSDAQ] 파싱 완료: {}건", items.size());
         return items;
     }
@@ -46,6 +67,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
     @Override
     public StockMasterSyncResult upsertKospi(KospiMasterSyncCommand command) {
         KospiItem item = command.item();
+        ListedSharesNormalizer.normalize(MarketType.KOSPI, item.listedShares());
         if (item.shortCode() == null || item.shortCode().isBlank()) {
             log.warn("[KOSPI] 단축코드 없음, skip: isin={}", item.isinCode());
             return new StockMasterSyncResult(null, false);
@@ -59,7 +81,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
                 indexMap
         );
 
-        return stockRepository.findByTicker(item.shortCode())
+        return stockRepository.findByTickerAndMarketCode(item.shortCode(), "KOSPI")
                 .map(existing -> {
                     existing.updateFromKospi(item, sector);
                     return new StockMasterSyncResult(existing, false);
@@ -70,6 +92,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
     @Override
     public StockMasterSyncResult upsertKosdaq(KosdaqMasterSyncCommand command) {
         KosdaqItem item = command.item();
+        ListedSharesNormalizer.normalize(MarketType.KOSDAQ, item.listedShares());
         if (item.shortCode() == null || item.shortCode().isBlank()) {
             log.warn("[KOSDAQ] 단축코드 없음, skip: isin={}", item.isinCode());
             return new StockMasterSyncResult(null, false);
@@ -83,7 +106,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
                 indexMap
         );
 
-        return stockRepository.findByTicker(item.shortCode())
+        return stockRepository.findByTickerAndMarketCode(item.shortCode(), "KOSDAQ")
                 .map(existing -> {
                     existing.updateFromKosdaq(item, sector);
                     return new StockMasterSyncResult(existing, false);

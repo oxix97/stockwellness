@@ -38,6 +38,10 @@ class MarketIndexMstParserTest {
 
         assertThat(kospiTotal).isPresent();
         assertThat(kospiTotal.get().getIndexName()).isEqualTo("종합");
+        assertThat(kospiTotal.get().getMarketCode()).isEqualTo("KOSPI");
+        assertThat(kospiTotal.get().getProvider()).isEqualTo("KIS");
+        assertThat(kospiTotal.get().getProviderCode()).isEqualTo("0001");
+        assertThat(kospiTotal.get().getIndexKind()).isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.MARKET);
 
         // 2. IT 서비스 (0029) 확인
         Optional<MarketIndex> itService = indices.stream()
@@ -50,10 +54,11 @@ class MarketIndexMstParserTest {
         // 3. KOSDAQ IT S/W (1030) 확인 - 앞서 나라스페이스테크놀로지 매핑 실패 사례
         // KOSDAQ 코드는 div(1) + code(030) 조합일 수 있으므로 유연하게 확인
         Optional<MarketIndex> kosdaqIt = indices.stream()
-                .filter(it -> it.getIndexCode().endsWith("030"))
+                .filter(it -> "KOSDAQ".equals(it.getMarketCode()) && it.getIndexCode().endsWith("030"))
                 .findFirst();
 
         assertThat(kosdaqIt).isPresent();
+        assertThat(kosdaqIt.get().getMarketCode()).isEqualTo("KOSDAQ");
         log.info("검증 성공 [MarketIndex]: {} ({})", kosdaqIt.get().getIndexName(), kosdaqIt.get().getIndexCode());
     }
 

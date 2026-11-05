@@ -1,11 +1,9 @@
 package org.stockwellness.adapter.batch.insight;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +18,7 @@ import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,7 +27,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.adapter.out.persistence.insight.SectorIndicator;
 import org.stockwellness.adapter.out.persistence.insight.repository.SectorIndicatorRepository;
 import org.stockwellness.application.port.out.messaging.MarketScoreCalculatedEvent;
-import org.stockwellness.application.service.insight.WeatherScoreCalculator;
+import org.stockwellness.application.service.insight.MarketScoreCalculationService;
+import org.stockwellness.config.KafkaTopicConfig;
 import org.stockwellness.domain.stock.insight.SectorInsight;
 import org.stockwellness.global.util.DateUtil;
 
@@ -41,7 +41,7 @@ public class MarketWeatherBatchConfig {
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final SectorIndicatorRepository sectorIndicatorRepository;
-    private final WeatherScoreCalculator weatherScoreCalculator;
+    private final MarketScoreCalculationService marketScoreCalculationService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Bean
@@ -88,57 +88,58 @@ public class MarketWeatherBatchConfig {
 
     @Bean
     public ItemProcessor<SectorInsight, SectorIndicator> sectorIndicatorProcessor() {
-        return insight -> {
-            BigDecimal disparity = BigDecimal.ZERO;
-            if (insight.getIndicators() != null && insight.getIndicators().getSectorIndexCurrentPrice() != null 
-                && insight.getTechnicalIndicators() != null && insight.getTechnicalIndicators().getMa20() != null 
-                && insight.getTechnicalIndicators().getMa20().compareTo(BigDecimal.ZERO) > 0) {
-                
-                disparity = insight.getIndicators().getSectorIndexCurrentPrice()
-                        .divide(insight.getTechnicalIndicators().getMa20(), 4, RoundingMode.HALF_UP)
-                        .multiply(new BigDecimal("100"));
-            }
-
-            BigDecimal adr = (insight.getIndicators() != null) ? insight.getIndicators().getAdvanceRatio() : BigDecimal.ZERO;
-            BigDecimal rsi = (insight.getTechnicalIndicators() != null) ? insight.getTechnicalIndicators().getRsi14() : null;
-
-            return SectorIndicator.builder()
-                    .baseDate(insight.getBaseDate())
-                    .sectorCode(insight.getSectorCode())
-                    .ma20Disparity(disparity)
-                    .adr(adr)
-                    .rsi14(rsi)
-                    .isOverheated(insight.isOverheated())
-                    .build();
-        };
+        return SectorIndicatorMapper::from;
     }
 
     @Bean
     public ItemWriter<SectorIndicator> sectorIndicatorWriter() {
-        return items -> sectorIndicatorRepository.saveAll(items);
+        return items -> {
+            List<SectorIndicator> upserts = items.getItems().stream()
+                    .map(item -> sectorIndicatorRepository
+                            .findByBaseDateAndSectorCode(item.getBaseDate(), item.getSectorCode())
+                            .map(existing -> {
+                                existing.update(
+                                        item.getMa20Disparity(),
+                                        item.getRsi14(),
+                                        item.getAdr(),
+                                        item.isOverheated()
+                                );
+                                return existing;
+                            })
+                            .orElse(item))
+                    .toList();
+            sectorIndicatorRepository.saveAll(upserts);
+        };
     }
 
     @Bean
     public Step publishMarketScoreEventStep() {
         return new StepBuilder("publishMarketScoreEventStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
-                    LocalDate targetDate = DateUtil.today();
-                    
-                    // TODO: Calculate actual market score from all sector indicators
-                    List<MarketScoreCalculatedEvent.SectorScore> sectorScores = new ArrayList<>();
-                    
-                    MarketScoreCalculatedEvent event = new MarketScoreCalculatedEvent(
-                            targetDate,
-                            "KOSPI",
-                            75, 
-                            sectorScores
-                    );
-                    
-                    kafkaTemplate.send("market-score-calculated", event);
-                    log.info("🚀 Published MarketScoreCalculatedEvent for {}", targetDate);
-                    
-                    return null;
+                    String targetDateStr = (String) chunkContext.getStepContext().getJobParameters().get("targetDate");
+                    LocalDate targetDate = DateUtil.parseFlexible(targetDateStr);
+                    if (targetDate == null) {
+                        targetDate = DateUtil.today();
+                    }
+
+                    List<MarketScoreCalculatedEvent> events = buildMarketScoreEvents(targetDate);
+                    if (events.isEmpty()) {
+                        throw new IllegalStateException("시장 점수 이벤트를 생성할 섹터 지표가 없습니다: " + targetDate);
+                    }
+
+                    for (MarketScoreCalculatedEvent event : events) {
+                        String eventKey = event.marketType() + ":" + event.baseDate();
+                        kafkaTemplate.send(KafkaTopicConfig.MARKET_SCORE_CALCULATED_TOPIC, eventKey, event)
+                                .get(10, TimeUnit.SECONDS);
+                        log.info("🚀 Published MarketScoreCalculatedEvent for {} on {}", event.marketType(), targetDate);
+                    }
+
+                    return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .build();
+    }
+
+    List<MarketScoreCalculatedEvent> buildMarketScoreEvents(LocalDate targetDate) {
+        return marketScoreCalculationService.calculate(targetDate);
     }
 }

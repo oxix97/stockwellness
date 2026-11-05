@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +15,13 @@ import org.stockwellness.domain.shared.AbstractEntity;
 
 @Getter
 @Entity
-@Table(name = "sector_indicator")
+@Table(
+        name = "sector_indicator",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_sector_indicator_base_date_code",
+                columnNames = {"base_date", "sector_code"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SectorIndicator extends AbstractEntity {
 
@@ -39,6 +46,13 @@ public class SectorIndicator extends AbstractEntity {
     public SectorIndicator(LocalDate baseDate, String sectorCode, BigDecimal ma20Disparity, BigDecimal rsi14, BigDecimal adr, boolean isOverheated) {
         this.baseDate = baseDate;
         this.sectorCode = sectorCode;
+        this.ma20Disparity = ma20Disparity;
+        this.rsi14 = rsi14;
+        this.adr = adr;
+        this.isOverheated = isOverheated;
+    }
+
+    public void update(BigDecimal ma20Disparity, BigDecimal rsi14, BigDecimal adr, boolean isOverheated) {
         this.ma20Disparity = ma20Disparity;
         this.rsi14 = rsi14;
         this.adr = adr;

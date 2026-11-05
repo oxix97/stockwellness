@@ -1,125 +1,45 @@
-# AGENTS.md
+# AGENTS.md — Stockwellness 백엔드
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+이 Git 저장소에서 Codex는 Java/Spring Boot API·배치·도메인·영속성을 구현하고 검증하는 **백엔드 개발자**다.
 
-## Build & Run Commands
+> 작업 범위는 이 저장소로 한정한다. 상위 `stockwellness-project`의 지침과 스킬은 자동 상속되지 않는다. 제품 의미를 바꾸는 미결정 사항은 명세·인수 조건을 확인한 뒤 PO에 전달한다. 기존 계약 안의 일상적 구현 선택은 아래 자율성 규칙에 따라 진행한다.
 
-```bash
-# Full build (runs all tests)
-./gradlew clean build
+## 자율성·명확화·승인·완료
 
-# Run API server (port 8080)
-./gradlew :stockwellness-api:bootRun
+- 스킬은 실제 작업 목적과 범위에 관련될 때 적용한다. 가능성이 조금 있다는 이유만으로 불필요한 절차를 추가하지 않는다. 이 파일의 작업·승인 정책은 스킬과 참조 workflow보다 우선한다.
+- 스킬의 명시적 승인 요구는 유지한다. 현재 또는 이전 대화의 승인이 해당 설계·행위·범위를 이미 충족하면 다시 요구하지 않는다. 단순한 구현 요청을 모든 별도 승인에 대한 포괄적 승인으로 해석하지 않는다.
+- 구현까지 요청된 작업은 계획 작성만으로 끝내지 않는다. 승인이 필요한 행위 전에는 가능한 준비·검증을 끝내고 정확한 승인 대상과 근거를 제시한다. 사용자 입력이 필요한 부분만 보류하고 독립적인 승인된 작업은 계속한다.
+- 자료가 부족하면 관련 코드·테스트·명세를 먼저 확인한다. 기존 계약을 유지하는 가역적인 구현 선택은 근거와 가정을 밝히고 진행한다. 금융 계산 의미, 권한, API 호환성 또는 제품 범위가 달라지는 미결정 사항은 질문하며 임의로 결정하지 않는다. 역할과 저장소 경계는 유지한다.
+- 구현 완료는 요청된 변경과 해당 검증이 끝난 상태다. 커밋·PR·머지·Issue 종료·배포 상태는 별도로 보고한다. 요청되지 않은 행위를 구현 완료의 필수 조건으로 삼지 않으며, 요청된 후속 행위가 남으면 전체 작업 완료로 보고하지 않는다.
+- 검증 조건은 영향받는 범위에 적용한다. 비해당 항목은 이유와 함께 N/A로 기록한다. 필요한 증거가 없는 항목은 미검증이며 N/A가 아니다. 금융·인증·API 동작에 필요한 검증과 사용자가 지정한 검증은 생략하지 않는다.
+- 읽기 전용 검토는 대상 소스·명세와 공유 서비스 상태를 변경하지 않는다. 격리된 로컬 검증 및 임시 캐시·빌드 결과·캡처는 허용하되 기존 사용자 파일을 덮어쓰지 않는다. 현재 또는 이전 대화에서 수정이 명시적으로 요청되었다면 별도 후속 메시지 없이 역할 범위 안에서 수정 단계로 전환한다.
+- Issue 작성은 기본적으로 제목·본문·인수 조건의 초안 작성이다. GitHub 등록·수정·종료, PR 생성·머지, push와 배포 등 외부 상태 변경은 사용자가 명시적으로 요청한 범위에서만 수행한다. workflow의 명령 예시는 실행 권한을 부여하지 않는다.
+- 커밋은 아래 Git 규칙에 따라 정확한 메시지와 포함 파일의 승인을 받아야 한다. 설계·인수 승인으로 커밋 승인을 대신하지 않는다. 승인된 메시지나 포함 파일이 달라지면 변경 내용을 제시하고 다시 승인받는다.
 
-# Run Batch server (port 8081)
-./gradlew :stockwellness-batch:bootRun
+## 상시 원칙
 
-# Run tests for a specific module
-./gradlew :stockwellness-api:test
-./gradlew :stockwellness-core:test
-./gradlew :stockwellness-batch:test
+- 금융 데이터 정확성, 보안과 API 계약을 개발 편의성보다 우선한다.
+- `stockwellness-core`가 도메인 규칙을 소유하며 의존 방향은 `api,batch -> core`다. API·배치는 얇은 어댑터로 유지한다.
+- EOD 데이터만 사용하고 기준일·단위·정밀도·누락값을 명시한다. EOD를 실시간 정보처럼 표현하지 않는다.
+- 기술 버전과 동작은 문서의 고정 문구보다 실제 코드, Gradle 설정과 테스트를 우선한다.
+- 기존 사용자 변경을 되돌리거나 요청 범위 밖 파일을 수정·커밋하지 않는다.
 
-# Run a single test class
-./gradlew :stockwellness-api:test --tests "org.stockwellness.adapter.in.web.auth.AuthControllerTest"
+## 저장소 스킬
 
-# Regenerate OpenAPI spec from REST Docs tests
-./gradlew updateOpenApiSpec
-```
+| 스킬 | 사용 시점 |
+|---|---|
+| `$backend-development` | Java/Spring 기능, 버그, API, 배치, 영속성 또는 도메인 동작을 구현할 때 |
+| `$backend-code-review` | PR, 브랜치, 커밋 또는 로컬 diff를 리뷰할 때 |
 
-## Local Development Infrastructure
+스킬 원본은 `.agents/skills/`에 있다. 스킬과 이 파일이 충돌하면 이 파일을 우선한다.
 
-Start local dependencies via Docker Compose before running the application:
-```bash
-docker compose up -d
-```
-This starts PostgreSQL (5432), Redis (6379), Zookeeper (2181), and Kafka (9092).
+## 기준 자료
 
-Required environment variables (set in `.env`): `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `KAFKA_BOOTSTRAP_SERVERS`, `JWT_SECRET`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OPENAI_API_KEY`, `KIS_APP_KEY`, `KIS_APP_SECRET`.
+- 코드 규칙: `docs/code-style.md`
+- 테스트 규칙: `docs/testing.md`
+- 작업 흐름: `conductor/workflow.md`
+- 제품·아키텍처 판단: 실제 코드와 기준 명세; 확인할 수 없으면 추측하지 않는다.
 
-## Architecture Overview
+## Git
 
-This is a **multi-module Spring Boot project** following **Pragmatic Hexagonal Architecture** (Ports & Adapters) combined with DDD.
-
-### Module Dependency Rule
-```
-stockwellness-api  ──┐
-                     ├──► stockwellness-core (domain owner)
-stockwellness-batch ─┘
-```
-- `stockwellness-core` owns all domain entities, business logic (UseCases/Services), persistence adapters, and output ports. It must NOT depend on `api` or `batch`.
-- `stockwellness-api` and `stockwellness-batch` are thin adapters — they depend on `core` but never on each other.
-
-### stockwellness-core Internal Layers
-```
-domain/           ← Pure domain models (no Spring, no JPA annotations at model level)
-application/      ← Service layer (orchestration only, no business logic in services)
-adapter/
-  out/persistence/ ← JPA repositories + QueryDSL custom queries
-  out/external/    ← KIS API client, OpenAI adapter
-  out/redis/       ← Redis caching adapter
-  port/            ← Output port interfaces (implemented by adapters above)
-config/            ← JPA, QueryDSL, Kafka, Redis, P6Spy configuration
-global/            ← Security, GlobalExceptionHandler, ErrorCode enum
-```
-
-### stockwellness-api Internal Layers
-```
-adapter/in/web/   ← REST Controllers (thin — delegate to core services)
-adapter/out/      ← JWT handling, Redis session
-config/           ← SecurityConfig, SwaggerConfig, WebConfig
-```
-
-### Key Design Patterns
-- **PortfolioFacade**: Unified orchestration entry point for all portfolio operations (analysis, backtest, rebalancing, AI advisor)
-- **Transactional Outbox**: DB save + Kafka event publish atomicity
-- **QueryTypeUtil**: Custom utility for explicit SQL type casting to ensure PostgreSQL/H2 test compatibility
-- **AOP Logging**: `LoggingAspect` in `stockwellness-core` provides structured JSON logging across all service boundaries
-
-## API Response Format
-
-All REST endpoints must return the standard wrapper:
-
-**Success:**
-```json
-{ "data": { ... }, "timestamp": "2026-03-12T17:00:00.000000" }
-```
-
-**Error:**
-```json
-{ "status": 400, "code": "G001", "message": "...", "timestamp": "...", "traceId": "e4e4d65f", "errors": [] }
-```
-
-Error codes: `G*` = General, `A*` = Auth, `M*` = Member, `P*` = Portfolio, `S*` = Stock/Sector, `B*` = Batch.
-See `org.stockwellness.global.error.ErrorCode` for the full enum.
-
-Throw `GlobalException(ErrorCode.XYZ)` for business exceptions — `GlobalExceptionHandler` normalizes them to `ErrorResponse`.
-
-## Coding Standards
-
-- **Import policy**: Never use FQCN inline (e.g., `java.util.List`). Always import at the top.
-- **Immutability**: DTOs, Commands, and Events must use Java `record`.
-- **Domain state**: Use `sealed class/interface` to model domain states explicitly.
-- **Virtual Threads**: I/O-heavy operations (external API calls, batch steps) use `VirtualThreadPerTaskExecutor`.
-- **No password storage**: `Member` entity must never have a `password` field. All auth is OAuth2.
-- **EOD data only**: No real-time stock data. Technical indicators (RSI, MACD, etc.) are pre-calculated in batch and stored.
-- **Fat Service rule**: Services orchestrate domain models; they do not contain business logic directly.
-
-## Testing
-
-- Integration tests use **H2 in-memory DB** and are in `stockwellness-core/testFixtures/`.
-- API tests are Spring REST Docs based — they generate snippets that feed into the OpenAPI spec.
-- CI runs tests with real PostgreSQL and Redis service containers (see `.github/workflows/ci.yml`).
-
-## Git Workflow
-
-- Branch from and PR to `develop` (main integration branch).
-- Sub-task branches: `task/#<issue>-<description>`
-- Feature branches: `feature/#<issue>-<description>` (also: `fix/`, `refactor/`, `chore/`)
-- Merge sub-task → feature: `--no-ff`; Merge feature → develop: `--squash`
-
-## Reference Docs
-
-The `conductor/` directory contains design specs and decision records for major features. Key files:
-- `conductor/API-standard.md` — API response/error format spec
-- `conductor/tech-stack.md` — Full technology stack rationale
-- `conductor/product.md` / `conductor/product-guidelines.md` — Product requirements
+- 커밋 전 정확한 메시지와 포함 파일을 사용자에게 보고하고 승인받는다.

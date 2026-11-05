@@ -1,13 +1,20 @@
 package org.stockwellness.application.parser;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import org.stockwellness.domain.stock.KosdaqItem;
 
@@ -33,6 +40,8 @@ import org.stockwellness.domain.stock.KosdaqItem;
 public class KosdaqMstParser {
 
     private static final Charset CP949 = Charset.forName("EUC-KR");
+    private static final String EXPECTED_ENTRY = "kosdaq_code.mst";
+    private static final int RECORD_LENGTH = 281;
 
     /**
      * Part2 고정 바이트 길이 (줄바꿈 제외)
@@ -136,6 +145,83 @@ public class KosdaqMstParser {
 
     public static List<KosdaqItem> parseLines(List<String> lines) {
         return lines.stream().map(KosdaqMstParser::parseLine).toList();
+    }
+
+    public static List<KosdaqItem> parseArchive(byte[] archiveBytes) {
+        List<String> lines = readArchiveLines(archiveBytes);
+        if (lines.isEmpty()) {
+            throw invalidArchive("KOSDAQ master entry is empty");
+        }
+
+        Set<String> tickers = new HashSet<>();
+        List<KosdaqItem> items = new ArrayList<>(lines.size());
+        for (int index = 0; index < lines.size(); index++) {
+            String line = lines.get(index);
+            if (line.isBlank() || line.getBytes(CP949).length != RECORD_LENGTH) {
+                throw invalidArchive("KOSDAQ row has an invalid width at line " + (index + 1));
+            }
+
+            KosdaqItem item;
+            try {
+                item = parseLine(line);
+            } catch (RuntimeException exception) {
+                throw invalidArchive("KOSDAQ row could not be parsed at line " + (index + 1), exception);
+            }
+
+            if (item.shortCode().isBlank() || item.isinCode().isBlank()) {
+                throw invalidArchive("KOSDAQ row is missing ticker or ISIN at line " + (index + 1));
+            }
+            if (!tickers.add(item.shortCode())) {
+                throw invalidArchive("KOSDAQ master contains a duplicate ticker: " + item.shortCode());
+            }
+            items.add(item);
+        }
+        return List.copyOf(items);
+    }
+
+    private static List<String> readArchiveLines(byte[] archiveBytes) {
+        if (archiveBytes == null || archiveBytes.length == 0) {
+            throw invalidArchive("KOSDAQ master archive is empty");
+        }
+
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(archiveBytes))) {
+            ZipEntry entry = zip.getNextEntry();
+            if (entry == null || entry.isDirectory() || !EXPECTED_ENTRY.equals(entry.getName())) {
+                throw invalidArchive("KOSDAQ master archive does not contain " + EXPECTED_ENTRY);
+            }
+
+            byte[] contents = zip.readAllBytes();
+            zip.closeEntry();
+            if (zip.getNextEntry() != null) {
+                throw invalidArchive("KOSDAQ master archive contains multiple entries");
+            }
+            if (contents.length == 0) {
+                throw invalidArchive("KOSDAQ master entry is empty");
+            }
+
+            var decoder = CP949.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT);
+            List<String> lines = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(new ByteArrayInputStream(contents), decoder))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+            return lines;
+        } catch (IOException exception) {
+            throw invalidArchive("KOSDAQ master archive is corrupt", exception);
+        }
+    }
+
+    private static IllegalArgumentException invalidArchive(String message) {
+        return new IllegalArgumentException(message);
+    }
+
+    private static IllegalArgumentException invalidArchive(String message, Throwable cause) {
+        return new IllegalArgumentException(message, cause);
     }
 
     private static KosdaqItem parseLine(String line) {

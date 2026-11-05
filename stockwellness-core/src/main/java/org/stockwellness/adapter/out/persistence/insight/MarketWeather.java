@@ -6,6 +6,7 @@ import java.util.List;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +17,13 @@ import org.stockwellness.domain.shared.AbstractEntity;
 
 @Getter
 @Entity
-@Table(name = "market_weather")
+@Table(
+        name = "market_weather",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_market_weather_base_date_type",
+                columnNames = {"base_date", "market_type"}
+        )
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MarketWeather extends AbstractEntity {
 
@@ -52,6 +59,22 @@ public class MarketWeather extends AbstractEntity {
         this.aiSummary = aiSummary;
         this.topSectors = topSectors;
         this.bottomSectors = bottomSectors;
+    }
+
+    public void updateCalculation(
+            int weatherScore,
+            String weatherState,
+            List<SectorSummary> topSectors,
+            List<SectorSummary> bottomSectors
+    ) {
+        this.weatherScore = weatherScore;
+        this.weatherState = weatherState;
+        this.topSectors = topSectors;
+        this.bottomSectors = bottomSectors;
+    }
+
+    public void updateInsight(String aiSummary) {
+        this.aiSummary = aiSummary;
     }
 
     public record SectorSummary(

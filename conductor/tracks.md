@@ -19,7 +19,7 @@
 ---
 
 - [x] **Track: k6 부하 테스트 결과 시각화 (Python Matplotlib 차트 생성)**
-*Link: [./archive/k6-visualization-plan.md](./archive/k6-visualization-plan.md)*
+*Guide: [k6/README.md](../k6/README.md)*
 
 ---
 

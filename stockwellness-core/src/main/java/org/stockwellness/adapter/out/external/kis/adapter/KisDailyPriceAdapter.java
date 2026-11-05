@@ -18,11 +18,12 @@ import org.stockwellness.adapter.out.external.kis.config.ResilienceConfig;
 import org.stockwellness.adapter.out.external.kis.dto.*;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
+import org.stockwellness.application.port.out.external.kis.KisIndexPricePort;
 import org.stockwellness.domain.stock.Stock;
 
 @Slf4j
 @Component
-public class KisDailyPriceAdapter implements KisDailyPricePort {
+public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePort {
 
     private final RestClient kisApiClient;
     private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());
@@ -146,6 +147,27 @@ public class KisDailyPriceAdapter implements KisDailyPricePort {
                     .sorted(Comparator.comparing(BenchmarkPriceData::baseDate).reversed())
                     .map(BenchmarkPriceData.class::cast)
                     .toList();
+        });
+    }
+
+    @Override
+    public List<KisDailySectorDetail> fetchRawIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
+        return executeWithRetry(() -> {
+            KisPriceResponse<KisDailySectorDetail, List<KisDailySectorDetail>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "U")
+                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_INPUT_ISCD", indexCode)
+                            .queryParam("FID_PERIOD_DIV_CODE", "D")
+                            .build())
+                    .header("tr_id", "FHKUP03500100")
+                    .header("custtype", "P")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            response = requireSuccessfulResponse(response, "국내 지수 시세 조회", indexCode);
+            return response.output2() == null ? Collections.emptyList() : response.output2();
         });
     }
 

@@ -21,8 +21,9 @@ import static lombok.AccessLevel.PROTECTED;
 @Entity
 @Table(
         name = "stock",
+        uniqueConstraints = @UniqueConstraint(name = "uq_stock_market_ticker", columnNames = {"market_code", "ticker"}),
         indexes = {
-                @Index(name = "idx_stock_ticker", columnList = "ticker", unique = true),
+                @Index(name = "idx_stock_ticker", columnList = "ticker"),
                 @Index(name = "idx_stock_name", columnList = "name"),
                 @Index(name = "idx_stock_status", columnList = "status"),
                 @Index(name = "idx_stock_ticker_name", columnList = "ticker, name")
@@ -35,8 +36,21 @@ public class Stock extends AbstractEntity {
     /**
      * 단축코드 / 티커 (e.g. "005930", "AAPL")
      */
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(nullable = false, length = 20)
     private String ticker;
+
+    /** Null is reserved for legacy synthetic index rows until Benchmark migration is complete. */
+    @Column(name = "market_code", length = 20, updatable = false)
+    private String marketCode;
+
+    @Column(name = "listed_shares")
+    private Long listedShares;
+
+    @Column(name = "listed_shares_as_of")
+    private LocalDate listedSharesAsOf;
+
+    @Column(name = "source_updated_at")
+    private java.time.OffsetDateTime sourceUpdatedAt;
 
     /**
      * 표준코드 / ISIN (e.g. "KR7005930003")
@@ -146,6 +160,7 @@ public class Stock extends AbstractEntity {
         s.standardCode = standardCode;
         s.name = name;
         s.marketType = marketType;
+        s.marketCode = marketCodeFor(marketType);
         s.currency = currency;
         s.sector = (sector != null) ? sector : StockSector.empty();
         s.status = status;
@@ -165,6 +180,7 @@ public class Stock extends AbstractEntity {
         s.ticker = ticker;
         s.name = name;
         s.marketType = MarketType.INDEX;
+        s.marketCode = null;
         s.currency = Currency.KRW;
         s.status = StockStatus.ACTIVE;
         s.isPremiumTracking = false;
@@ -184,6 +200,7 @@ public class Stock extends AbstractEntity {
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSPI;
+        s.marketCode = "KOSPI";
         s.currency = Currency.KRW;
         s.sector = sector;
         s.status = resolveStatus(item);
@@ -209,6 +226,7 @@ public class Stock extends AbstractEntity {
         s.standardCode = item.isinCode();
         s.name = item.koreanName();
         s.marketType = MarketType.KOSDAQ;
+        s.marketCode = "KOSDAQ";
         s.currency = Currency.KRW;
         s.sector = sector;
         s.status = resolveStatus(item);
@@ -278,15 +296,17 @@ public class Stock extends AbstractEntity {
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
+    private static String marketCodeFor(MarketType marketType) {
+        return marketType == null || marketType == MarketType.INDEX ? null : marketType.name();
+    }
+
     private static StockStatus resolveStatus(KospiItem item) {
-        if ("Y".equals(item.clearingTrade())) return StockStatus.DELISTED;
         if ("Y".equals(item.tradingHalt())) return StockStatus.HALTED;
         if ("Y".equals(item.administeredStock())) return StockStatus.ADMINISTRATIVE;
         return StockStatus.ACTIVE;
     }
 
     private static StockStatus resolveStatus(KosdaqItem item) {
-        if ("Y".equals(item.clearingTrade())) return StockStatus.DELISTED;
         if ("Y".equals(item.tradingHalt())) return StockStatus.HALTED;
         if ("Y".equals(item.administeredStock())) return StockStatus.ADMINISTRATIVE;
         return StockStatus.ACTIVE;

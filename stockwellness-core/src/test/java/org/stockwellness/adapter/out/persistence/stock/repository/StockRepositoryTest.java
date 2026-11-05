@@ -18,7 +18,10 @@ import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
+import org.stockwellness.domain.stock.exception.StockPriceException;
+import static org.stockwellness.global.error.ErrorCode.AMBIGUOUS_TICKER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @Import({QueryDslConfig.class, JpaConfig.class})
@@ -44,6 +47,23 @@ class StockRepositoryTest {
         // then
         assertThat(found).isPresent();
         assertThat(found.get().getName()).isEqualTo("삼성전자");
+    }
+
+    @Test
+    @DisplayName("같은 ticker가 여러 시장에 있으면 ticker-only 조회를 거절한다")
+    void findByTicker_ambiguousAcrossMarkets() {
+        stockRepository.saveAll(List.of(
+                Stock.of("ABC", "KRABC", "국내 ABC", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE),
+                Stock.of("ABC", "USABC", "미국 ABC", MarketType.NASDAQ, Currency.USD, null, StockStatus.ACTIVE)
+        ));
+        stockRepository.flush();
+
+        assertThatThrownBy(() -> stockRepository.findByTicker("ABC"))
+                .isInstanceOf(StockPriceException.class)
+                .extracting(error -> ((StockPriceException) error).getErrorCode())
+                .isEqualTo(AMBIGUOUS_TICKER);
+        assertThat(stockRepository.findByTickerAndMarketCode("ABC", "NASDAQ"))
+                .get().extracting(Stock::getName).isEqualTo("미국 ABC");
     }
 
     @Test

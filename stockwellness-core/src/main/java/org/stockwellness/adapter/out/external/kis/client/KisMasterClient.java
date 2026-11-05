@@ -37,20 +37,21 @@ public class KisMasterClient {
         return downloadAndParse(KOSDAQ_MASTER_URL);
     }
 
+    public byte[] downloadKospiMasterArchive() {
+        return downloadArchive(KOSPI_MASTER_URL);
+    }
+
+    public byte[] downloadKosdaqMasterArchive() {
+        return downloadArchive(KOSDAQ_MASTER_URL);
+    }
+
     private List<String> downloadAndParse(String url) {
-        log.info("KIS 마스터 파일 다운로드 시작: {}", url);
-
-        byte[] zipBytes = kisAuthClient.get()
-                .uri(url)
-                .retrieve()
-                .body(byte[].class);
-
+        byte[] zipBytes = downloadArchive(url);
         List<String> lines = new ArrayList<>();
 
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes));
-             BufferedReader br = new BufferedReader(new InputStreamReader(zis, Charset.forName("Cp949")))) { // 인코딩 주의 (MS949/Cp949)
+             BufferedReader br = new BufferedReader(new InputStreamReader(zis, Charset.forName("Cp949")))) {
 
-            // 압축 파일 내 첫 번째 엔트리(파일)로 이동
             if (zis.getNextEntry() != null) {
                 String line;
                 while ((line = br.readLine()) != null) {
@@ -64,5 +65,14 @@ public class KisMasterClient {
 
         log.info("총 {}개 라인 다운로드 완료.", lines.size());
         return lines;
+    }
+
+    private byte[] downloadArchive(String url) {
+        log.info("KIS 마스터 파일 다운로드 시작: {}", url);
+
+        return kisAuthClient.get()
+                .uri(url)
+                .retrieve()
+                .body(byte[].class);
     }
 }

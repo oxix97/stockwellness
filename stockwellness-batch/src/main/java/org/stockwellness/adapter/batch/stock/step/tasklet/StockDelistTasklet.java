@@ -30,6 +30,18 @@ public class StockDelistTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
+        String completenessStatus = chunkContext.getStepContext()
+                .getStepExecution()
+                .getJobExecution()
+                .getExecutionContext()
+                .getString("stockMaster.completenessStatus", "UNAVAILABLE");
+        if (!"COMPLETE".equals(completenessStatus)) {
+            log.warn("[{}] 종목 마스터 전체성 상태가 COMPLETE가 아니므로 상장폐지 처리를 건너뜁니다: {}",
+                    marketType, completenessStatus);
+            contribution.setExitStatus(new ExitStatus("SKIPPED", "snapshot is not COMPLETE"));
+            return RepeatStatus.FINISHED;
+        }
+
         Set<String> activeTickers = getActiveTickers(chunkContext);
 
         if (activeTickers == null || activeTickers.isEmpty()) {

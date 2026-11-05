@@ -45,12 +45,18 @@ public class StockAdapter implements StockPort {
 
     @Override
     public boolean existsByTicker(String ticker) {
-        return stockRepository.findByTicker(ticker).isPresent();
+        return !stockRepository.findAllByTicker(ticker).isEmpty();
     }
 
     @Override
     public Optional<Stock> loadStockByTicker(String ticker) {
         return stockRepository.findByTicker(ticker);
+    }
+
+    @Override
+    public Optional<Stock> loadStockByTickerAndMarketCode(String ticker, String marketCode) {
+        if (marketCode == null) return stockRepository.findByTicker(ticker);
+        return stockRepository.findByTickerAndMarketCode(ticker, marketCode);
     }
 
     @Override

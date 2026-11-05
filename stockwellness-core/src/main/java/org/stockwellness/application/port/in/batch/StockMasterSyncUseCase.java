@@ -10,6 +10,14 @@ import org.stockwellness.domain.stock.Stock;
 
 public interface StockMasterSyncUseCase {
 
+    byte[] downloadKospiMasterArchive();
+
+    byte[] downloadKosdaqMasterArchive();
+
+    List<KospiItem> parseKospiMasterArchive(byte[] archiveBytes);
+
+    List<KosdaqItem> parseKosdaqMasterArchive(byte[] archiveBytes);
+
     List<KospiItem> loadKospiItems();
 
     List<KosdaqItem> loadKosdaqItems();

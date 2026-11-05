@@ -43,9 +43,7 @@ public class MarketIndexSyncService {
         for (MarketIndex parsed : parsedIndices) {
             MarketIndex existing = existingMap.get(parsed.getIndexCode());
             if (existing != null) {
-                // 명칭이 변경된 경우에만 업데이트 (필요 시)
-                if (!existing.getIndexName().equals(parsed.getIndexName())) {
-                    // 엔티티에 업데이트 메서드가 있다면 호출 (현재는 불변성 고려하여 로그만 남기거나 교체)
+                if (existing.updateFrom(parsed)) {
                     updateCount++;
                 }
             } else {

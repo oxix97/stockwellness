@@ -37,3 +37,10 @@ server:
 slack:
   webhook:
     url: ${SLACK_WEBHOOK_URL_BATCH:}
+
+stockwellness:
+  batch:
+    stock-master:
+      # Use persistent mounted storage in deployments that must survive host loss.
+      staging-directory: ${STOCK_MASTER_STAGING_DIRECTORY:./data/stock-master-snapshots}
+      retention: ${STOCK_MASTER_SNAPSHOT_RETENTION:7d}
