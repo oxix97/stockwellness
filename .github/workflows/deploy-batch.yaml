@@ -6,14 +6,21 @@ on:
       - 'v*.*.*'
       - 'batch-v*.*.*'   # 예: batch-v1.0.0
       - 'release-v*.*.*'
-      - 'main'
+  workflow_call:
+
+concurrency:
+  group: stockwellness-batch-production
+  cancel-in-progress: false
 
 env:
+  DEPLOY_SHA: ${{ github.sha }}
+  DEPLOY_TAG: ${{ github.ref == 'refs/heads/main' && github.sha || github.ref_name }}
   REGISTRY: ghcr.io
   IMAGE_BATCH: ghcr.io/${{ github.repository_owner }}/stockwellness-batch
 
 jobs:
   verify-ci:
+    if: ${{ github.ref_type == 'tag' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     name: Verify CI for deployment commit
     runs-on: ubuntu-latest
     permissions:
@@ -24,19 +31,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
         run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            current=$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+            [ "$current" = "$DEPLOY_SHA" ] || { echo "Main has advanced; skipping stale deployment."; exit 1; }
+            exit 0
+          fi
           runs=$(gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${DEPLOY_SHA}&per_page=100")
-          echo "$runs" | jq -e --arg sha "$DEPLOY_SHA" '
-            [.workflow_runs[]
-              | select(.head_sha == $sha)
-              | select(.event != "pull_request")
-              | select(.status == "completed" and .conclusion == "success")]
-            | length > 0
-          ' >/dev/null || {
-            echo "No successful CI run found for ${DEPLOY_SHA}; refusing deployment."
-            exit 1
-          }
+          run_ids=$(echo "$runs" | jq -r --arg sha "$DEPLOY_SHA" '
+            .workflow_runs[] | select(.head_sha == $sha) | select(.event != "pull_request") | .id')
+          for run_id in $run_ids; do
+            jobs=$(gh api "repos/${REPOSITORY}/actions/runs/${run_id}/jobs?filter=latest&per_page=100")
+            if echo "$jobs" | jq -e '
+              [.jobs[] | select(.name == "Build & Test" and .status == "completed" and .conclusion == "success")] | length > 0
+            ' >/dev/null; then
+              exit 0
+            fi
+          done
+          echo "No successful CI build found for ${DEPLOY_SHA}; refusing deployment."
+          exit 1
 
   # ── 1. Batch 이미지 빌드 & Push ───────────────────────────────
   build-batch:
@@ -49,6 +63,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,7 +83,7 @@ jobs:
           images: ${{ env.IMAGE_BATCH }}
           tags: |
             type=sha,prefix=,format=short
-            type=raw,value=${{ github.ref_name }}
+            type=raw,value=${{ env.DEPLOY_TAG }}
 
       - name: Build and push Batch image
         uses: docker/build-push-action@v5
@@ -85,15 +101,30 @@ jobs:
     name: Trigger Batch Deployment
     runs-on: ubuntu-latest
     needs: [verify-ci, build-batch]
-    permissions: {}
+    permissions:
+      contents: read
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
       - name: Connect to Tailscale
         uses: tailscale/github-action@v3
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:github-actions
+      - name: Reject superseded main deployment
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+        run: |
+          current=$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+          [ "$current" = "$DEPLOY_SHA" ] || { echo "Main has advanced; skipping stale deployment."; exit 1; }
+
       - name: Trigger n8n webhook (배포 완료 대기)
         run: |
           # 태그 푸시 이벤트 환경에 맞춰 git 명령어로 가장 최근 커밋 메시지를 안전하게 가져오거나, 
@@ -102,8 +133,8 @@ jobs:
 
           JSON_DATA=$(jq -n \
             --arg img "${{ env.IMAGE_BATCH }}" \
-            --arg tag "${{ github.ref_name }}" \
-            --arg commit "${{ github.sha }}" \
+            --arg tag "${{ env.DEPLOY_TAG }}" \
+            --arg commit "${{ env.DEPLOY_SHA }}" \
             --arg msg "$MSG" \
             --arg author "${{ github.actor }}" \
             '{image: $img, tag: $tag, commit: $commit, message: $msg, author: $author}')
