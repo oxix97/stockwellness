@@ -39,6 +39,11 @@ public enum ErrorCode {
     PORTFOLIO_ACCESS_DENIED(FORBIDDEN, "P005", "해당 포트폴리오에 대한 접근 권한이 없습니다."),
     UNSUPPORTED_PORTFOLIO_CURRENCY(BAD_REQUEST, "P006", "원화 종목만 가상 포트폴리오에 담을 수 있습니다."),
 
+    // 실제 투자 계정 (I) — contract 1.0.0
+    ACTUAL_VERSION_CONFLICT(CONFLICT, "I001", "계정이 변경되었습니다. 최신 정보를 확인해 주세요."),
+    ACTUAL_IDEMPOTENCY_CONFLICT(CONFLICT, "I002", "같은 요청 키를 다른 요청에 사용할 수 없습니다."),
+    ACTUAL_NUMERIC_RANGE_EXCEEDED(CONFLICT, "I008", "허용된 수치 범위를 초과했습니다."),
+
     // 관심 종목 (W)
     WATCHLIST_GROUP_LIMIT_EXCEEDED(BAD_REQUEST, "W001", "관심 그룹은 최대 10개까지 생성할 수 있습니다."),
     WATCHLIST_ITEM_LIMIT_EXCEEDED(BAD_REQUEST, "W002", "관심 종목은 한 그룹당 최대 50개까지 추가할 수 있습니다."),

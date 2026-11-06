@@ -294,3 +294,11 @@ auth_debug.log
 gha-creds-*.json
 /docs/superpowers/
 /docs/
+
+# Keep README architecture diagrams reviewable
+!/docs/
+/docs/*
+!/docs/diagrams/
+/docs/diagrams/*
+!/docs/diagrams/*.html
+!/docs/diagrams/*.png

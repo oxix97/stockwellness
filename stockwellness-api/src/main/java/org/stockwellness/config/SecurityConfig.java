@@ -48,7 +48,10 @@ public class SecurityConfig {
                                 "/api/v1/test-support/**",
                                 "/api/v1/portfolios/**",
                                 "/api/v1/watchlist/**",
-                                "/api/v1/members/**"
+                                "/api/v1/members/**",
+                                "/api/v1/investment-accounts",
+                                "/api/v1/investment-accounts/**",
+                                "/api/v1/comparison-targets"
                         ).authenticated()
                         .anyRequest().permitAll())
                 .oauth2Login(oauth2 -> oauth2

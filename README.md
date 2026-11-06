@@ -43,9 +43,9 @@
 - Ports & Adapters 패턴으로 외부 의존성(DB, Redis, KIS API, OpenAI)을 도메인으로부터 격리
 
 ### 2. Transactional Outbox Pattern
-- 포트폴리오 분석 완료 이벤트를 DB 저장과 Kafka 발행이 원자적으로 처리되도록 보장
-- `BEFORE_COMMIT` 단계에서 Outbox 테이블에 이벤트 저장, `AFTER_COMMIT` 단계에서 Kafka 발행
-- 발행 실패 시 `FAILED` 상태로 전환, 스케줄러가 주기적으로 재처리
+- `PortfolioStatBatchService`가 포트폴리오 통계와 `PENDING` Outbox 행을 같은 PostgreSQL 트랜잭션에 저장
+- Batch의 릴레이가 5초 간격으로 `PENDING` 행을 조회해 Kafka 발행을 요청
+- 발행 요청과 DB 저장은 하나의 원자적 트랜잭션이 아니며, 현재 비동기 발행 결과는 로그에만 남음
 
 ### 3. Spring Batch 기반 EOD 데이터 파이프라인
 - 매 영업일 장 마감 후 한국투자증권 KIS API에서 일일 시세(EOD) 수집
@@ -65,193 +65,70 @@
 - Redis를 활용한 EOD 시세, 세션, JWT 다단계 캐싱
 - `@Cacheable` + RedisTemplate 조합으로 외부 API 호출 최소화
 
-### 7. Blue-Green 무중단 배포
-- Nginx upstream 블록 교체 + `nginx -s reload`로 트래픽 전환 (다운타임 0)
-- n8n 워크플로우가 GitHub Actions 웹훅을 수신해 배포 스크립트 자동 실행
-- 배포 결과·서버 헬스체크·API 500 에러·배치 실행 결과를 Slack으로 알림
+### 7. Blue-Green API 배포
+- `deploy-api.sh`는 대기 슬롯을 시작하고 헬스체크한 뒤 Nginx upstream을 전환하며, 안정성 확인 실패 시 되돌리는 경로를 둠
+- Batch는 별도 배포 스크립트로 갱신하며 API Blue-Green 슬롯을 사용하지 않음
+- 워크플로우와 스크립트 설정은 아래 배포 파이프라인 그림에 정리함
 
 <hr>
 
 ## 아키텍처
 
-### 소프트웨어 아키텍처
+### 소프트웨어 모듈
 
-본 시스템은 **Pragmatic Hexagonal Architecture**와 **DDD**를 결합한 멀티 모듈 구조로 설계되어 있습니다.
-도메인 핵심 로직은 `stockwellness-core`가 단독으로 소유하며, 외부 어댑터(`api`, `batch`)는 `core`에 의존하되 서로 간 의존은 금지됩니다.
+`stockwellness-api`와 `stockwellness-batch`는 `stockwellness-core`에 의존합니다. 도메인, 애플리케이션 서비스, 포트와 영속성 어댑터는 `core`가 소유합니다.
 
-```mermaid
-graph TD
-    subgraph API["stockwellness-api"]
-        CTRL[REST Controllers]
-        SEC[Security · JWT]
-    end
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/software-modules-dark.png">
+  <img src="docs/diagrams/software-modules.png" alt="stockwellness-api와 stockwellness-batch가 stockwellness-core의 입력 포트를 통해 의존하는 멀티 모듈 구조">
+</picture>
 
-    subgraph BATCH["stockwellness-batch"]
-        STEP[Batch Steps · 기술 지표 계산]
-        KPUB[Kafka Publisher]
-    end
+### 런타임 구성
 
-    subgraph CORE["stockwellness-core  (도메인 오너)"]
-        direction TB
-        PIN["Input Ports (Use Cases)"]
-        SVC["Application Services (Orchestration)"]
-        DOM["Domain Layer (Entities · Business Logic)"]
-        POUT["Output Ports (Port Interfaces)"]
-        ADAPT["Outgoing Adapters\nJPA · Redis · KIS API · OpenAI · Kafka"]
-        PIN --> SVC --> DOM --> POUT --> ADAPT
-    end
+아래 그림은 저장소의 프로덕션 Compose 및 Nginx 설정을 요약합니다. Blue/Green 두 API 슬롯은 설정에 선언되어 있으며, 어느 슬롯이 현재 운영 중인지는 이 그림이 나타내지 않습니다.
 
-    API -->|의존| CORE
-    BATCH -->|의존| CORE
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/runtime-topology-dark.png">
+  <img src="docs/diagrams/runtime-topology.png" alt="Nginx가 Blue 또는 Green API 슬롯으로 요청을 전달하고 API와 Batch가 PostgreSQL, Redis, Kafka를 공유하는 런타임 구성">
+</picture>
 
-| 모듈 | 역할 |
-|---|---|
-| **stockwellness-core** | 도메인 엔티티, 비즈니스 로직, 영속성 어댑터, 외부 API 어댑터, Redis 어댑터, 포트 인터페이스 |
-| **stockwellness-api** | REST 컨트롤러, JWT 처리, Security 설정 |
-| **stockwellness-batch** | 시세 수집 배치 스텝, 기술 지표 계산, Kafka 이벤트 발행 |
+### 배포 파이프라인
 
-### 시스템 아키텍처
+API와 Batch 배포 워크플로우는 태그 push 후 동일 SHA의 CI 성공을 확인하고, 이미지를 GHCR에 올린 다음 Tailscale을 거쳐 n8n webhook을 호출합니다. 그림은 저장소의 workflow와 배포 스크립트 설정을 나타내며 운영 서버의 배포 성공을 증명하지 않습니다.
 
-```mermaid
-graph TD
-    Client([Client]) -->|HTTPS| Nginx
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/deployment-pipeline-dark.png">
+  <img src="docs/diagrams/deployment-pipeline.png" alt="태그 push에서 CI 확인, GHCR 이미지 빌드, Tailscale과 n8n webhook을 거쳐 API 또는 Batch 배포 스크립트로 이어지는 파이프라인">
+</picture>
 
-    subgraph Prod["프로덕션 서버"]
-        Nginx["Nginx 1.27\nBlue-Green 라우터"]
-        Blue["API Server Blue\n:8080"]
-        Green["API Server Green\n:8082"]
-        PG[("PostgreSQL 15\n영속성")]
-        Cache[("Redis 7\n캐시 · 세션 · JWT")]
-        Kafka["Apache Kafka\n이벤트 브로커"]
-        Batch["Batch Server\n:8081"]
-    end
+### Transactional Outbox
 
-    Nginx -->|"활성 슬롯 라우팅"| Blue
-    Nginx -. "대기 슬롯" .-> Green
-    Blue & Green --> PG & Cache & Kafka
-    Kafka --> Batch
-    Batch -->|"EOD 시세 수집"| KIS["KIS API\n한국투자증권"]
-
-    subgraph CICD["CI/CD 파이프라인"]
-        GHA["GitHub Actions"]
-        N8N["n8n\n배포 오케스트레이터"]
-    end
-
-    GHA -->|"이미지 빌드 · 웹훅"| N8N
-    N8N -->|"배포 스크립트 실행"| Prod
-    N8N -->|"운영 알림"| Slack["Slack\n배포 · 헬스체크 · 500에러 · 배치"]
-```
-
-### Transactional Outbox Pattern
-
-MSA 환경에서 배치 서버와 API 서버 간 데이터 정합성을 보장하기 위해 Transactional Outbox Pattern을 적용했습니다.
-DB 저장과 Kafka 메시지 발행을 단일 트랜잭션으로 묶어 유실 없는 이벤트 전달을 보장합니다.
-
-#### Outbox 상태 흐름
-
-```mermaid
-stateDiagram-v2
-    [*] --> READY_TO_PUBLISH : 이벤트 저장 (BEFORE_COMMIT)
-
-    READY_TO_PUBLISH --> PUBLISHED : Kafka 발행 성공 (AFTER_COMMIT)
-    READY_TO_PUBLISH --> FAILED : 발행 실패 (3회 재시도 초과)
-
-    PUBLISHED --> MESSAGE_CONSUMED : Consumer 처리 완료
-    FAILED --> PUBLISHED : 스케줄러 재처리 성공 (3분 주기)
-
-    MESSAGE_CONSUMED --> [*]
-```
-
-#### Outbox 예시
-
-| 필드 | 값 |
-|---|---|
-| `id` | a3f1c2d4-84be-4b2e-9f10-abc123def456 |
-| `aggregate_type` | Portfolio |
-| `event_type` | PortfolioAnalysisCompleted |
-| `payload` | `{ "portfolioId": 42, "memberId": 7, "analysisType": "HEALTH" }` |
-| `timestamp` | 2026-03-24 09:30:00.000 |
-| `status` | READY_TO_PUBLISH |
-
-#### 패턴 흐름
-
-```mermaid
-sequenceDiagram
-    participant B as Batch Server
-    participant DB as PostgreSQL
-    participant OB as Outbox Table
-    participant KF as Apache Kafka
-    participant API as API Server
-
-    B->>DB: 포트폴리오 분석 결과 저장 (트랜잭션 시작)
-
-    rect rgb(219, 234, 254)
-        Note over DB,OB: BEFORE_COMMIT
-        DB->>OB: 이벤트 저장 (status: READY_TO_PUBLISH)
-    end
-
-    DB-->>B: 트랜잭션 커밋 완료
-
-    rect rgb(220, 252, 231)
-        Note over OB,KF: AFTER_COMMIT (별도 트랜잭션 · 최대 3회 재시도)
-        OB->>KF: Kafka 메시지 발행
-        alt 발행 성공
-            KF-->>OB: status → PUBLISHED
-            KF->>API: 이벤트 전달
-            API-->>OB: status → MESSAGE_CONSUMED
-        else 3회 모두 실패
-            OB-->>OB: status → FAILED
-        end
-    end
-
-    rect rgb(254, 243, 199)
-        Note over OB,KF: 스케줄러 재처리 (3분 주기)
-        OB->>KF: FAILED 이벤트 재발행
-        KF-->>OB: status → PUBLISHED
-    end
-```
-
-#### BEFORE_COMMIT — Outbox 저장
+`PortfolioStatBatchService.saveStatsAndEvent()`는 포트폴리오 통계와 `PENDING` Outbox 행을 같은 DB 트랜잭션에서 저장합니다. 이 트랜잭션은 DB 내부의 두 저장을 함께 커밋하거나 롤백하지만 Kafka 발행까지 묶지는 않습니다.
 
 ```java
-@TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-public void handleOutboxEvent(OutboxEvent event) {
-    outboxService.saveNewOutboxProcess(event);
-}
+// PortfolioStatBatchService.saveStatsAndEvent() 일부
+outboxPort.save(OutboxEvent.create(
+        KafkaTopicConfig.PORTFOLIO_ANALYSIS_COMPLETED_TOPIC, payload));
 ```
 
-#### AFTER_COMMIT — Kafka 발행
+Batch의 `OutboxRelay`는 5초 간격으로 `PENDING` 행을 읽습니다. Kafka 어댑터는 `KafkaTemplate.send()`의 Future 결과를 기다리지 않고 콜백에서 성공·실패 로그만 남깁니다. 어댑터 호출이 정상 반환하면 릴레이는 곧바로 상태를 `COMPLETED`로 바꾸고, 동기 예외를 받으면 `FAILED`로 바꿉니다. 다음 조회는 `PENDING`만 찾으므로 `FAILED` 재처리는 구현돼 있지 않습니다. 비동기 발행 실패가 발생해도 이미 `COMPLETED`가 저장될 수 있습니다.
 
-```java
-@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-@Transactional(propagation = Propagation.REQUIRES_NEW)
-@Retryable(
-    retryFor = { KafkaSendException.class },
-    maxAttempts = 3,
-    backoff = @Backoff(delay = 2000),
-    recover = "recover"
-)
-public void handleKafkaEvent(OutboxEvent event) {
-    // Kafka 메시지 발행 후 status → PUBLISHED
-}
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/outbox-state-dark.png">
+  <img src="docs/diagrams/outbox-state.png" alt="Outbox 상태 흐름: PENDING은 send 호출의 정상 반환 뒤 COMPLETED가 되고 동기 예외 뒤 FAILED가 되며 Future 콜백은 상태를 바꾸지 않음">
+</picture>
 
-#### 실패 이벤트 재처리 — Scheduler
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/outbox-sequence-dark.png">
+  <img src="docs/diagrams/outbox-sequence.png" alt="통계와 Outbox를 DB 트랜잭션으로 저장한 뒤 별도 릴레이 트랜잭션이 PENDING을 조회하고 Kafka send 호출 후 Outbox 상태를 커밋하는 시퀀스">
+</picture>
 
-```java
-@Scheduled(fixedDelay = 60000 * 3) // 3분마다
-public void retryFailedMessages() {
-    List<Outbox> failedEvents = outboxService.getFailedOutboxEvents();
-    for (Outbox outbox : failedEvents) {
-        try {
-            kafkaTemplate.send(topic, outbox.getPayload());
-        } catch (Exception e) {
-            log.error("Kafka 재처리 실패, eventId: {}", outbox.getId(), e);
-        }
-    }
-}
-```
+`portfolio-analysis-completed`를 구독하는 `@KafkaListener`는 저장소 코드에서 확인되지 않았습니다. 다른 토픽의 소비 동작은 별도입니다.
+
+| 토픽 | 소비자 | 코드와 테스트에서 확인한 동작 |
+|---|---|---|
+| `market-score-calculated` | `WeatherEventConsumer` | 처리 실패 시 최초 처리를 포함해 3회 시도하고, 최종 실패 메시지를 `-dlt`로 보냅니다. 통합 테스트는 3회 호출과 DLT의 원래 key/value를 확인합니다. DLT 핸들러는 로그만 기록합니다. |
+| `stock-price-updated` | `StockPriceUpdateConsumer` | 캐시 무효화와 후속 분석 트리거를 호출합니다. 예외를 내부에서 잡아 기록하므로 해당 예외가 Kafka listener 밖으로 전파되지 않습니다. |
 
 <hr>
 
