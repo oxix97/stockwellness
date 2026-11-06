@@ -56,6 +56,7 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testRuntimeOnly("com.h2database:h2")
+    testImplementation("org.testcontainers:postgresql")
 
     // docker
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
