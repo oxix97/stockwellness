@@ -1,42 +1,43 @@
-name: "🐛 버그 리포트 (Bug Report)"
-description: "발생한 문제에 대해 자세히 보고해 주세요."
-labels: ["bug"]
-body:
-  - type: checkboxes
-    id: module
-    attributes:
-      label: "발생 모듈"
-      description: "문제가 발생한 모듈을 선택해 주세요."
-      options:
-        - label: "stockwellness-api"
-        - label: "stockwellness-batch"
-        - label: "stockwellness-core"
-        - label: "Infrastructure (Kafka/Redis/DB/K8s)"
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: "재현 단계"
-      description: "버그를 재현하기 위한 구체적인 순서를 작성해 주세요."
-      placeholder: "1. /api/v1/portfolio 호출\n2. 특정 자산의 수익률 계산 오차 확인..."
-    validations:
-      required: true
-  - type: textarea
-    id: expected_vs_actual
-    attributes:
-      label: "예상 결과 vs 실제 결과"
-      description: "특히 자산 배분 계산식이나 데이터 오차를 명시해 주세요."
-      placeholder: "예상: RSI 지수 45.2\n실제: RSI 지수 102.5 (임계값 초과)"
-    validations:
-      required: true
-  - type: textarea
-    id: logs
-    attributes:
-      label: "로그 및 스크린샷"
-      description: "관련 로그나 에러 스택트레이스를 첨부해 주세요."
-      placeholder: "Spring AOP 로그 또는 Kafka 컨슈머 에러 로그 등"
-  - type: textarea
-    id: environment
-    attributes:
-      label: "환경 정보"
-      description: "문제가 발생한 환경을 입력해 주세요 (Local/Docker/K8s 등)."
-      placeholder: "Docker Compose (Compose.yaml 사용)"
+---
+name: 버그 리포트 (Bug Report)
+about: 발생한 버그를 보고합니다.
+title: "[BUG] 간단한 버그 설명을 작성하세요."
+labels: bug
+assignees: ''
+---
+
+## 🐞 버그 설명 (Description)
+
+어떤 버그가 발생했는지 명확하고 자세하게 설명해주세요.
+
+## 🔁 재현 단계 (Steps to Reproduce)
+
+1. ...
+2. ...
+3. ...
+
+버그를 재현할 수 있는 단계를 구체적으로 작성해주세요.
+
+## ✅ 예상 결과 (Expected Behavior)
+
+원래 예상했던 동작은 무엇인가요?
+
+## ❌ 실제 결과 (Actual Behavior)
+
+실제로 어떤 동작이 발생했나요?
+
+## 🖼 스크린샷 (Screenshots)
+
+문제를 이해하는 데 도움이 되는 스크린샷이 있다면 첨부해주세요.  
+(드래그 앤 드롭으로 쉽게 추가 가능)
+
+## ⚙️ 환경 (Environment)
+
+- 운영체제: [예: Windows 10, macOS Big Sur, iOS 14]
+- 브라우저 (웹 애플리케이션의 경우): [예: Chrome 90, Firefox 88, Safari 14]
+- 버전: [예: v1.2.3]
+- 기타: [추가적으로 필요한 정보]
+
+## ℹ️ 추가 정보 (Additional Information)
+
+문제 해결에 도움이 될 만한 추가 정보가 있다면 작성해주세요.

@@ -1,30 +1,26 @@
-name: "🚀 기능 제안 (Feature Request)"
-description: "새로운 기능을 제안해 주세요."
-labels: ["enhancement"]
-body:
-  - type: textarea
-    id: user_story
-    attributes:
-      label: "사용자 스토리 (User Story)"
-      description: "개인 투자자 입장에서 왜 이 기능이 필요한지 설명해 주세요."
-      placeholder: "자산 관리자로서, 나는 리밸런싱 알림을 받고 싶다. 왜냐하면..."
-    validations:
-      required: true
-  - type: textarea
-    id: contribution
-    attributes:
-      label: "제안 배경 및 기대 효과"
-      description: "자산 배분 전략이나 이성적 투자 결정에 어떻게 기여하는지 설명해 주세요."
-    validations:
-      required: true
-  - type: textarea
-    id: tech_impact
-    attributes:
-      label: "기술적 고려사항"
-      description: "Batch 파이프라인, Redis 캐싱, Kafka 이벤트 흐름 등 고려해야 할 점"
-      placeholder: "새로운 기술 지표를 계산해야 하므로 Spring Batch 작업 추가 필요..."
-  - type: textarea
-    id: visuals
-    attributes:
-      label: "시각화 제안 (Optional)"
-      description: "차트나 데이터가 어떻게 보여야 하는지에 대한 설명"
+---
+name: 기능 요청 (Feature Request)
+about: 새로운 기능 추가나 개선을 요청합니다.
+title: "[FEATURE] 간단한 제목을 입력하세요."
+labels: feature
+assignees: ''
+---
+
+## 📌 문제 제기 (Problem Statement)
+
+이 기능이 왜 필요한가요?  
+어떤 문제를 해결하거나 개선할 수 있나요?
+
+## ✅ 제안하는 기능 (Proposed Feature)
+
+어떤 기능을 추가하거나 변경하고 싶으신가요?  
+가능하다면 구체적인 동작 방식이나 예시를 들어주세요.
+
+## 🔁 대안 (Alternatives Considered)
+
+다른 가능한 해결 방법이나 대안을 고려해 보셨나요?
+
+## ℹ️ 추가 정보 (Additional Context)
+
+기능 요청에 대한 추가적인 맥락이나 정보를 제공해주세요.  
+스크린샷, 목업, 관련 링크 등이 있다면 첨부해주세요.
