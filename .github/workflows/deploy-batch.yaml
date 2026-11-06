@@ -6,6 +6,7 @@ on:
       - 'v*.*.*'
       - 'batch-v*.*.*'   # 예: batch-v1.0.0
       - 'release-v*.*.*'
+      - 'main'
 
 env:
   REGISTRY: ghcr.io

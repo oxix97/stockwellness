@@ -6,6 +6,7 @@ on:
       - 'v*.*.*'
       - 'api-v*.*.*'     # 예: api-v1.0.0
       - 'release-v*.*.*'
+      - 'main'
 
 env:
   REGISTRY: ghcr.io
