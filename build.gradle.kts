@@ -17,6 +17,8 @@ allprojects {
 }
 
 subprojects {
+    extra["testcontainers.version"] = "1.21.4"
+
     apply(plugin = "java")
     apply(plugin = "jacoco")
     apply(plugin = "io.spring.dependency-management")
