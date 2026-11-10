@@ -13,6 +13,22 @@ class MainCdTest < Minitest::Test
     assert_includes workflow('ci.yml')[true]['push']['branches'], 'main'
   end
 
+  def test_api_deploy_has_one_main_route_after_successful_build
+    ci = workflow('ci.yml')
+    api = workflow('deploy-api.yaml')
+    trigger = api[true]
+
+    assert_equal ['tags'], trigger.fetch('push').keys
+    assert_equal ['v*.*.*', 'api-v*.*.*', 'release-v*.*.*'], trigger.fetch('push').fetch('tags')
+    assert trigger.key?('workflow_call')
+    callers = ci.fetch('jobs').select { |_name, job| job['uses'] == './.github/workflows/deploy-api.yaml' }
+    assert_equal ['deploy-api'], callers.keys
+    caller = callers.fetch('deploy-api')
+    assert_equal 'Build & Test', ci.fetch('jobs').fetch('build').fetch('name')
+    assert_equal 'build', caller.fetch('needs')
+    assert_equal "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}", caller.fetch('if')
+  end
+
   def test_deployment_routes_successful_main_push_ci_and_preserves_tag_releases
     %w[api batch].each do |service|
       doc = workflow("deploy-#{service}.yaml")
@@ -63,7 +79,7 @@ class MainCdTest < Minitest::Test
                   'GH_FIXTURE_JOBS' => JSON.generate({ jobs: [{name: 'Build & Test', status: 'completed', conclusion: job_status}] }) }
           Open3.capture3(env, 'bash', '-eo', 'pipefail', '-c', script)[2].success?
         end
-        assert run.call('workflow_run', sha, good), "#{service} rejects successful main CI"
+        assert run.call('workflow_run', sha, { workflow_runs: [] }), "#{service} rejects current main SHA"
         refute run.call('workflow_run', 'b' * 40, good), "#{service} allows stale main"
         assert run.call('push', 'b' * 40, good), "#{service} rejects valid tag"
         refute run.call('push', sha, { workflow_runs: [] }), "#{service} accepts absent CI"
@@ -73,7 +89,7 @@ class MainCdTest < Minitest::Test
         second_guard = workflow("deploy-#{service}.yaml")['jobs']["deploy-#{service}"]['steps'].find { |step| step['name'] == 'Reject superseded main deployment' }['run']
         guard_env = { 'PATH' => "#{dir}:#{ENV.fetch('PATH')}", 'REPOSITORY' => 'owner/repo', 'DEPLOY_SHA' => sha, 'GH_FIXTURE_MAIN' => 'b' * 40 }
         refute Open3.capture3(guard_env, 'bash', '-eo', 'pipefail', '-c', second_guard)[2].success?, "#{service} allows a stale webhook"
-        %w[failure cancelled].each { |status| refute run.call('push', sha, good, status), "#{service} accepts #{status} build" }
+        %w[failure cancelled skipped].each { |status| refute run.call('push', sha, good, status), "#{service} accepts #{status} build" }
         %w[pull_request].each do |bad|
           fixture = Marshal.load(Marshal.dump(good))
           if bad == 'pull_request'
