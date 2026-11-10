@@ -1,4 +1,0 @@
-  ALTER TABLE benchmark_price
-  ADD COLUMN IF NOT EXISTS name VARCHAR(30);
-
-

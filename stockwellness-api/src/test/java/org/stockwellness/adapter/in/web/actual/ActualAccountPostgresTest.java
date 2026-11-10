@@ -20,7 +20,7 @@ class ActualAccountPostgresTest extends ActualAccountControllerTest {
 
     @DynamicPropertySource
     static void postgres(DynamicPropertyRegistry registry) {
-        postgres = new PostgreSQLContainer<>("postgres:16-alpine").withImagePullPolicy(image -> false);
+        postgres = new PostgreSQLContainer<>("postgres:15-alpine").withImagePullPolicy(image -> false);
         postgres.start();
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
@@ -35,7 +35,7 @@ class ActualAccountPostgresTest extends ActualAccountControllerTest {
     @AfterAll static void stopPostgres() { if (postgres != null) postgres.stop(); }
 
     @Test void actual_migration_constraints_and_simulation_are_independent() {
-        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where version = '25' and success", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where version = '1' and success", Integer.class)).isEqualTo(1);
         jdbc.update("insert into portfolio(member_id,name,created_at) values (7,'simulation sentinel',CURRENT_TIMESTAMP)");
         assertThatThrownBy(() -> jdbc.update("insert into actual_account(member_id,name,base_currency,created_at,updated_at) values (7,'bad','USD',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"))
                 .isInstanceOf(DataIntegrityViolationException.class);

@@ -126,10 +126,10 @@ class KospiMstParserTest {
     }
 
     private static byte[] kosdaqRow(String ticker, String isin, String name) {
-        ByteArrayOutputStream row = new ByteArrayOutputStream(281);
+        ByteArrayOutputStream row = new ByteArrayOutputStream(282);
         writePadded(row, ticker, 9);
         writePadded(row, isin, 12);
-        writePadded(row, name, 39);
+        writePadded(row, name, 40);
         row.writeBytes(" ".repeat(221).getBytes(CP949));
         return row.toByteArray();
     }

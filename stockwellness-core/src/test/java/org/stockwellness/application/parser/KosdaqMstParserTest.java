@@ -3,6 +3,8 @@ package org.stockwellness.application.parser;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -25,6 +27,18 @@ class KosdaqMstParserTest {
         assertThat(items).hasSize(1);
         assertThat(items.getFirst().shortCode()).isEqualTo("005930");
         assertThat(items.getFirst().isinCode()).isEqualTo("KR7005930003");
+    }
+
+    @Test
+    void parseArchive_readsTheTrackedKisMasterFile() throws IOException {
+        Path path = Path.of("../kis/kosdaq_code.mst");
+        List<String> lines = Files.readAllLines(path, CP949);
+        List<byte[]> rows = lines.stream().map(line -> line.getBytes(CP949)).toList();
+        List<KosdaqItem> expected = KosdaqMstParser.parse(path);
+
+        assertThat(expected).isNotEmpty().anyMatch(item -> item.shortCode().equals("478340"));
+        assertThat(KosdaqMstParser.parseArchive(archive("kosdaq_code.mst", rows.toArray(byte[][]::new))))
+                .containsExactlyElementsOf(expected);
     }
 
     @Test
@@ -83,14 +97,14 @@ class KosdaqMstParserTest {
     }
 
     private static byte[] row(String ticker, String isin, String name) {
-        ByteArrayOutputStream row = new ByteArrayOutputStream(281);
+        ByteArrayOutputStream row = new ByteArrayOutputStream(282);
         writePadded(row, ticker, 9);
         writePadded(row, isin, 12);
-        writePadded(row, name, 39);
+        writePadded(row, name, 40);
         row.writeBytes(" ".repeat(221).getBytes(CP949));
         byte[] bytes = row.toByteArray();
-        if (bytes.length != 281) {
-            throw new IllegalArgumentException("KOSDAQ fixture row must be 281 bytes");
+        if (bytes.length != 282) {
+            throw new IllegalArgumentException("KOSDAQ fixture row must be 282 bytes");
         }
         return bytes;
     }

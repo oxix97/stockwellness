@@ -20,7 +20,7 @@ class IndexDailyMigrationTest {
     private static final String PRICE_DATE = "2026-10-01";
 
     @Container
-    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
     private static JdbcTemplate jdbc;
     private static Long indexId;

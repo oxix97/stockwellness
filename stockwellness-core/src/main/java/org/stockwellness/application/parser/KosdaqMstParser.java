@@ -22,11 +22,11 @@ import org.stockwellness.domain.stock.KosdaqItem;
  * 코스닥 종목 마스터 파일(kosdaq_code.mst) 파서
  *
  * <h2>파일 구조 (실데이터 검증 완료)</h2>
- * <p>각 행은 CP949 인코딩 기준으로 줄바꿈(\n) 제외 정확히 {@code 281바이트}로 구성됩니다.
+ * <p>각 행은 CP949 인코딩 기준으로 줄바꿈(\n) 제외 정확히 {@code 282바이트}로 구성됩니다.
  *
  * <pre>
  * ┌──────────────────────────────────┬──────────────────────────────┐
- * │        Part 1 (60 bytes)         │      Part 2 (221 bytes)      │
+ * │        Part 1 (61 bytes)         │      Part 2 (221 bytes)      │
  * │  단축코드(9) + 표준코드(12) + 한글명 │  64개 고정폭 필드             │
  * └──────────────────────────────────┴──────────────────────────────┘
  * </pre>
@@ -41,7 +41,7 @@ public class KosdaqMstParser {
 
     private static final Charset CP949 = Charset.forName("EUC-KR");
     private static final String EXPECTED_ENTRY = "kosdaq_code.mst";
-    private static final int RECORD_LENGTH = 281;
+    private static final int RECORD_LENGTH = 282;
 
     /**
      * Part2 고정 바이트 길이 (줄바꿈 제외)
@@ -53,7 +53,7 @@ public class KosdaqMstParser {
      *
      * <p><b>공식 표준 스펙 준수:</b>
      * <ul>
-     *   <li>Part 1은 60바이트(인덱스 0~59)이며, Part 2는 인덱스 60부터 시작합니다.
+     *   <li>Part 1은 61바이트(인덱스 0~60)이며, Part 2는 인덱스 61부터 시작합니다.
      *   <li>그룹코드(2)는 공백 없이 바로 시작합니다. (ex: "ST")
      * </ul>
      */

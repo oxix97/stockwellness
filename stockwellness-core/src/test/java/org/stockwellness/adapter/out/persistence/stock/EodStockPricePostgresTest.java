@@ -44,7 +44,7 @@ import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 @Import({EodStockPriceAdapter.class, IndexDailyAdapter.class, QueryDslConfig.class})
 class EodStockPricePostgresTest {
     @Container
-    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
     @DynamicPropertySource
     static void postgres(DynamicPropertyRegistry registry) {

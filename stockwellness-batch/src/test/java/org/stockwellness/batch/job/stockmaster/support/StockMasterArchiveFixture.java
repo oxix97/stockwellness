@@ -18,7 +18,7 @@ public final class StockMasterArchiveFixture {
     }
 
     public static byte[] kosdaq(List<Row> rows) {
-        return archive("kosdaq_code.mst", rows, 281, 39);
+        return archive("kosdaq_code.mst", rows, 282, 40);
     }
 
     private static byte[] archive(String entryName, List<Row> rows, int rowWidth, int nameWidth) {

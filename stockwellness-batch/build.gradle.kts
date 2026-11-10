@@ -40,6 +40,7 @@ dependencies {
 
     // tests
     testImplementation("org.springframework.batch:spring-batch-test")
+    testImplementation("org.flywaydb:flyway-core")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:postgresql")

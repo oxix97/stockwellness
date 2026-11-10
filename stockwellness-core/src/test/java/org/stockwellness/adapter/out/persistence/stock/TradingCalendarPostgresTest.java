@@ -30,7 +30,7 @@ import org.stockwellness.domain.stock.TradingCalendar;
 @Import({TradingCalendarAdapter.class, QueryDslConfig.class})
 class TradingCalendarPostgresTest {
     @Container
-    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
+    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
             .withImagePullPolicy(image -> false);
 
     @DynamicPropertySource

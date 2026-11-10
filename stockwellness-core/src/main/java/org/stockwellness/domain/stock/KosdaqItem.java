@@ -9,13 +9,13 @@ import java.time.format.DateTimeFormatter;
  * <p>파일 구조
  * <ul>
  *   <li>총 바이트: 282bytes (CP949 기준)
- *   <li>Part1 (60bytes, 가변): 단축코드(9) + 표준코드(12) + 한글명(나머지 패딩 포함)
- *   <li>Part2 (222bytes, 고정): 64개 고정폭 필드
+ *   <li>Part1 (가변): 단축코드(9) + 표준코드(12) + 한글명(나머지 패딩 포함)
+ *   <li>Part2 (221bytes, 고정): 64개 고정폭 필드
  * </ul>
  *
  * <p>코스피({@code KospiItem})와의 주요 차이점
  * <ul>
- *   <li>Part2가 228bytes가 아닌 <b>222bytes</b>
+ *   <li>Part2가 228bytes가 아닌 <b>221bytes</b>
  *   <li>코스닥 고유 필드 추가: {@code venture}, {@code investCaution}, {@code kosdaq150}
  *   <li>코스피 전용 필드 없음: KOSPI200섹터업종, KOSPI100, KOSPI50, ELW발행, Non1, SRI 등
  *   <li>{@code roe} 형식이 정수형 9자리 (코스피는 소수점 포함 문자열)

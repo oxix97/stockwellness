@@ -60,7 +60,7 @@ class StockMasterPreflightTaskletTest {
     @Test
     void validArchivesPublishBothVerifiedDescriptorsOnlyAfterParsingBoth() throws Exception {
         byte[] kospi = archive("kospi_code.mst", row(288, "005930", "KR7005930003", "삼성전자"));
-        byte[] kosdaq = archive("kosdaq_code.mst", row(281, "035900", "KR7035900000", "JYP Ent."));
+        byte[] kosdaq = archive("kosdaq_code.mst", row(282, "035900", "KR7035900000", "JYP Ent."));
         when(syncUseCase.downloadKospiMasterArchive()).thenReturn(kospi);
         when(syncUseCase.downloadKosdaqMasterArchive()).thenReturn(kosdaq);
         when(syncUseCase.parseKospiMasterArchive(kospi)).thenReturn(KospiMstParser.parseArchive(kospi));
@@ -115,7 +115,7 @@ class StockMasterPreflightTaskletTest {
     @Test
     void restartReusesAndVerifiesPreviouslyPublishedSnapshots() throws Exception {
         byte[] kospi = archive("kospi_code.mst", row(288, "005930", "KR7005930003", "삼성전자"));
-        byte[] kosdaq = archive("kosdaq_code.mst", row(281, "035900", "KR7035900000", "JYP Ent."));
+        byte[] kosdaq = archive("kosdaq_code.mst", row(282, "035900", "KR7035900000", "JYP Ent."));
         StockMasterSnapshot kospiSnapshot = snapshotStore.stage(42L, MarketType.KOSPI, kospi, 1, "STRUCTURALLY_VALID");
         StockMasterSnapshot kosdaqSnapshot = snapshotStore.stage(42L, MarketType.KOSDAQ, kosdaq, 1, "STRUCTURALLY_VALID");
         jobExecution.getExecutionContext().put("stockMaster.kospi.snapshot", kospiSnapshot);
@@ -147,7 +147,7 @@ class StockMasterPreflightTaskletTest {
     private static byte[] row(int totalWidth, String ticker, String isin, String name) {
         int tickerWidth = 9;
         int isinWidth = 12;
-        int nameWidth = totalWidth == 288 ? 40 : 39;
+        int nameWidth = 40;
         ByteArrayOutputStream row = new ByteArrayOutputStream(totalWidth);
         writePadded(row, ticker, tickerWidth);
         writePadded(row, isin, isinWidth);

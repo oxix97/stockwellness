@@ -13,11 +13,11 @@ spring:
       port: 6379
       password: ${REDIS_PASSWORD}
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: false
-    baseline-version: "5"
-    out-of-order: true
-    validate-on-migrate: false
+    out-of-order: false
+    validate-on-migrate: true
+    clean-disabled: true
   jpa:
     show-sql: false
     open-in-view: false
