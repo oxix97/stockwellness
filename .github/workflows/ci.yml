@@ -29,6 +29,9 @@ jobs:
       - name: Verify deployment workflows
         run: ruby .github/tests/main_cd_test.rb
 
+      - name: Verify Docker for Testcontainers
+        run: docker version
+
       - name: Build & Test (all modules)
         run: ./gradlew build --no-daemon
 
