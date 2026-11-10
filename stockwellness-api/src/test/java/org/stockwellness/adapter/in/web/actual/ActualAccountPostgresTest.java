@@ -20,7 +20,7 @@ class ActualAccountPostgresTest extends ActualAccountControllerTest {
 
     @DynamicPropertySource
     static void postgres(DynamicPropertyRegistry registry) {
-        postgres = new PostgreSQLContainer<>("postgres:15-alpine").withImagePullPolicy(image -> false);
+        postgres = new PostgreSQLContainer<>("postgres:15-alpine");
         postgres.start();
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
