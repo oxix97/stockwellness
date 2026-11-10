@@ -125,10 +125,12 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
-    void fresh_postgres15_applies_migrations_and_contains_batch_schema_and_sequences() {
+    void fresh_postgres15_applies_only_v1_and_contains_batch_schema_and_sequences() {
         assertThat(flyway.migrate().migrationsExecuted).isZero();
-        assertThat(jdbcTemplate.queryForObject("select max(version::int) from flyway_schema_history where success", Integer.class))
-                .isEqualTo(42);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from flyway_schema_history where success", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select version from flyway_schema_history where success", String.class))
+                .isEqualTo("1");
         assertThat(jdbcTemplate.queryForObject("select count(*) from market", Integer.class)).isEqualTo(5);
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*) from pg_sequences
