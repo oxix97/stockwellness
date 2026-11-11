@@ -3,7 +3,6 @@ package org.stockwellness.adapter.out.persistence.insight;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +12,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.stockwellness.support.ManualSqlTestSupport;
 
 @Testcontainers(disabledWithoutDocker = true)
 class IndexDailyMigrationTest {
@@ -27,14 +27,10 @@ class IndexDailyMigrationTest {
     private static Long stockId;
 
     @BeforeAll
-    static void migrate() {
-        Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration")
-                .load()
-                .migrate();
-        jdbc = new JdbcTemplate(new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+    static void initializeSchema() {
+        var dataSource = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        ManualSqlTestSupport.initializeLegacyPostgres(dataSource);
+        jdbc = new JdbcTemplate(dataSource);
     }
 
     @BeforeEach

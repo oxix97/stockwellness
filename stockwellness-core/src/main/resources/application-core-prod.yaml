@@ -2,7 +2,7 @@ spring:
   jpa:
     show-sql: false
     hibernate:
-      ddl-auto: validate   # ⚠️ prod에서는 update 금지 → 스키마는 Flyway/Liquibase 또는 수동 관리
+      ddl-auto: validate   # 스키마는 검토된 수동 SQL로 관리
     properties:
       hibernate:
         format_sql: false

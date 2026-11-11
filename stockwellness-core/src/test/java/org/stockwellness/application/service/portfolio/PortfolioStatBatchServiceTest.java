@@ -47,7 +47,6 @@ import static org.mockito.Mockito.verify;
 
 @DataJpaTest
 @TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @Import({PortfolioStatBatchService.class, JsonUtil.class, QueryDslConfig.class, JpaConfig.class})

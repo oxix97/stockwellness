@@ -18,7 +18,7 @@ import org.stockwellness.config.QueryDslConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.flyway.enabled=false")
+@DataJpaTest
 @Import({QueryDslConfig.class, JpaConfig.class})
 @ActiveProfiles("test")
 class SectorIndicatorRepositoryTest {

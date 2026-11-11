@@ -7,8 +7,6 @@ spring:
   batch:
     job:
       enabled: false
-  flyway:
-    enabled: false
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
