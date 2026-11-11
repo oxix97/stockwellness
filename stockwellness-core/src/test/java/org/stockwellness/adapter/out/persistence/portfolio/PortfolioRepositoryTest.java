@@ -25,7 +25,7 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.flyway.enabled=false")
+@DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
 class PortfolioRepositoryTest {

@@ -16,7 +16,7 @@ import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.shared.Email;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.flyway.enabled=false")
+@DataJpaTest
 @Import({QueryDslConfig.class, JpaConfig.class})
 @ActiveProfiles("test")
 @DisplayName("MemberRepository 통합 테스트")

@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 import org.stockwellness.StockwellnessBatchApplication;
@@ -49,6 +49,7 @@ import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.fixture.StockFixture;
+import org.stockwellness.support.ManualSqlTestSupport;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -57,9 +58,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(
         classes = StockwellnessBatchApplication.class,
         properties = {
-                "spring.flyway.enabled=true",
                 "spring.jpa.hibernate.ddl-auto=validate",
                 "spring.batch.jdbc.initialize-schema=never",
+                "spring.sql.init.mode=never",
                 "spring.batch.job.enabled=false",
                 "spring.docker.compose.enabled=false"
         })
@@ -77,7 +78,6 @@ class NewMarketDataBatchConfigIntegrationTest {
     @Autowired private StockRepository stockRepository;
     @Autowired private MarketIndexRepository marketIndexRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
-    @Autowired private Flyway flyway;
     @Autowired private TradingCalendarAdapter tradingCalendarAdapter;
 
     @MockitoBean private NotificationPort notificationPort;
@@ -107,6 +107,9 @@ class NewMarketDataBatchConfigIntegrationTest {
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
+        POSTGRES.start();
+        ManualSqlTestSupport.initializeLegacyPostgres(
+                new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
@@ -125,12 +128,8 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
-    void fresh_postgres15_applies_only_v1_and_contains_batch_schema_and_sequences() {
-        assertThat(flyway.migrate().migrationsExecuted).isZero();
-        assertThat(jdbcTemplate.queryForObject("select count(*) from flyway_schema_history where success", Integer.class))
-                .isEqualTo(1);
-        assertThat(jdbcTemplate.queryForObject("select version from flyway_schema_history where success", String.class))
-                .isEqualTo("1");
+    void fresh_postgres15_is_initialized_from_manual_sql_and_contains_batch_schema_and_sequences() {
+        assertThat(jdbcTemplate.queryForObject("select to_regclass('public.flyway_schema_history') is null", Boolean.class)).isTrue();
         assertThat(jdbcTemplate.queryForObject("select count(*) from market", Integer.class)).isEqualTo(5);
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*) from pg_sequences

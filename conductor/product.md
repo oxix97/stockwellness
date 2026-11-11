@@ -21,7 +21,7 @@
 - **Build:** Gradle Kotlin DSL 기반 멀티 모듈 구조 (`api`, `batch`, `core`).
 
 ### Persistence & Messaging
-- **PostgreSQL:** 메인 관계형 데이터베이스 (Flyway를 통한 스키마 버전 관리).
+- **PostgreSQL:** 메인 관계형 데이터베이스 (검토된 수동 SQL로 스키마 관리, 애플리케이션 자동 DDL 변경 금지).
 - **Redis:** Refresh Token 관리, 인기 검색어, 시세 데이터 캐싱.
 - **Apache Kafka:** `market-data-updated` 이벤트 파이프라인 및 Outbox 패턴을 통한 데이터 정합성 보장.
 

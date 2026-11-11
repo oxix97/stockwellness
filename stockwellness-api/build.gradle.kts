@@ -38,11 +38,6 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
     implementation("org.apache.httpcomponents.client5:httpclient5")
 
-    // flyway / db
-//    implementation("org.flywaydb:flyway-core")
-//    implementation("org.flywaydb:flyway-database-postgresql")
-//    runtimeOnly("org.postgresql:postgresql")
-
     // logging
     implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.11.0")
 
