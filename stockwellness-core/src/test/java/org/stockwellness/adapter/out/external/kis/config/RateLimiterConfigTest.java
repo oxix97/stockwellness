@@ -9,7 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.kafka.admin.auto-create=false")
 @ActiveProfiles("test")
 class RateLimiterConfigTest {
 

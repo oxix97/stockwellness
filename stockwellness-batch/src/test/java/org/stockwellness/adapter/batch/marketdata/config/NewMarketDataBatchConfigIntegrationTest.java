@@ -61,7 +61,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
                 "spring.jpa.hibernate.ddl-auto=validate",
                 "spring.batch.jdbc.initialize-schema=never",
                 "spring.batch.job.enabled=false",
-                "spring.docker.compose.enabled=false"
+                "spring.docker.compose.enabled=false",
+                "spring.kafka.admin.auto-create=false"
         })
 @ActiveProfiles("test")
 class NewMarketDataBatchConfigIntegrationTest {
