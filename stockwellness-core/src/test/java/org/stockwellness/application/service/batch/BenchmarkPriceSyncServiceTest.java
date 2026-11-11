@@ -16,6 +16,7 @@ import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -104,6 +105,27 @@ class BenchmarkPriceSyncServiceTest {
 
             // then
             assertThat(result.benchmarkPrice().getChangeRate()).isEqualByComparingTo(providedRate);
+            verify(benchmarkPricePort, never()).findLatestBefore(anyString(), any());
+        }
+
+        @Test
+        @DisplayName("필수 가격이 누락되면 benchmark row를 만들지 않는다")
+        void shouldRejectMissingRequiredPrice() {
+            BenchmarkPriceSyncUseCase.BenchmarkPriceCommand command =
+                    new BenchmarkPriceSyncUseCase.BenchmarkPriceCommand(
+                            BenchmarkType.S_P_500,
+                            LocalDate.of(2026, 4, 24),
+                            BigDecimal.valueOf(99),
+                            BigDecimal.valueOf(101),
+                            BigDecimal.valueOf(98),
+                            null,
+                            null,
+                            100L
+                    );
+
+            assertThatThrownBy(() -> benchmarkPriceSyncService.toBenchmarkPrice(command))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("필수 시세 누락");
             verify(benchmarkPricePort, never()).findLatestBefore(anyString(), any());
         }
     }
