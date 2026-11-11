@@ -94,7 +94,6 @@ public class KisSectorAdapter implements SectorDataPort {
     ) {
         return executeWithRetry(() -> {
             String latestDate = date.format(DATE_FMT);
-            String fromDate = date.minusMonths(1).format(DATE_FMT);
             String marketCode = resolveMarketCode(indexCode);
 
             KisResponse<List<InvestorTradingDaily>> response = kisApiClient.get()
@@ -103,7 +102,7 @@ public class KisSectorAdapter implements SectorDataPort {
                             // U: 업종/시장 지수 조회 구분값
                             .queryParam("FID_COND_MRKT_DIV_CODE", DOMESTIC_MARKET_DIVISION_CODE)
                             .queryParam("FID_INPUT_DATE_1", latestDate)
-                            .queryParam("FID_INPUT_DATE_2", fromDate)
+                            .queryParam("FID_INPUT_DATE_2", latestDate)
                             .queryParam("FID_INPUT_ISCD", indexCode)
                             .queryParam("FID_INPUT_ISCD_1", marketCode)
                             .queryParam("FID_INPUT_ISCD_2", indexCode)
@@ -181,10 +180,9 @@ public class KisSectorAdapter implements SectorDataPort {
         return executeWithRetry(() -> {
             KisResponse<KisDailySectorInfo> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-index-price")
                             .queryParam("FID_COND_MRKT_DIV_CODE", "U")
                             .queryParam("FID_INPUT_ISCD", indexCode)
-                            .queryParam("FID_PERIOD_DIV_CODE", "D")
                             .build())
                     .header("tr_id", "FHPUP02100000")
                     .retrieve()
