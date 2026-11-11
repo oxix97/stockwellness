@@ -1,6 +1,7 @@
 package org.stockwellness.batch.job.stockprice.config;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -12,13 +13,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
-import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.support.BatchIntegrationTestSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @DisplayName("StockPriceBatchJob 통합 테스트")
@@ -46,29 +48,19 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
         // 준비
         Stock samsung = StockFixture.createSamsung();
         stockAdapter.save(samsung);
+        jdbcTemplate.update("update stock set group_code = 'ST' where ticker = '005930'");
 
-        KisMultiStockPriceDetail multiPriceDetail = new KisMultiStockPriceDetail(
-                "005930",
-                "삼성전자",
-                new BigDecimal("70500"),
-                new BigDecimal("500"),
-                new BigDecimal("1.0"),
-                new BigDecimal("70000"),
-                new BigDecimal("71000"),
-                new BigDecimal("69000"),
-                1_000_000L,
-                new BigDecimal("70500000000"),
-                new BigDecimal("70000"),
-                BigDecimal.TEN,
-                BigDecimal.valueOf(20)
-        );
-        given(kisDailyPriceAdapter.fetchMultiStockPrices(any()))
-                .willReturn(List.of(multiPriceDetail));
+        LocalDate targetDate = LocalDate.of(2024, 1, 2);
+        KisDailyPriceDetail dailyPrice = new KisDailyPriceDetail(targetDate, new BigDecimal("70000"),
+                new BigDecimal("71000"), new BigDecimal("69000"), new BigDecimal("70500"), 1_000_000L,
+                new BigDecimal("70500000000"), null, null, "N", null, null, null);
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(targetDate.minusDays(14)), eq(targetDate)))
+                .willReturn(List.of(dailyPrice));
 
         JobParameters jobParameters = new JobParametersBuilder()
-                .addString("startDate", "20240101")
-                .addString("endDate", "20240101")
-                .addString("targetDate", "20240101")
+                .addString("startDate", "20240102")
+                .addString("endDate", "20240102")
+                .addString("targetDate", "20240102")
                 .addLong("timestamp", System.currentTimeMillis())
                 .toJobParameters();
 
@@ -80,6 +72,12 @@ class StockPriceBatchJobIntegrationTest extends BatchIntegrationTestSupport {
         assertThat(jobExecution.getStepExecutions())
                 .extracting(StepExecution::getStepName)
                 .containsExactlyInAnyOrder("dailyStockPriceStep", "technicalIndicatorCalculateStep");
+
+        Integer savedTargetDatePriceCount = jdbcTemplate.queryForObject(
+                "select count(*) from stock_price where base_date = DATE '2024-01-02' and close_price = 70500",
+                Integer.class
+        );
+        assertThat(savedTargetDatePriceCount).isEqualTo(1);
 
         Integer investorTradeCount = jdbcTemplate.queryForObject("select count(*) from stock_investor_trade", Integer.class);
         assertThat(investorTradeCount).isZero();
