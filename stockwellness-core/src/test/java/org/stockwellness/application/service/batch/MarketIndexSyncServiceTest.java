@@ -16,9 +16,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.application.parser.MarketIndexMstParser;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -33,6 +36,9 @@ class MarketIndexSyncServiceTest {
 
     @Mock
     private MarketIndexRepository marketIndexRepository;
+
+    @Mock
+    private IndexSeriesRepository indexSeriesRepository;
 
     private MockedStatic<MarketIndexMstParser> parserMockedStatic;
 
@@ -122,6 +128,35 @@ class MarketIndexSyncServiceTest {
                 // then
                 verify(marketIndexRepository, never()).save(existing);
                 verify(marketIndexRepository, times(1)).save(newIndex);
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
+        }
+
+        @Test
+        @DisplayName("논리 지수와 provider series를 분리 저장한다")
+        void shouldSaveProviderSeriesSeparately() throws IOException {
+            String fileName = "idxcode.mst";
+            Path kisDir = Paths.get("kis");
+            if (!Files.exists(kisDir)) Files.createDirectory(kisDir);
+            Path tempFile = kisDir.resolve(fileName);
+            Files.createFile(tempFile);
+
+            try {
+                MarketIndex index = MarketIndex.of("0001", "종합", "0");
+                parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(List.of(index));
+                given(marketIndexRepository.findAll()).willReturn(List.of());
+                given(marketIndexRepository.save(index)).willReturn(index);
+
+                marketIndexSyncService.syncIndices(fileName);
+
+                verify(marketIndexRepository).save(index);
+                org.mockito.ArgumentCaptor<IndexSeries> series = org.mockito.ArgumentCaptor.forClass(IndexSeries.class);
+                verify(indexSeriesRepository).save(series.capture());
+                assertThat(series.getValue().getProvider()).isEqualTo("KIS");
+                assertThat(series.getValue().getProviderNamespace()).isEqualTo("kis.idxcode.KOSPI");
+                assertThat(series.getValue().getProviderSeriesCode()).isEqualTo("0001");
+                assertThat(series.getValue().getMarketIndex()).isSameAs(index);
             } finally {
                 Files.deleteIfExists(tempFile);
             }

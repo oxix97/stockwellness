@@ -20,6 +20,7 @@ public final class ManualSqlTestSupport {
 
     public static void initializeLegacyPostgres(DataSource dataSource) {
         execute(dataSource, "db/test/legacy-schema.sql");
+        execute(dataSource, "db/test/legacy-series-schema.sql");
         execute(dataSource, "db/test/batch-sequences.sql");
     }
 }

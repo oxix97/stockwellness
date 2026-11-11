@@ -16,4 +16,16 @@ class MarketIndexIdentityTest {
         assertThat(unknown.getMarketCode()).isNull();
         assertThat(unknown.getIndexKind()).isEqualTo(MarketIndexKind.OTHER);
     }
+
+    @Test
+    void keepsLogicalIdentityMarketScopedWhilePublicBenchmarkCodesRemainExplicit() {
+        MarketIndex kospi = MarketIndex.of("0099", "KOSPI 업종", "0");
+        MarketIndex kosdaq = MarketIndex.of("0099", "KOSDAQ 업종", "1");
+        MarketIndex publicBenchmark = MarketIndex.of("0001", "종합", "0");
+
+        assertThat(kospi.getIndexKey()).isNotEqualTo(kosdaq.getIndexKey());
+        assertThat(kospi.getProviderCode()).isEqualTo(kosdaq.getProviderCode());
+        assertThat(publicBenchmark.getPublicBenchmarkCode()).isEqualTo("0001");
+        assertThat(kospi.getPublicBenchmarkCode()).isNull();
+    }
 }

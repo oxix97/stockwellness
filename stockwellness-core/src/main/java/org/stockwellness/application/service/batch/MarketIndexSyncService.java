@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.application.parser.MarketIndexMstParser;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 
 @Slf4j
@@ -21,6 +23,7 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 public class MarketIndexSyncService {
 
     private final MarketIndexRepository marketIndexRepository;
+    private final IndexSeriesRepository indexSeriesRepository;
 
     @Transactional
     public void syncIndices(String fileName) throws IOException {
@@ -35,20 +38,30 @@ public class MarketIndexSyncService {
 
         // 기존 데이터 로드 (Upsert 처리를 위함)
         Map<String, MarketIndex> existingMap = marketIndexRepository.findAll().stream()
-                .collect(Collectors.toMap(MarketIndex::getIndexCode, m -> m, (m1, m2) -> m1));
+                .collect(Collectors.toMap(MarketIndex::getIndexKey, m -> m, (m1, m2) -> m1));
 
         int newCount = 0;
         int updateCount = 0;
 
         for (MarketIndex parsed : parsedIndices) {
-            MarketIndex existing = existingMap.get(parsed.getIndexCode());
+            MarketIndex existing = existingMap.get(parsed.getIndexKey());
+            MarketIndex persisted;
             if (existing != null) {
                 if (existing.updateFrom(parsed)) {
                     updateCount++;
                 }
+                persisted = existing;
             } else {
-                marketIndexRepository.save(parsed);
+                persisted = marketIndexRepository.save(parsed);
                 newCount++;
+            }
+            if (parsed.getMarketCode() != null) {
+                indexSeriesRepository.findByProviderAndProviderNamespaceAndProviderSeriesCodeAndReturnBasisAndDividendBasisAndCurrency(
+                        parsed.getProvider(), "kis.idxcode." + parsed.getMarketCode(), parsed.getProviderCode(),
+                        "PRICE", "NONE", "KRW")
+                        .orElseGet(() -> indexSeriesRepository.save(new IndexSeries(
+                                persisted, parsed.getProvider(), "kis.idxcode." + parsed.getMarketCode(), parsed.getProviderCode(),
+                                parsed.getMarketCode(), "PRICE", "NONE", "KRW", true)));
             }
         }
 

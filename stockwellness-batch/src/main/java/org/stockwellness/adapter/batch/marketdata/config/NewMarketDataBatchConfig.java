@@ -19,7 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.in.batch.NewMarketDataSyncUseCase;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndexKind;
 
 @Configuration
@@ -89,29 +89,32 @@ public class NewMarketDataBatchConfig {
     }
 
     @Bean
-    public Step kisEodIndexPriceStep(JpaPagingItemReader<MarketIndex> kisEodIndexReader,
-            org.springframework.batch.item.ItemProcessor<MarketIndex, MarketIndex> kisEodIndexProcessor) {
+    public Step kisEodIndexPriceStep(JpaPagingItemReader<IndexSeries> kisEodIndexReader,
+            org.springframework.batch.item.ItemProcessor<IndexSeries, IndexSeries> kisEodIndexProcessor) {
         return new StepBuilder("kisEodIndexPriceStep", jobRepository)
-                .<MarketIndex, MarketIndex>chunk(1, transactionManager)
+                .<IndexSeries, IndexSeries>chunk(1, transactionManager)
                 .reader(kisEodIndexReader).processor(kisEodIndexProcessor).writer(chunk -> {}).build();
     }
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<MarketIndex> kisEodIndexReader() {
-        return new JpaPagingItemReaderBuilder<MarketIndex>().name("kisEodIndexReader")
+    public JpaPagingItemReader<IndexSeries> kisEodIndexReader() {
+        return new JpaPagingItemReaderBuilder<IndexSeries>().name("kisEodIndexReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(20)
-                .queryString("select i from MarketIndex i where i.provider = 'KIS' and i.marketCode in ('KOSPI','KOSDAQ') and i.indexKind = :kind order by i.id")
+                .queryString("select s from IndexSeries s join s.marketIndex i where s.provider = 'KIS' "
+                        + "and s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
+                        + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' and s.currency = 'KRW' "
+                        + "and s.active = true and s.canonical = true and i.kind = :kind order by s.id")
                 .parameterValues(Map.of("kind", MarketIndexKind.MARKET)).build();
     }
 
     @Bean
     @StepScope
-    public org.springframework.batch.item.ItemProcessor<MarketIndex, MarketIndex> kisEodIndexProcessor(
+    public org.springframework.batch.item.ItemProcessor<IndexSeries, IndexSeries> kisEodIndexProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
         LocalDate from = LocalDate.parse(start);
         LocalDate to = LocalDate.parse(end);
-        return index -> { sync.syncIndexPrices(index, from, to); return index; };
+        return series -> { sync.syncIndexPrices(series, from, to); return series; };
     }
 }
