@@ -10,6 +10,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 class KisOverseasIndexDailyPriceTest {
 
     @Test
+    @DisplayName("누락된 해외 지수 가격을 0으로 대체하지 않는다")
+    void missingPricesRemainMissing() {
+        BenchmarkPriceData data = new KisOverseasIndexDailyPrice(
+                "20260401", null, " ", null, "", null, "0"
+        );
+
+        assertThat(data.closePrice()).isNull();
+        assertThat(data.openPrice()).isNull();
+        assertThat(data.highPrice()).isNull();
+        assertThat(data.lowPrice()).isNull();
+    }
+
+    @Test
     @DisplayName("해외 지수 일별 시세 DTO 매핑 및 BenchmarkPriceData 인터페이스 구현 검증")
     void mappingTest() {
         // given

@@ -43,7 +43,7 @@ public interface StockPriceRepository extends JpaRepository<StockPrice, StockPri
             FROM StockPrice s
             JOIN FETCH s.stock
             WHERE s.stock = :stock
-              AND s.id.baseDate < :date
+              AND s.id.baseDate <= :date
             ORDER BY s.id.baseDate DESC
             """)
     List<StockPrice> findRecentPricesByStock(@Param("stock") Stock stock, @Param("date") LocalDate date, Pageable pageable);

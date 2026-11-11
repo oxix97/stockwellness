@@ -7,14 +7,12 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalIndicatorCalculator;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
 
-@Component
 @RequiredArgsConstructor
 public class TechnicalIndicatorProcessor implements ItemProcessor<Stock, StockPrice> {
 
@@ -22,12 +20,13 @@ public class TechnicalIndicatorProcessor implements ItemProcessor<Stock, StockPr
     private static final int LOOKBACK_DAYS = 120;
 
     private final StockPricePort stockPricePort;
+    private final LocalDate targetDate;
 
     @Override
     public StockPrice process(Stock stock) {
         List<StockPrice> prices = stockPricePort.findRecentPricesWithDateByStock(
                 stock,
-                LocalDate.now(),
+                targetDate,
                 LOOKBACK_DAYS
         );
 
@@ -37,6 +36,9 @@ public class TechnicalIndicatorProcessor implements ItemProcessor<Stock, StockPr
 
         // 레포지토리에서 DESC로 가져오므로 계산 전에 ASC로 정렬한다.
         prices.sort(Comparator.comparing(price -> price.getId().getBaseDate()));
+        if (!targetDate.equals(prices.getLast().getId().getBaseDate())) {
+            return null;
+        }
 
         List<BigDecimal> closingPrices = prices.stream()
                 .map(StockPrice::getClosePrice)

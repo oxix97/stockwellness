@@ -102,8 +102,13 @@ public class StockPriceStepConfig {
 
     @Bean
     @StepScope
-    public TechnicalIndicatorProcessor technicalIndicatorProcessor(StockPricePort stockPricePort) {
-        return new TechnicalIndicatorProcessor(stockPricePort);
+    public TechnicalIndicatorProcessor technicalIndicatorProcessor(
+            StockPricePort stockPricePort,
+            @Value("#{jobParameters['targetDate']}") String targetDateStr,
+            @Value("#{jobParameters['endDate']}") String endDateStr
+    ) {
+        LocalDate targetDate = parseTargetDate(targetDateStr, endDateStr);
+        return new TechnicalIndicatorProcessor(stockPricePort, targetDate);
     }
 
     @Bean
