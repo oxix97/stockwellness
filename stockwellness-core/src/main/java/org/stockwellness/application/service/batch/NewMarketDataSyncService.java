@@ -28,7 +28,7 @@ import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 import org.stockwellness.domain.stock.insight.IndexDaily;
-import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.price.EodStockPrice;
 
 @Service
@@ -108,21 +108,23 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
 
     @Override
     @Transactional
-    public void syncIndexPrices(MarketIndex index, LocalDate startDate, LocalDate endDate) {
-        validateRange(index, startDate, endDate);
-        if (index.getProviderCode() == null || index.getProviderCode().isBlank()) {
-            throw new IllegalArgumentException("KIS provider index code is required");
+    public void syncIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate) {
+        validateRange(series, startDate, endDate);
+        if (!"KIS".equals(series.getProvider()) || !series.isActive() || !series.isCanonical()
+                || !"PRICE".equals(series.getReturnBasis()) || !"NONE".equals(series.getDividendBasis())
+                || !"KRW".equals(series.getCurrency())) {
+            throw new IllegalArgumentException("Only active canonical KIS KRW price index series are supported");
         }
-        if (!("KOSPI".equals(index.getMarketCode()) || "KOSDAQ".equals(index.getMarketCode()))) {
+        if (!("KOSPI".equals(series.getCalendarMarketCode()) || "KOSDAQ".equals(series.getCalendarMarketCode()))) {
             throw new IllegalArgumentException("Only KOSPI and KOSDAQ market indices are supported");
         }
-        List<LocalDate> openDates = verifiedOpenDates(index.getMarketCode(), startDate, endDate);
+        List<LocalDate> openDates = verifiedOpenDates(series.getCalendarMarketCode(), startDate, endDate);
         List<IndexDaily> records = new ArrayList<>();
         for (List<LocalDate> chunk : calendarWindows(openDates, startDate, endDate, INDEX_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
             LocalDate to = chunk.getLast();
             Set<LocalDate> requestedDates = Set.copyOf(chunk);
-            List<KisDailySectorDetail> rows = kisIndexPricePort.fetchRawIndexDailyPrices(index.getProviderCode(), from, to);
+            List<KisDailySectorDetail> rows = kisIndexPricePort.fetchRawIndexDailyPrices(series.getProviderSeriesCode(), from, to);
             if (rows == null || rows.size() > INDEX_MAX_ROWS) throw new IllegalArgumentException("Invalid KIS index response size");
             Set<LocalDate> seen = new HashSet<>();
             for (KisDailySectorDetail row : rows) {
@@ -139,11 +141,11 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 BenchmarkDataStatus status = open != null && high != null && low != null && close != null
                         && volume != null && tradingAmount != null
                         ? BenchmarkDataStatus.PROVISIONAL : BenchmarkDataStatus.INCOMPLETE;
-                records.add(IndexDaily.of(index, date, price(open), price(high), price(low), price(close), volume,
+                records.add(IndexDaily.of(series.getMarketIndex(), date, price(open), price(high), price(low), price(close), volume,
                         tradingAmount, null, null, null, null, null, null, null, INDEX_API, null, status, null));
             }
             for (LocalDate missing : chunk) {
-                if (seen.add(missing)) records.add(IndexDaily.of(index, missing, null, null, null, null,
+                if (seen.add(missing)) records.add(IndexDaily.of(series.getMarketIndex(), missing, null, null, null, null,
                         null, null, null, null, null, null, null, null, null, INDEX_API, null,
                         BenchmarkDataStatus.INCOMPLETE, null));
             }

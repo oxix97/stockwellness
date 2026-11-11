@@ -42,12 +42,14 @@ import org.stockwellness.adapter.out.external.kis.dto.KisHolidayEntry;
 import org.stockwellness.adapter.out.persistence.stock.TradingCalendarAdapter;
 import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.out.notification.NotificationPort;
 import org.stockwellness.batch.job.stockmaster.support.StockMasterArchiveFixture;
 import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.support.ManualSqlTestSupport;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -77,6 +79,7 @@ class NewMarketDataBatchConfigIntegrationTest {
     @Autowired private StockAdapter stockAdapter;
     @Autowired private StockRepository stockRepository;
     @Autowired private MarketIndexRepository marketIndexRepository;
+    @Autowired private IndexSeriesRepository indexSeriesRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private TradingCalendarAdapter tradingCalendarAdapter;
 
@@ -206,6 +209,16 @@ class NewMarketDataBatchConfigIntegrationTest {
         MarketIndex kospi = marketIndexRepository.saveAndFlush(MarketIndex.of("0001", "코스피", "0"));
         MarketIndex kosdaq = marketIndexRepository.saveAndFlush(MarketIndex.of("1001", "코스닥", "1"));
         marketIndexRepository.saveAndFlush(MarketIndex.of("0027", "제약", "0"));
+        indexSeriesRepository.saveAndFlush(new IndexSeries(kospi, "KIS", "kis.idxcode.KOSPI", "0001",
+                "KOSPI", "PRICE", "NONE", "KRW", true));
+        indexSeriesRepository.saveAndFlush(new IndexSeries(kospi, "KIS", "kis.total-return", "0001.TR",
+                "KOSPI", "TOTAL_RETURN", "GROSS", "KRW", true));
+        IndexSeries inactive = new IndexSeries(kosdaq, "KIS", "kis.backup.KOSDAQ", "1001.BAK",
+                "KOSDAQ", "PRICE", "NONE", "KRW", true);
+        inactive.deactivate();
+        indexSeriesRepository.saveAndFlush(inactive);
+        indexSeriesRepository.saveAndFlush(new IndexSeries(kosdaq, "KIS", "kis.idxcode.KOSDAQ", "1001",
+                "KOSDAQ", "PRICE", "NONE", "KRW", true));
         tradingCalendarAdapter.upsert(List.of(
                 TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
                 TradingCalendar.of("KOSPI", END_DATE, true, null, null, "test"),

@@ -1,6 +1,6 @@
 package org.stockwellness.application.service.batch;
 
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -13,10 +13,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.in.batch.StockMasterSyncUseCase;
 import org.stockwellness.domain.stock.*;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +40,9 @@ class StockMasterSyncServiceTest {
 
     @Mock
     private MarketIndexRepository marketIndexRepository;
+
+    @Mock
+    private IndexSeriesRepository indexSeriesRepository;
 
     @Test
     @DisplayName("KOSPI 마스터 원본 archive bytes를 그대로 반환한다")
@@ -84,7 +89,8 @@ class StockMasterSyncServiceTest {
         void shouldCreateNewStockWhenTickerDoesNotExist() {
             // given
             KospiItem item = createKospiItem("005930", "삼성전자", "0029");
-            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0029", MarketIndex.of("0029", "전기전자")));
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSPI"))
+                    .willReturn(List.of(indexSeries("KOSPI", "0029", "전기전자")));
             given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
 
             // when
@@ -105,7 +111,7 @@ class StockMasterSyncServiceTest {
         void clearingTradeDoesNotDelistStock() {
             KospiItem item = createKospiItem("005930", "삼성전자", "0029");
             given(item.clearingTrade()).willReturn("Y");
-            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of());
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSPI")).willReturn(List.of());
             given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
 
             Stock created = stockMasterSyncService.upsertKospi(
@@ -122,7 +128,8 @@ class StockMasterSyncServiceTest {
                     StockSector.of("0001", "0029", null, "기존업종"), StockStatus.ACTIVE);
             KospiItem item = createKospiItem("005930", "삼성전자우", "0029");
             
-            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0029", MarketIndex.of("0029", "전기전자")));
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSPI"))
+                    .willReturn(List.of(indexSeries("KOSPI", "0029", "전기전자")));
             given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.of(existing));
 
             // when
@@ -141,7 +148,7 @@ class StockMasterSyncServiceTest {
         void shouldFallbackToDefaultWhenSectorCodeMissingInMap() {
             // given
             KospiItem item = createKospiItem("005930", "삼성전자", "9999");
-            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of()); // 빈 맵
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSPI")).willReturn(List.of());
             given(stockRepository.findByTickerAndMarketCode("005930", "KOSPI")).willReturn(Optional.empty());
 
             // when
@@ -168,7 +175,7 @@ class StockMasterSyncServiceTest {
 
             // then
             assertThat(result.stock()).isNull();
-            verifyNoInteractions(marketIndexRepository, stockRepository);
+            verifyNoInteractions(marketIndexRepository, indexSeriesRepository, stockRepository);
         }
     }
 
@@ -180,7 +187,8 @@ class StockMasterSyncServiceTest {
         void shouldCreateNewKosdaqStock() {
             // given
             KosdaqItem item = createKosdaqItem("000250", "삼천당제약", "0027");
-            given(marketIndexRepository.findActiveIndexMap()).willReturn(Map.of("0027", MarketIndex.of("0027", "제약")));
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSDAQ"))
+                    .willReturn(List.of(indexSeries("KOSDAQ", "0027", "제약")));
             given(stockRepository.findByTickerAndMarketCode("000250", "KOSDAQ")).willReturn(Optional.empty());
 
             // when
@@ -250,5 +258,10 @@ class StockMasterSyncServiceTest {
         given(item.sectorMedium()).willReturn(sectorMedium);
         given(item.sectorSmall()).willReturn("0000");
         return item;
+    }
+
+    private IndexSeries indexSeries(String market, String code, String name) {
+        return new IndexSeries(MarketIndex.of(code, name), "KIS", "kis.idxcode." + market, code,
+                market, "PRICE", "NONE", "KRW", true);
     }
 }

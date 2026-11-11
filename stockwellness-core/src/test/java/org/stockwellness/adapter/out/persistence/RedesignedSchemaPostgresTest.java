@@ -99,6 +99,29 @@ class RedesignedSchemaPostgresTest {
         assertThat(jdbc.queryForObject("select nextval('batch_step_execution_seq')", Long.class)).isEqualTo(1L);
     }
 
+    @Test
+    void distinguishesProviderNamespacesAndReturnSeriesAndRejectsDuplicateCanonicalSeries() {
+        jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSPI','DUP001','A','KRW','ACTIVE')");
+        jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSDAQ','DUP001','B','KRW','ACTIVE')");
+        assertThatThrownBy(() -> jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSPI','DUP001','C','KRW','ACTIVE')"))
+                .isInstanceOf(DataAccessException.class);
+
+        long kospi = jdbc.queryForObject("insert into market_index(index_key,name,kind,public_benchmark_code) values ('KRX:KOSPI:0001','KOSPI','MARKET','0001') returning id", Long.class);
+        long kosdaq = jdbc.queryForObject("insert into market_index(index_key,name,kind,public_benchmark_code) values ('KRX:KOSDAQ:1001','KOSDAQ','MARKET','1001') returning id", Long.class);
+
+        jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_canonical) values (?, 'KIS','kis.idxcode.KOSPI','0001','KOSPI','PRICE','NONE','KRW',true)", kospi);
+        jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_canonical) values (?, 'KIS','kis.idxcode.KOSDAQ','0001','KOSDAQ','PRICE','NONE','KRW',true)", kosdaq);
+        jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_canonical) values (?, 'KIS','kis.tr','0001.TR','KOSPI','TOTAL_RETURN','GROSS','KRW',true)", kospi);
+        jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_active,is_canonical) values (?, 'OTHER','disabled','KOSPI','KOSPI','PRICE','NONE','KRW',false,true)", kospi);
+
+        assertThatThrownBy(() -> jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_canonical) values (?, 'OTHER','alt','KOSPI','KOSPI','PRICE','NONE','KRW',true)", kospi))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> jdbc.update("insert into index_series(index_id,provider,provider_namespace,provider_series_code,calendar_market_code,return_basis,dividend_basis,currency,is_canonical) values (?, 'KIS','bad.tr','0001.TR','KOSPI','TOTAL_RETURN','NONE','KRW',false)", kospi))
+                .isInstanceOf(DataAccessException.class);
+        assertThat(jdbc.queryForObject("select count(*) from index_series where provider='KIS' and provider_series_code='0001'", Integer.class))
+                .isEqualTo(2);
+    }
+
     private long member(String nickname) {
         return jdbc.queryForObject("insert into member(nickname,role) values (?, 'USER') returning id", Long.class, nickname);
     }

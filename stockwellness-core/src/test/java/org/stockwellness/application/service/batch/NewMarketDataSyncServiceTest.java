@@ -30,6 +30,8 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.TradingCalendar;
+import org.stockwellness.domain.stock.insight.IndexSeries;
+import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.price.EodStockPrice;
 
 @ExtendWith(MockitoExtension.class)
@@ -160,6 +162,22 @@ class NewMarketDataSyncServiceTest {
         verify(prices).fetchDailyPrices(stock, end, end);
         verify(prices, times(2)).fetchDailyPrices(org.mockito.ArgumentMatchers.eq(stock),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void unsupported_total_return_series_fails_without_price_fallback() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        IndexSeries totalReturn = new IndexSeries(MarketIndex.of("0001", "코스피", "0"), "KIS",
+                "kis.total-return", "0001.TR", "KOSPI", "TOTAL_RETURN", "GROSS", "KRW", true);
+
+        assertThatThrownBy(() -> service.syncIndexPrices(totalReturn, date, date))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("active canonical KIS KRW price");
+
+        verify(calendar, never()).findAll("KOSPI", date, date);
+        verify(indexPrices, never()).fetchRawIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(indexDaily, never()).upsert(anyList());
     }
 
     private static Stock stock() {

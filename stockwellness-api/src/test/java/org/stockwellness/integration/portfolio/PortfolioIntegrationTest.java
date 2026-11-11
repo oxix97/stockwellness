@@ -76,7 +76,7 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
         stockRepository.saveAndFlush(skHynix);
 
         // 테스트용 벤치마크 지수 생성 (KOSPI)
-        Stock kospi = Stock.ofIndex("KOSPI", "코스피");
+        Stock kospi = Stock.of("KOSPI", null, "코스피", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
         stockRepository.saveAndFlush(kospi);
 
         // 시세 데이터 생성 (어제, 오늘)
