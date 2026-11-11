@@ -41,6 +41,6 @@ public enum BenchmarkType {
         return Arrays.stream(values())
                 .filter(b -> b.getTicker().equalsIgnoreCase(ticker))
                 .findFirst()
-                .orElse(KOSPI);
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported benchmark code: " + ticker));
     }
 }
