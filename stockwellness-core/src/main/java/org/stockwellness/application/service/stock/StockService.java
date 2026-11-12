@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
@@ -18,10 +19,12 @@ import org.stockwellness.application.port.in.stock.StockUseCase;
 import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.in.stock.result.StockDetailResult;
 import org.stockwellness.application.port.in.stock.result.StockSearchResult;
-import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.PriceObservation;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.event.StockSearchEvent;
 import org.stockwellness.domain.stock.exception.StockPriceException;
-import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.global.util.DateUtil;
 
 import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
@@ -33,7 +36,7 @@ import static org.stockwellness.global.error.ErrorCode.STOCK_NOT_FOUND;
 public class StockService implements StockUseCase {
 
     private final StockRepository stockRepository;
-    private final StockPricePort stockPricePort; // 추가
+    private final StockPriceReadPort stockPriceReadPort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -69,9 +72,12 @@ public class StockService implements StockUseCase {
         var stock = stockRepository.findByTicker(ticker)
                 .orElseThrow(() -> new StockPriceException(STOCK_NOT_FOUND));
 
-        // 최신 시세 정보 조회
-        StockPrice latestPrice = stockPricePort.findLatestByTicker(ticker)
-                .orElse(null);
+        String quoteScope = stock.getMarketType() == MarketType.KOSPI || stock.getMarketType() == MarketType.KOSDAQ
+                ? "KRX" : null;
+        List<PriceObservation> recentPrices = quoteScope == null ? List.of()
+                : stockPriceReadPort.recent(Set.of(stock.getId()), quoteScope, LocalDate.now(), 2, PriceBasis.RAW)
+                        .getOrDefault(stock.getId(), List.of());
+        PriceObservation latestPrice = recentPrices.isEmpty() ? null : recentPrices.getFirst();
 
         if (latestPrice == null) {
             return new StockDetailResult(
@@ -80,7 +86,7 @@ public class StockService implements StockUseCase {
                     stock.getName(),
                     stock.getSector().getSectorName(),
                     stock.getMarketType().name(),
-                    stock.getParValue(), // totalShares 대용
+                    stock.getListedShares(),
                     null,
                     null,
                     null,
@@ -98,12 +104,12 @@ public class StockService implements StockUseCase {
             );
         }
 
-        BigDecimal closePrice = latestPrice.getClosePrice();
-        BigDecimal prevClose = latestPrice.getPreviousClosePrice() != null
-                ? latestPrice.getPreviousClosePrice() : closePrice;
-        BigDecimal priceChange = closePrice.subtract(prevClose);
-        BigDecimal fluctuationRate = prevClose.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
-                priceChange.divide(prevClose, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+        BigDecimal closePrice = latestPrice.closePrice();
+        PriceObservation previousPrice = recentPrices.size() > 1 ? recentPrices.get(1) : null;
+        BigDecimal priceChange = previousPrice == null ? null : closePrice.subtract(previousPrice.closePrice());
+        BigDecimal fluctuationRate = previousPrice == null || previousPrice.closePrice().compareTo(BigDecimal.ZERO) == 0
+                ? null : priceChange.divide(previousPrice.closePrice(), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
 
         return new StockDetailResult(
                 stock.getStandardCode(),
@@ -111,20 +117,20 @@ public class StockService implements StockUseCase {
                 stock.getName(),
                 stock.getSector().getSectorName(),
                 stock.getMarketType().name(),
-                stock.getParValue(), // totalShares 대용
-                latestPrice.getId().getBaseDate(),
+                stock.getListedShares(),
+                latestPrice.tradeDate(),
                 closePrice,
                 priceChange,
                 fluctuationRate,
-                latestPrice.getOpenPrice(),
-                latestPrice.getHighPrice(),
-                latestPrice.getLowPrice(),
-                latestPrice.getVolume(),
-                latestPrice.getTransactionAmt(),
-                BigDecimal.ZERO, // marketCap (필요 시 추가 계산)
-                latestPrice.getIndicators() != null ? latestPrice.getIndicators().getRsi14() : null,
-                latestPrice.getIndicators() != null ? latestPrice.getIndicators().getMa20() : null,
-                latestPrice.getIndicators() != null ? latestPrice.getIndicators().getAiInsight() : "데이터 집계 중입니다.",
+                latestPrice.openPrice(),
+                latestPrice.highPrice(),
+                latestPrice.lowPrice(),
+                latestPrice.volume(),
+                latestPrice.tradingAmount(),
+                null,
+                null,
+                null,
+                "기술적 지표 집계 중입니다.",
                 DateUtil.isMarketOpen()
         );
     }
