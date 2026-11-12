@@ -20,6 +20,7 @@ import static org.mockito.BDDMockito.given;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "kis.base-url=http://localhost:${wiremock.server.port}",
+        "spring.kafka.admin.auto-create=false",
         "kis.app-key=test-key",
         "kis.app-secret=test-secret"
 })

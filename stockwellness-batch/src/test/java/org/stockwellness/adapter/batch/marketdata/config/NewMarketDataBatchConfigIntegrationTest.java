@@ -64,7 +64,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
                 "spring.batch.jdbc.initialize-schema=never",
                 "spring.sql.init.mode=never",
                 "spring.batch.job.enabled=false",
-                "spring.docker.compose.enabled=false"
+                "spring.docker.compose.enabled=false",
+                "spring.kafka.admin.auto-create=false"
         })
 @ActiveProfiles("test")
 class NewMarketDataBatchConfigIntegrationTest {

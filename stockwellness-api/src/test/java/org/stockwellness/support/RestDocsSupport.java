@@ -30,7 +30,7 @@ import org.stockwellness.application.port.out.stock.LlmClientPort;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 
-@SpringBootTest(properties = "spring.main.allow-bean-definition-overriding=true")
+@SpringBootTest(properties = {"spring.main.allow-bean-definition-overriding=true", "spring.kafka.admin.auto-create=false"})
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @ActiveProfiles("test")

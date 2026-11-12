@@ -187,13 +187,13 @@ class StockPriceRepositoryTest {
 
         List<StockPrice> recentPrices = stockPriceRepository.findRecentPricesByStock(
                 otherStock,
-                d1.plusDays(1),
+                d2,
                 PageRequest.of(0, 3)
         );
 
         assertThat(recentPrices)
                 .extracting(price -> price.getId().getBaseDate())
-                .containsExactly(d1, d2, d3);
+                .containsExactly(d2, d3, d4);
         assertThat(recentPrices)
                 .allSatisfy(price -> assertThat(entityManagerFactory.getPersistenceUnitUtil().isLoaded(price.getStock())).isTrue());
     }

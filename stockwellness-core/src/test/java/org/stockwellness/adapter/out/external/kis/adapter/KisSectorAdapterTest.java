@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -163,8 +164,10 @@ class KisSectorAdapterTest {
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")))
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-index-price")))
+                .andExpect(requestTo(containsString("FID_COND_MRKT_DIV_CODE=U")))
                 .andExpect(requestTo(containsString("FID_INPUT_ISCD=0029")))
+                .andExpect(header("tr_id", "FHPUP02100000"))
                 .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> adapter.fetchTodaySectorDetail("0029", LocalDate.of(2026, 4, 9)))
@@ -207,8 +210,9 @@ class KisSectorAdapterTest {
                 }
                 """;
 
-        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-index-category-price")))
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-index-price")))
                 .andExpect(requestTo(containsString("FID_INPUT_ISCD=" + indexCode)))
+                .andExpect(header("tr_id", "FHPUP02100000"))
                 .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
     }
 
@@ -229,10 +233,11 @@ class KisSectorAdapterTest {
         mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market")))
                 .andExpect(requestTo(containsString("FID_COND_MRKT_DIV_CODE=U")))
                 .andExpect(requestTo(containsString("FID_INPUT_DATE_1=20260409")))
-                .andExpect(requestTo(containsString("FID_INPUT_DATE_2=20260309")))
+                .andExpect(requestTo(containsString("FID_INPUT_DATE_2=20260409")))
                 .andExpect(requestTo(containsString("FID_INPUT_ISCD=" + sectorCode)))
                 .andExpect(requestTo(containsString("FID_INPUT_ISCD_1=" + marketCode)))
                 .andExpect(requestTo(containsString("FID_INPUT_ISCD_2=" + sectorCode)))
+                .andExpect(header("tr_id", "FHPTJ04040000"))
                 .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
     }
 }
