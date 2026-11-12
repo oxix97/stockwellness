@@ -3,6 +3,7 @@ package org.stockwellness.application.service.batch;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailySectorDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisHolidayEntry;
@@ -30,6 +32,7 @@ import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 import org.stockwellness.domain.stock.insight.IndexDaily;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.price.EodStockPrice;
+import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 
 @Service
 @RequiredArgsConstructor
@@ -71,18 +74,18 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void syncStockPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
         validateRange(stock, startDate, endDate);
         if (stock.getStatus() == StockStatus.DELISTED) throw new IllegalArgumentException("Delisted stock cannot be collected");
         List<LocalDate> openDates = verifiedOpenDates(stock.getMarketCode(), startDate, endDate);
-        List<EodStockPrice> records = new ArrayList<>();
         for (List<LocalDate> chunk : calendarWindows(openDates, startDate, endDate, STOCK_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
             LocalDate to = chunk.getLast();
             Set<LocalDate> requestedDates = Set.copyOf(chunk);
             List<KisDailyPriceDetail> rows = kisDailyPricePort.fetchDailyPrices(stock, from, to);
             if (rows == null || rows.size() > STOCK_MAX_ROWS) throw new IllegalArgumentException("Invalid KIS price response size");
+            List<EodStockPrice> records = new ArrayList<>();
             Set<LocalDate> seen = new HashSet<>();
             for (KisDailyPriceDetail row : rows) {
                 LocalDate date = row.baseDate();
@@ -94,16 +97,40 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                         && ("Y".equals(row.modYn()) || "N".equals(row.modYn()));
                 var status = complete ? "PROVISIONAL" : "INCOMPLETE";
                 records.add(EodStockPrice.of(stock, date, "KRX", price(row.openPrice()), price(row.highPrice()),
-                        price(row.lowPrice()), price(row.closePrice()), null, row.volume(), amount(row.transactionAmt()),
-                        "Y".equals(row.modYn()) ? Boolean.TRUE : "N".equals(row.modYn()) ? Boolean.FALSE : null,
-                        STOCK_API, status));
+                        price(row.lowPrice()), price(row.closePrice()), row.volume(), amount(row.transactionAmt()),
+                        "KIS:" + STOCK_API + ":RAW", status));
             }
             for (LocalDate missing : chunk) {
                 if (seen.add(missing)) records.add(EodStockPrice.of(stock, missing, "KRX", null, null, null,
-                        null, null, null, null, null, STOCK_API, "INCOMPLETE"));
+                        null, null, null, "KIS:" + STOCK_API + ":RAW", "INCOMPLETE"));
             }
+            eodStockPricePort.upsert(records);
+
+            List<StockPriceAdjustment> adjustments = adjustedPrices(stock, from, to, requestedDates,
+                    LocalDate.now(ZoneId.of("Asia/Seoul")));
+            if (!adjustments.isEmpty()) eodStockPricePort.upsertAdjustments(adjustments);
         }
-        eodStockPricePort.upsert(records);
+    }
+
+    private List<StockPriceAdjustment> adjustedPrices(Stock stock, LocalDate from, LocalDate to,
+            Set<LocalDate> requestedDates, LocalDate adjustmentAsOf) {
+        List<KisDailyPriceDetail> rows = kisDailyPricePort.fetchAdjustedDailyPrices(stock, from, to);
+        if (rows == null || rows.size() > STOCK_MAX_ROWS) {
+            throw new IllegalArgumentException("Invalid KIS adjusted price response size");
+        }
+        Set<LocalDate> seen = new HashSet<>();
+        List<StockPriceAdjustment> adjustments = new ArrayList<>();
+        for (KisDailyPriceDetail row : rows) {
+            LocalDate date = row.baseDate();
+            if (date == null || !requestedDates.contains(date) || !seen.add(date)) {
+                throw new IllegalArgumentException("KIS adjusted price response contains an invalid or duplicate date");
+            }
+            if (row.closePrice() == null) continue;
+            adjustments.add(StockPriceAdjustment.of(stock, date, "KRX", adjustmentAsOf,
+                    price(row.openPrice()), price(row.highPrice()), price(row.lowPrice()), price(row.closePrice()),
+                    "KIS:" + STOCK_API + ":ADJUSTED"));
+        }
+        return adjustments;
     }
 
     @Override

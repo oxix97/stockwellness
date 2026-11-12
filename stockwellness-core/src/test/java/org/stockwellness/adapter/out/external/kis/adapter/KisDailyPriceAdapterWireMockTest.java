@@ -45,6 +45,7 @@ class KisDailyPriceAdapterWireMockTest {
 
         stubFor(get(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
                 .withQueryParam("FID_INPUT_ISCD", equalTo("005930"))
+                .withQueryParam("FID_ORG_ADJ_PRC", equalTo("1"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -76,5 +77,26 @@ class KisDailyPriceAdapterWireMockTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).baseDate()).isEqualTo(LocalDate.of(2024, 1, 1));
         assertThat(result.get(0).closePrice()).isEqualByComparingTo("70500");
+    }
+
+    @Test
+    @DisplayName("수정가격 요청은 KIS 수정주가 옵션을 지정한다")
+    void fetchAdjustedDailyPrices_uses_adjusted_price_flag() {
+        Stock samsung = StockFixture.createSamsung();
+        given(kisTokenAdapter.getAccessToken()).willReturn("test-access-token");
+        stubFor(get(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
+                .withQueryParam("FID_INPUT_ISCD", equalTo("005930"))
+                .withQueryParam("FID_ORG_ADJ_PRC", equalTo("0"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"output1":{},"output2":[{"stck_bsop_date":"20240101","stck_oprc":"90","stck_hgpr":"99","stck_lwpr":"81","stck_clpr":"95","acml_vol":"10","acml_tr_pbmn":"950","mod_yn":"N"}]}
+                                """)));
+
+        List<KisDailyPriceDetail> result = kisDailyPriceAdapter.fetchAdjustedDailyPrices(
+                samsung, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 1));
+
+        assertThat(result).singleElement().satisfies(row -> assertThat(row.closePrice()).isEqualByComparingTo("95"));
+        verify(1, getRequestedFor(urlPathEqualTo("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"))
+                .withQueryParam("FID_ORG_ADJ_PRC", equalTo("0")));
     }
 }

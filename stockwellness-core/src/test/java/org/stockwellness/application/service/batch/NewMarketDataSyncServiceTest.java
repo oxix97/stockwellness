@@ -32,6 +32,7 @@ import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.price.EodStockPrice;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,8 +68,7 @@ class NewMarketDataSyncServiceTest {
             assertThat(row.getId().getTradeDate()).isEqualTo(start);
             assertThat(row.getId().getQuoteScope()).isEqualTo("KRX");
             assertThat(row.getDataStatus()).isEqualTo("PROVISIONAL");
-            assertThat(row.getPreviousClosePrice()).isNull();
-            assertThat(row.getNoTrade()).isFalse();
+            assertThat(row.getSource()).isEqualTo("KIS:FHKST03010100:RAW");
         });
     }
 
@@ -103,6 +103,7 @@ class NewMarketDataSyncServiceTest {
             assertThat(row.getClosePrice()).isNull();
             assertThat(row.getVolume()).isNull();
         });
+        verify(eod, never()).upsertAdjustments(anyList());
     }
 
     @Test
@@ -122,8 +123,7 @@ class NewMarketDataSyncServiceTest {
         assertThat(saved.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getDataStatus()).isEqualTo("INCOMPLETE");
             assertThat(row.getHighPrice()).isNull();
-            assertThat(row.getPreviousClosePrice()).isNull();
-            assertThat(row.getNoTrade()).isFalse();
+            assertThat(row.getSource()).isEqualTo("KIS:FHKST03010100:RAW");
         });
     }
 
@@ -165,6 +165,50 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
+    void raw_and_provider_adjusted_quotes_are_fetched_and_saved_as_separate_observations() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "test")));
+        given(prices.fetchDailyPrices(stock, date, date)).willReturn(List.of(price(date, "100", "N")));
+        given(prices.fetchAdjustedDailyPrices(stock, date, date)).willReturn(List.of(price(date, "95", "N")));
+
+        service.syncStockPrices(stock, date, date);
+
+        ArgumentCaptor<List<EodStockPrice>> raw = ArgumentCaptor.forClass(List.class);
+        verify(eod).upsert(raw.capture());
+        assertThat(raw.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getClosePrice()).isEqualByComparingTo("100");
+            assertThat(row.getDataStatus()).isEqualTo("PROVISIONAL");
+            assertThat(row.getSource()).isEqualTo("KIS:FHKST03010100:RAW");
+        });
+        ArgumentCaptor<List<StockPriceAdjustment>> adjusted = ArgumentCaptor.forClass(List.class);
+        verify(eod).upsertAdjustments(adjusted.capture());
+        assertThat(adjusted.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getAdjustedClose()).isEqualByComparingTo("95");
+            assertThat(row.getAdjustmentAsOf()).isAfterOrEqualTo(date);
+            assertThat(row.getSource()).isEqualTo("KIS:FHKST03010100:ADJUSTED");
+        });
+    }
+
+    @Test
+    void adjustment_provider_failure_does_not_rollback_the_raw_observation() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "test")));
+        given(prices.fetchDailyPrices(stock, date, date)).willReturn(List.of(price(date, "100", "N")));
+        given(prices.fetchAdjustedDailyPrices(stock, date, date)).willThrow(new IllegalStateException("provider unavailable"));
+
+        assertThatThrownBy(() -> service.syncStockPrices(stock, date, date))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("provider unavailable");
+
+        verify(eod).upsert(anyList());
+        verify(eod, never()).upsertAdjustments(anyList());
+    }
+
+    @Test
     void unsupported_total_return_series_fails_without_price_fallback() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         IndexSeries totalReturn = new IndexSeries(MarketIndex.of("0001", "코스피", "0"), "KIS",
@@ -186,8 +230,9 @@ class NewMarketDataSyncServiceTest {
     }
 
     private static KisDailyPriceDetail price(LocalDate date, String close, String modYn) {
-        return new KisDailyPriceDetail(date, new BigDecimal("9.00"), new BigDecimal("11.00"),
-                new BigDecimal("8.00"), new BigDecimal(close), 10L, new BigDecimal("1000.00"),
+        BigDecimal closePrice = new BigDecimal(close);
+        return new KisDailyPriceDetail(date, closePrice, closePrice.add(BigDecimal.ONE),
+                closePrice.subtract(BigDecimal.ONE).max(BigDecimal.ZERO), closePrice, 10L, new BigDecimal("1000.00"),
                 null, null, modYn, null, null, null);
     }
 }

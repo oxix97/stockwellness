@@ -22,6 +22,6 @@ public class EodStockPriceId implements Serializable {
     @Column(name = "trade_date", nullable = false)
     private LocalDate tradeDate;
 
-    @Column(name = "quote_scope", nullable = false, length = 10)
+    @Column(name = "quote_scope", nullable = false, length = 20)
     private String quoteScope;
 }

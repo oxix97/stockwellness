@@ -24,6 +24,8 @@ import org.stockwellness.domain.stock.Stock;
 @Slf4j
 @Component
 public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePort {
+    private static final String RAW_PRICE_FLAG = "1";
+    private static final String ADJUSTED_PRICE_FLAG = "0";
 
     private final RestClient kisApiClient;
     private final Retry kisRetry = Retry.of("kisRetry", ResilienceConfig.kisRetryConfig());
@@ -63,7 +65,18 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
     /**
      * 주식 기간별 시세(일/주/월/년)
      */
+    @Override
     public List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
+        return fetchDailyPrices(stock, startDate, endDate, RAW_PRICE_FLAG);
+    }
+
+    @Override
+    public List<KisDailyPriceDetail> fetchAdjustedDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
+        return fetchDailyPrices(stock, startDate, endDate, ADJUSTED_PRICE_FLAG);
+    }
+
+    private List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate,
+            LocalDate endDate, String adjustmentFlag) {
         String path = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice";
         String ticker = stock.getTicker();
         return executeWithRetry(() -> {
@@ -75,7 +88,7 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
                             .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
                             .queryParam("FID_PERIOD_DIV_CODE", "D")
-                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .queryParam("FID_ORG_ADJ_PRC", adjustmentFlag)
                             .build())
                     .header("tr_id", "FHKST03010100")
                     .retrieve()
