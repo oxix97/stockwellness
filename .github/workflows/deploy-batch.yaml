@@ -93,8 +93,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=batch
+          cache-to: type=gha,scope=batch,mode=max
 
   # ── 2. n8n Webhook 트리거 (Batch 배포) ────────────────────────
   deploy-batch:
