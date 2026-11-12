@@ -33,6 +33,7 @@ import org.stockwellness.adapter.out.persistence.insight.IndexDailyAdapter;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.EodStockPrice;
+import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.insight.IndexDaily;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
@@ -71,7 +72,8 @@ class EodStockPricePostgresTest {
 
     @BeforeEach
     void insertStock() {
-        jdbc.update("DELETE FROM stock_price_eod");
+        jdbc.update("DELETE FROM stock_price_adjustment");
+        jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         jdbc.update("DELETE FROM index_daily");
         jdbc.update("DELETE FROM market_index");
@@ -90,12 +92,12 @@ class EodStockPricePostgresTest {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(status -> adapter.upsert(List.of(quote("100"))));
         tx.executeWithoutResult(status -> adapter.upsert(List.of(quote("100.0000"))));
-        assertThat(jdbc.queryForObject("SELECT data_revision FROM stock_price_eod", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT corrected_at FROM stock_price_eod", java.sql.Timestamp.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT corrected_at FROM stock_price_daily", java.sql.Timestamp.class)).isNull();
 
         tx.executeWithoutResult(status -> adapter.upsert(List.of(quote("101"))));
-        assertThat(jdbc.queryForObject("SELECT data_revision FROM stock_price_eod", Integer.class)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("SELECT corrected_at FROM stock_price_eod", java.sql.Timestamp.class)).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT corrected_at FROM stock_price_daily", java.sql.Timestamp.class)).isNotNull();
     }
 
     @Test
@@ -117,7 +119,65 @@ class EodStockPricePostgresTest {
             start.countDown();
         }
         assertThat(repository.count()).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT data_revision FROM stock_price_eod", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    void concurrent_first_insert_for_the_same_natural_key_creates_one_row_and_keeps_the_correction() throws Exception {
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            for (String close : List.of("101", "102")) {
+                executor.submit(() -> {
+                    ready.countDown();
+                    if (!start.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("start timeout");
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> adapter.upsert(List.of(quote(close))));
+                    return null;
+                });
+            }
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+        }
+        assertThat(repository.count()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT close_price FROM stock_price_daily", BigDecimal.class))
+                .isIn(new BigDecimal("101.0000"), new BigDecimal("102.0000"));
+    }
+
+    @Test
+    void incomplete_retry_cannot_downgrade_a_final_observation() {
+        jdbc.update("""
+                INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price, low_price,
+                    close_price, data_status, source, collected_at, revision)
+                VALUES (?, ?, 'KRX', 100, 110, 90, 105, 'FINAL', 'KIS:verified', CURRENT_TIMESTAMP, 1)
+                """, stockId, tradeDate);
+
+        adapter.upsert(List.of(EodStockPrice.of(entityManager.find(Stock.class, stockId), tradeDate, "KRX",
+                null, null, null, null, null, null, "KIS:daily:RAW", "INCOMPLETE")));
+
+        assertThat(jdbc.queryForObject("SELECT data_status FROM stock_price_daily", String.class)).isEqualTo("FINAL");
+        assertThat(jdbc.queryForObject("SELECT close_price FROM stock_price_daily", BigDecimal.class))
+                .isEqualByComparingTo("105");
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void provider_adjustment_is_stored_separately_with_observation_as_of_date() {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(quote("100"))));
+        Stock stock = entityManager.find(Stock.class, stockId);
+        StockPriceAdjustment adjustment = StockPriceAdjustment.of(stock, tradeDate, "KRX", tradeDate.plusDays(3),
+                new BigDecimal("90"), new BigDecimal("99"), new BigDecimal("81"), new BigDecimal("95"),
+                "KIS:FHKST03010100:ADJUSTED");
+
+        tx.executeWithoutResult(status -> adapter.upsertAdjustments(List.of(adjustment)));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_price_daily", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_price_adjustment", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT adjusted_close FROM stock_price_adjustment", BigDecimal.class))
+                .isEqualByComparingTo("95");
+        assertThat(jdbc.queryForObject("SELECT adjustment_as_of FROM stock_price_adjustment", java.sql.Date.class)
+                .toLocalDate()).isEqualTo(tradeDate.plusDays(3));
     }
 
     @Test
@@ -137,8 +197,8 @@ class EodStockPricePostgresTest {
     private EodStockPrice quote(String close) {
         Stock stock = entityManager.find(Stock.class, stockId);
         return EodStockPrice.of(stock, tradeDate, "KRX", new BigDecimal("100"), new BigDecimal("110"),
-                new BigDecimal("90"), new BigDecimal(close), null, 1L, new BigDecimal("1000"),
-                false, "FHKST03010100", "PROVISIONAL");
+                new BigDecimal("90"), new BigDecimal(close), 1L, new BigDecimal("1000"),
+                "KIS:FHKST03010100:RAW", "PROVISIONAL");
     }
 
     private IndexDaily indexQuote(String close) {

@@ -193,13 +193,13 @@ class NewMarketDataBatchConfigIntegrationTest {
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         assertThat(execution.getStepExecutions()).singleElement()
                 .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(1));
-        assertThat(jdbcTemplate.queryForObject("select count(*) from stock_price_eod where stock_id = ?", Integer.class,
+        assertThat(jdbcTemplate.queryForObject("select count(*) from stock_price_daily where stock_id = ?", Integer.class,
                 samsung.getId())).isEqualTo(2);
         assertThat(jdbcTemplate.queryForObject("""
-                select data_status from stock_price_eod where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
+                select data_status from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
                 """, String.class, samsung.getId(), START_DATE)).isEqualTo("PROVISIONAL");
         assertThat(jdbcTemplate.queryForObject("""
-                select data_status from stock_price_eod where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
+                select data_status from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
                 """, String.class, samsung.getId(), END_DATE)).isEqualTo("INCOMPLETE");
         verify(kisDailyPriceAdapter).fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(END_DATE));
     }
