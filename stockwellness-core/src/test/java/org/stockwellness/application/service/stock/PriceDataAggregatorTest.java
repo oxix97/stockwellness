@@ -61,6 +61,21 @@ class PriceDataAggregatorTest {
         assertThat(result.volume()).isEqualTo(30);
     }
 
+    @Test
+    @DisplayName("기간 중 거래량이 미수집이면 집계 거래량도 null로 둔다")
+    void aggregateVolumeRemainsNullWhenAnyObservationIsMissing() {
+        List<StockPriceResult> daily = List.of(
+                createPrice("2024-02-05", 100, 110, 90, 105, 10),
+                new StockPriceResult(LocalDate.parse("2024-02-06"), BigDecimal.valueOf(105),
+                        BigDecimal.valueOf(115), BigDecimal.valueOf(100), BigDecimal.valueOf(110),
+                        null, null, null, null, null, null, null)
+        );
+
+        List<ChartPoint> weekly = PriceDataAggregator.aggregateToWeekly(daily);
+
+        assertThat(weekly.getFirst().volume()).isNull();
+    }
+
     private StockPriceResult createPrice(String date, double o, double h, double l, double c, long v) {
         return new StockPriceResult(
                 LocalDate.parse(date),

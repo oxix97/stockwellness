@@ -5,7 +5,9 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,12 +19,15 @@ import org.stockwellness.application.port.in.stock.result.*;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.BenchmarkPoint;
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.PriceObservation;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.price.ChartPeriod;
+import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.global.error.ErrorCode;
 
@@ -36,6 +41,7 @@ public class StockChartService implements StockPriceUseCase {
     private static final int DISPLAY_SCALE = 4;
 
     private final StockPricePort stockPricePort;
+    private final StockPriceReadPort stockPriceReadPort;
     private final LoadBenchmarkPort loadBenchmarkPort;
     private final StockPort stockPort;
 
@@ -75,10 +81,21 @@ public class StockChartService implements StockPriceUseCase {
         LocalDate end = LocalDate.now();
         LocalDate start = query.period().calculateStartDate(end);
 
-        List<StockPriceResult> dailyPrices = stockPricePort.loadPricesByTicker(query.ticker(), start, end);
-        if (dailyPrices.isEmpty()) {
+        String quoteScope = quoteScope(stock.getMarketType());
+        if (quoteScope == null) throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
+        Set<Long> stockIds = Set.of(stock.getId());
+        List<PriceObservation> raw = stockPriceReadPort.history(stockIds, quoteScope, start, end, PriceBasis.RAW)
+                .getOrDefault(stock.getId(), List.of());
+        if (raw.isEmpty()) {
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
+        Map<LocalDate, PriceObservation> adjusted = stockPriceReadPort
+                .history(stockIds, quoteScope, start, end, PriceBasis.PROVIDER_ADJUSTED)
+                .getOrDefault(stock.getId(), List.of()).stream()
+                .collect(java.util.stream.Collectors.toMap(PriceObservation::tradeDate, price -> price));
+        List<StockPriceResult> dailyPrices = raw.stream()
+                .map(price -> toResult(price, adjusted.get(price.tradeDate())))
+                .toList();
 
         List<ChartPoint> aggregatedPrices = switch (query.frequency()) {
             case WEEKLY -> PriceDataAggregator.aggregateToWeekly(dailyPrices);
@@ -116,7 +133,11 @@ public class StockChartService implements StockPriceUseCase {
         LocalDate end = LocalDate.now();
         LocalDate start = period.calculateStartDate(end);
 
-        List<StockPriceResult> stockPrices = stockPricePort.loadPricesByTicker(ticker, start, end);
+        String quoteScope = quoteScope(stock.getMarketType());
+        if (quoteScope == null) throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
+        List<PriceObservation> stockPrices = stockPriceReadPort
+                .history(Set.of(stock.getId()), quoteScope, start, end, PriceBasis.PROVIDER_ADJUSTED)
+                .getOrDefault(stock.getId(), List.of());
         if (stockPrices.isEmpty()) {
             throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
         }
@@ -125,7 +146,7 @@ public class StockChartService implements StockPriceUseCase {
         List<StockPriceResult> benchmarkPrices = loadBenchmarkPort.loadBenchmarkPrices(benchmarkInfo.ticker(), start, end);
 
         BigDecimal stockReturn = calculateTotalReturn(stockPrices);
-        BigDecimal benchmarkReturn = calculateTotalReturn(benchmarkPrices);
+        BigDecimal benchmarkReturn = calculateBenchmarkTotalReturn(benchmarkPrices);
 
         return new ReturnRateResponse(ticker, stock.getCurrency().name(), period.getLabel(), stockReturn, benchmarkReturn);
     }
@@ -164,7 +185,9 @@ public class StockChartService implements StockPriceUseCase {
     }
 
     private List<BenchmarkPoint> calculateBenchmarkReturns(List<StockPriceResult> daily) {
-        if (daily.isEmpty()) return Collections.emptyList();
+        if (daily.isEmpty() || daily.stream().anyMatch(price -> price.adjClosePrice() == null)) {
+            return Collections.emptyList();
+        }
 
         BigDecimal firstPrice = daily.getFirst().adjClosePrice();
         if (firstPrice.compareTo(BigDecimal.ZERO) == 0) return Collections.emptyList();
@@ -181,11 +204,11 @@ public class StockChartService implements StockPriceUseCase {
                 .toList();
     }
 
-    private BigDecimal calculateTotalReturn(List<StockPriceResult> prices) {
-        if (prices.size() < 2) return BigDecimal.ZERO;
+    private BigDecimal calculateTotalReturn(List<PriceObservation> prices) {
+        if (prices.size() < 2) throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
 
-        BigDecimal startPrice = prices.getFirst().adjClosePrice();
-        BigDecimal endPrice = prices.getLast().adjClosePrice();
+        BigDecimal startPrice = prices.getFirst().closePrice();
+        BigDecimal endPrice = prices.getLast().closePrice();
 
         if (startPrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
 
@@ -193,5 +216,30 @@ public class StockChartService implements StockPriceUseCase {
                 .divide(startPrice, CALC_SCALE, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateBenchmarkTotalReturn(List<StockPriceResult> prices) {
+        if (prices.size() < 2 || prices.stream().anyMatch(price -> price.adjClosePrice() == null)) {
+            throw new StockPriceException(ErrorCode.PRICE_DATA_NOT_FOUND);
+        }
+
+        BigDecimal startPrice = prices.getFirst().adjClosePrice();
+        BigDecimal endPrice = prices.getLast().adjClosePrice();
+        if (startPrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
+
+        return endPrice.subtract(startPrice)
+                .divide(startPrice, CALC_SCALE, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(DISPLAY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private static String quoteScope(MarketType marketType) {
+        return marketType == MarketType.KOSPI || marketType == MarketType.KOSDAQ ? "KRX" : null;
+    }
+
+    private static StockPriceResult toResult(PriceObservation raw, PriceObservation adjusted) {
+        return new StockPriceResult(raw.tradeDate(), raw.openPrice(), raw.highPrice(), raw.lowPrice(),
+                raw.closePrice(), adjusted == null ? null : adjusted.closePrice(), raw.volume(), raw.tradingAmount(),
+                null, null, null, null);
     }
 }

@@ -1,64 +1,53 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.PriceObservation;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
-import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.PriceBasis;
 
 @Component
 @RequiredArgsConstructor
 public class StockDataAdapter implements StockDataPort {
 
-    private final StockPricePort stockPricePort;
-    private final LoadTechnicalDataPort loadTechnicalDataPort;
+    private final StockPriceReadPort stockPriceReadPort;
 
     @Override
-    public Map<String, StockWellnessDetail> getStockDetails(List<String> isinCodes) {
-        Map<String, List<StockPrice>> latestHistories = stockPricePort.loadRecentHistoriesBatch(isinCodes, 1);
-        Map<String, AiAnalysisContext> technicalContexts = loadTechnicalDataPort.loadTechnicalContexts(isinCodes);
+    public Map<Long, StockWellnessDetail> getStockDetails(List<Stock> stocks) {
+        Map<Long, Stock> stocksById = stocks.stream().collect(Collectors.toMap(Stock::getId, stock -> stock));
+        Set<Long> stockIds = stocksById.values().stream()
+                .filter(stock -> stock.getMarketType() == MarketType.KOSPI || stock.getMarketType() == MarketType.KOSDAQ)
+                .map(Stock::getId)
+                .collect(Collectors.toSet());
+        if (stockIds.isEmpty()) return Map.of();
 
-        return isinCodes.stream()
-                .filter(isinCode -> latestHistories.containsKey(isinCode) && !latestHistories.get(isinCode).isEmpty())
-                .collect(Collectors.toMap(
-                        isinCode -> isinCode,
-                        isinCode -> convertToDetail(
-                                latestHistories.get(isinCode).getFirst(),
-                                technicalContexts.get(isinCode)
-                        )
-                ));
-    }
-
-    public StockWellnessDetail getSingleStockDetail(String isinCode) {
-        return stockPricePort.findLateststockPrice(isinCode)
-                .map(stockPrice -> convertToDetail(stockPrice, loadTechnicalDataPort.loadTechnicalContext(isinCode)))
-                .orElse(null);
-    }
-
-    private StockWellnessDetail convertToDetail(StockPrice stockPrice, AiAnalysisContext context) {
-        BigDecimal rsi = stockPrice.getIndicators() != null ? stockPrice.getIndicators().getRsi14() : null;
-        String rsiStatus = TechnicalCalculator.analyzeRsiLevel(rsi);
-
-        // context가 null일 경우를 대비한 방어 로직 및 추세 정보 기반 insight 추출
-        String aiInsight = (context != null && context.technicalSignal() != null)
-                ? context.technicalSignal().trendStatus().getDescription()
-                : "데이터가 부족하여 AI 분석을 제공할 수 없습니다.";
-
-        return new StockWellnessDetail(
-                stockPrice.getStock().getStandardCode(),
-                stockPrice.getClosePrice(),
-                stockPrice.getFluctuationRate(),
-                rsi,
-                rsiStatus,
-                aiInsight
-        );
+        Map<Long, List<PriceObservation>> recent = stockPriceReadPort.recent(
+                stockIds, "KRX", LocalDate.now(), 2, PriceBasis.RAW);
+        return stocksById.entrySet().stream()
+                .filter(entry -> recent.containsKey(entry.getKey()) && !recent.get(entry.getKey()).isEmpty())
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    List<PriceObservation> history = recent.get(entry.getKey());
+                    PriceObservation latest = history.getFirst();
+                    PriceObservation previous = history.size() > 1 ? history.get(1) : null;
+                    BigDecimal fluctuationRate = previous == null || previous.closePrice().signum() == 0 ? null
+                            : latest.closePrice().subtract(previous.closePrice())
+                                    .divide(previous.closePrice(), 4, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100));
+                    return new StockWellnessDetail(entry.getValue().getStandardCode(), latest.closePrice(), fluctuationRate, null,
+                            TechnicalCalculator.analyzeRsiLevel(null),
+                            "데이터가 부족하여 AI 분석을 제공할 수 없습니다.");
+                }));
     }
 }

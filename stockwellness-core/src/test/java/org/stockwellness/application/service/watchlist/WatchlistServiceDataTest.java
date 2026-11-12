@@ -64,7 +64,7 @@ class WatchlistServiceDataTest {
                 "중립",
                 "정배열 추세"
         );
-        given(stockDataPort.getStockDetails(any())).willReturn(Map.of("KR7000660001", detail));
+        given(stockDataPort.getStockDetails(any())).willReturn(Map.of(100L, detail));
 
         // when
         WatchlistItemListResponse response = watchlistService.getItems(memberId, groupId);
