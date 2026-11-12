@@ -105,14 +105,14 @@ public class WatchlistService implements WatchlistUseCase {
     }
 
     private List<WatchlistItemDetail> toItemDetails(List<WatchlistItem> items) {
-        List<String> isinCodes = items.stream()
-                .map(item -> item.getStock().getStandardCode())
+        List<Stock> stocks = items.stream()
+                .map(WatchlistItem::getStock)
                 .toList();
 
-        Map<String, StockDataPort.StockWellnessDetail> details = stockDataPort.getStockDetails(isinCodes);
+        Map<Long, StockDataPort.StockWellnessDetail> details = stockDataPort.getStockDetails(stocks);
 
         return items.stream()
-                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getStandardCode())))
+                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getId())))
                 .toList();
     }
 
