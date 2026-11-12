@@ -16,7 +16,10 @@ class MainCdTest < Minitest::Test
   def test_gradle_configuration_cache_is_enabled_with_setup_gradle_cache
     ci = workflow('ci.yml')
     steps = ci.fetch('jobs').fetch('build').fetch('steps')
-    assert steps.any? { |step| step['uses'] == 'gradle/actions/setup-gradle@v4' }
+    setup_gradle = steps.find { |step| step['uses'] == 'gradle/actions/setup-gradle@v4' }
+    refute_nil setup_gradle
+    assert_equal "${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}",
+                 setup_gradle.fetch('with').fetch('cache-read-only')
     build = steps.find { |step| step['name'] == 'Build & Test (all modules)' }
     assert_includes build.fetch('run'), '--configuration-cache'
   end
