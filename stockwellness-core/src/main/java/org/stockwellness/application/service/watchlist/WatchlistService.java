@@ -86,13 +86,17 @@ public class WatchlistService implements WatchlistUseCase {
     @Override
     public void removeItem(Long memberId, Long groupId, String ticker) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        group.removeItem(ticker);
+        Stock stock = stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new GlobalException(ErrorCode.STOCK_NOT_FOUND));
+        group.removeItem(stock);
     }
 
     @Override
     public void updateItemNote(Long memberId, Long groupId, String ticker, String note) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        group.updateItemNote(ticker, note);
+        Stock stock = stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new GlobalException(ErrorCode.STOCK_NOT_FOUND));
+        group.updateItemNote(stock, note);
     }
 
     @Override
