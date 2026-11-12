@@ -46,7 +46,7 @@ public class StockPriceReadAdapter implements StockPriceReadPort {
         String sql = """
                 WITH ranked AS (
                     SELECT p.stock_id, p.trade_date, p.quote_scope,
-                           price.open_price, price.high_price, price.low_price, price.close_price,
+                           %s,
                            p.volume, p.trading_amount, p.data_status, p.revision,
                            ROW_NUMBER() OVER (PARTITION BY p.stock_id ORDER BY p.trade_date DESC) AS row_number
                     FROM stock_price_daily p
@@ -58,7 +58,7 @@ public class StockPriceReadAdapter implements StockPriceReadPort {
                        volume, trading_amount, data_status, revision
                 FROM ranked WHERE row_number <= :limit
                 ORDER BY stock_id, trade_date DESC
-                """.formatted(joinFor(basis));
+                """.formatted(priceColumns(basis), joinFor(basis));
         jdbc.query(sql, new MapSqlParameterSource()
                 .addValue("stockIds", stockIds)
                 .addValue("quoteScope", quoteScope)
@@ -85,26 +85,32 @@ public class StockPriceReadAdapter implements StockPriceReadPort {
         stockIds.stream().sorted().forEach(id -> results.put(id, new ArrayList<>()));
         String sql = """
                 SELECT p.stock_id, p.trade_date, p.quote_scope,
-                       price.open_price, price.high_price, price.low_price, price.close_price,
+                       %s,
                        p.volume, p.trading_amount, p.data_status, p.revision
                 FROM stock_price_daily p
                 %s
                 WHERE p.stock_id IN (:stockIds) AND p.quote_scope = :quoteScope
                   AND p.data_status = 'FINAL' AND %s
                 ORDER BY p.stock_id, %s
-                """.formatted(joinFor(basis), where, orderBy);
+                """.formatted(priceColumns(basis), joinFor(basis), where, orderBy);
         jdbc.query(sql, parameters, rowMapper(basis)).forEach(value -> results.get(value.stockId()).add(value));
         return results;
     }
 
     private static String joinFor(PriceBasis basis) {
         return switch (basis) {
-            case RAW -> "JOIN LATERAL (SELECT p.open_price, p.high_price, p.low_price, p.close_price) price ON TRUE";
+            case RAW -> "";
             case PROVIDER_ADJUSTED -> """
                     JOIN stock_price_adjustment a
                       ON a.stock_id = p.stock_id AND a.trade_date = p.trade_date AND a.quote_scope = p.quote_scope
-                    JOIN LATERAL (SELECT a.open_price, a.high_price, a.low_price, a.adjusted_close AS close_price) price ON TRUE
                     """;
+        };
+    }
+
+    private static String priceColumns(PriceBasis basis) {
+        return switch (basis) {
+            case RAW -> "p.open_price, p.high_price, p.low_price, p.close_price";
+            case PROVIDER_ADJUSTED -> "a.open_price, a.high_price, a.low_price, a.adjusted_close AS close_price";
         };
     }
 
