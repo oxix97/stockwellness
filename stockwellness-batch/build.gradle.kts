@@ -30,17 +30,11 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
     implementation("io.github.resilience4j:resilience4j-ratelimiter:2.2.0")
 
-    // flyway / db
-//    implementation("org.flywaydb:flyway-core")
-//    implementation("org.flywaydb:flyway-database-postgresql")
-//    runtimeOnly("org.postgresql:postgresql")
-
     // logging
     implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.11.0")
 
     // tests
     testImplementation("org.springframework.batch:spring-batch-test")
-    testImplementation("org.flywaydb:flyway-core")
     testImplementation("org.springframework.kafka:spring-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:postgresql")

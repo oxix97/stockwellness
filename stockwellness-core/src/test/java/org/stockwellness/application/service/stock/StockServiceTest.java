@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,8 @@ import org.stockwellness.application.port.in.stock.query.SearchStockQuery;
 import org.stockwellness.application.port.in.stock.result.StockDetailResult;
 import org.stockwellness.application.port.in.stock.result.StockSearchResult;
 import org.stockwellness.application.port.out.stock.StockPricePort;
+import org.stockwellness.application.port.out.stock.PriceObservation;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
@@ -27,7 +31,8 @@ import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.event.StockSearchEvent;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.TechnicalIndicators;
+import org.stockwellness.domain.stock.price.PriceBasis;
+import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,7 +48,7 @@ class StockServiceTest {
     private StockRepository stockRepository;
 
     @Mock
-    private StockPricePort stockPricePort;
+    private StockPriceReadPort stockPriceReadPort;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -58,22 +63,13 @@ class StockServiceTest {
         String ticker = "005930";
         StockSector sector = StockSector.of(null, null, null, "Information Technology");
         Stock stock = Stock.of(ticker, "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW, sector, StockStatus.ACTIVE);
-
-        TechnicalIndicators indicators = new TechnicalIndicators(
-                null, BigDecimal.valueOf(75000), null, null, BigDecimal.valueOf(60),
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, "상승 추세"
-        );
-
-        StockPrice price = StockPrice.of(
-                stock, LocalDate.of(2026, 4, 24),
-                BigDecimal.valueOf(79000), BigDecimal.valueOf(81000), BigDecimal.valueOf(78500),
-                BigDecimal.valueOf(80000), BigDecimal.valueOf(80000), BigDecimal.valueOf(78000),
-                1000000L, BigDecimal.valueOf(80000000000L), indicators
-        );
+        ReflectionTestUtils.setField(stock, "id", 1L);
 
         given(stockRepository.findByTicker(ticker)).willReturn(Optional.of(stock));
-        given(stockPricePort.findLatestByTicker(ticker)).willReturn(Optional.of(price));
+        given(stockPriceReadPort.recent(Set.of(1L), "KRX", LocalDate.now(), 2, PriceBasis.RAW))
+                .willReturn(Map.of(1L, List.of(
+                        observation(1L, LocalDate.now(), "80000"),
+                        observation(1L, LocalDate.now().minusDays(1), "78000"))));
 
         // When
         StockDetailResult result = stockService.getStockDetail(ticker);
@@ -83,8 +79,8 @@ class StockServiceTest {
         assertThat(result.currentPrice()).isEqualByComparingTo(BigDecimal.valueOf(80000));
         assertThat(result.priceChange()).isEqualByComparingTo(BigDecimal.valueOf(2000));
         assertThat(result.fluctuationRate()).isEqualByComparingTo(new BigDecimal("2.5600")); // (2000/78000) -> 0.0256 * 100
-        assertThat(result.rsi14()).isEqualByComparingTo(BigDecimal.valueOf(60));
-        assertThat(result.aiInsight()).isEqualTo("상승 추세");
+        assertThat(result.rsi14()).isNull();
+        assertThat(result.aiInsight()).isEqualTo("기술적 지표 집계 중입니다.");
     }
 
     @Test
@@ -94,9 +90,11 @@ class StockServiceTest {
         String ticker = "005930";
         StockSector sector = StockSector.of(null, null, null, "Information Technology");
         Stock stock = Stock.of(ticker, "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW, sector, StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", 1L);
 
         given(stockRepository.findByTicker(ticker)).willReturn(Optional.of(stock));
-        given(stockPricePort.findLatestByTicker(ticker)).willReturn(Optional.empty());
+        given(stockPriceReadPort.recent(Set.of(1L), "KRX", LocalDate.now(), 2, PriceBasis.RAW))
+                .willReturn(Map.of(1L, List.of()));
 
         // When
         StockDetailResult result = stockService.getStockDetail(ticker);
@@ -113,6 +111,24 @@ class StockServiceTest {
         assertThat(result.tradingValue()).isNull();
         assertThat(result.marketCap()).isNull();
         assertThat(result.aiInsight()).isEqualTo("시세 데이터가 없어 분석할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("이전 거래일 가격이 없으면 변동률을 0으로 만들지 않는다")
+    void getStockDetail_without_previous_price() {
+        String ticker = "005930";
+        StockSector sector = StockSector.of(null, null, null, "Information Technology");
+        Stock stock = Stock.of(ticker, "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW, sector, StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", 1L);
+        given(stockRepository.findByTicker(ticker)).willReturn(Optional.of(stock));
+        given(stockPriceReadPort.recent(Set.of(1L), "KRX", LocalDate.now(), 2, PriceBasis.RAW))
+                .willReturn(Map.of(1L, List.of(observation(1L, LocalDate.now(), "80000"))));
+
+        StockDetailResult result = stockService.getStockDetail(ticker);
+
+        assertThat(result.currentPrice()).isEqualByComparingTo("80000");
+        assertThat(result.priceChange()).isNull();
+        assertThat(result.fluctuationRate()).isNull();
     }
 
     @Test
@@ -140,5 +156,11 @@ class StockServiceTest {
 
         // Then
         verify(eventPublisher).publishEvent(any(StockSearchEvent.class));
+    }
+
+    private static PriceObservation observation(Long stockId, LocalDate date, String close) {
+        BigDecimal value = new BigDecimal(close);
+        return new PriceObservation(stockId, date, "KRX", PriceBasis.RAW, value, value, value, value,
+                100L, BigDecimal.TEN, "FINAL", 1);
     }
 }

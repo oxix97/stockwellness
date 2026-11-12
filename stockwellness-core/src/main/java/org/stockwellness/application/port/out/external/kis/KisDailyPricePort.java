@@ -9,6 +9,7 @@ import org.stockwellness.domain.stock.Stock;
 public interface KisDailyPricePort {
     List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);
     List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
+    List<KisDailyPriceDetail> fetchAdjustedDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
     List<KisInvestorPriceDetail> fetchInvestorPrices(Stock stock, LocalDate startDate, LocalDate endDate);
     List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate);
     List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate);

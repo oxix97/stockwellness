@@ -14,6 +14,9 @@ import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
 import org.stockwellness.adapter.out.external.kis.dto.KisInvestorPriceDetail;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.StockStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
@@ -195,7 +198,8 @@ class KisDailyPriceAdapterTest {
     @DisplayName("주식 일자별 투자자 매매 추이 조회 성공 테스트")
     void fetchInvestorPrices_success() {
         // given
-        Stock stock = Stock.ofIndex("005930", "삼성전자");
+        Stock stock = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI,
+                Currency.KRW, null, StockStatus.ACTIVE);
         LocalDate startDate = LocalDate.of(2026, 4, 11);
         LocalDate endDate = LocalDate.of(2026, 4, 11);
 

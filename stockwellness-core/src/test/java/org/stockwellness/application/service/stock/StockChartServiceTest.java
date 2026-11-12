@@ -19,6 +19,8 @@ import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResponse;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.PriceObservation;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.MarketType;
@@ -27,12 +29,14 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.price.ChartFrequency;
 import org.stockwellness.domain.stock.price.ChartPeriod;
+import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.domain.stock.price.TradeDirection;
 import org.stockwellness.global.error.ErrorCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class StockChartServiceTest {
@@ -41,6 +45,8 @@ class StockChartServiceTest {
 
     @Mock
     private StockPricePort stockPricePort;
+    @Mock
+    private StockPriceReadPort stockPriceReadPort;
     @Mock
     private LoadBenchmarkPort loadBenchmarkPort;
     @Mock
@@ -128,16 +134,23 @@ class StockChartServiceTest {
         void success() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, true);
+            Long stockId = 11L;
+            given(mockStock.getId()).willReturn(stockId);
             given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
             given(mockStock.getCurrency()).willReturn(Currency.USD);
             given(mockStock.getName()).willReturn("애플");
             given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
 
-            List<StockPriceResult> mockPrices = List.of(
-                    createPrice("2024-01-01", 100),
-                    createPrice("2024-01-02", 110)
+            List<PriceObservation> mockPrices = List.of(
+                    observation(stockId, LocalDate.of(2024, 1, 1), PriceBasis.RAW, "100"),
+                    observation(stockId, LocalDate.of(2024, 1, 2), PriceBasis.RAW, "110")
             );
-            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.RAW)))
+                    .willReturn(java.util.Map.of(stockId, mockPrices));
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, mockPrices.stream()
+                            .map(price -> observation(stockId, price.tradeDate(), PriceBasis.PROVIDER_ADJUSTED,
+                                    price.closePrice().toPlainString())).toList()));
             
             List<StockPriceResult> mockBenchmarks = List.of(
                     createPrice("2024-01-01", 2000),
@@ -174,13 +187,40 @@ class StockChartServiceTest {
         void failNoPriceData() {
             // given
             ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
+            Long stockId = 11L;
+            given(mockStock.getId()).willReturn(stockId);
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
             given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
-            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(List.of());
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.RAW)))
+                    .willReturn(java.util.Map.of(stockId, List.of()));
 
             // when & then
             assertThatThrownBy(() -> stockChartService.loadChartData(query))
                     .isInstanceOf(StockPriceException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRICE_DATA_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("수정가가 없으면 원가로 대체하지 않고 RAW 가격만 차트에 반환한다")
+        void rawChartDoesNotFallBackForAdjustedClose() {
+            Long stockId = 10L;
+            ChartQuery query = new ChartQuery(ticker, ChartPeriod.ONE_YEAR, ChartFrequency.DAILY, false);
+            given(mockStock.getId()).willReturn(stockId);
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
+            given(mockStock.getCurrency()).willReturn(Currency.KRW);
+            given(mockStock.getName()).willReturn("테스트 종목");
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
+            LocalDate tradeDate = LocalDate.of(2026, 10, 1);
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.RAW)))
+                    .willReturn(java.util.Map.of(stockId, List.of(observation(stockId, tradeDate, PriceBasis.RAW, "100"))));
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, List.of()));
+
+            ChartDataResponse response = stockChartService.loadChartData(query);
+
+            assertThat(response.prices()).hasSize(1);
+            assertThat(response.prices().getFirst().close()).isEqualByComparingTo("100");
+            assertThat(response.prices().getFirst().adjClose()).isNull();
         }
     }
 
@@ -194,13 +234,16 @@ class StockChartServiceTest {
             // given
             given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
             given(mockStock.getCurrency()).willReturn(Currency.USD);
+            Long stockId = 11L;
+            given(mockStock.getId()).willReturn(stockId);
             given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
 
-            List<StockPriceResult> mockPrices = List.of(
-                    createPrice("2024-01-01", 100),
-                    createPrice("2024-01-02", 150)
+            List<PriceObservation> mockPrices = List.of(
+                    observation(stockId, LocalDate.of(2024, 1, 1), PriceBasis.PROVIDER_ADJUSTED, "100"),
+                    observation(stockId, LocalDate.of(2024, 1, 2), PriceBasis.PROVIDER_ADJUSTED, "150")
             );
-            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(mockPrices);
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, mockPrices));
 
             List<StockPriceResult> mockBenchmarks = List.of(
                     createPrice("2024-01-01", 2000),
@@ -220,12 +263,50 @@ class StockChartServiceTest {
         @Test
         @DisplayName("실패: 수익률 조회 기간에 시세가 없으면 S002를 반환한다")
         void failNoPriceData() {
+            Long stockId = 11L;
+            given(mockStock.getId()).willReturn(stockId);
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
             given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
-            given(stockPricePort.loadPricesByTicker(eq(ticker), any(), any())).willReturn(List.of());
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, List.of()));
 
             assertThatThrownBy(() -> stockChartService.calculateReturn(ticker, ChartPeriod.ONE_YEAR))
                     .isInstanceOf(StockPriceException.class)
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRICE_DATA_NOT_FOUND);
+            verify(stockPriceReadPort).history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED));
+        }
+
+        @Test
+        @DisplayName("수익률 계산에 수정 종가가 없으면 원가로 대체하지 않는다")
+        void adjustedReturnDoesNotFallBackToRaw() {
+            Long stockId = 10L;
+            given(mockStock.getId()).willReturn(stockId);
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, List.of()));
+
+            assertThatThrownBy(() -> stockChartService.calculateReturn(ticker, ChartPeriod.ONE_YEAR))
+                    .isInstanceOf(StockPriceException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRICE_DATA_NOT_FOUND);
+            verify(stockPriceReadPort).history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED));
+        }
+
+        @Test
+        @DisplayName("기준 구간에 조정 종가가 한 건뿐이면 수익률을 0으로 만들지 않는다")
+        void oneAdjustedObservationIsInsufficientForReturn() {
+            Long stockId = 10L;
+            given(mockStock.getId()).willReturn(stockId);
+            given(mockStock.getMarketType()).willReturn(MarketType.KOSPI);
+            given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
+            given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED)))
+                    .willReturn(java.util.Map.of(stockId, List.of(observation(stockId, LocalDate.of(2026, 10, 1),
+                            PriceBasis.PROVIDER_ADJUSTED, "100"))));
+
+            assertThatThrownBy(() -> stockChartService.calculateReturn(ticker, ChartPeriod.ONE_YEAR))
+                    .isInstanceOf(StockPriceException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRICE_DATA_NOT_FOUND);
+            verify(stockPriceReadPort).history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.PROVIDER_ADJUSTED));
         }
     }
 
@@ -240,5 +321,11 @@ class StockChartServiceTest {
                 100L,
                 null, null, null, null, null
         );
+    }
+
+    private PriceObservation observation(Long stockId, LocalDate date, PriceBasis basis, String close) {
+        BigDecimal value = new BigDecimal(close);
+        return new PriceObservation(stockId, date, "KRX", basis, value, value, value, value,
+                100L, BigDecimal.TEN, "FINAL", 1);
     }
 }
