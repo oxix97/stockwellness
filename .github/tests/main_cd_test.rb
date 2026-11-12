@@ -18,7 +18,7 @@ class MainCdTest < Minitest::Test
     steps = ci.fetch('jobs').fetch('build').fetch('steps')
     setup_gradle = steps.find { |step| step['uses'] == 'gradle/actions/setup-gradle@v4' }
     refute_nil setup_gradle
-    assert_equal "${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}",
+    assert_equal "${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) || (github.event_name != 'pull_request' && github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main') }}",
                  setup_gradle.fetch('with').fetch('cache-read-only')
     build = steps.find { |step| step['name'] == 'Build & Test (all modules)' }
     assert_includes build.fetch('run'), '--configuration-cache'
