@@ -58,8 +58,4 @@ public class WatchlistAdapter implements WatchlistPort {
         return watchlistGroupRepository.save(group);
     }
 
-    @Override
-    public Optional<WatchlistItem> findItemByGroupAndStock(WatchlistGroup group, String ticker) {
-        return watchlistItemRepository.findByGroupAndTickerAndDeletedAtIsNull(group, ticker);
-    }
 }

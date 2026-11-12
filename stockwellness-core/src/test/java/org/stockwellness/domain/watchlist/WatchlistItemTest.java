@@ -28,8 +28,8 @@ class WatchlistItemTest {
         // then
         assertThat(item.getGroup()).isEqualTo(group);
         assertThat(item.getStock()).isEqualTo(stock);
-        assertThat(item.getTicker()).isEqualTo("005930");
-        assertThat(item.getMarketType()).isEqualTo(MarketType.KOSPI);
+        assertThat(item.getStock().getTicker()).isEqualTo("005930");
+        assertThat(item.getStock().getMarketType()).isEqualTo(MarketType.KOSPI);
         assertThat(item.getNote()).isEqualTo("메모");
         assertThat(item.getDeletedAt()).isNull();
     }

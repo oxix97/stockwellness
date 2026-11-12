@@ -14,6 +14,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.stockwellness.application.port.in.watchlist.dto.WatchlistItemListResponse;
 import org.stockwellness.application.port.out.watchlist.StockDataPort;
 import org.stockwellness.application.port.out.watchlist.WatchlistPort;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.member.LoginType;
 import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.stock.Currency;
@@ -36,6 +37,8 @@ class WatchlistServiceDataTest {
     private WatchlistPort watchlistPort;
     @Mock
     private StockDataPort stockDataPort;
+    @Mock
+    private StockPort stockPort;
 
     @Test
     void getItems가_상세_데이터를_포함하여_반환한다() {
@@ -74,5 +77,52 @@ class WatchlistServiceDataTest {
         assertThat(response.items().get(0).currentPrice()).isEqualByComparingTo("180000");
         assertThat(response.items().get(0).rsiStatus()).isEqualTo("중립");
         assertThat(response.items().get(0).aiInsight()).isEqualTo("정배열 추세");
+    }
+
+    @Test
+    void removeItemResolvesTickerToStockAndKeepsSoftDeletedItem() {
+        Member member = member(1L);
+        WatchlistGroup group = group(member, 1L);
+        Stock stock = stock(100L);
+        group.addItem(stock);
+        given(watchlistPort.findGroupById(1L)).willReturn(Optional.of(group));
+        given(stockPort.loadStockByTicker("000660")).willReturn(Optional.of(stock));
+
+        watchlistService.removeItem(1L, 1L, "000660");
+
+        assertThat(group.getItems()).hasSize(1);
+        assertThat(group.getItems().getFirst().getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void updateItemNoteResolvesTickerToStockIdentity() {
+        Member member = member(1L);
+        WatchlistGroup group = group(member, 1L);
+        Stock stock = stock(100L);
+        group.addItem(stock);
+        given(watchlistPort.findGroupById(1L)).willReturn(Optional.of(group));
+        given(stockPort.loadStockByTicker("000660")).willReturn(Optional.of(stock));
+
+        watchlistService.updateItemNote(1L, 1L, "000660", "메모");
+
+        assertThat(group.getItems().getFirst().getNote()).isEqualTo("메모");
+    }
+
+    private static Member member(Long id) {
+        Member member = Member.register("test@test.com", "tester", LoginType.GOOGLE);
+        ReflectionTestUtils.setField(member, "id", id);
+        return member;
+    }
+
+    private static WatchlistGroup group(Member member, Long id) {
+        WatchlistGroup group = WatchlistGroup.create(member, "테스트 그룹");
+        ReflectionTestUtils.setField(group, "id", id);
+        return group;
+    }
+
+    private static Stock stock(Long id) {
+        Stock stock = Stock.of("000660", "KR7000660001", "SK하이닉스", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", id);
+        return stock;
     }
 }
