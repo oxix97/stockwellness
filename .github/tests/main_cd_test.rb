@@ -13,6 +13,31 @@ class MainCdTest < Minitest::Test
     assert_includes workflow('ci.yml')[true]['push']['branches'], 'main'
   end
 
+  def test_gradle_configuration_cache_is_enabled_with_setup_gradle_cache
+    ci = workflow('ci.yml')
+    steps = ci.fetch('jobs').fetch('build').fetch('steps')
+    assert steps.any? { |step| step['uses'] == 'gradle/actions/setup-gradle@v4' }
+    build = steps.find { |step| step['name'] == 'Build & Test (all modules)' }
+    assert_includes build.fetch('run'), '--configuration-cache'
+  end
+
+  def test_api_and_batch_docker_caches_have_independent_scopes
+    %w[api batch].each do |service|
+      build = workflow("deploy-#{service}.yaml").fetch('jobs').fetch("build-#{service}")
+      step = build.fetch('steps').find { |item| item['uses'] == 'docker/build-push-action@v5' }
+      assert_equal "type=gha,scope=#{service}", step.fetch('with').fetch('cache-from')
+      assert_equal "type=gha,scope=#{service},mode=max", step.fetch('with').fetch('cache-to')
+    end
+  end
+
+  def test_docker_gradle_version_matches_the_wrapper
+    wrapper = File.read('gradle/wrapper/gradle-wrapper.properties')
+    version = wrapper.match(%r{gradle-([0-9.]+)-bin\.zip})[1]
+    %w[api batch].each do |service|
+      assert_includes File.read("Dockerfile.#{service}"), "FROM gradle:#{version}-jdk21-alpine AS builder"
+    end
+  end
+
   def test_api_deploy_has_one_main_route_after_successful_build
     ci = workflow('ci.yml')
     api = workflow('deploy-api.yaml')

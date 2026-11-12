@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────
-FROM gradle:8-jdk21-alpine AS builder
+FROM gradle:9.8.2-jdk21-alpine AS builder
 WORKDIR /app
 
 # 의존성 캐시 최적화
