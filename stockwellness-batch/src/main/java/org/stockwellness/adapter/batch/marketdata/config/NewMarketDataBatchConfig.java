@@ -84,6 +84,36 @@ public class NewMarketDataBatchConfig {
     }
 
     @Bean
+    public Job kisEodInvestorTradeSyncJob(Step kisEodInvestorTradeStep) {
+        return new JobBuilder("kisEodInvestorTradeSyncJob", jobRepository).start(kisEodInvestorTradeStep).build();
+    }
+
+    @Bean
+    public Step kisEodInvestorTradeStep(JpaPagingItemReader<Stock> kisEodInvestorStockReader,
+            org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor) {
+        return new StepBuilder("kisEodInvestorTradeStep", jobRepository)
+                .<Stock, Stock>chunk(1, transactionManager)
+                .reader(kisEodInvestorStockReader).processor(kisEodInvestorStockProcessor).writer(chunk -> {}).build();
+    }
+
+    @Bean
+    @StepScope
+    public JpaPagingItemReader<Stock> kisEodInvestorStockReader() {
+        return new JpaPagingItemReaderBuilder<Stock>().name("kisEodInvestorStockReader")
+                .entityManagerFactory(entityManagerFactory).pageSize(100)
+                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
+                .parameterValues(Map.of("delisted", StockStatus.DELISTED)).build();
+    }
+
+    @Bean
+    @StepScope
+    public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor(
+            NewMarketDataSyncUseCase sync, @Value("#{jobParameters['targetDate']}") String targetDate) {
+        LocalDate tradeDate = LocalDate.parse(targetDate);
+        return stock -> { sync.syncStockInvestorTrades(stock, tradeDate); return stock; };
+    }
+
+    @Bean
     public Job kisEodIndexPriceSyncJob(Step kisEodIndexPriceStep) {
         return new JobBuilder("kisEodIndexPriceSyncJob", jobRepository).start(kisEodIndexPriceStep).build();
     }

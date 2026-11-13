@@ -127,6 +127,30 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
         });
     }
 
+    /** KRX 종목별 투자자 매매 동향을 지정 거래일로 조회한다. */
+    @Override
+    public List<KisInvestorTradeByStockDaily> fetchInvestorTradeByStockDaily(Stock stock, LocalDate tradeDate) {
+        if (stock == null || tradeDate == null) throw new IllegalArgumentException("Stock and trade date are required");
+        return executeWithRetry(() -> {
+            KisPriceResponse<Object, List<KisInvestorTradeByStockDaily>> response = kisApiClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")
+                            .queryParam("FID_COND_MRKT_DIV_CODE", "J")
+                            .queryParam("FID_INPUT_ISCD", stock.getTicker())
+                            .queryParam("FID_INPUT_DATE_1", tradeDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_ORG_ADJ_PRC", "")
+                            .queryParam("FID_ETC_CLS_CODE", "")
+                            .build())
+                    .header("tr_id", "FHPTJ04160001")
+                    .header("custtype", "P")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+
+            response = requireSuccessfulResponse(response, "종목별 일별 투자자 매매 조회", stock.getTicker());
+            return response.output2() == null ? Collections.emptyList() : response.output2();
+        });
+    }
+
     /**
      * 국내 업종/지수 기간별 시세
      */

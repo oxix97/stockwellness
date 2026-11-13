@@ -12,6 +12,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
 import org.stockwellness.adapter.out.external.kis.dto.KisInvestorPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.Currency;
@@ -238,6 +239,50 @@ class KisDailyPriceAdapterTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).baseDate()).isEqualTo("20260411");
         assertThat(result.get(0).netInstitutionalBuyingAmt()).isEqualByComparingTo("3000");
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("종목별 일별 수급 조회는 공식 FHPTJ04160001 요청 계약과 원천 유형 필드를 매핑한다")
+    void fetchInvestorTradeByStockDaily_usesTheDocumentedRequestAndMapsInvestorTypes() {
+        Stock stock = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI,
+                Currency.KRW, null, StockStatus.ACTIVE);
+        LocalDate tradeDate = LocalDate.of(2026, 10, 5);
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")))
+                .andExpect(requestTo(containsString("FID_COND_MRKT_DIV_CODE=J")))
+                .andExpect(requestTo(containsString("FID_INPUT_ISCD=005930")))
+                .andExpect(requestTo(containsString("FID_INPUT_DATE_1=20261005")))
+                .andExpect(requestTo(containsString("FID_ORG_ADJ_PRC=")))
+                .andExpect(requestTo(containsString("FID_ETC_CLS_CODE=")))
+                .andExpect(header("tr_id", "FHPTJ04160001"))
+                .andRespond(withSuccess("""
+                        {"rtCd":"0","output1":{},"output2":[{
+                          "stck_bsop_date":"20261005",
+                          "frgn_ntby_qty":"-1","frgn_ntby_tr_pbmn":"-2",
+                          "orgn_ntby_qty":"3","orgn_ntby_tr_pbmn":"4",
+                          "prsn_ntby_qty":"5","prsn_ntby_tr_pbmn":"6",
+                          "scrt_ntby_qty":"7","scrt_ntby_tr_pbmn":"8",
+                          "insu_ntby_qty":"9","insu_ntby_tr_pbmn":"10",
+                          "ivtr_ntby_qty":"11","ivtr_ntby_tr_pbmn":"12",
+                          "pe_fund_ntby_vol":"13","pe_fund_ntby_tr_pbmn":"14",
+                          "bank_ntby_qty":"15","bank_ntby_tr_pbmn":"16",
+                          "fund_ntby_qty":"17","fund_ntby_tr_pbmn":"18",
+                          "mrbn_ntby_qty":"19","mrbn_ntby_tr_pbmn":"20",
+                          "etc_orgt_ntby_vol":"21","etc_orgt_ntby_tr_pbmn":"22",
+                          "etc_corp_ntby_vol":"23","etc_corp_ntby_tr_pbmn":"24",
+                          "etc_ntby_qty":"25","etc_ntby_tr_pbmn":"26"
+                        }]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<KisInvestorTradeByStockDaily> result = adapter.fetchInvestorTradeByStockDaily(stock, tradeDate);
+
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.baseDate()).isEqualTo("20261005");
+            assertThat(row.foreignNetQuantity()).isEqualTo("-1");
+            assertThat(row.financialInvestmentNetAmount()).isEqualTo("8");
+            assertThat(row.privateFundNetQuantity()).isEqualTo("13");
+            assertThat(row.otherCorporateNetAmount()).isEqualTo("24");
+        });
         mockServer.verify();
     }
 

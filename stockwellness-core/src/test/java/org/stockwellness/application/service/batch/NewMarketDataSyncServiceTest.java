@@ -18,10 +18,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.external.kis.KisHolidayPort;
 import org.stockwellness.application.port.out.external.kis.KisIndexPricePort;
 import org.stockwellness.application.port.out.stock.EodStockPricePort;
+import org.stockwellness.application.port.out.stock.EodStockInvestorTradePort;
 import org.stockwellness.application.port.out.stock.IndexDailyPort;
 import org.stockwellness.application.port.out.stock.TradingCalendarPort;
 import org.stockwellness.domain.stock.Currency;
@@ -34,6 +36,9 @@ import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.price.EodStockPrice;
+import org.stockwellness.domain.stock.price.EodStockInvestorTradeDaily;
+import org.stockwellness.domain.stock.price.InvestorSourceType;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class NewMarketDataSyncServiceTest {
@@ -41,12 +46,13 @@ class NewMarketDataSyncServiceTest {
     @Mock KisIndexPricePort indexPrices;
     @Mock KisHolidayPort holidays;
     @Mock EodStockPricePort eod;
+    @Mock EodStockInvestorTradePort investorTrades;
     @Mock IndexDailyPort indexDaily;
     @Mock TradingCalendarPort calendar;
     NewMarketDataSyncService service;
 
     @BeforeEach void setUp() {
-        service = new NewMarketDataSyncService(prices, indexPrices, holidays, eod, indexDaily, calendar);
+        service = new NewMarketDataSyncService(prices, indexPrices, holidays, eod, investorTrades, indexDaily, calendar);
     }
 
     @Test
@@ -221,9 +227,117 @@ class NewMarketDataSyncServiceTest {
         verify(indexDaily, never()).upsert(anyList());
     }
 
+    @Test
+    void investor_flows_are_saved_per_type_with_signed_values_and_missing_values_left_null() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "KIS:CTCA0903R")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, date)).willReturn(List.of(investorRow(
+                date, "-2", "-1.25", "3", "2.5", "0", "0", "1", "2", "1", "3",
+                "1", "4", "1", "5", null, "6", "1", "7", "1", "8", "1", "9", "1", "10", "1", "11")));
+
+        service.syncStockInvestorTrades(stock, date);
+
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(InvestorSourceType.values().length);
+        EodStockInvestorTradeDaily foreign = row(saved.getValue(), InvestorSourceType.FOREIGN);
+        assertThat(foreign.netQuantity()).isEqualByComparingTo("-2");
+        assertThat(foreign.netAmount()).isEqualByComparingTo("-1250000.00");
+        assertThat(foreign.dataStatus()).isEqualTo("PROVISIONAL");
+        assertThat(row(saved.getValue(), InvestorSourceType.INSTITUTION_TOTAL).netAmount())
+                .isEqualByComparingTo("2500000.00");
+        EodStockInvestorTradeDaily individual = row(saved.getValue(), InvestorSourceType.INDIVIDUAL);
+        assertThat(individual.netQuantity()).isEqualByComparingTo("0");
+        assertThat(individual.netAmount()).isEqualByComparingTo("0.00");
+        EodStockInvestorTradeDaily bank = row(saved.getValue(), InvestorSourceType.BANK);
+        assertThat(bank.netQuantity()).isNull();
+        assertThat(bank.netAmount()).isEqualByComparingTo("6000000.00");
+        assertThat(bank.dataStatus()).isEqualTo("INCOMPLETE");
+        assertThat(saved.getValue()).allSatisfy(value -> {
+            assertThat(value.tradeDate()).isEqualTo(date);
+            assertThat(value.quoteScope()).isEqualTo("KRX");
+            assertThat(value.source()).isEqualTo("KIS:FHPTJ04160001:J");
+        });
+    }
+
+    @Test
+    void absent_investor_response_is_persisted_as_incomplete_nulls_not_zero() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "KIS:CTCA0903R")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, date)).willReturn(List.of());
+
+        service.syncStockInvestorTrades(stock, date);
+
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(InvestorSourceType.values().length).allSatisfy(value -> {
+            assertThat(value.netQuantity()).isNull();
+            assertThat(value.netAmount()).isNull();
+            assertThat(value.dataStatus()).isEqualTo("INCOMPLETE");
+        });
+    }
+
+    @Test
+    void investor_response_with_another_business_date_is_rejected_without_writing() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "KIS:CTCA0903R")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, date)).willReturn(List.of(investorRow(
+                date.minusDays(1), "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",
+                "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")));
+
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("date");
+        verify(investorTrades, never()).upsert(anyList());
+    }
+
+    @Test
+    void investor_quantity_precision_overflow_fails_before_writing_instead_of_rounding() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "KIS:CTCA0903R")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, date)).willReturn(List.of(investorRow(
+                date, "1.0000001", "1", "1", "1", "1", "1", "1", "1", "1", "1",
+                "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")));
+
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("storage scale");
+        verify(investorTrades, never()).upsert(anyList());
+    }
+
     private static Stock stock() {
-        return Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW,
+        Stock stock = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW,
                 StockSector.empty(), StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", 1L);
+        return stock;
+    }
+
+    private static EodStockInvestorTradeDaily row(List<EodStockInvestorTradeDaily> values, InvestorSourceType type) {
+        return values.stream().filter(value -> value.investorType() == type).findFirst().orElseThrow();
+    }
+
+    private static KisInvestorTradeByStockDaily investorRow(LocalDate date, String foreignQuantity, String foreignAmount,
+            String institutionQuantity, String institutionAmount, String individualQuantity, String individualAmount,
+            String financialQuantity, String financialAmount, String insuranceQuantity, String insuranceAmount,
+            String trustQuantity, String trustAmount, String privateFundQuantity, String privateFundAmount,
+            String bankQuantity, String bankAmount, String pensionQuantity, String pensionAmount,
+            String merchantBankQuantity, String merchantBankAmount, String otherOrganizationQuantity,
+            String otherOrganizationAmount, String otherCorporateQuantity, String otherCorporateAmount,
+            String otherQuantity, String otherAmount) {
+        return new KisInvestorTradeByStockDaily(date.format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE),
+                foreignQuantity, foreignAmount, institutionQuantity, institutionAmount,
+                individualQuantity, individualAmount, financialQuantity, financialAmount,
+                insuranceQuantity, insuranceAmount, trustQuantity, trustAmount,
+                privateFundQuantity, privateFundAmount, bankQuantity, bankAmount,
+                pensionQuantity, pensionAmount, merchantBankQuantity, merchantBankAmount,
+                otherOrganizationQuantity, otherOrganizationAmount, otherCorporateQuantity,
+                otherCorporateAmount, otherQuantity, otherAmount);
     }
 
     private static KisDailyPriceDetail price(LocalDate date, String close, String modYn) {
