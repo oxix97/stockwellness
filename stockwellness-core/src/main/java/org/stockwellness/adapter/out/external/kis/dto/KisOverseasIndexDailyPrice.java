@@ -94,7 +94,7 @@ public record KisOverseasIndexDailyPrice(
 
     @Override
     public Long volume() {
-        return acmlVol != null ? Long.parseLong(acmlVol) : 0L;
+        return acmlVol == null || acmlVol.isBlank() ? null : Long.valueOf(acmlVol.trim());
     }
 
     private BigDecimal price(String raw) {

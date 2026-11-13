@@ -187,6 +187,7 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
     /**
      * 해외 지수 일자별 시세 조회
      */
+    @Override
     public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
         return executeWithRetry(() -> {
             KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()

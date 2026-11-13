@@ -102,10 +102,15 @@ public class NewMarketDataBatchConfig {
         return new JpaPagingItemReaderBuilder<IndexSeries>().name("kisEodIndexReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(20)
                 .queryString("select s from IndexSeries s join s.marketIndex i where s.provider = 'KIS' "
-                        + "and s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
-                        + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' and s.currency = 'KRW' "
-                        + "and s.active = true and s.canonical = true and i.kind = :kind order by s.id")
-                .parameterValues(Map.of("kind", MarketIndexKind.MARKET)).build();
+                        + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' "
+                        + "and s.active = true and s.canonical = true and ("
+                        + "(s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
+                        + "and s.currency = 'KRW' and i.kind in (:marketKind, :sectorKind)) or "
+                        + "(s.providerNamespace = 'kis.ovrs.idxcode.N' and s.providerSeriesCode in ('SPX','NDX','.DJI') "
+                        + "and s.calendarMarketCode in ('NASDAQ','NYSE') and s.currency = 'USD' "
+                        + "and i.kind = :marketKind)) order by s.id")
+                .parameterValues(Map.of("marketKind", MarketIndexKind.MARKET,
+                        "sectorKind", MarketIndexKind.SECTOR)).build();
     }
 
     @Bean

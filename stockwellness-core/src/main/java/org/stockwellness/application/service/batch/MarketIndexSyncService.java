@@ -22,6 +22,12 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 @RequiredArgsConstructor
 public class MarketIndexSyncService {
 
+    private static final String OVERSEAS_INDEX_NAMESPACE = "kis.ovrs.idxcode.N";
+    private static final List<OverseasBenchmark> KIS_US_BENCHMARKS = List.of(
+            new OverseasBenchmark("US:SPX", "S&P 500", "SPX", "NYSE"),
+            new OverseasBenchmark("US:NDX", "NASDAQ 100", "NDX", "NASDAQ"),
+            new OverseasBenchmark("US:DJI", "Dow Jones Industrial", ".DJI", "NYSE"));
+
     private final MarketIndexRepository marketIndexRepository;
     private final IndexSeriesRepository indexSeriesRepository;
 
@@ -64,7 +70,28 @@ public class MarketIndexSyncService {
                                 parsed.getMarketCode(), "PRICE", "NONE", "KRW", true)));
             }
         }
+        syncOverseasBenchmarks();
 
         log.info("[MarketIndex] 동기화 완료: 신규 {}건, 기존 {}건", newCount, existingMap.size());
     }
+
+    private void syncOverseasBenchmarks() {
+        for (OverseasBenchmark benchmark : KIS_US_BENCHMARKS) {
+            MarketIndex desired = MarketIndex.ofOverseasBenchmark(
+                    benchmark.indexKey(), benchmark.name(), benchmark.code());
+            MarketIndex index = marketIndexRepository.findByIndexKey(benchmark.indexKey())
+                    .map(existing -> {
+                        existing.updateFrom(desired);
+                        return existing;
+                    })
+                    .orElseGet(() -> marketIndexRepository.save(desired));
+            indexSeriesRepository.findByProviderAndProviderNamespaceAndProviderSeriesCodeAndReturnBasisAndDividendBasisAndCurrency(
+                    "KIS", OVERSEAS_INDEX_NAMESPACE, benchmark.code(), "PRICE", "NONE", "USD")
+                    .orElseGet(() -> indexSeriesRepository.save(new IndexSeries(
+                            index, "KIS", OVERSEAS_INDEX_NAMESPACE, benchmark.code(), benchmark.calendarMarketCode(),
+                            "PRICE", "NONE", "USD", true)));
+        }
+    }
+
+    private record OverseasBenchmark(String indexKey, String name, String code, String calendarMarketCode) {}
 }

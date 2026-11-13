@@ -18,6 +18,20 @@ class MarketIndexIdentityTest {
     }
 
     @Test
+    void classifies_all_four_supported_domestic_benchmarks_as_market_indices() {
+        assertThat(java.util.List.of(
+                MarketIndex.of("0001", "KOSPI", "0"),
+                MarketIndex.of("1001", "KOSDAQ", "1"),
+                MarketIndex.of("2001", "KOSPI 200", "0"),
+                MarketIndex.of("3003", "KOSDAQ 150", "1")))
+                .extracting(MarketIndex::getIndexKind)
+                .containsOnly(MarketIndexKind.MARKET);
+
+        assertThat(MarketIndex.of("0027", "제약", "0").getIndexKind())
+                .isEqualTo(MarketIndexKind.SECTOR);
+    }
+
+    @Test
     void keepsLogicalIdentityMarketScopedWhilePublicBenchmarkCodesRemainExplicit() {
         MarketIndex kospi = MarketIndex.of("0099", "KOSPI 업종", "0");
         MarketIndex kosdaq = MarketIndex.of("0099", "KOSDAQ 업종", "1");

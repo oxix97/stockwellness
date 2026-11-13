@@ -20,6 +20,7 @@ class KisOverseasIndexDailyPriceTest {
         assertThat(data.openPrice()).isNull();
         assertThat(data.highPrice()).isNull();
         assertThat(data.lowPrice()).isNull();
+        assertThat(data.volume()).isNull();
     }
 
     @Test
