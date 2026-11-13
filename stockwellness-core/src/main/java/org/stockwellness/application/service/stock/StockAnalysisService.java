@@ -11,8 +11,8 @@ import org.stockwellness.application.port.in.stock.command.StockAnalysisCommand;
 import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
-import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
-import org.stockwellness.domain.stock.analysis.AiReport;
+import org.stockwellness.application.port.out.stock.StockAiAnalysisPort;
+import org.stockwellness.application.port.out.stock.StockAiAnalysisPort.StockAiAnalysisRecord;
 
 @Slf4j
 @Service
@@ -21,6 +21,10 @@ public class StockAnalysisService implements StockAnalysisUseCase {
 
     private final LoadTechnicalDataPort technicalDataPort;
     private final LlmClientPort llmClientPort;
+    private final StockAiAnalysisPort stockAiAnalysisPort;
+
+    private static final String ANALYSIS_KIND = "STOCK_TECHNICAL";
+    private static final String PROMPT_VERSION = "stock-analysis-v1";
 
     private static final String SYSTEM_INSTRUCTION = """
             당신은 20년 경력의 퀀트 트레이더입니다.
@@ -36,23 +40,25 @@ public class StockAnalysisService implements StockAnalysisUseCase {
 
     @Override
     @Cacheable(
-            value = "ai_analysis:v2",
+            value = "ai_analysis:canonical:v1",
             key = "#p0.isinCode() + ':' + T(LocalDate).now().toString()",
-            unless = "#result == null"
+            unless = "#result == null || #result.report() == T(org.stockwellness.domain.stock.analysis.AiReport).fallback()"
     )
     public StockAnalysisResult analyze(StockAnalysisCommand command) {
         log.info("🔍 AI Analysis Request: {}", command.isinCode());
 
         // 1. 도메인 데이터 로드 (Port -> Domain DTO)
-        AiAnalysisContext context = technicalDataPort.loadTechnicalContext(command.isinCode());
+        var input = technicalDataPort.loadTechnicalContext(command.isinCode());
 
         // 2. AI 분석 요청 (String 변환 책임은 Adapter로 위임됨)
-        AiReport report = llmClientPort.generateInsight(SYSTEM_INSTRUCTION, context);
+        var generation = llmClientPort.generateInsight(SYSTEM_INSTRUCTION, input.context());
 
-        return new StockAnalysisResult(
-                context.isinCode(),
-                context.technicalSignal().trendStatus(),
-                report
-        );
+        StockAnalysisResult result = new StockAnalysisResult(
+                input.ticker(), input.context().technicalSignal().trendStatus(), generation.report());
+        stockAiAnalysisPort.save(new StockAiAnalysisRecord(
+                input.stockId(), input.tradeDate(), input.quoteScope(), ANALYSIS_KIND,
+                generation.modelVersion(), PROMPT_VERSION, input.inputManifest(), result,
+                generation.succeeded() ? "SUCCEEDED" : "FAILED", java.time.Instant.now()));
+        return result;
     }
 }

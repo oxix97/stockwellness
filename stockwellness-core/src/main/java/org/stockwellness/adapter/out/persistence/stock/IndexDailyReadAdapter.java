@@ -34,4 +34,31 @@ public class IndexDailyReadAdapter implements IndexDailyReadPort {
                 rs.getObject("lower_limit_count", Integer.class), rs.getInt("revision"),
                 rs.getString("price_status")), seriesId, asOf, limit);
     }
+
+    @Override
+    public List<IndexPriceObservation> recentFinal(String publicBenchmarkCode, LocalDate asOf, int limit) {
+        if (publicBenchmarkCode == null || publicBenchmarkCode.isBlank() || asOf == null || limit < 1) {
+            throw new IllegalArgumentException("Benchmark code, date, and positive limit are required");
+        }
+        return jdbc.query("""
+                SELECT series.id AS series_id, daily.trade_date, daily.high_value, daily.low_value,
+                       daily.close_value, daily.advance_count, daily.decline_count, daily.unchanged_count,
+                       daily.upper_limit_count, daily.lower_limit_count, daily.revision, daily.price_status
+                FROM index_daily daily
+                JOIN index_series series ON series.id = daily.series_id
+                JOIN market_index market_index ON market_index.id = series.index_id
+                WHERE market_index.public_benchmark_code = ?
+                  AND series.is_active AND series.is_canonical
+                  AND daily.trade_date <= ? AND daily.price_status = 'FINAL'
+                  AND daily.close_value IS NOT NULL
+                ORDER BY daily.trade_date DESC
+                LIMIT ?
+                """, (rs, rowNum) -> new IndexPriceObservation(rs.getLong("series_id"),
+                rs.getObject("trade_date", LocalDate.class), rs.getBigDecimal("high_value"),
+                rs.getBigDecimal("low_value"), rs.getBigDecimal("close_value"),
+                rs.getObject("advance_count", Integer.class), rs.getObject("decline_count", Integer.class),
+                rs.getObject("unchanged_count", Integer.class), rs.getObject("upper_limit_count", Integer.class),
+                rs.getObject("lower_limit_count", Integer.class), rs.getInt("revision"),
+                rs.getString("price_status")), publicBenchmarkCode, asOf, limit);
+    }
 }
