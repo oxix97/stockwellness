@@ -1,0 +1,74 @@
+{
+  "endpoint": "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice",
+  "tr_id": "FHKST03030100",
+  "captured_on": "2026-11-13",
+  "fixture_scope": "Selected fields from read-only live KIS responses; credentials and unrelated fields omitted.",
+  "samples": [
+    {
+      "index_code": "SPX",
+      "request": {
+        "FID_COND_MRKT_DIV_CODE": "N",
+        "FID_INPUT_ISCD": "SPX",
+        "FID_INPUT_DATE_1": "20261112",
+        "FID_INPUT_DATE_2": "20261112",
+        "FID_PERIOD_DIV_CODE": "D"
+      },
+      "rt_cd": "0",
+      "output2": [
+        {
+          "stck_bsop_date": "20261112",
+          "ovrs_nmix_oprc": "7550.84",
+          "ovrs_nmix_hgpr": "7652.76",
+          "ovrs_nmix_lwpr": "7550.84",
+          "ovrs_nmix_prpr": "7592.40",
+          "acml_vol": "0",
+          "mod_yn": "N"
+        }
+      ]
+    },
+    {
+      "index_code": "NDX",
+      "request": {
+        "FID_COND_MRKT_DIV_CODE": "N",
+        "FID_INPUT_ISCD": "NDX",
+        "FID_INPUT_DATE_1": "20261112",
+        "FID_INPUT_DATE_2": "20261112",
+        "FID_PERIOD_DIV_CODE": "D"
+      },
+      "rt_cd": "0",
+      "output2": [
+        {
+          "stck_bsop_date": "20261112",
+          "ovrs_nmix_oprc": "27953.91",
+          "ovrs_nmix_hgpr": "28548.55",
+          "ovrs_nmix_lwpr": "27940.58",
+          "ovrs_nmix_prpr": "28289.19",
+          "acml_vol": "0",
+          "mod_yn": "N"
+        }
+      ]
+    },
+    {
+      "index_code": ".DJI",
+      "request": {
+        "FID_COND_MRKT_DIV_CODE": "N",
+        "FID_INPUT_ISCD": ".DJI",
+        "FID_INPUT_DATE_1": "20261112",
+        "FID_INPUT_DATE_2": "20261112",
+        "FID_PERIOD_DIV_CODE": "D"
+      },
+      "rt_cd": "0",
+      "output2": [
+        {
+          "stck_bsop_date": "20261112",
+          "ovrs_nmix_oprc": "52427.94",
+          "ovrs_nmix_hgpr": "52751.22",
+          "ovrs_nmix_lwpr": "52271.16",
+          "ovrs_nmix_prpr": "52297.09",
+          "acml_vol": "1015162860",
+          "mod_yn": "N"
+        }
+      ]
+    }
+  ]
+}

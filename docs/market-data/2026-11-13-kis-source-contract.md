@@ -13,6 +13,14 @@ The captured fixture `stockwellness-core/src/test/resources/kis/source-contract/
 
 Sources: [KIS domestic daily item chart sample](https://github.com/koreainvestment/open-trading-api/blob/main/examples_llm/domestic_stock/inquire_daily_itemchartprice/inquire_daily_itemchartprice.py), [KIS API list](https://apiportal.koreainvestment.com/apiservice-summary).
 
+### Same-query re-read observation
+
+A read-only KIS request on 2026-11-13 repeated the captured 2026-11-12 request with the same ticker, date range, daily period, and raw-price flag. The saved 2026-11-12 16:42:47 UTC response had close `206500`; the re-read returned close `208000`. Open, high, low, volume, and trading amount were unchanged, and both responses had `rt_cd=0` and `mod_yn=N`. The re-read response still had no provider finality field. This proves the successful after-close response and `mod_yn=N` do not establish that the row is final. It does not establish when KIS considers the value settled, so both observations remain PROVISIONAL. Only selected market fields were retained; no credential, token, or database write was used.
+
+### Overseas index response observation
+
+The sanitized fixture `stockwellness-core/src/test/resources/kis/source-contract/overseas-index-daily-2026-11-12.json` records selected fields from read-only live responses queried on 2026-11-13 for 2026-11-12. SPX, NDX, and `.DJI` each returned HTTP/API success (`rt_cd=0`), one dated row, and `mod_yn=N`. SPX and NDX reported `acml_vol=0`; `.DJI` reported `1015162860`. The fixture preserves those values without interpreting the zero volumes as missing or as proof of no trading. The sample did not provide a finality field, so these observations remain PROVISIONAL.
+
 ## Other API surfaces and supported series
 
 - Investor trades use `inquire-investor` (`FHKST01010900`). The KIS example describes person/foreign/institution data and says same-day values are provided after market close. This timing statement is not a finality marker. The source sample does not specify all stored unit/precision rules for the planned investor categories.
