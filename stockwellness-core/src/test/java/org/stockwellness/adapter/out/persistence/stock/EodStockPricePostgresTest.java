@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.springframework.dao.DataAccessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,6 +189,24 @@ class EodStockPricePostgresTest {
                 .isEqualByComparingTo("95");
         assertThat(jdbc.queryForObject("SELECT adjustment_as_of FROM stock_price_adjustment", java.sql.Date.class)
                 .toLocalDate()).isEqualTo(tradeDate.plusDays(3));
+    }
+
+    @Test
+    void combined_price_and_adjustment_write_rolls_back_raw_when_adjustment_insert_fails() {
+        jdbc.execute("ALTER TABLE stock_price_adjustment ADD CONSTRAINT test_reject_adjustment CHECK (source <> 'FAIL')");
+        try {
+            Stock stock = entityManager.find(Stock.class, stockId);
+            StockPriceAdjustment invalid = StockPriceAdjustment.of(stock, tradeDate, "KRX", tradeDate.plusDays(1),
+                    new BigDecimal("90"), new BigDecimal("99"), new BigDecimal("81"), new BigDecimal("95"), "FAIL");
+
+            assertThatThrownBy(() -> adapter.upsertObservations(List.of(quote("100")), List.of(invalid)))
+                    .isInstanceOf(DataAccessException.class);
+
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_price_daily", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_price_adjustment", Integer.class)).isZero();
+        } finally {
+            jdbc.execute("ALTER TABLE stock_price_adjustment DROP CONSTRAINT test_reject_adjustment");
+        }
     }
 
     @Test

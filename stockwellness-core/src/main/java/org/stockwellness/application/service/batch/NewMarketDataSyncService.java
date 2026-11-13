@@ -104,11 +104,9 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 if (seen.add(missing)) records.add(EodStockPrice.of(stock, missing, "KRX", null, null, null,
                         null, null, null, "KIS:" + STOCK_API + ":RAW", "INCOMPLETE"));
             }
-            eodStockPricePort.upsert(records);
-
             List<StockPriceAdjustment> adjustments = adjustedPrices(stock, from, to, requestedDates,
                     LocalDate.now(ZoneId.of("Asia/Seoul")));
-            if (!adjustments.isEmpty()) eodStockPricePort.upsertAdjustments(adjustments);
+            eodStockPricePort.upsertObservations(records, adjustments);
         }
     }
 

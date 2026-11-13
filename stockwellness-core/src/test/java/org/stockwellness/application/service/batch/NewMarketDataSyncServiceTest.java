@@ -63,7 +63,7 @@ class NewMarketDataSyncServiceTest {
 
         verify(prices).fetchDailyPrices(stock, start, start);
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsert(saved.capture());
+        verify(eod).upsertObservations(saved.capture(), anyList());
         assertThat(saved.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getId().getTradeDate()).isEqualTo(start);
             assertThat(row.getId().getQuoteScope()).isEqualTo("KRX");
@@ -83,7 +83,7 @@ class NewMarketDataSyncServiceTest {
                 .hasMessageContaining("unknown");
 
         verify(prices, never()).fetchDailyPrices(stock, date, date);
-        verify(eod, never()).upsert(anyList());
+        verify(eod, never()).upsertObservations(anyList(), anyList());
     }
 
     @Test
@@ -97,13 +97,12 @@ class NewMarketDataSyncServiceTest {
         service.syncStockPrices(stock, date, date);
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsert(saved.capture());
+        verify(eod).upsertObservations(saved.capture(), anyList());
         assertThat(saved.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getDataStatus()).isEqualTo("INCOMPLETE");
             assertThat(row.getClosePrice()).isNull();
             assertThat(row.getVolume()).isNull();
         });
-        verify(eod, never()).upsertAdjustments(anyList());
     }
 
     @Test
@@ -119,7 +118,7 @@ class NewMarketDataSyncServiceTest {
         service.syncStockPrices(stock, date, date);
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsert(saved.capture());
+        verify(eod).upsertObservations(saved.capture(), anyList());
         assertThat(saved.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getDataStatus()).isEqualTo("INCOMPLETE");
             assertThat(row.getHighPrice()).isNull();
@@ -140,7 +139,7 @@ class NewMarketDataSyncServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("precision");
 
-        verify(eod, never()).upsert(anyList());
+        verify(eod, never()).upsertObservations(anyList(), anyList());
     }
 
     @Test
@@ -176,14 +175,13 @@ class NewMarketDataSyncServiceTest {
         service.syncStockPrices(stock, date, date);
 
         ArgumentCaptor<List<EodStockPrice>> raw = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsert(raw.capture());
+        ArgumentCaptor<List<StockPriceAdjustment>> adjusted = ArgumentCaptor.forClass(List.class);
+        verify(eod).upsertObservations(raw.capture(), adjusted.capture());
         assertThat(raw.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getClosePrice()).isEqualByComparingTo("100");
             assertThat(row.getDataStatus()).isEqualTo("PROVISIONAL");
             assertThat(row.getSource()).isEqualTo("KIS:FHKST03010100:RAW");
         });
-        ArgumentCaptor<List<StockPriceAdjustment>> adjusted = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsertAdjustments(adjusted.capture());
         assertThat(adjusted.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getAdjustedClose()).isEqualByComparingTo("95");
             assertThat(row.getAdjustmentAsOf()).isAfterOrEqualTo(date);
@@ -192,7 +190,7 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
-    void adjustment_provider_failure_does_not_rollback_the_raw_observation() {
+    void adjustment_provider_failure_prevents_persisting_the_raw_observation() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
         given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
@@ -204,8 +202,7 @@ class NewMarketDataSyncServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("provider unavailable");
 
-        verify(eod).upsert(anyList());
-        verify(eod, never()).upsertAdjustments(anyList());
+        verify(eod, never()).upsertObservations(anyList(), anyList());
     }
 
     @Test
