@@ -75,6 +75,17 @@ public class EodStockPriceAdapter implements EodStockPricePort {
     @Override
     @Transactional
     public void upsert(List<EodStockPrice> values) {
+        writePrices(values);
+    }
+
+    @Override
+    @Transactional
+    public void upsertObservations(List<EodStockPrice> prices, List<StockPriceAdjustment> adjustments) {
+        writePrices(prices);
+        writeAdjustments(adjustments);
+    }
+
+    private void writePrices(List<EodStockPrice> values) {
         if (values == null || values.isEmpty()) return;
         jdbc.batchUpdate(UPSERT_PRICE, values, values.size(), (ps, value) -> setPrice(ps, value));
     }
@@ -82,6 +93,10 @@ public class EodStockPriceAdapter implements EodStockPricePort {
     @Override
     @Transactional
     public void upsertAdjustments(List<StockPriceAdjustment> values) {
+        writeAdjustments(values);
+    }
+
+    private void writeAdjustments(List<StockPriceAdjustment> values) {
         if (values == null || values.isEmpty()) return;
         jdbc.batchUpdate(UPSERT_ADJUSTMENT, values, values.size(), (ps, value) -> setAdjustment(ps, value));
     }
