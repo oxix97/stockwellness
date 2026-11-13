@@ -168,11 +168,11 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 BenchmarkDataStatus status = open != null && high != null && low != null && close != null
                         && volume != null && tradingAmount != null
                         ? BenchmarkDataStatus.PROVISIONAL : BenchmarkDataStatus.INCOMPLETE;
-                records.add(IndexDaily.of(series.getMarketIndex(), date, price(open), price(high), price(low), price(close), volume,
+                records.add(IndexDaily.of(series, date, price(open), price(high), price(low), price(close), volume,
                         tradingAmount, null, null, null, null, null, null, null, INDEX_API, null, status, null));
             }
             for (LocalDate missing : chunk) {
-                if (seen.add(missing)) records.add(IndexDaily.of(series.getMarketIndex(), missing, null, null, null, null,
+                if (seen.add(missing)) records.add(IndexDaily.of(series, missing, null, null, null, null,
                         null, null, null, null, null, null, null, null, null, INDEX_API, null,
                         BenchmarkDataStatus.INCOMPLETE, null));
             }

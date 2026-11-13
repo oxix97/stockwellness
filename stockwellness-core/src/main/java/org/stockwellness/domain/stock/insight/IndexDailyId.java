@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class IndexDailyId implements Serializable {
-    @Column(name = "index_id", nullable = false)
-    private Long indexId;
+    @Column(name = "series_id", nullable = false)
+    private Long seriesId;
 
     @Column(name = "trade_date", nullable = false)
     private LocalDate tradeDate;

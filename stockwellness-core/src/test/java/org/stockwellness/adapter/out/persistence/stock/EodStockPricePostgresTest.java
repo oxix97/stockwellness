@@ -36,6 +36,7 @@ import org.stockwellness.domain.stock.price.EodStockPrice;
 import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.insight.IndexDaily;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 import org.stockwellness.support.ManualSqlTestSupport;
 
@@ -68,6 +69,7 @@ class EodStockPricePostgresTest {
     @Autowired PlatformTransactionManager transactionManager;
     private Long stockId;
     private Long indexId;
+    private Long seriesId;
     private final LocalDate tradeDate = LocalDate.of(2026, 10, 2);
 
     @BeforeEach
@@ -76,11 +78,18 @@ class EodStockPricePostgresTest {
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         jdbc.update("DELETE FROM index_daily");
+        jdbc.update("DELETE FROM index_series");
         jdbc.update("DELETE FROM market_index");
         indexId = jdbc.queryForObject("""
                 INSERT INTO market_index(index_code, index_name, provider, provider_code, index_kind, created_at)
                 VALUES ('0001', 'KOSPI', 'KIS', '0001', 'MARKET', CURRENT_TIMESTAMP) RETURNING id
                 """, Long.class);
+        seriesId = jdbc.queryForObject("""
+                INSERT INTO index_series(index_id, provider, provider_namespace, provider_series_code,
+                                         calendar_market_code, return_basis, dividend_basis, currency, is_canonical)
+                VALUES (?, 'KIS', 'kis.idxcode.KOSPI', '0001', 'KOSPI', 'PRICE', 'NONE', 'KRW', true)
+                RETURNING id
+                """, Long.class, indexId);
         stockId = jdbc.queryForObject("""
                 INSERT INTO stock(currency, is_preferred, is_premium_tracking, created_at, market_type, status, ticker, name)
                 VALUES ('KRW', false, false, CURRENT_TIMESTAMP, 'KOSPI', 'ACTIVE', '005930', 'Samsung') RETURNING id
@@ -185,11 +194,11 @@ class EodStockPricePostgresTest {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(indexQuote("2500"))));
         tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(indexQuote("2500.0000"))));
-        assertThat(jdbc.queryForObject("SELECT data_revision FROM index_daily", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT revision FROM index_daily", Integer.class)).isEqualTo(1);
 
         tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(indexQuote("2501"))));
         assertThat(indexDailyRepository.count()).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT data_revision FROM index_daily", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT revision FROM index_daily", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT foreign_net_amount FROM index_daily", BigDecimal.class)).isNull();
         assertThat(jdbc.queryForObject("SELECT supply_status FROM index_daily", String.class)).isNull();
     }
@@ -202,8 +211,8 @@ class EodStockPricePostgresTest {
     }
 
     private IndexDaily indexQuote(String close) {
-        MarketIndex index = entityManager.find(MarketIndex.class, indexId);
-        return IndexDaily.of(index, tradeDate, new BigDecimal("2490"), new BigDecimal("2510"),
+        IndexSeries series = entityManager.find(IndexSeries.class, seriesId);
+        return IndexDaily.of(series, tradeDate, new BigDecimal("2490"), new BigDecimal("2510"),
                 new BigDecimal("2480"), new BigDecimal(close), 100L, new BigDecimal("100000"),
                 null, null, null, null, null, null, null, "FHKUP03500100", null,
                 BenchmarkDataStatus.PROVISIONAL, null);

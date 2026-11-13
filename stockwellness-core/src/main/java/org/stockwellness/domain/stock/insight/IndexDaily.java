@@ -31,45 +31,52 @@ public class IndexDaily {
     @EmbeddedId
     private IndexDailyId id;
 
-    @MapsId("indexId")
+    @MapsId("seriesId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "index_id", nullable = false)
-    private MarketIndex index;
+    @JoinColumn(name = "series_id", nullable = false)
+    private IndexSeries series;
 
-    @Column(name = "open_price", precision = 19, scale = 4) private BigDecimal openPrice;
-    @Column(name = "high_price", precision = 19, scale = 4) private BigDecimal highPrice;
-    @Column(name = "low_price", precision = 19, scale = 4) private BigDecimal lowPrice;
-    @Column(name = "close_price", precision = 19, scale = 4) private BigDecimal closePrice;
+    @Column(name = "open_value", precision = 19, scale = 4) private BigDecimal openPrice;
+    @Column(name = "high_value", precision = 19, scale = 4) private BigDecimal highPrice;
+    @Column(name = "low_value", precision = 19, scale = 4) private BigDecimal lowPrice;
+    @Column(name = "close_value", precision = 19, scale = 4) private BigDecimal closePrice;
     private Long volume;
     @Column(name = "trading_amount", precision = 25, scale = 2) private BigDecimal tradingAmount;
-    @Column(name = "rising_issue_count") private Integer risingIssueCount;
-    @Column(name = "upper_limit_issue_count") private Integer upperLimitIssueCount;
-    @Column(name = "steady_issue_count") private Integer steadyIssueCount;
-    @Column(name = "falling_issue_count") private Integer fallingIssueCount;
-    @Column(name = "lower_limit_issue_count") private Integer lowerLimitIssueCount;
+    @Column(name = "advance_count") private Integer risingIssueCount;
+    @Column(name = "upper_limit_count") private Integer upperLimitIssueCount;
+    @Column(name = "unchanged_count") private Integer steadyIssueCount;
+    @Column(name = "decline_count") private Integer fallingIssueCount;
+    @Column(name = "lower_limit_count") private Integer lowerLimitIssueCount;
     @Column(name = "foreign_net_amount", precision = 25, scale = 2) private BigDecimal foreignNetAmount;
     @Column(name = "institution_net_amount", precision = 25, scale = 2) private BigDecimal institutionNetAmount;
-    @Column(name = "price_source_api", nullable = false, length = 50) private String priceSourceApi;
-    @Column(name = "supply_source_api", length = 50) private String supplySourceApi;
+    @Column(name = "price_source", nullable = false, length = 100) private String priceSourceApi;
+    @Column(name = "supply_source", length = 100) private String supplySourceApi;
     @Enumerated(EnumType.STRING) @Column(name = "price_status", nullable = false, length = 20)
     private BenchmarkDataStatus priceStatus;
     @Enumerated(EnumType.STRING) @Column(name = "supply_status", length = 20)
     private BenchmarkDataStatus supplyStatus;
     @Column(name = "collected_at", nullable = false) private OffsetDateTime collectedAt;
     @Column(name = "supply_collected_at") private OffsetDateTime supplyCollectedAt;
+    @Column(name = "revision", nullable = false) private int revision;
     @Column(name = "corrected_at") private OffsetDateTime correctedAt;
-    @Column(name = "data_revision", nullable = false) private int dataRevision;
+    @Column(name = "supply_revision") private Integer supplyRevision;
+    @Column(name = "supply_corrected_at") private OffsetDateTime supplyCorrectedAt;
 
-    public static IndexDaily of(MarketIndex index, LocalDate tradeDate,
+    public static IndexDaily of(IndexSeries series, LocalDate tradeDate,
             BigDecimal openPrice, BigDecimal highPrice, BigDecimal lowPrice, BigDecimal closePrice,
             Long volume, BigDecimal tradingAmount, Integer risingIssueCount, Integer upperLimitIssueCount,
             Integer steadyIssueCount, Integer fallingIssueCount, Integer lowerLimitIssueCount,
             BigDecimal foreignNetAmount, BigDecimal institutionNetAmount,
             String priceSourceApi, String supplySourceApi,
             BenchmarkDataStatus priceStatus, BenchmarkDataStatus supplyStatus) {
-        if (index == null || tradeDate == null || !valid(priceSourceApi) || priceStatus == null
+        if (series == null || tradeDate == null || !valid(priceSourceApi) || priceStatus == null
                 || (priceStatus == BenchmarkDataStatus.FINAL && closePrice == null)
                 || (highPrice != null && lowPrice != null && highPrice.compareTo(lowPrice) < 0)
+                || (highPrice != null && openPrice != null && highPrice.compareTo(openPrice) < 0)
+                || (highPrice != null && closePrice != null && highPrice.compareTo(closePrice) < 0)
+                || (lowPrice != null && openPrice != null && lowPrice.compareTo(openPrice) > 0)
+                || (lowPrice != null && closePrice != null && lowPrice.compareTo(closePrice) > 0)
+                || negative(openPrice) || negative(highPrice) || negative(lowPrice) || negative(closePrice)
                 || (volume != null && volume < 0) || negative(tradingAmount)
                 || negativeCount(risingIssueCount) || negativeCount(upperLimitIssueCount)
                 || negativeCount(steadyIssueCount) || negativeCount(fallingIssueCount)
@@ -80,8 +87,8 @@ public class IndexDaily {
             throw new GlobalException(INVALID_INPUT_VALUE);
         }
         IndexDaily daily = new IndexDaily();
-        daily.index = index;
-        daily.id = new IndexDailyId(index.getId(), tradeDate);
+        daily.series = series;
+        daily.id = new IndexDailyId(series.getId(), tradeDate);
         daily.openPrice = openPrice;
         daily.highPrice = highPrice;
         daily.lowPrice = lowPrice;
@@ -100,33 +107,60 @@ public class IndexDaily {
         daily.priceStatus = priceStatus;
         daily.supplyStatus = supplyStatus;
         daily.collectedAt = OffsetDateTime.now(ZoneOffset.UTC);
-        daily.dataRevision = 1;
+        daily.supplyCollectedAt = supplyStatus == null ? null : daily.collectedAt;
+        daily.revision = 1;
+        daily.supplyRevision = supplyStatus == null ? null : 1;
         return daily;
     }
 
     public boolean reviseFrom(IndexDaily source, OffsetDateTime now) {
-        boolean changed = !same(openPrice, source.openPrice) || !same(highPrice, source.highPrice)
-                || !same(lowPrice, source.lowPrice) || !same(closePrice, source.closePrice)
-                || !Objects.equals(volume, source.volume) || !same(tradingAmount, source.tradingAmount)
-                || !Objects.equals(priceStatus, source.priceStatus)
-                || !Objects.equals(priceSourceApi, source.priceSourceApi);
-        collectedAt = now;
-        if (changed) {
-            openPrice = source.openPrice;
-            highPrice = source.highPrice;
-            lowPrice = source.lowPrice;
-            closePrice = source.closePrice;
-            volume = source.volume;
-            tradingAmount = source.tradingAmount;
-            priceStatus = source.priceStatus;
-            priceSourceApi = source.priceSourceApi;
-            dataRevision++;
-            correctedAt = now;
+        boolean changed = false;
+        if (accept(priceStatus, source.priceStatus)) {
+            boolean priceChanged = !same(openPrice, source.openPrice) || !same(highPrice, source.highPrice)
+                    || !same(lowPrice, source.lowPrice) || !same(closePrice, source.closePrice)
+                    || !Objects.equals(volume, source.volume) || !same(tradingAmount, source.tradingAmount)
+                    || !Objects.equals(priceStatus, source.priceStatus)
+                    || !Objects.equals(priceSourceApi, source.priceSourceApi);
+            collectedAt = now;
+            if (priceChanged) {
+                openPrice = source.openPrice;
+                highPrice = source.highPrice;
+                lowPrice = source.lowPrice;
+                closePrice = source.closePrice;
+                volume = source.volume;
+                tradingAmount = source.tradingAmount;
+                priceStatus = source.priceStatus;
+                priceSourceApi = source.priceSourceApi;
+                revision++;
+                correctedAt = now;
+                changed = true;
+            }
+        }
+        if (source.supplyStatus != null && accept(supplyStatus, source.supplyStatus)) {
+            boolean supplyChanged = !same(foreignNetAmount, source.foreignNetAmount)
+                    || !same(institutionNetAmount, source.institutionNetAmount)
+                    || !Objects.equals(supplyStatus, source.supplyStatus)
+                    || !Objects.equals(supplySourceApi, source.supplySourceApi);
+            supplyCollectedAt = now;
+            if (supplyChanged) {
+                foreignNetAmount = source.foreignNetAmount;
+                institutionNetAmount = source.institutionNetAmount;
+                supplyStatus = source.supplyStatus;
+                supplySourceApi = source.supplySourceApi;
+                supplyRevision = supplyRevision == null ? 1 : supplyRevision + 1;
+                supplyCorrectedAt = now;
+                changed = true;
+            }
         }
         return changed;
     }
 
-    private static boolean valid(String value) { return value != null && !value.isBlank() && value.length() <= 50; }
+    private static boolean accept(BenchmarkDataStatus current, BenchmarkDataStatus incoming) {
+        return !(current == BenchmarkDataStatus.FINAL && incoming != BenchmarkDataStatus.FINAL)
+                && !(current == BenchmarkDataStatus.PROVISIONAL && incoming == BenchmarkDataStatus.INCOMPLETE);
+    }
+
+    private static boolean valid(String value) { return value != null && !value.isBlank() && value.length() <= 100; }
     private static boolean same(BigDecimal left, BigDecimal right) {
         return left == null ? right == null : right != null && left.compareTo(right) == 0;
     }

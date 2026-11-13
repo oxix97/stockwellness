@@ -5,11 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.stockwellness.support.ManualSqlTestSupport;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -17,8 +15,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers(disabledWithoutDocker = true)
 class RedesignedSchemaPostgresTest {
-    private static final String SQL = "db/manual/2026-11-11-redesign/";
-
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
@@ -28,13 +24,7 @@ class RedesignedSchemaPostgresTest {
     static void createSchema() throws Exception {
         var dataSource = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
         jdbc = new JdbcTemplate(dataSource);
-        ManualSqlTestSupport.execute(dataSource, SQL + "00-preflight.sql");
-        for (String file : new String[] {"02-schema.sql", "03-batch-metadata.sql", "04-reference-data.sql"}) {
-            try (var connection = dataSource.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource(SQL + file));
-            }
-        }
-        ManualSqlTestSupport.execute(dataSource, SQL + "05-verify.sql");
+        ManualSqlTestSupport.initializeRedesignedPostgres(dataSource);
     }
 
     @Test
@@ -73,8 +63,9 @@ class RedesignedSchemaPostgresTest {
         jdbc.update("insert into watchlist_item(watchlist_group_id,stock_id) values (?,?)", group, stock);
 
         assertThatThrownBy(() -> jdbc.update("""
-                insert into actual_mutation_receipt(member_id,response_account_id,account_scope,operation,request_key,response_payload)
-                values (?,?,'DEFAULT','CREATE','wrong-owner','{}'::jsonb)
+                insert into actual_mutation_receipt(
+                    member_id,account_scope,response_account_id,operation,request_key,request_fingerprint,response_body)
+                values (?,0,?,'CREATE','wrong-owner','fingerprint','{}')
                 """, memberA, accountB)).isInstanceOf(DataAccessException.class);
 
         long index = jdbc.queryForObject("insert into market_index(index_key,name,kind) values ('TEST','test','SECTOR') returning id", Long.class);
