@@ -57,6 +57,11 @@ class StockAiCanonicalDataPostgresTest {
 
     @BeforeEach
     void clearData() {
+        jdbc.update("DELETE FROM index_weather");
+        jdbc.update("DELETE FROM index_technical_indicator");
+        jdbc.update("DELETE FROM index_daily");
+        jdbc.update("DELETE FROM index_series");
+        jdbc.update("DELETE FROM market_index");
         jdbc.update("DELETE FROM stock_ai_analysis");
         jdbc.update("DELETE FROM stock_technical_indicator");
         jdbc.update("DELETE FROM stock_price_daily");
@@ -168,6 +173,36 @@ class StockAiCanonicalDataPostgresTest {
         assertThat(observations).hasSize(1);
         assertThat(observations.getFirst().tradeDate()).isEqualTo(FINAL_DATE);
         assertThat(observations.getFirst().closePrice()).isEqualByComparingTo("105");
+    }
+
+    @Test
+    void benchmark_history_uses_previous_final_close_and_keeps_only_final_rows() {
+        Long indexId = jdbc.queryForObject("""
+                INSERT INTO market_index(index_key, name, kind, public_benchmark_code)
+                VALUES ('KOSPI:history', 'KOSPI history', 'MARKET', '0001') RETURNING id
+                """, Long.class);
+        Long seriesId = jdbc.queryForObject("""
+                INSERT INTO index_series(index_id, provider, provider_namespace, provider_series_code,
+                    calendar_market_code, return_basis, dividend_basis, currency, is_canonical)
+                VALUES (?, 'KIS', 'kis.idxcode.KOSPI', '0001', 'KOSPI', 'PRICE', 'NONE', 'KRW', true)
+                RETURNING id
+                """, Long.class, indexId);
+        jdbc.update("""
+                INSERT INTO index_daily(series_id, trade_date, open_value, close_value, volume, trading_amount,
+                    price_status, price_source, collected_at)
+                VALUES (?, ?, 95, 100, 1000, 100000, 'FINAL', 'KIS:test', now()),
+                       (?, ?, 100, 105, 1100, 115000, 'FINAL', 'KIS:test', now()),
+                       (?, ?, 110, 115, 1200, 138000, 'PROVISIONAL', 'KIS:test', now())
+                """, seriesId, FIRST_DATE, seriesId, FINAL_DATE, seriesId, PROVISIONAL_DATE);
+
+        var history = new IndexDailyReadAdapter(jdbc).historyFinal("0001", FINAL_DATE, PROVISIONAL_DATE);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.getFirst().tradeDate()).isEqualTo(FINAL_DATE);
+        assertThat(history.getFirst().openPrice()).isEqualByComparingTo("100");
+        assertThat(history.getFirst().previousClosePrice()).isEqualByComparingTo("100");
+        assertThat(history.getFirst().volume()).isEqualTo(1100L);
+        assertThat(history.getFirst().tradingAmount()).isEqualByComparingTo("115000");
     }
 
     private void insertPrice(LocalDate date, String close, String status, int revision) {

@@ -24,7 +24,6 @@ import org.stockwellness.application.port.in.stock.result.MarketIndexResult.Hist
 import org.stockwellness.application.port.in.stock.result.MarketWeatherResult;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import org.stockwellness.domain.stock.insight.MarketWeatherPolicy;
@@ -39,7 +38,6 @@ import org.stockwellness.global.error.ErrorCode;
 public class MarketIndexService implements MarketIndexUseCase {
 
     private final LoadBenchmarkPort loadBenchmarkPort;
-    private final StockPricePort stockPricePort;
     private final MarketWeatherClassifier marketWeatherClassifier;
     private final SectorIndicatorRepository sectorIndicatorRepository;
 
@@ -77,7 +75,7 @@ public class MarketIndexService implements MarketIndexUseCase {
         StockPriceResult latest = prices.get(prices.size() - 1);
         BigDecimal currentPrice = latest.closePrice();
         BigDecimal fluctuationRate = latest.changeRate() != null ?
-                latest.changeRate().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                latest.changeRate().setScale(2, RoundingMode.HALF_UP) : null;
 
         BigDecimal fluctuationAmount = BigDecimal.ZERO;
         // (단순화된 변동폭 계산 생략 - 원본 로직 참조 가능)

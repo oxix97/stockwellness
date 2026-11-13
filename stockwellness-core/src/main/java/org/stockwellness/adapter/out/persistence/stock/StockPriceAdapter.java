@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.out.persistence.stock;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,11 +12,12 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
+import org.stockwellness.application.port.out.stock.IndexPriceObservation;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.MarketBreadthItem;
 import org.stockwellness.application.port.out.stock.MarketBreadthSnapshot;
@@ -31,9 +33,9 @@ import org.stockwellness.domain.stock.price.TradeDirection;
 public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, BenchmarkPricePort {
 
     private final StockPriceRepository stockPriceRepository;
-    private final BenchmarkRepository benchmarkRepository;
     private final BenchmarkPriceRepository benchmarkPriceRepository;
     private final StockPriceCacheAdapter stockPriceCacheAdapter;
+    private final IndexDailyReadPort indexDailyReadPort;
 
     @Override
     public StockPrice save(StockPrice stockPrice) {
@@ -216,11 +218,43 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
 
     @Override
     public List<StockPriceResult> loadBenchmarkPrices(String benchmarkTicker, LocalDate start, LocalDate end) {
-        return benchmarkRepository.findBenchmarkPrices(benchmarkTicker, start, end);
+        String publicCode = canonicalBenchmarkCode(benchmarkTicker);
+        if (publicCode == null) return List.of();
+        return indexDailyReadPort.historyFinal(publicCode, start, end).stream()
+                .map(observation -> toBenchmarkResult(benchmarkTicker, observation))
+                .toList();
     }
 
     @Override
     public List<StockPriceResult> loadBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end) {
-        return benchmarkRepository.findBenchmarkPricesIn(tickers, start, end);
+        if (tickers == null || tickers.isEmpty()) return List.of();
+        return tickers.stream()
+                .flatMap(ticker -> loadBenchmarkPrices(ticker, start, end).stream())
+                .sorted(Comparator.comparing(StockPriceResult::baseDate).thenComparing(StockPriceResult::ticker))
+                .toList();
+    }
+
+    private static String canonicalBenchmarkCode(String ticker) {
+        if (ticker == null || ticker.isBlank()) return null;
+        String normalized = ticker.toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "^KS11" -> "0001";
+            case "^KQ11" -> "1001";
+            case "^GSPC" -> "SPX";
+            case "0001", "1001", "2001", "3003", "SPX", "NDX", ".DJI" -> normalized;
+            default -> null;
+        };
+    }
+
+    private static StockPriceResult toBenchmarkResult(String ticker, IndexPriceObservation observation) {
+        BigDecimal close = observation.closePrice();
+        BigDecimal previousClose = observation.previousClosePrice();
+        BigDecimal changeRate = close == null || previousClose == null || previousClose.signum() <= 0
+                ? null
+                : close.subtract(previousClose).divide(previousClose, 8, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+        return new StockPriceResult(observation.tradeDate(), observation.openPrice(), observation.highPrice(),
+                observation.lowPrice(), close, close, observation.volume(), observation.tradingAmount(),
+                close, close, close, close, changeRate, ticker);
     }
 }

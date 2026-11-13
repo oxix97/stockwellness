@@ -20,7 +20,6 @@ import org.stockwellness.application.port.in.stock.result.MarketDashboardResult;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,9 +36,6 @@ class MarketIndexServiceTest {
     private LoadBenchmarkPort loadBenchmarkPort;
 
     @Mock
-    private StockPricePort stockPricePort;
-
-    @Mock
     private SectorIndicatorRepository sectorIndicatorRepository;
 
     private MarketIndexService marketIndexService;
@@ -50,7 +46,6 @@ class MarketIndexServiceTest {
         MarketWeatherClassifier marketWeatherClassifier = new MarketWeatherClassifier(marketWeatherFactory);
         marketIndexService = new MarketIndexService(
                 loadBenchmarkPort,
-                stockPricePort,
                 marketWeatherClassifier,
                 sectorIndicatorRepository
         );
@@ -64,7 +59,7 @@ class MarketIndexServiceTest {
         // 벤치마크 데이터 모킹
         List<StockPriceResult> mockPrices = new ArrayList<>();
         for (BenchmarkType type : BenchmarkType.values()) {
-            mockPrices.add(priceResult(baseDate, "1.00", type.getTicker()));
+            mockPrices.add(priceResult(baseDate, type == BenchmarkType.KOSPI ? null : "1.00", type.getTicker()));
         }
 
         given(loadBenchmarkPort.loadBenchmarkPricesIn(anyList(), any(), any())).willReturn(mockPrices);
@@ -91,6 +86,8 @@ class MarketIndexServiceTest {
         MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
         
         assertThat(dashboard.indexes()).hasSize(BenchmarkType.values().length);
+        assertThat(dashboard.indexes().stream().filter(index -> index.ticker().equals("0001")).findFirst()
+                .orElseThrow().fluctuationRate()).isNull();
         // Default integrated score for history < 5 is 50 -> CLOUDY
         assertThat(dashboard.weather().weatherLevel()).isEqualTo(MarketWeatherLevel.CLOUDY);
     }
@@ -115,7 +112,7 @@ class MarketIndexServiceTest {
                 1000L,
                 BigDecimal.ZERO,
                 null, null, null, null,
-                new BigDecimal(changeRate),
+                changeRate == null ? null : new BigDecimal(changeRate),
                 ticker
         );
     }
