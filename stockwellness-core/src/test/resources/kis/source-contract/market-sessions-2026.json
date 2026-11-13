@@ -1,0 +1,23 @@
+{
+  "source_date": "2026-11-13",
+  "markets": {
+    "KOSPI": {
+      "timezone": "Asia/Seoul",
+      "source": "https://regulation.krx.co.kr/contents/RGL/03/03010100/RGL03010100T1.jsp",
+      "sessions": [
+        {"date":"2026-05-01","is_trading_day":false,"reason":"Labor Day","open_local":null,"close_local":null,"open_utc":null,"close_utc":null},
+        {"date":"2026-05-04","is_trading_day":true,"reason":"regular session","open_local":"09:00","close_local":"15:30","open_utc":"2026-05-04T00:00:00Z","close_utc":"2026-05-04T06:30:00Z"}
+      ]
+    },
+    "US_EQUITY": {
+      "timezone": "America/New_York",
+      "source": "https://www.nasdaq.com/market-activity/stock-market-holiday-schedule",
+      "sessions": [
+        {"date":"2026-03-06","is_trading_day":true,"reason":"regular session before DST","open_local":"09:30","close_local":"16:00","open_utc":"2026-03-06T14:30:00Z","close_utc":"2026-03-06T21:00:00Z"},
+        {"date":"2026-03-09","is_trading_day":true,"reason":"regular session after DST","open_local":"09:30","close_local":"16:00","open_utc":"2026-03-09T13:30:00Z","close_utc":"2026-03-09T20:00:00Z"},
+        {"date":"2026-04-03","is_trading_day":false,"reason":"Good Friday","open_local":null,"close_local":null,"open_utc":null,"close_utc":null},
+        {"date":"2026-11-27","is_trading_day":true,"reason":"early close after Thanksgiving","open_local":"09:30","close_local":"13:00","open_utc":"2026-11-27T14:30:00Z","close_utc":"2026-11-27T18:00:00Z"}
+      ]
+    }
+  }
+}

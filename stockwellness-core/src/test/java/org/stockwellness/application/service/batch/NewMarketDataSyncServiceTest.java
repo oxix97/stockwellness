@@ -8,9 +8,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -222,6 +229,70 @@ class NewMarketDataSyncServiceTest {
         verify(indexPrices, never()).fetchRawIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         verify(indexDaily, never()).upsert(anyList());
+    }
+
+    @Test
+    void successful_post_close_kis_sample_without_finality_flag_stays_provisional() throws IOException {
+        var resource = getClass().getResourceAsStream("/kis/source-contract/domestic-daily-success.json");
+        assertThat(resource).as("sanitized KIS response fixture").isNotNull();
+        var mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        var fixture = mapper.readTree(resource);
+        var response = fixture.path("response");
+        assertThat(response.path("rt_cd").asText()).isEqualTo("0");
+        var row = mapper.treeToValue(response.path("output2").get(0), KisDailyPriceDetail.class);
+        assertThat(row.baseDate()).isEqualTo(LocalDate.of(2026, 11, 12));
+        assertThat(row.modYn()).isEqualTo("N");
+        assertThat(Instant.parse(fixture.path("collected_at").asText()))
+                .isAfter(row.baseDate().atTime(LocalTime.of(15, 30)).atZone(ZoneId.of("Asia/Seoul")).toInstant());
+
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", row.baseDate(), row.baseDate())).willReturn(List.of(
+                TradingCalendar.of("KOSPI", row.baseDate(), true, null, null, "KIS:CTCA0903R")));
+        given(prices.fetchDailyPrices(stock, row.baseDate(), row.baseDate())).willReturn(List.of(row));
+        given(prices.fetchAdjustedDailyPrices(stock, row.baseDate(), row.baseDate())).willReturn(List.of());
+
+        service.syncStockPrices(stock, row.baseDate(), row.baseDate());
+
+        ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
+        verify(eod).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(price ->
+                assertThat(price.getDataStatus()).isEqualTo("PROVISIONAL"));
+    }
+
+    @Test
+    void verified_market_sessions_cover_krx_holiday_us_dst_and_early_close() throws IOException {
+        var resource = getClass().getResourceAsStream("/kis/source-contract/market-sessions-2026.json");
+        assertThat(resource).as("official exchange session fixture").isNotNull();
+        var fixture = new ObjectMapper().readTree(resource);
+
+        var krxHoliday = session(fixture, "KOSPI", "2026-05-01");
+        assertThat(krxHoliday.path("is_trading_day").asBoolean()).isFalse();
+        assertThat(krxHoliday.path("open_local").isNull()).isTrue();
+        var krxOpen = session(fixture, "KOSPI", "2026-05-04");
+        assertThat(krxOpen.path("close_local").asText()).isEqualTo("15:30");
+        assertThat(session(fixture, "US_EQUITY", "2026-04-03").path("is_trading_day").asBoolean()).isFalse();
+        assertThat(session(fixture, "US_EQUITY", "2026-11-27").path("close_local").asText()).isEqualTo("13:00");
+        assertThat(session(fixture, "US_EQUITY", "2026-03-06").path("open_utc").asText()).isEqualTo("2026-03-06T14:30:00Z");
+        assertThat(session(fixture, "US_EQUITY", "2026-03-09").path("open_utc").asText()).isEqualTo("2026-03-09T13:30:00Z");
+
+        for (JsonNode market : fixture.path("markets")) {
+            ZoneId zone = ZoneId.of(market.path("timezone").asText());
+            for (JsonNode day : market.path("sessions")) {
+                if (!day.path("is_trading_day").asBoolean()) continue;
+                LocalDate date = LocalDate.parse(day.path("date").asText());
+                assertThat(date.atTime(LocalTime.parse(day.path("open_local").asText())).atZone(zone).toInstant())
+                        .isEqualTo(Instant.parse(day.path("open_utc").asText()));
+                assertThat(date.atTime(LocalTime.parse(day.path("close_local").asText())).atZone(zone).toInstant())
+                        .isEqualTo(Instant.parse(day.path("close_utc").asText()));
+            }
+        }
+    }
+
+    private static JsonNode session(JsonNode fixture, String market, String date) {
+        for (JsonNode day : fixture.path("markets").path(market).path("sessions")) {
+            if (date.equals(day.path("date").asText())) return day;
+        }
+        throw new AssertionError("Missing session fixture: " + market + " " + date);
     }
 
     private static Stock stock() {
