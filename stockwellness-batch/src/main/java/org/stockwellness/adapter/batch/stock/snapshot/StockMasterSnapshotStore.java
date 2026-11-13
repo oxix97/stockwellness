@@ -60,7 +60,7 @@ public class StockMasterSnapshotStore {
                     completenessStatus
             );
         } catch (IOException exception) {
-            throw new IllegalStateException("Could not stage stock master snapshot", exception);
+            throw new IllegalStateException("Could not stage stock master snapshot at " + executionDirectory, exception);
         } finally {
             if (temporaryFile != null) {
                 try {

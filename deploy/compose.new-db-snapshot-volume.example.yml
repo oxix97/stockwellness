@@ -1,0 +1,10 @@
+# Review-only overlay for the new DB Batch service; this file is not applied by this task.
+services:
+  stockwellness-batch:
+    environment:
+      STOCK_MASTER_STAGING_DIRECTORY: /app/data/stock-master-snapshots
+    volumes:
+      - stock_master_snapshots:/app/data/stock-master-snapshots
+
+volumes:
+  stock_master_snapshots:
