@@ -235,11 +235,11 @@ class NewMarketDataBatchConfigIntegrationTest {
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         assertThat(execution.getStepExecutions()).singleElement()
                 .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(2));
-        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily where index_id in (?, ?)",
+        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?)",
                 Integer.class, kospi.getId(), kosdaq.getId())).isEqualTo(4);
-        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily where index_id in (?, ?) and price_status = 'PROVISIONAL'",
+        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?) and d.price_status = 'PROVISIONAL'",
                 Integer.class, kospi.getId(), kosdaq.getId())).isEqualTo(2);
-        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily where index_id in (?, ?) and price_status = 'INCOMPLETE'",
+        assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?) and d.price_status = 'INCOMPLETE'",
                 Integer.class, kospi.getId(), kosdaq.getId())).isEqualTo(2);
         verify(kisDailyPriceAdapter, org.mockito.Mockito.times(2))
                 .fetchRawIndexDailyPrices(any(), eq(START_DATE), eq(END_DATE));
