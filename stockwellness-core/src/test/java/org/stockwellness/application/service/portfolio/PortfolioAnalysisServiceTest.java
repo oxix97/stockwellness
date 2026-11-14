@@ -22,7 +22,6 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalanci
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -64,9 +63,6 @@ class PortfolioAnalysisServiceTest {
     private StockPricePort stockPricePort;
 
     @Mock
-    private BenchmarkPricePort benchmarkPricePort;
-
-    @Mock
     private LoadBenchmarkPort loadBenchmarkPort;
 
     @Mock
@@ -80,6 +76,25 @@ class PortfolioAnalysisServiceTest {
 
     private static final Long MEMBER_ID = 1L;
     private static final Long PORTFOLIO_ID = 100L;
+
+    @Test
+    @DisplayName("벤치마크 수익률은 새 구조의 기준일 이전 FINAL 종가로 계산한다")
+    void calculateBenchmarkReturn_usesCanonicalFinalBenchmarkPrices() {
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 1, 31);
+        given(loadBenchmarkPort.loadBenchmarkPriceAtOrBefore("0001", startDate))
+                .willReturn(Optional.of(new StockPriceResult(startDate.minusDays(1), null, null, null,
+                        new BigDecimal("100"), new BigDecimal("100"), null, null, null, null, null, null)));
+        given(loadBenchmarkPort.loadBenchmarkPriceAtOrBefore("0001", endDate))
+                .willReturn(Optional.of(new StockPriceResult(endDate.minusDays(1), null, null, null,
+                        new BigDecimal("110"), new BigDecimal("110"), null, null, null, null, null, null)));
+
+        BigDecimal result = portfolioAnalysisService.calculateBenchmarkReturn("0001", startDate, endDate);
+
+        assertThat(result).isEqualByComparingTo("10.0");
+        verify(loadBenchmarkPort).loadBenchmarkPriceAtOrBefore("0001", startDate);
+        verify(loadBenchmarkPort).loadBenchmarkPriceAtOrBefore("0001", endDate);
+    }
 
     @Test
     @DisplayName("포트폴리오 가치 평가: 주식과 현금이 포함된 포트폴리오의 총 평가액 및 수익률을 계산한다")

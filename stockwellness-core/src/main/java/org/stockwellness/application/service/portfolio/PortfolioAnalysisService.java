@@ -16,7 +16,6 @@ import org.stockwellness.application.port.in.portfolio.command.BacktestPortfolio
 import org.stockwellness.application.port.in.portfolio.result.*;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -28,7 +27,6 @@ import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.Country;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.ChartPeriod;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
@@ -50,7 +48,6 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     private final PortfolioPort portfolioPort;
     private final StockPort stockPort;
     private final StockPricePort stockPricePort;
-    private final BenchmarkPricePort benchmarkPricePort;
     private final LoadBenchmarkPort loadBenchmarkPort;
     private final BacktestEngine backtestEngine;
     private final PortfolioCorrelationCalculator correlationCalculator;
@@ -401,12 +398,12 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     }
 
     public BigDecimal calculateBenchmarkReturn(String ticker, LocalDate startDate, LocalDate endDate) {
-        Optional<BenchmarkPrice> startPrice = benchmarkPricePort.findLatestBefore(ticker, startDate.plusDays(1));
-        Optional<BenchmarkPrice> endPrice = benchmarkPricePort.findLatestBefore(ticker, endDate.plusDays(1));
+        Optional<StockPriceResult> startPrice = loadBenchmarkPort.loadBenchmarkPriceAtOrBefore(ticker, startDate);
+        Optional<StockPriceResult> endPrice = loadBenchmarkPort.loadBenchmarkPriceAtOrBefore(ticker, endDate);
 
         if (startPrice.isPresent() && endPrice.isPresent()) {
-            BigDecimal startVal = startPrice.get().getClosePrice();
-            BigDecimal endVal = endPrice.get().getClosePrice();
+            BigDecimal startVal = startPrice.get().closePrice();
+            BigDecimal endVal = endPrice.get().closePrice();
             if (startVal.compareTo(BigDecimal.ZERO) > 0) {
                 return FinanceCalculationUtil.calculateRate(endVal.subtract(startVal), startVal);
             }
