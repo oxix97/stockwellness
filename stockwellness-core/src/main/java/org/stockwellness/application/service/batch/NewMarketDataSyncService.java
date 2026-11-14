@@ -3,6 +3,7 @@ package org.stockwellness.application.service.batch;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,8 +38,18 @@ import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 @Service
 @RequiredArgsConstructor
 public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
+    private static final int FIRST_VERIFIED_KRX_YEAR = 2025;
+    private static final int LAST_VERIFIED_KRX_YEAR = 2026;
     private static final String STOCK_API = "FHKST03010100";
     private static final String INDEX_API = "FHKUP03500100";
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+    private static final LocalTime KRX_REGULAR_OPEN = LocalTime.of(9, 0);
+    private static final LocalTime KRX_REGULAR_CLOSE = LocalTime.of(15, 30);
+    private static final Map<LocalDate, KrxSessionHours> KRX_SESSION_OVERRIDES = Map.of(
+            LocalDate.of(2025, 1, 2), new KrxSessionHours(LocalTime.of(10, 0), KRX_REGULAR_CLOSE),
+            LocalDate.of(2026, 1, 2), new KrxSessionHours(LocalTime.of(10, 0), KRX_REGULAR_CLOSE),
+            LocalDate.of(2025, 11, 13), new KrxSessionHours(LocalTime.of(10, 0), LocalTime.of(16, 30)),
+            LocalDate.of(2026, 11, 19), new KrxSessionHours(LocalTime.of(10, 0), LocalTime.of(16, 30)));
     private static final int STOCK_MAX_ROWS = 100;
     private static final int INDEX_MAX_ROWS = 50;
     private static final int PRICE_PRECISION = 19;
@@ -52,7 +63,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     private final TradingCalendarPort tradingCalendarPort;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void syncTradingCalendar(LocalDate baseDate) {
         if (baseDate == null) throw new IllegalArgumentException("KIS holiday base date is required");
         List<KisHolidayEntry> response = kisHolidayPort.fetchHolidays(baseDate);
@@ -66,8 +77,20 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 throw new IllegalArgumentException("KIS calendar response contains an invalid or duplicate row");
             }
             boolean open = "Y".equals(row.marketOpen());
-            records.add(TradingCalendar.of("KOSPI", date, open, null, null, "KIS:CTCA0903R"));
-            records.add(TradingCalendar.of("KOSDAQ", date, open, null, null, "KIS:CTCA0903R"));
+            if (open && (date.getYear() < FIRST_VERIFIED_KRX_YEAR || date.getYear() > LAST_VERIFIED_KRX_YEAR)) {
+                throw new IllegalStateException("No verified KRX session hours for open date " + date);
+            }
+            KrxSessionHours hours = KRX_SESSION_OVERRIDES.getOrDefault(date,
+                    new KrxSessionHours(KRX_REGULAR_OPEN, KRX_REGULAR_CLOSE));
+            LocalTime openTime = hours.open();
+            var opensAt = open ? date.atTime(openTime).atZone(KOREA_ZONE).toOffsetDateTime() : null;
+            var closesAt = open ? date.atTime(hours.close()).atZone(KOREA_ZONE).toOffsetDateTime() : null;
+            String sessionSource = KRX_SESSION_OVERRIDES.containsKey(date)
+                    ? "KRX:OFFICIAL_OVERRIDE" : "KRX:REGULAR";
+            records.add(TradingCalendar.of("KOSPI", date, open, opensAt, closesAt,
+                    "KIS:CTCA0903R|" + sessionSource));
+            records.add(TradingCalendar.of("KOSDAQ", date, open, opensAt, closesAt,
+                    "KIS:CTCA0903R|" + sessionSource));
         }
         if (!dates.contains(baseDate)) throw new IllegalArgumentException("KIS calendar response omitted the requested base date");
         tradingCalendarPort.upsert(records);
@@ -79,6 +102,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
         validateRange(stock, startDate, endDate);
         if (stock.getStatus() == StockStatus.DELISTED) throw new IllegalArgumentException("Delisted stock cannot be collected");
         List<LocalDate> openDates = verifiedOpenDates(stock.getMarketCode(), startDate, endDate);
+        boolean incomplete = false;
         for (List<LocalDate> chunk : calendarWindows(openDates, startDate, endDate, STOCK_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
             LocalDate to = chunk.getLast();
@@ -107,6 +131,11 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
             List<StockPriceAdjustment> adjustments = adjustedPrices(stock, from, to, requestedDates,
                     LocalDate.now(ZoneId.of("Asia/Seoul")));
             eodStockPricePort.upsertObservations(records, adjustments);
+            incomplete |= records.stream().anyMatch(record -> "INCOMPLETE".equals(record.getDataStatus()));
+        }
+        if (incomplete) {
+            throw new IllegalStateException("KIS stock price source returned incomplete observations for "
+                    + stock.getTicker() + " in " + startDate + ".." + endDate);
         }
     }
 
@@ -132,7 +161,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void syncIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate) {
         validateRange(series, startDate, endDate);
         if (!"KIS".equals(series.getProvider()) || !series.isActive() || !series.isCanonical()
@@ -176,6 +205,10 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
             }
         }
         indexDailyPort.upsert(records);
+        if (records.stream().anyMatch(record -> record.getPriceStatus() == BenchmarkDataStatus.INCOMPLETE)) {
+            throw new IllegalStateException("KIS index price source returned incomplete observations for "
+                    + series.getProviderSeriesCode() + " in " + startDate + ".." + endDate);
+        }
     }
 
     private List<LocalDate> verifiedOpenDates(String marketCode, LocalDate startDate, LocalDate endDate) {
@@ -217,7 +250,10 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
         catch (java.time.DateTimeException ex) { return null; }
     }
 
+    private record KrxSessionHours(LocalTime open, LocalTime close) {}
+
     private static boolean present(BigDecimal value) { return value != null; }
+
     private static BigDecimal decimal(String value) {
         if (value == null || value.isBlank()) return null;
         try { return new BigDecimal(value.trim()); }

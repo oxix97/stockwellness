@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisHolidayEntry;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.external.kis.KisHolidayPort;
 import org.stockwellness.application.port.out.external.kis.KisIndexPricePort;
@@ -32,6 +34,7 @@ import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexDaily;
 import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.price.EodStockPrice;
 
@@ -47,6 +50,114 @@ class NewMarketDataSyncServiceTest {
 
     @BeforeEach void setUp() {
         service = new NewMarketDataSyncService(prices, indexPrices, holidays, eod, indexDaily, calendar);
+    }
+
+    @Test
+    void trading_calendar_persists_verified_krx_regular_session_times() {
+        LocalDate openDate = LocalDate.of(2026, 11, 16);
+        LocalDate closedDate = openDate.plusDays(1);
+        given(holidays.fetchHolidays(openDate)).willReturn(List.of(
+                new KisHolidayEntry("20261116", "Y"), new KisHolidayEntry("20261117", "N")));
+
+        service.syncTradingCalendar(openDate);
+
+        ArgumentCaptor<List<TradingCalendar>> saved = ArgumentCaptor.forClass(List.class);
+        verify(calendar).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(4);
+        assertThat(saved.getValue()).filteredOn(day -> day.getTradeDate().equals(openDate))
+                .allSatisfy(day -> {
+                    assertThat(day.isTradingDay()).isTrue();
+                    assertThat(day.getOpensAt()).isEqualTo(OffsetDateTime.parse("2026-11-16T09:00+09:00"));
+                    assertThat(day.getClosesAt()).isEqualTo(OffsetDateTime.parse("2026-11-16T15:30+09:00"));
+                });
+        assertThat(saved.getValue()).filteredOn(day -> day.getTradeDate().equals(closedDate))
+                .allSatisfy(day -> {
+                    assertThat(day.isTradingDay()).isFalse();
+                    assertThat(day.getOpensAt()).isNull();
+                    assertThat(day.getClosesAt()).isNull();
+                });
+    }
+
+    @Test
+    void trading_calendar_persists_the_verified_delayed_new_year_open() {
+        LocalDate openDate = LocalDate.of(2026, 1, 2);
+        given(holidays.fetchHolidays(openDate)).willReturn(List.of(
+                new KisHolidayEntry("20260102", "Y")));
+
+        service.syncTradingCalendar(openDate);
+
+        ArgumentCaptor<List<TradingCalendar>> saved = ArgumentCaptor.forClass(List.class);
+        verify(calendar).upsert(saved.capture());
+        assertThat(saved.getValue()).filteredOn(day -> day.getMarketCode().equals("KOSPI"))
+                .singleElement().satisfies(day -> {
+                    assertThat(day.getOpensAt()).isEqualTo(OffsetDateTime.parse("2026-01-02T10:00+09:00"));
+                    assertThat(day.getClosesAt()).isEqualTo(OffsetDateTime.parse("2026-01-02T15:30+09:00"));
+                });
+    }
+
+    @Test
+    void trading_calendar_persists_the_verified_2025_delayed_new_year_open() {
+        LocalDate openDate = LocalDate.of(2025, 1, 2);
+        given(holidays.fetchHolidays(openDate)).willReturn(List.of(
+                new KisHolidayEntry("20250102", "Y")));
+
+        service.syncTradingCalendar(openDate);
+
+        ArgumentCaptor<List<TradingCalendar>> saved = ArgumentCaptor.forClass(List.class);
+        verify(calendar).upsert(saved.capture());
+        assertThat(saved.getValue()).filteredOn(day -> day.getMarketCode().equals("KOSDAQ"))
+                .singleElement().satisfies(day -> {
+                    assertThat(day.getOpensAt()).isEqualTo(OffsetDateTime.parse("2025-01-02T10:00+09:00"));
+                    assertThat(day.getClosesAt()).isEqualTo(OffsetDateTime.parse("2025-01-02T15:30+09:00"));
+                });
+    }
+
+    @Test
+    void trading_calendar_persists_the_verified_2025_exam_day_session() {
+        LocalDate examDate = LocalDate.of(2025, 11, 13);
+        given(holidays.fetchHolidays(examDate)).willReturn(List.of(
+                new KisHolidayEntry("20251113", "Y")));
+
+        service.syncTradingCalendar(examDate);
+
+        ArgumentCaptor<List<TradingCalendar>> saved = ArgumentCaptor.forClass(List.class);
+        verify(calendar).upsert(saved.capture());
+        assertThat(saved.getValue()).filteredOn(day -> day.getMarketCode().equals("KOSPI"))
+                .singleElement().satisfies(day -> {
+                    assertThat(day.getOpensAt()).isEqualTo(OffsetDateTime.parse("2025-11-13T10:00+09:00"));
+                    assertThat(day.getClosesAt()).isEqualTo(OffsetDateTime.parse("2025-11-13T16:30+09:00"));
+                });
+    }
+
+    @Test
+    void trading_calendar_persists_the_verified_2026_exam_day_session() {
+        LocalDate examDate = LocalDate.of(2026, 11, 19);
+        given(holidays.fetchHolidays(examDate)).willReturn(List.of(
+                new KisHolidayEntry("20261119", "Y")));
+
+        service.syncTradingCalendar(examDate);
+
+        ArgumentCaptor<List<TradingCalendar>> saved = ArgumentCaptor.forClass(List.class);
+        verify(calendar).upsert(saved.capture());
+        assertThat(saved.getValue()).filteredOn(day -> day.getMarketCode().equals("KOSDAQ"))
+                .singleElement().satisfies(day -> {
+                    assertThat(day.getOpensAt()).isEqualTo(OffsetDateTime.parse("2026-11-19T10:00+09:00"));
+                    assertThat(day.getClosesAt()).isEqualTo(OffsetDateTime.parse("2026-11-19T16:30+09:00"));
+                    assertThat(day.getSource()).isEqualTo("KIS:CTCA0903R|KRX:OFFICIAL_OVERRIDE");
+                });
+    }
+
+    @Test
+    void trading_calendar_rejects_open_dates_outside_the_reviewed_krx_schedule() {
+        LocalDate openDate = LocalDate.of(2027, 1, 4);
+        given(holidays.fetchHolidays(openDate)).willReturn(List.of(
+                new KisHolidayEntry("20270104", "Y")));
+
+        assertThatThrownBy(() -> service.syncTradingCalendar(openDate))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("verified KRX session hours");
+
+        verify(calendar, never()).upsert(anyList());
     }
 
     @Test
@@ -87,14 +198,16 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
-    void missing_open_day_response_is_persisted_as_incomplete_instead_of_zero() {
+    void missing_open_day_response_is_persisted_as_incomplete_and_fails_the_collection() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
         given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
                 TradingCalendar.of("KOSPI", date, true, null, null, "test")));
         given(prices.fetchDailyPrices(stock, date, date)).willReturn(List.of());
 
-        service.syncStockPrices(stock, date, date);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, date, date))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("incomplete");
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
         verify(eod).upsertObservations(saved.capture(), anyList());
@@ -106,7 +219,7 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
-    void partial_quote_keeps_missing_values_null_and_marks_incomplete() {
+    void partial_quote_is_persisted_with_null_missing_values_and_fails_the_collection() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
         given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
@@ -115,7 +228,9 @@ class NewMarketDataSyncServiceTest {
                 new KisDailyPriceDetail(date, new BigDecimal("10"), null, new BigDecimal("8"),
                         new BigDecimal("9"), 10L, new BigDecimal("100"), null, null, "N", null, null, null)));
 
-        service.syncStockPrices(stock, date, date);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, date, date))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("incomplete");
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
         verify(eod).upsertObservations(saved.capture(), anyList());
@@ -143,7 +258,7 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
-    void stock_requests_are_split_into_at_most_one_hundred_calendar_day_windows() {
+    void stock_requests_are_split_into_at_most_one_hundred_calendar_day_windows_before_incomplete_failure() {
         LocalDate start = LocalDate.of(2026, 1, 1);
         LocalDate middle = start.plusDays(99);
         LocalDate end = start.plusDays(100);
@@ -155,12 +270,15 @@ class NewMarketDataSyncServiceTest {
         given(prices.fetchDailyPrices(stock, start, middle)).willReturn(List.of());
         given(prices.fetchDailyPrices(stock, end, end)).willReturn(List.of());
 
-        service.syncStockPrices(stock, start, end);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, start, end))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("incomplete");
 
         verify(prices).fetchDailyPrices(stock, start, middle);
         verify(prices).fetchDailyPrices(stock, end, end);
         verify(prices, times(2)).fetchDailyPrices(org.mockito.ArgumentMatchers.eq(stock),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(eod, times(2)).upsertObservations(org.mockito.ArgumentMatchers.anyList(), anyList());
     }
 
     @Test
@@ -219,6 +337,27 @@ class NewMarketDataSyncServiceTest {
         verify(indexPrices, never()).fetchRawIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         verify(indexDaily, never()).upsert(anyList());
+    }
+
+    @Test
+    void missing_open_day_index_response_is_persisted_as_incomplete_and_fails_the_collection() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        IndexSeries series = new IndexSeries(MarketIndex.of("0001", "코스피", "0"), "KIS",
+                "kis.idxcode.KOSPI", "0001", "KOSPI", "PRICE", "NONE", "KRW", true);
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "test")));
+        given(indexPrices.fetchRawIndexDailyPrices("0001", date, date)).willReturn(List.of());
+
+        assertThatThrownBy(() -> service.syncIndexPrices(series, date, date))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("incomplete");
+
+        ArgumentCaptor<List<IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
+            assertThat(row.getClosePrice()).isNull();
+        });
     }
 
     private static Stock stock() {
