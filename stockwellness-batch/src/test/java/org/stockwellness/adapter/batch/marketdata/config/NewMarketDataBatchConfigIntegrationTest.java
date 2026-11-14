@@ -3,8 +3,11 @@ package org.stockwellness.adapter.batch.marketdata.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.clearInvocations;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -136,9 +139,39 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @AfterEach
-    void removeStockMasterJobFixtures() {
-        stockRepository.findByTickerAndMarketCode("910001", "KOSPI").ifPresent(stockRepository::delete);
-        stockRepository.findByTickerAndMarketCode("910002", "KOSDAQ").ifPresent(stockRepository::delete);
+    void removeBatchJobFixtures() {
+        jdbcTemplate.update("""
+                delete from stock_price_daily
+                where stock_id in (select id from stock where ticker in ('005930', '999999', '910001', '910002', '919993'))
+                """);
+        jdbcTemplate.update("""
+                delete from index_daily
+                where series_id in (
+                    select id from index_series where provider = 'KIS' and (
+                        (provider_namespace = 'kis.idxcode.KOSPI' and provider_series_code in ('0001', '0027', '9099'))
+                        or (provider_namespace = 'kis.total-return' and provider_series_code = '0001.TR')
+                        or (provider_namespace = 'kis.backup.KOSDAQ' and provider_series_code = '1001.BAK')
+                        or (provider_namespace = 'kis.idxcode.KOSDAQ' and provider_series_code = '1001')
+                        or (provider_namespace = 'kis.ovrs.idxcode.N' and provider_series_code = 'SPX')
+                    )
+                )
+                """);
+        jdbcTemplate.update("""
+                delete from index_series where provider = 'KIS' and (
+                    (provider_namespace = 'kis.idxcode.KOSPI' and provider_series_code in ('0001', '0027', '9099'))
+                    or (provider_namespace = 'kis.total-return' and provider_series_code = '0001.TR')
+                    or (provider_namespace = 'kis.backup.KOSDAQ' and provider_series_code = '1001.BAK')
+                    or (provider_namespace = 'kis.idxcode.KOSDAQ' and provider_series_code = '1001')
+                    or (provider_namespace = 'kis.ovrs.idxcode.N' and provider_series_code = 'SPX')
+                )
+                """);
+        jdbcTemplate.update("""
+                delete from market_index where index_key in ('KOSPI:0001', 'KOSDAQ:1001', 'KOSPI:0027', 'KOSPI:9099', 'SPX')
+                """);
+        for (String ticker : List.of("005930", "999999", "910001", "910002", "919993")) {
+            stockRepository.findByTickerAndMarketCode(ticker,
+                    ticker.equals("910002") ? "KOSDAQ" : "KOSPI").ifPresent(stockRepository::delete);
+        }
     }
 
     @Test
@@ -256,28 +289,47 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
-    void derived_data_job_dispatches_stock_and_index_targets_to_the_use_case() throws Exception {
+    void derived_data_job_dispatches_only_the_requested_markets_targets_to_the_use_case() throws Exception {
         Stock stock = stockAdapter.save(Stock.of("919993", "KR7919993000", "파생 테스트 종목",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
         MarketIndex index = marketIndexRepository.saveAndFlush(MarketIndex.of("9099", "파생 테스트 지수", "0"));
-        IndexSeries series = indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.test", "9099",
+        IndexSeries series = indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.idxcode.KOSPI", "9099",
                 "KOSPI", "PRICE", "NONE", "KRW", true));
         MarketIndex usIndex = marketIndexRepository.saveAndFlush(MarketIndex.of("SPX", "S&P 500"));
-        IndexSeries usSeries = indexSeriesRepository.saveAndFlush(new IndexSeries(usIndex, "KIS", "kis.test.us", "SPX",
+        jdbcTemplate.update("update market_index set kind = 'MARKET' where id = ?", usIndex.getId());
+        IndexSeries usSeries = indexSeriesRepository.saveAndFlush(new IndexSeries(usIndex, "KIS", "kis.ovrs.idxcode.N", "SPX",
                 "NYSE", "PRICE", "NONE", "USD", true));
         try {
-            JobExecution execution = jobLauncher.run(marketDerivedDataJob,
-                    parameters("targetDate", START_DATE.toString()));
+            JobExecution krExecution = jobLauncher.run(marketDerivedDataJob, new JobParametersBuilder()
+                    .addString("market", "KR")
+                    .addString("targetDate", START_DATE.toString())
+                    .addString("run.id", UUID.randomUUID().toString())
+                    .toJobParameters());
 
-            assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
-            assertThat(execution.getStepExecutions()).hasSize(2);
+            assertThat(krExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(krExecution.getStepExecutions()).extracting(step -> step.getReadCount())
+                    .containsExactly(1L, 1L);
             verify(derivedDataUseCase).calculateStockIndicators(stock.getId(), "KRX", START_DATE);
             verify(derivedDataUseCase).calculateIndexIndicators(series.getId(), START_DATE);
             verify(derivedDataUseCase).calculateIndexWeather(series.getId(), START_DATE);
             verify(derivedDataUseCase).calculateSectorLeadingStocks(series.getId(), START_DATE);
+            verify(derivedDataUseCase, never()).calculateIndexIndicators(usSeries.getId(), START_DATE);
+
+            clearInvocations(derivedDataUseCase);
+            JobExecution usExecution = jobLauncher.run(marketDerivedDataJob, new JobParametersBuilder()
+                    .addString("market", "US")
+                    .addString("targetDate", START_DATE.toString())
+                    .addString("run.id", UUID.randomUUID().toString())
+                    .toJobParameters());
+
+            assertThat(usExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(usExecution.getStepExecutions()).extracting(step -> step.getReadCount())
+                    .containsExactly(0L, 1L);
+            verify(derivedDataUseCase, never()).calculateStockIndicators(anyLong(), any(), any());
+            verify(derivedDataUseCase, never()).calculateIndexIndicators(series.getId(), START_DATE);
             verify(derivedDataUseCase).calculateIndexIndicators(usSeries.getId(), START_DATE);
             verify(derivedDataUseCase).calculateIndexWeather(usSeries.getId(), START_DATE);
-            verify(derivedDataUseCase).calculateSectorLeadingStocks(usSeries.getId(), START_DATE);
+            verify(derivedDataUseCase, never()).calculateSectorLeadingStocks(usSeries.getId(), START_DATE);
         } finally {
             indexSeriesRepository.delete(usSeries);
             indexSeriesRepository.delete(series);

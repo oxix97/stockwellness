@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.batch.marketdata.config;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.stockwellness.application.port.in.batch.MarketDerivedDataUseCase;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.insight.IndexSeries;
+import org.stockwellness.domain.stock.insight.MarketIndexKind;
 
 @Configuration
 @RequiredArgsConstructor
@@ -47,11 +49,13 @@ public class MarketDerivedDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> derivedStockReader() {
+    public JpaPagingItemReader<Stock> derivedStockReader(@Value("#{jobParameters['market']}") String market) {
+        String normalizedMarket = normalizeMarket(market);
         return new JpaPagingItemReaderBuilder<Stock>().name("derivedStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED)).build();
+                .queryString("select s from Stock s where :market = 'KR' "
+                        + "and s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
+                .parameterValues(Map.of("market", normalizedMarket, "delisted", StockStatus.DELISTED)).build();
     }
 
     @Bean
@@ -75,24 +79,55 @@ public class MarketDerivedDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<IndexSeries> derivedIndexSeriesReader() {
+    public JpaPagingItemReader<IndexSeries> derivedIndexSeriesReader(
+            @Value("#{jobParameters['market']}") String market) {
+        String normalizedMarket = normalizeMarket(market);
+        String marketPredicate = switch (normalizedMarket) {
+            case "KR" -> "(:market = 'KR' and s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
+                    + "and s.calendarMarketCode in ('KOSPI','KOSDAQ') and s.currency = 'KRW' "
+                    + "and i.kind in (:marketKind, :sectorKind))";
+            case "US" -> "(:market = 'US' and s.providerNamespace = 'kis.ovrs.idxcode.N' "
+                    + "and s.providerSeriesCode in ('SPX','NDX','.DJI') "
+                    + "and s.calendarMarketCode in ('NASDAQ','NYSE') and s.currency = 'USD' "
+                    + "and i.kind = :marketKind)";
+            default -> throw new IllegalArgumentException("market must be KR or US");
+        };
+        Map<String, Object> parameters = normalizedMarket.equals("KR")
+                ? Map.of("market", normalizedMarket, "marketKind", MarketIndexKind.MARKET,
+                        "sectorKind", MarketIndexKind.SECTOR)
+                : Map.of("market", normalizedMarket, "marketKind", MarketIndexKind.MARKET);
         return new JpaPagingItemReaderBuilder<IndexSeries>().name("derivedIndexSeriesReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from IndexSeries s where s.provider = 'KIS' and s.active = true and s.canonical = true "
-                        + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' order by s.id")
+                .queryString("select s from IndexSeries s join fetch s.marketIndex i where s.provider = 'KIS' "
+                        + "and s.active = true and s.canonical = true and s.returnBasis = 'PRICE' "
+                        + "and s.dividendBasis = 'NONE' and " + marketPredicate + " order by s.id")
+                .parameterValues(parameters)
                 .build();
     }
 
     @Bean
     @StepScope
     public ItemProcessor<IndexSeries, IndexSeries> derivedIndexSeriesProcessor(MarketDerivedDataUseCase derived,
-            @Value("#{jobParameters['targetDate']}") String targetDate) {
+            @Value("#{jobParameters['targetDate']}") String targetDate,
+            @Value("#{jobParameters['market']}") String market) {
         LocalDate date = LocalDate.parse(targetDate);
+        String normalizedMarket = normalizeMarket(market);
         return series -> {
             derived.calculateIndexIndicators(series.getId(), date);
             derived.calculateIndexWeather(series.getId(), date);
-            derived.calculateSectorLeadingStocks(series.getId(), date);
+            if (normalizedMarket.equals("KR") && series.getMarketIndex().getKind() == MarketIndexKind.SECTOR) {
+                derived.calculateSectorLeadingStocks(series.getId(), date);
+            }
             return series;
         };
+    }
+
+    private static String normalizeMarket(String market) {
+        String normalizedMarket = market == null || market.isBlank()
+                ? "KR" : market.trim().toUpperCase(Locale.ROOT);
+        if (!normalizedMarket.equals("KR") && !normalizedMarket.equals("US")) {
+            throw new IllegalArgumentException("market must be KR or US");
+        }
+        return normalizedMarket;
     }
 }
