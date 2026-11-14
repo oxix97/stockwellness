@@ -205,6 +205,86 @@ class StockAiCanonicalDataPostgresTest {
         assertThat(history.getFirst().tradingAmount()).isEqualByComparingTo("115000");
     }
 
+    @Test
+    void index_reads_by_series_and_public_code_return_only_final_observations() {
+        Long indexId = jdbc.queryForObject("""
+                INSERT INTO market_index(index_key, name, kind, public_benchmark_code)
+                VALUES ('KOSPI:series-read', 'KOSPI series read', 'MARKET', '0001') RETURNING id
+                """, Long.class);
+        Long seriesId = jdbc.queryForObject("""
+                INSERT INTO index_series(index_id, provider, provider_namespace, provider_series_code,
+                    calendar_market_code, return_basis, dividend_basis, currency, is_canonical)
+                VALUES (?, 'KIS', 'kis.idxcode.KOSPI', 'series-read', 'KOSPI', 'PRICE', 'NONE', 'KRW', true)
+                RETURNING id
+                """, Long.class, indexId);
+        jdbc.update("""
+                INSERT INTO index_daily(series_id, trade_date, open_value, high_value, low_value, close_value,
+                    price_status, price_source, collected_at)
+                VALUES (?, ?, 95, 101, 90, 100, 'FINAL', 'KIS:test', now()),
+                       (?, ?, 100, 106, 99, 105, 'FINAL', 'KIS:test', now()),
+                       (?, ?, 110, 120, 100, 115, 'PROVISIONAL', 'KIS:test', now())
+                """, seriesId, FIRST_DATE, seriesId, FINAL_DATE, seriesId, PROVISIONAL_DATE);
+        IndexDailyReadAdapter read = new IndexDailyReadAdapter(jdbc);
+
+        var bySeries = read.recentFinal(seriesId, PROVISIONAL_DATE, 5);
+        var latest = read.latestFinal("0001", PROVISIONAL_DATE);
+
+        assertThat(bySeries).hasSize(2);
+        assertThat(bySeries.getFirst().tradeDate()).isEqualTo(FINAL_DATE);
+        assertThat(latest).isPresent();
+        assertThat(latest.orElseThrow().tradeDate()).isEqualTo(FINAL_DATE);
+        assertThat(latest.orElseThrow().previousClosePrice()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void index_reads_reject_invalid_query_arguments() {
+        IndexDailyReadAdapter read = new IndexDailyReadAdapter(jdbc);
+
+        assertThatThrownBy(() -> read.recentFinal(0, FINAL_DATE, 1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.recentFinal(1, null, 1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.recentFinal("0001", FINAL_DATE, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.recentFinal(" ", FINAL_DATE, 1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.historyFinal("0001", null, FINAL_DATE))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.historyFinal("0001", PROVISIONAL_DATE, FINAL_DATE))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.latestFinal("0001", null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> read.finalWeatherScore("0001", null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void market_weather_read_requires_current_final_index_input_revisions() {
+        Long indexId = jdbc.queryForObject("""
+                INSERT INTO market_index(index_key, name, kind, public_benchmark_code)
+                VALUES ('KOSPI:weather', 'KOSPI weather', 'MARKET', '0001') RETURNING id
+                """, Long.class);
+        Long seriesId = jdbc.queryForObject("""
+                INSERT INTO index_series(index_id, provider, provider_namespace, provider_series_code,
+                    calendar_market_code, return_basis, dividend_basis, currency, is_canonical)
+                VALUES (?, 'KIS', 'kis.idxcode.KOSPI', '0001', 'KOSPI', 'PRICE', 'NONE', 'KRW', true)
+                RETURNING id
+                """, Long.class, indexId);
+        jdbc.update("""
+                INSERT INTO index_daily(series_id, trade_date, close_value, price_status, price_source, collected_at)
+                VALUES (?, ?, 2500, 'FINAL', 'KIS:test', now())
+                """, seriesId, FINAL_DATE);
+        String manifest = """
+                {"source":"index_daily","seriesId":%d,"targetDate":"%s",
+                 "observations":[{"date":"%s","revision":1}]}
+                """.formatted(seriesId, FINAL_DATE, FINAL_DATE);
+        jdbc.update("""
+                INSERT INTO index_weather(series_id, trade_date, score, status, score_version, input_manifest, calculated_at)
+                VALUES (?, ?, 80, 'FINAL', 'test-v1', ?::jsonb, now())
+                """, seriesId, FINAL_DATE, manifest);
+
+        IndexDailyReadAdapter read = new IndexDailyReadAdapter(jdbc);
+        assertThat(read.finalWeatherScore("0001", FINAL_DATE)).contains(new BigDecimal("80.00"));
+
+        jdbc.update("UPDATE index_daily SET revision = 2 WHERE series_id = ? AND trade_date = ?",
+                seriesId, FINAL_DATE);
+        assertThat(read.finalWeatherScore("0001", FINAL_DATE)).isEmpty();
+    }
+
     private void insertPrice(LocalDate date, String close, String status, int revision) {
         jdbc.update("""
                 INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price, low_price,

@@ -72,21 +72,12 @@ public class StockPrice {
         this.previousClosePrice = previousClosePrice;
     }
 
-    /**
-     * 등락률 계산 (전일 종가 우선, 없으면 시가 대비)
-     */
+    /** 등락률 계산은 같은 가격 시리즈의 직전 종가가 있을 때만 수행합니다. */
     @QueryTransient
     public BigDecimal getFluctuationRate() {
-        BigDecimal base = (previousClosePrice != null && previousClosePrice.compareTo(BigDecimal.ZERO) > 0)
-                ? previousClosePrice
-                : openPrice;
-
-        if (base == null || base.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
-        }
-
-        return closePrice.subtract(base)
-                .divide(base, new MathContext(16))
+        if (closePrice == null || previousClosePrice == null || previousClosePrice.signum() <= 0) return null;
+        return closePrice.subtract(previousClosePrice)
+                .divide(previousClosePrice, new MathContext(16))
                 .multiply(BigDecimal.valueOf(100));
     }
 
