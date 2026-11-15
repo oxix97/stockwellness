@@ -25,10 +25,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisDailySectorDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisOverseasIndexDailyPrice;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.external.kis.KisHolidayPort;
 import org.stockwellness.application.port.out.external.kis.KisIndexPricePort;
 import org.stockwellness.application.port.out.stock.EodStockPricePort;
+import org.stockwellness.application.port.out.stock.EodStockInvestorTradePort;
 import org.stockwellness.application.port.out.stock.IndexDailyPort;
 import org.stockwellness.application.port.out.stock.TradingCalendarPort;
 import org.stockwellness.domain.stock.Currency;
@@ -41,6 +44,9 @@ import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 import org.stockwellness.domain.stock.price.EodStockPrice;
+import org.stockwellness.domain.stock.price.EodStockInvestorTradeDaily;
+import org.stockwellness.domain.stock.price.InvestorSourceType;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class NewMarketDataSyncServiceTest {
@@ -48,12 +54,13 @@ class NewMarketDataSyncServiceTest {
     @Mock KisIndexPricePort indexPrices;
     @Mock KisHolidayPort holidays;
     @Mock EodStockPricePort eod;
+    @Mock EodStockInvestorTradePort investorTrades;
     @Mock IndexDailyPort indexDaily;
     @Mock TradingCalendarPort calendar;
     NewMarketDataSyncService service;
 
     @BeforeEach void setUp() {
-        service = new NewMarketDataSyncService(prices, indexPrices, holidays, eod, indexDaily, calendar);
+        service = new NewMarketDataSyncService(prices, indexPrices, holidays, eod, investorTrades, indexDaily, calendar);
     }
 
     @Test
@@ -369,6 +376,126 @@ class NewMarketDataSyncServiceTest {
         verify(investorTrades, never()).upsert(anyList());
     }
 
+    @Test
+    void domestic_index_prices_are_stored_as_provisional_and_keep_zero_values() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "test")));
+        given(indexPrices.fetchRawIndexDailyPrices("0001", date, date)).willReturn(List.of(
+                new KisDailySectorDetail("20261005", "2500.00", "0", "3", "0", "0", "0",
+                        "2490.00", "2510.00", "2480.00")));
+
+        service.syncIndexPrices(domesticSeries(), date, date);
+
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getClosePrice()).isEqualByComparingTo("2500");
+            assertThat(row.getVolume()).isZero();
+            assertThat(row.getTradingAmount()).isEqualByComparingTo("0");
+            assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.PROVISIONAL);
+        });
+    }
+
+    @Test
+    void missing_domestic_open_day_is_recorded_incomplete_without_synthetic_values() {
+        LocalDate start = LocalDate.of(2026, 10, 5);
+        LocalDate end = start.plusDays(1);
+        given(calendar.findAll("KOSPI", start, end)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", start, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", end, true, null, null, "test")));
+        given(indexPrices.fetchRawIndexDailyPrices("0001", start, end)).willReturn(List.of(
+                new KisDailySectorDetail("20261005", "2500.00", "1", "2", "0.04", "100", "250000",
+                        "2490.00", "2510.00", "2480.00")));
+
+        service.syncIndexPrices(domesticSeries(), start, end);
+
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(2);
+        assertThat(saved.getValue()).filteredOn(row -> row.getId().getTradeDate().equals(end)).singleElement()
+                .satisfies(row -> {
+                    assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
+                    assertThat(row.getClosePrice()).isNull();
+                    assertThat(row.getVolume()).isNull();
+                    assertThat(row.getTradingAmount()).isNull();
+                });
+    }
+
+    @Test
+    void supported_us_index_uses_the_overseas_endpoint_and_keeps_unreported_trading_amount_null() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        IndexSeries sp500 = usSeries("SPX", "NYSE");
+        given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of(
+                new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760", "6700", "12345", "N")));
+
+        service.syncIndexPrices(sp500, date, date);
+
+        verify(indexPrices).fetchOverseasIndexDailyPrices("SPX", date, date);
+        verify(indexPrices, never()).fetchRawIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getId().getTradeDate()).isEqualTo(date);
+            assertThat(row.getClosePrice()).isEqualByComparingTo("6750.2500");
+            assertThat(row.getVolume()).isEqualTo(12345L);
+            assertThat(row.getTradingAmount()).isNull();
+            assertThat(row.getPriceSourceApi()).isEqualTo("FHKST03030100");
+            assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.PROVISIONAL);
+        });
+    }
+
+    @Test
+    void unsupported_us_index_is_rejected_before_calling_kis() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+
+        assertThatThrownBy(() -> service.syncIndexPrices(usSeries("COMP", "NASDAQ"), date, date))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("KIS-supported");
+
+        verify(indexPrices, never()).fetchOverseasIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(indexDaily, never()).upsert(anyList());
+    }
+
+    @Test
+    void missing_us_volume_remains_null_and_marks_the_quote_incomplete() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of(
+                new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760", "6700", " ", "N")));
+
+        service.syncIndexPrices(usSeries("SPX", "NYSE"), date, date);
+
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getVolume()).isNull();
+            assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
+        });
+    }
+
+    @Test
+    void eod_session_end_uses_krx_local_close_and_new_york_dst_rules() {
+        LocalDate krDate = LocalDate.of(2026, 11, 13);
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "KOSPI", krDate, java.time.Instant.parse("2026-11-13T06:29:59Z"))).isFalse();
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "KOSPI", krDate, java.time.Instant.parse("2026-11-13T06:30:00Z"))).isTrue();
+
+        LocalDate usSummerDate = LocalDate.of(2026, 7, 13);
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "NASDAQ", usSummerDate, java.time.Instant.parse("2026-07-13T19:59:59Z"))).isFalse();
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "NASDAQ", usSummerDate, java.time.Instant.parse("2026-07-13T20:00:00Z"))).isTrue();
+
+        LocalDate usWinterDate = LocalDate.of(2026, 11, 13);
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "NYSE", usWinterDate, java.time.Instant.parse("2026-11-13T20:59:59Z"))).isFalse();
+        assertThat(NewMarketDataSyncService.isEodSessionComplete(
+                "NYSE", usWinterDate, java.time.Instant.parse("2026-11-13T21:00:00Z"))).isTrue();
+    }
+
     private static JsonNode session(JsonNode fixture, String market, String date) {
         for (JsonNode day : fixture.path("markets").path(market).path("sessions")) {
             if (date.equals(day.path("date").asText())) return day;
@@ -410,5 +537,15 @@ class NewMarketDataSyncServiceTest {
         return new KisDailyPriceDetail(date, closePrice, closePrice.add(BigDecimal.ONE),
                 closePrice.subtract(BigDecimal.ONE).max(BigDecimal.ZERO), closePrice, 10L, new BigDecimal("1000.00"),
                 null, null, modYn, null, null, null);
+    }
+
+    private static IndexSeries usSeries(String code, String market) {
+        return new IndexSeries(new MarketIndex("US:" + code, code), "KIS", "kis.ovrs.idxcode.N", code,
+                market, "PRICE", "NONE", "USD", true);
+    }
+
+    private static IndexSeries domesticSeries() {
+        return new IndexSeries(MarketIndex.of("0001", "코스피", "0"), "KIS", "kis.idxcode.KOSPI", "0001",
+                "KOSPI", "PRICE", "NONE", "KRW", true);
     }
 }

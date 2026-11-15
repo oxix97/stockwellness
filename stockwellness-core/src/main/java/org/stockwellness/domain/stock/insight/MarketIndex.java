@@ -74,13 +74,27 @@ public class MarketIndex {
         };
         entity.indexKey = entity.marketCode == null ? "UNKNOWN:" + division + ":" + rawCode
                 : entity.marketCode + ":" + rawCode;
-        if (("0".equals(division) && "0001".equals(rawCode))
-                || ("1".equals(division) && "1001".equals(rawCode))) {
+        if (("0".equals(division) && ("0001".equals(rawCode) || "2001".equals(rawCode)))
+                || ("1".equals(division) && ("1001".equals(rawCode) || "3003".equals(rawCode)))) {
             entity.kind = MarketIndexKind.MARKET;
         } else if (entity.marketCode != null) {
             entity.kind = MarketIndexKind.SECTOR;
         }
         entity.publicBenchmarkCode = supportedBenchmarkCode(rawCode);
+        return entity;
+    }
+
+    public static MarketIndex ofOverseasBenchmark(String indexKey, String indexName, String publicBenchmarkCode) {
+        if (indexKey == null || indexKey.isBlank() || indexKey.length() > 80
+                || indexName == null || indexName.isBlank() || indexName.length() > 120
+                || publicBenchmarkCode == null || publicBenchmarkCode.isBlank() || publicBenchmarkCode.length() > 30) {
+            throw new IllegalArgumentException("Overseas benchmark identity is required");
+        }
+        MarketIndex entity = new MarketIndex();
+        entity.indexKey = indexKey;
+        entity.name = indexName;
+        entity.kind = MarketIndexKind.MARKET;
+        entity.publicBenchmarkCode = publicBenchmarkCode;
         return entity;
     }
 
