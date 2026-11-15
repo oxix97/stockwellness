@@ -2,26 +2,30 @@ package org.stockwellness.application.service.batch;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailySectorDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisHolidayEntry;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.application.port.in.batch.NewMarketDataSyncUseCase;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
 import org.stockwellness.application.port.out.external.kis.KisIndexPricePort;
 import org.stockwellness.application.port.out.external.kis.KisHolidayPort;
+import org.stockwellness.application.port.out.stock.EodStockInvestorTradePort;
 import org.stockwellness.application.port.out.stock.EodStockPricePort;
 import org.stockwellness.application.port.out.stock.IndexDailyPort;
 import org.stockwellness.application.port.out.stock.TradingCalendarPort;
@@ -31,7 +35,9 @@ import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 import org.stockwellness.domain.stock.insight.IndexDaily;
 import org.stockwellness.domain.stock.insight.IndexSeries;
+import org.stockwellness.domain.stock.price.EodStockInvestorTradeDaily;
 import org.stockwellness.domain.stock.price.EodStockPrice;
+import org.stockwellness.domain.stock.price.InvestorSourceType;
 import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 
 @Service
@@ -43,11 +49,16 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     private static final int INDEX_MAX_ROWS = 50;
     private static final int PRICE_PRECISION = 19;
     private static final int AMOUNT_PRECISION = 25;
+    private static final String INVESTOR_API = "FHPTJ04160001";
+    // The existing KIS *_tr_pbmn contract is 백만원; store canonical KRW after this single conversion.
+    private static final BigDecimal KIS_INVESTOR_AMOUNT_UNIT = new BigDecimal("1000000");
+    private static final List<InvestorSourceType> INVESTOR_TYPES = List.of(InvestorSourceType.values());
 
     private final KisDailyPricePort kisDailyPricePort;
     private final KisIndexPricePort kisIndexPricePort;
     private final KisHolidayPort kisHolidayPort;
     private final EodStockPricePort eodStockPricePort;
+    private final EodStockInvestorTradePort eodStockInvestorTradePort;
     private final IndexDailyPort indexDailyPort;
     private final TradingCalendarPort tradingCalendarPort;
 
@@ -108,6 +119,41 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                     LocalDate.now(ZoneId.of("Asia/Seoul")));
             eodStockPricePort.upsertObservations(records, adjustments);
         }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void syncStockInvestorTrades(Stock stock, LocalDate tradeDate) {
+        if (stock == null || tradeDate == null) throw new IllegalArgumentException("Stock and trade date are required");
+        if (!("KOSPI".equals(stock.getMarketCode()) || "KOSDAQ".equals(stock.getMarketCode()))
+                || stock.getStatus() == StockStatus.DELISTED) {
+            throw new IllegalArgumentException("Only non-delisted KRX stocks are supported for investor collection");
+        }
+        if (verifiedOpenDates(stock.getMarketCode(), tradeDate, tradeDate).size() != 1) {
+            throw new IllegalArgumentException("Investor trade date is not an open KRX session");
+        }
+
+        List<KisInvestorTradeByStockDaily> response = kisDailyPricePort.fetchInvestorTradeByStockDaily(stock, tradeDate);
+        if (response == null || response.size() > 1 || response.stream().anyMatch(java.util.Objects::isNull)) {
+            throw new IllegalArgumentException("KIS investor response must contain at most one daily observation");
+        }
+        KisInvestorTradeByStockDaily observation = response.isEmpty() ? null : response.getFirst();
+        if (observation != null && !tradeDate.equals(parseDate(observation.baseDate()))) {
+            throw new IllegalArgumentException("KIS investor response date does not match the requested trade date");
+        }
+
+        Instant collectedAt = Instant.now();
+        Map<InvestorSourceType, InvestorFlows> flows = investorFlows(observation);
+        List<EodStockInvestorTradeDaily> records = new ArrayList<>(INVESTOR_TYPES.size());
+        for (InvestorSourceType type : INVESTOR_TYPES) {
+            InvestorFlows flow = flows.get(type);
+            BigDecimal quantity = flow == null ? null : investorQuantity(flow.quantity());
+            BigDecimal netAmount = flow == null ? null : investorAmount(flow.amount());
+            String status = quantity != null && netAmount != null ? "PROVISIONAL" : "INCOMPLETE";
+            records.add(new EodStockInvestorTradeDaily(stock.getId(), tradeDate, "KRX", type, quantity,
+                    netAmount, status, "KIS:" + INVESTOR_API + ":J", collectedAt));
+        }
+        eodStockInvestorTradePort.upsert(records);
     }
 
     private List<StockPriceAdjustment> adjustedPrices(Stock stock, LocalDate from, LocalDate to,
@@ -230,12 +276,63 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     }
     private static BigDecimal price(BigDecimal value) { return scaled(value, PRICE_PRECISION, 4); }
     private static BigDecimal amount(BigDecimal value) { return scaled(value, AMOUNT_PRECISION, 2); }
+
+    private static Map<InvestorSourceType, InvestorFlows> investorFlows(KisInvestorTradeByStockDaily row) {
+        Map<InvestorSourceType, InvestorFlows> values = new EnumMap<>(InvestorSourceType.class);
+        if (row == null) return values;
+        values.put(InvestorSourceType.FOREIGN, new InvestorFlows(row.foreignNetQuantity(), row.foreignNetAmount()));
+        values.put(InvestorSourceType.INSTITUTION_TOTAL,
+                new InvestorFlows(row.institutionNetQuantity(), row.institutionNetAmount()));
+        values.put(InvestorSourceType.INDIVIDUAL, new InvestorFlows(row.individualNetQuantity(), row.individualNetAmount()));
+        values.put(InvestorSourceType.FINANCIAL_INVESTMENT,
+                new InvestorFlows(row.financialInvestmentNetQuantity(), row.financialInvestmentNetAmount()));
+        values.put(InvestorSourceType.INSURANCE, new InvestorFlows(row.insuranceNetQuantity(), row.insuranceNetAmount()));
+        values.put(InvestorSourceType.TRUST, new InvestorFlows(row.trustNetQuantity(), row.trustNetAmount()));
+        values.put(InvestorSourceType.PRIVATE_FUND, new InvestorFlows(row.privateFundNetQuantity(), row.privateFundNetAmount()));
+        values.put(InvestorSourceType.BANK, new InvestorFlows(row.bankNetQuantity(), row.bankNetAmount()));
+        values.put(InvestorSourceType.PENSION, new InvestorFlows(row.pensionNetQuantity(), row.pensionNetAmount()));
+        values.put(InvestorSourceType.MERCHANT_BANK,
+                new InvestorFlows(row.merchantBankNetQuantity(), row.merchantBankNetAmount()));
+        values.put(InvestorSourceType.OTHER_ORGANIZATION,
+                new InvestorFlows(row.otherOrganizationNetQuantity(), row.otherOrganizationNetAmount()));
+        values.put(InvestorSourceType.OTHER_CORPORATE,
+                new InvestorFlows(row.otherCorporateNetQuantity(), row.otherCorporateNetAmount()));
+        values.put(InvestorSourceType.OTHER, new InvestorFlows(row.otherNetQuantity(), row.otherNetAmount()));
+        return values;
+    }
+
+    private static BigDecimal investorQuantity(String raw) {
+        return scaledSigned(signedDecimal(raw), 19, 6);
+    }
+
+    private static BigDecimal investorAmount(String raw) {
+        BigDecimal value = signedDecimal(raw);
+        return value == null ? null : scaledSigned(value.multiply(KIS_INVESTOR_AMOUNT_UNIT), AMOUNT_PRECISION, 2);
+    }
+
+    private static BigDecimal signedDecimal(String value) {
+        if (value == null || value.isBlank()) return null;
+        try { return new BigDecimal(value.replace(",", "").trim()); }
+        catch (NumberFormatException ex) { throw new IllegalArgumentException("Invalid investor value in KIS response", ex); }
+    }
+
+    private record InvestorFlows(String quantity, String amount) {}
+
     private static BigDecimal scaled(BigDecimal value, int precision, int scale) {
         if (value == null) return null;
         BigDecimal result;
         try { result = value.setScale(scale, RoundingMode.UNNECESSARY); }
         catch (ArithmeticException ex) { throw new IllegalArgumentException("KIS numeric precision exceeds storage scale", ex); }
         if (result.signum() < 0 || result.precision() > precision) throw new IllegalArgumentException("KIS numeric value is outside storage range");
+        return result;
+    }
+
+    private static BigDecimal scaledSigned(BigDecimal value, int precision, int scale) {
+        if (value == null) return null;
+        BigDecimal result;
+        try { result = value.setScale(scale, RoundingMode.UNNECESSARY); }
+        catch (ArithmeticException ex) { throw new IllegalArgumentException("KIS investor value exceeds storage scale", ex); }
+        if (result.precision() > precision) throw new IllegalArgumentException("KIS investor value is outside storage range");
         return result;
     }
 }

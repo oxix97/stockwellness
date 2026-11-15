@@ -39,15 +39,21 @@ import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailySectorDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisHolidayEntry;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.adapter.out.persistence.stock.TradingCalendarAdapter;
 import org.stockwellness.adapter.out.persistence.stock.StockAdapter;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.out.notification.NotificationPort;
+import org.stockwellness.application.port.out.stock.EodStockInvestorTradePort;
 import org.stockwellness.batch.job.stockmaster.support.StockMasterArchiveFixture;
 import org.stockwellness.domain.stock.TradingCalendar;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.StockSector;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.fixture.StockFixture;
@@ -103,11 +109,16 @@ class NewMarketDataBatchConfigIntegrationTest {
     private Job indexPriceJob;
 
     @Autowired
+    @Qualifier("kisEodInvestorTradeSyncJob")
+    private Job investorTradeJob;
+
+    @Autowired
     @Qualifier("stockMasterSyncJob")
     private Job stockMasterSyncJob;
 
     @MockitoBean private KisDailyPriceAdapter kisDailyPriceAdapter;
     @MockitoBean private KisHolidayAdapter kisHolidayAdapter;
+    @MockitoBean private EodStockInvestorTradePort investorTradePort;
 
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -122,7 +133,7 @@ class NewMarketDataBatchConfigIntegrationTest {
 
     @BeforeEach
     void resetKisPortMocks() {
-        org.mockito.Mockito.reset(kisDailyPriceAdapter, kisHolidayAdapter);
+        org.mockito.Mockito.reset(kisDailyPriceAdapter, kisHolidayAdapter, investorTradePort);
     }
 
     @AfterEach
@@ -206,6 +217,33 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
+    void investor_eod_job_saves_provider_rows_without_a_stock_price_dependency() throws Exception {
+        Stock stock = stockAdapter.save(Stock.of("910003", "KR7910003003", "수급 테스트",
+                MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        try {
+            tradingCalendarAdapter.upsert(List.of(
+                    TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test")));
+            given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE)))
+                    .willReturn(List.of(investorRow(START_DATE)));
+
+            JobExecution execution = jobLauncher.run(investorTradeJob,
+                    parameters("targetDate", START_DATE.toString()));
+
+            assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(execution.getStepExecutions()).singleElement()
+                    .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(1));
+            assertThat(jdbcTemplate.queryForObject(
+                    "select count(*) from stock_price where stock_id = ? and base_date = ?",
+                    Integer.class, stock.getId(), START_DATE)).isZero();
+            verify(kisDailyPriceAdapter).fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE));
+            verify(investorTradePort).upsert(org.mockito.ArgumentMatchers.argThat(rows -> rows.size() == 13
+                    && rows.stream().allMatch(row -> "PROVISIONAL".equals(row.dataStatus()))));
+        } finally {
+            stockRepository.delete(stock);
+        }
+    }
+
+    @Test
     void index_eod_job_reads_kis_market_indices_and_passes_the_date_range() throws Exception {
         MarketIndex kospi = marketIndexRepository.saveAndFlush(MarketIndex.of("0001", "코스피", "0"));
         MarketIndex kosdaq = marketIndexRepository.saveAndFlush(MarketIndex.of("1001", "코스닥", "1"));
@@ -258,5 +296,12 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .addString(name, value)
                 .addLong("run.id", System.nanoTime())
                 .toJobParameters();
+    }
+
+    private static KisInvestorTradeByStockDaily investorRow(LocalDate date) {
+        String day = date.format(DateTimeFormatter.BASIC_ISO_DATE);
+        return new KisInvestorTradeByStockDaily(day, "1", "1", "2", "2", "3", "3", "4", "4",
+                "5", "5", "6", "6", "7", "7", "8", "8", "9", "9", "10", "10",
+                "11", "11", "12", "12", "13", "13");
     }
 }
