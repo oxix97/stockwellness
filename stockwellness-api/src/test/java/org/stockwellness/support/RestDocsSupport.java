@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.mockmvc.MockMvcRestDocumentation;
@@ -27,6 +28,7 @@ import org.stockwellness.application.port.out.portfolio.LoadPortfolioAiPort;
 import org.stockwellness.application.port.out.sector.LoadSectorAiPort;
 import org.stockwellness.application.port.out.sector.WeatherInsightPort;
 import org.stockwellness.application.port.out.stock.LlmClientPort;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 
@@ -48,6 +50,12 @@ public abstract class RestDocsSupport {
 
     @MockitoBean
     protected LlmClientPort llmClientPort;
+
+    @MockitoBean
+    protected KafkaAdmin kafkaAdmin;
+
+    @MockitoBean
+    protected StockPriceReadPort stockPriceReadPort;
 
     @MockitoBean
     protected WeatherInsightPort weatherInsightPort;

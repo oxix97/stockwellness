@@ -33,7 +33,7 @@ public class OutboxRelay {
             } catch (Exception e) {
                 log.error("Outbox 이벤트 발행 실패 - ID: {}, Topic: {}, 사유: {}", 
                          event.getId(), event.getTopic(), e.getMessage());
-                event.fail(e.getMessage());
+                event.retry(e.getMessage());
             }
         }
     }

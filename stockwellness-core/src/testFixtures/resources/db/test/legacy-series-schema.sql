@@ -35,3 +35,8 @@ CREATE TABLE index_series (
 CREATE UNIQUE INDEX uq_legacy_index_series_canonical
     ON index_series(index_id,return_basis,dividend_basis,currency)
     WHERE is_active AND is_canonical;
+
+ALTER TABLE index_daily ADD CONSTRAINT fk_legacy_index_daily_series
+    FOREIGN KEY (series_id) REFERENCES index_series(id);
+CREATE UNIQUE INDEX uq_legacy_index_daily_series_date
+    ON index_daily(series_id,trade_date) WHERE series_id IS NOT NULL;

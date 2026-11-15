@@ -100,30 +100,27 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
         });
     }
 
-    /**
-     * 주식 일자별 투자자 매매 추이 (확정치)
-     */
-    public List<KisInvestorPriceDetail> fetchInvestorPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
-        String path = "/uapi/domestic-stock/v1/quotations/inquire-investor";
-        String ticker = stock.getTicker();
+    /** KRX 종목별 투자자 매매 동향을 지정 거래일로 조회한다. */
+    @Override
+    public List<KisInvestorTradeByStockDaily> fetchInvestorTradeByStockDaily(Stock stock, LocalDate tradeDate) {
+        if (stock == null || tradeDate == null) throw new IllegalArgumentException("Stock and trade date are required");
         return executeWithRetry(() -> {
-            KisResponse<List<KisInvestorPriceDetail>> response = kisApiClient.get()
+            KisPriceResponse<Object, List<KisInvestorTradeByStockDaily>> response = kisApiClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path(path)
+                            .path("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")
                             .queryParam("FID_COND_MRKT_DIV_CODE", "J")
-                            .queryParam("FID_INPUT_ISCD", ticker)
-                            .queryParam("FID_INPUT_DATE_1", startDate.format(BASIC_ISO_DATE))
-                            .queryParam("FID_INPUT_DATE_2", endDate.format(BASIC_ISO_DATE))
-                            .queryParam("FID_PERIOD_DIV_CODE", "D")
-                            .queryParam("FID_ORG_ADJ_PRC", "1")
+                            .queryParam("FID_INPUT_ISCD", stock.getTicker())
+                            .queryParam("FID_INPUT_DATE_1", tradeDate.format(BASIC_ISO_DATE))
+                            .queryParam("FID_ORG_ADJ_PRC", "")
+                            .queryParam("FID_ETC_CLS_CODE", "")
                             .build())
-                    .header("tr_id", "FHKST01010900")
+                    .header("tr_id", "FHPTJ04160001")
+                    .header("custtype", "P")
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>() {
-                    });
+                    .body(new ParameterizedTypeReference<>() {});
 
-            response = requireSuccessfulResponse(response, "투자자 매매 추이 조회", ticker);
-            return (response.output() != null) ? response.output() : Collections.emptyList();
+            response = requireSuccessfulResponse(response, "종목별 일별 투자자 매매 조회", stock.getTicker());
+            return response.output2() == null ? Collections.emptyList() : response.output2();
         });
     }
 
@@ -187,6 +184,7 @@ public class KisDailyPriceAdapter implements KisDailyPricePort, KisIndexPricePor
     /**
      * 해외 지수 일자별 시세 조회
      */
+    @Override
     public List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate) {
         return executeWithRetry(() -> {
             KisPriceResponse<OverseasIndexSummary, List<KisOverseasIndexDailyPrice>> response = kisApiClient.get()

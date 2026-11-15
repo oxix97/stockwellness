@@ -7,4 +7,5 @@ import org.stockwellness.domain.stock.price.StockPriceAdjustment;
 public interface EodStockPricePort {
     void upsert(List<EodStockPrice> values);
     void upsertAdjustments(List<StockPriceAdjustment> values);
+    void upsertObservations(List<EodStockPrice> prices, List<StockPriceAdjustment> adjustments);
 }

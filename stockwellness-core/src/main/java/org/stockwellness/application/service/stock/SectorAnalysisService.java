@@ -108,7 +108,8 @@ public class SectorAnalysisService {
 
         // 1. 상승 종목(등락률 > 0) 필터링
         List<StockPrice> gainers = stockPrices.stream()
-                .filter(p -> p.getFluctuationRate().compareTo(BigDecimal.ZERO) > 0)
+                .filter(p -> p.getFluctuationRate() != null
+                        && p.getFluctuationRate().compareTo(BigDecimal.ZERO) > 0)
                 .sorted(Comparator.comparing(StockPrice::getTransactionAmt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(5)
                 .toList();

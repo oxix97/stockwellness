@@ -5,11 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.stockwellness.support.ManualSqlTestSupport;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -17,8 +15,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers(disabledWithoutDocker = true)
 class RedesignedSchemaPostgresTest {
-    private static final String SQL = "db/manual/2026-11-11-redesign/";
-
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
@@ -28,13 +24,7 @@ class RedesignedSchemaPostgresTest {
     static void createSchema() throws Exception {
         var dataSource = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
         jdbc = new JdbcTemplate(dataSource);
-        ManualSqlTestSupport.execute(dataSource, SQL + "00-preflight.sql");
-        for (String file : new String[] {"02-schema.sql", "03-batch-metadata.sql", "04-reference-data.sql"}) {
-            try (var connection = dataSource.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource(SQL + file));
-            }
-        }
-        ManualSqlTestSupport.execute(dataSource, SQL + "05-verify.sql");
+        ManualSqlTestSupport.initializeRedesignedPostgres(dataSource);
     }
 
     @Test
@@ -43,6 +33,24 @@ class RedesignedSchemaPostgresTest {
                 .isEqualTo(37);
         assertThat(jdbc.queryForObject("select count(*) from market", Integer.class)).isEqualTo(5);
         assertThat(jdbc.queryForObject("select to_regclass('public.flyway_schema_history') is null", Boolean.class)).isTrue();
+    }
+
+    @Test
+    void outbox_schema_matches_the_existing_jpa_entity_contract() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from information_schema.columns
+                where table_schema='public' and table_name='outbox_event'
+                  and ((column_name='payload' and data_type='text')
+                    or (column_name='status' and data_type='character varying')
+                    or (column_name='processed_at' and data_type='timestamp without time zone')
+                    or (column_name='error_message' and data_type='text')
+                    or (column_name='created_at' and data_type='timestamp without time zone')
+                    or (column_name='updated_at' and data_type='timestamp without time zone'))
+                """, Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("""
+                select pg_get_constraintdef(oid) from pg_constraint
+                where conrelid = 'outbox_event'::regclass and contype='c'
+                """, String.class)).contains("COMPLETED");
     }
 
     @Test
@@ -73,8 +81,9 @@ class RedesignedSchemaPostgresTest {
         jdbc.update("insert into watchlist_item(watchlist_group_id,stock_id) values (?,?)", group, stock);
 
         assertThatThrownBy(() -> jdbc.update("""
-                insert into actual_mutation_receipt(member_id,response_account_id,account_scope,operation,request_key,response_payload)
-                values (?,?,'DEFAULT','CREATE','wrong-owner','{}'::jsonb)
+                insert into actual_mutation_receipt(
+                    member_id,account_scope,response_account_id,operation,request_key,request_fingerprint,response_body)
+                values (?,0,?,'CREATE','wrong-owner','fingerprint','{}')
                 """, memberA, accountB)).isInstanceOf(DataAccessException.class);
 
         long index = jdbc.queryForObject("insert into market_index(index_key,name,kind) values ('TEST','test','SECTOR') returning id", Long.class);

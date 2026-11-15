@@ -26,6 +26,11 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
 
+stockwellness:
+  batch:
+    stock-master:
+      staging-directory: ${java.io.tmpdir}/stockwellness-batch-test/stock-master-snapshots
+
 resilience4j:
   ratelimiter:
     instances:

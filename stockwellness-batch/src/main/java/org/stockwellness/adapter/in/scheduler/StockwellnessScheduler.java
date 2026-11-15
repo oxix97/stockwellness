@@ -12,21 +12,28 @@ import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
 public class StockwellnessScheduler {
 
     private final AdvisorOrchestrator advisorOrchestrator;
-    private final DailyBatchOrchestrator dailyBatchOrchestrator;
+    private final MarketDataBatchOrchestrator marketDataBatchOrchestrator;
 
     /**
-     * 매일 평일(월-금) 오후 3시 45분에 전체 데이터 동기화 배치를 실행합니다.
+     * 매일 평일(월-금) 오후 4시 45분에 완료된 KRX 세션 데이터를 동기화합니다.
      */
-    @Scheduled(cron = "0 45 15 * * MON-FRI", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 45 16 * * MON-FRI", zone = "Asia/Seoul")
     public void runDailyFullSync() {
-        dailyBatchOrchestrator.runDailyStockSync();
-        dailyBatchOrchestrator.runDailySectorInsightSync();
-        dailyBatchOrchestrator.runDailyMarketSync();
+        runMarketSync("KR");
     }
 
     @Scheduled(cron = "0 15 16 * * MON-FRI", zone = "America/New_York")
     public void runDailyUsMarketSync() {
-        dailyBatchOrchestrator.runDailyMarketSync();
+        runMarketSync("US");
+    }
+
+    private void runMarketSync(String market) {
+        try {
+            marketDataBatchOrchestrator.runScheduled(market);
+        } catch (RuntimeException exception) {
+            log.error("Canonical market-data schedule failed. market={}", market, exception);
+            throw exception;
+        }
     }
 
     /**

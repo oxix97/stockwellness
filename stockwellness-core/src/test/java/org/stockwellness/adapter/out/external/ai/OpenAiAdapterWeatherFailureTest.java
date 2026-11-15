@@ -3,6 +3,8 @@ package org.stockwellness.adapter.out.external.ai;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.stockwellness.application.port.out.stock.LlmClientPort;
+import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
@@ -60,5 +62,18 @@ class OpenAiAdapterWeatherFailureTest {
                 .getMethod("generateSectorWeatherInsight", String.class, int.class, String.class)
                 .isAnnotationPresent(Retryable.class))
                 .isFalse();
+    }
+
+    @Test
+    void stockAnalysisFailureReturnsPersistableFailureResult() {
+        AiAnalysisContext context = org.mockito.Mockito.mock(AiAnalysisContext.class);
+        when(promptTemplateMapper.toPromptString(context)).thenReturn("canonical FINAL input");
+        when(chatClient.prompt()).thenThrow(new IllegalStateException("provider unavailable"));
+
+        LlmClientPort.AiGenerationResult result = adapter.generateInsight("system", context);
+
+        assertThat(result.succeeded()).isFalse();
+        assertThat(result.errorCode()).isEqualTo("AI_GENERATION_FAILED");
+        assertThat(result.report()).isEqualTo(org.stockwellness.domain.stock.analysis.AiReport.fallback());
     }
 }

@@ -107,6 +107,10 @@ app:
     enabled: ${AI_ENABLED:false}
   frontend-redirect-url: http://localhost:5173/auth/callback
 
+stockwellness:
+  cache:
+    namespace: ${STOCKWELLNESS_CACHE_NAMESPACE:new-db-v1}
+
 
 logging:
   level:

@@ -1,5 +1,6 @@
 package org.stockwellness.adapter.batch.stock.snapshot;
 
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
@@ -62,6 +63,19 @@ class StockMasterSnapshotStoreTest {
 
         assertThatThrownBy(() -> snapshotStore.readVerified(snapshot))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void stage_failure_names_the_unwritable_staging_path() throws Exception {
+        Path blockedPath = stagingDirectory.resolve("not-a-directory");
+        Files.createFile(blockedPath);
+        snapshotStore = new StockMasterSnapshotStore(
+                new StockMasterSnapshotProperties(blockedPath, Duration.ofDays(7)));
+
+        assertThatThrownBy(() -> snapshotStore.stage(42L, MarketType.KOSPI, new byte[]{1}, 1, "STRUCTURALLY_VALID"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(blockedPath.resolve("42").toString())
+                .hasRootCauseInstanceOf(FileSystemException.class);
     }
 
     @Test
