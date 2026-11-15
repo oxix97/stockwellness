@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.clearInvocations;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -235,8 +236,10 @@ class NewMarketDataBatchConfigIntegrationTest {
                 select opens_at, closes_at, source from trading_calendar
                 where market_code = 'KOSPI' and trade_date = ?
                 """, START_DATE);
-        assertThat(session.get("opens_at").toString()).contains("09:00:00");
-        assertThat(session.get("closes_at").toString()).contains("15:30:00");
+        assertThat(((java.sql.Timestamp) session.get("opens_at")).toInstant())
+                .isEqualTo(Instant.parse("2026-10-05T00:00:00Z"));
+        assertThat(((java.sql.Timestamp) session.get("closes_at")).toInstant())
+                .isEqualTo(Instant.parse("2026-10-05T06:30:00Z"));
         assertThat(session.get("source")).isEqualTo("KIS:CTCA0903R|KRX:REGULAR");
         verify(kisHolidayAdapter).fetchHolidays(START_DATE);
     }
