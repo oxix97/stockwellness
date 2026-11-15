@@ -13,21 +13,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.stockwellness.adapter.out.persistence.insight.SectorIndicator;
-import org.stockwellness.adapter.out.persistence.insight.repository.SectorIndicatorRepository;
 import org.stockwellness.application.port.in.stock.result.MarketDashboardResult;
 import org.stockwellness.application.port.in.stock.result.MarketWeatherLevel;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
-import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.exception.StockPriceException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,10 +33,7 @@ class MarketIndexServiceTest {
     private LoadBenchmarkPort loadBenchmarkPort;
 
     @Mock
-    private StockPricePort stockPricePort;
-
-    @Mock
-    private SectorIndicatorRepository sectorIndicatorRepository;
+    private IndexDailyReadPort indexDailyReadPort;
 
     private MarketIndexService marketIndexService;
 
@@ -50,49 +43,46 @@ class MarketIndexServiceTest {
         MarketWeatherClassifier marketWeatherClassifier = new MarketWeatherClassifier(marketWeatherFactory);
         marketIndexService = new MarketIndexService(
                 loadBenchmarkPort,
-                stockPricePort,
                 marketWeatherClassifier,
-                sectorIndicatorRepository
+                indexDailyReadPort
         );
     }
 
     @Test
-    @DisplayName("최근 지수 데이터와 섹터 지표가 있으면 기상도를 포함한 대시보드를 반환한다")
+    @DisplayName("지수 변화율이 없으면 0으로 만들지 않고 FINAL 기상도가 없으면 날씨를 비운다")
     void getMarketIndexes_returnsMappedResult() {
         LocalDate baseDate = LocalDate.now().minusDays(1);
 
         // 벤치마크 데이터 모킹
         List<StockPriceResult> mockPrices = new ArrayList<>();
         for (BenchmarkType type : BenchmarkType.values()) {
-            mockPrices.add(priceResult(baseDate, "1.00", type.getTicker()));
+            mockPrices.add(priceResult(baseDate, type == BenchmarkType.KOSPI ? null : "1.00", type.getTicker()));
         }
 
         given(loadBenchmarkPort.loadBenchmarkPricesIn(anyList(), any(), any())).willReturn(mockPrices);
         
-        // 섹터 지표 모킹 (KOSPI=0001)
-        SectorIndicator mockIndicator = SectorIndicator.builder()
-                .baseDate(baseDate)
-                .sectorCode("0001")
-                .ma20Disparity(BigDecimal.valueOf(105))
-                .adr(BigDecimal.valueOf(120))
-                .rsi14(BigDecimal.valueOf(65))
-                .build();
-        
-        given(sectorIndicatorRepository.findByBaseDateAndSectorCode(baseDate, "0001"))
-                .willReturn(Optional.of(mockIndicator));
-        
-        given(sectorIndicatorRepository.findAllBySectorCodeAndBaseDateLessThanEqualOrderByBaseDateDesc(
-                eq("0001"),
-                eq(baseDate),
-                eq(PageRequest.of(0, 252))))
-                .willReturn(List.of(mockIndicator));
-
-        // Note: RollingPercentileCalculator.calculate returns 50 when history.size() < 5
         MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
         
         assertThat(dashboard.indexes()).hasSize(BenchmarkType.values().length);
-        // Default integrated score for history < 5 is 50 -> CLOUDY
-        assertThat(dashboard.weather().weatherLevel()).isEqualTo(MarketWeatherLevel.CLOUDY);
+        assertThat(dashboard.indexes().stream().filter(index -> index.ticker().equals("0001")).findFirst()
+                .orElseThrow().fluctuationRate()).isNull();
+        assertThat(dashboard.weather()).isNull();
+    }
+
+    @Test
+    @DisplayName("FINAL KOSPI 기상 점수를 새 구조에서 읽어 분류한다")
+    void getMarketIndexes_usesFinalWeatherScore() {
+        LocalDate baseDate = LocalDate.now().minusDays(1);
+        List<StockPriceResult> mockPrices = new ArrayList<>();
+        for (BenchmarkType type : BenchmarkType.values()) {
+            mockPrices.add(priceResult(baseDate, "1.00", type.getTicker()));
+        }
+        given(loadBenchmarkPort.loadBenchmarkPricesIn(anyList(), any(), any())).willReturn(mockPrices);
+        given(indexDailyReadPort.finalWeatherScore("0001", baseDate)).willReturn(Optional.of(BigDecimal.valueOf(80)));
+
+        MarketDashboardResult dashboard = marketIndexService.getMarketIndexes();
+
+        assertThat(dashboard.weather().weatherLevel()).isEqualTo(MarketWeatherLevel.SUNNY);
     }
 
     @Test
@@ -115,7 +105,7 @@ class MarketIndexServiceTest {
                 1000L,
                 BigDecimal.ZERO,
                 null, null, null, null,
-                new BigDecimal(changeRate),
+                changeRate == null ? null : new BigDecimal(changeRate),
                 ticker
         );
     }

@@ -46,7 +46,7 @@ public class StockChartService implements StockPriceUseCase {
     private final StockPort stockPort;
 
     @Override
-    @Cacheable(cacheNames = "stockSupplyRanking:v1", key = "#direction + '_' + #limit", unless = "#result == null")
+    @Cacheable(cacheNames = "stockSupplyRanking:v2", key = "#direction + '_' + #limit", unless = "#result == null")
     public StockSupplyRankingResponse getTopStocksBySupply(
             TradeDirection direction,
             int limit
@@ -240,6 +240,6 @@ public class StockChartService implements StockPriceUseCase {
     private static StockPriceResult toResult(PriceObservation raw, PriceObservation adjusted) {
         return new StockPriceResult(raw.tradeDate(), raw.openPrice(), raw.highPrice(), raw.lowPrice(),
                 raw.closePrice(), adjusted == null ? null : adjusted.closePrice(), raw.volume(), raw.tradingAmount(),
-                null, null, null, null);
+                raw.ma5(), raw.ma20(), raw.ma60(), raw.ma120());
     }
 }

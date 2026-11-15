@@ -2,6 +2,7 @@ package org.stockwellness.application.port.out.stock;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 
@@ -15,5 +16,7 @@ public interface LoadBenchmarkPort {
      * 여러 지수(Benchmark) 데이터를 한 번에 조회합니다.
      */
     List<StockPriceResult> loadBenchmarkPricesIn(List<String> tickers, LocalDate start, LocalDate end);
+
+    Optional<StockPriceResult> loadBenchmarkPriceAtOrBefore(String benchmarkTicker, LocalDate asOf);
 }
 

@@ -16,17 +16,19 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.adapter.out.persistence.stock.StockPriceCacheAdapter;
 import org.stockwellness.application.port.in.auth.AuthUseCase;
 import org.stockwellness.application.port.in.auth.command.LoginCommand;
 import org.stockwellness.application.port.in.auth.result.LoginResult;
 import org.stockwellness.application.port.out.auth.OAuthExchangeCodePort;
 import org.stockwellness.application.port.out.auth.RefreshTokenPort;
 import org.stockwellness.application.port.out.stock.PopularSearchPort;
+import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.member.LoginType;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -35,7 +37,7 @@ import static org.mockito.Mockito.mock;
  * 모든 API 통합 테스트의 공통 설정을 관리하는 베이스 클래스.
  * 인프라(Redis, Kafka) 연결을 차단하고 비즈니스 흐름을 검증합니다.
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.kafka.admin.auto-create=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -54,6 +56,9 @@ public abstract class BaseIntegrationTest {
     @MockitoBean
     protected KafkaTemplate<String, Object> kafkaTemplate;
 
+    @MockitoBean
+    protected KafkaAdmin kafkaAdmin;
+
     // --- 비즈니스/어댑터 레벨 Mock (Redis 의존성 제거) ---
     @MockitoBean
     protected StringRedisTemplate redisTemplate;
@@ -68,10 +73,13 @@ public abstract class BaseIntegrationTest {
     protected AuthUseCase authUseCase;
 
     @MockitoBean
-    protected StockPriceCacheAdapter stockPriceCacheAdapter;
+    protected PopularSearchPort popularSearchPort;
 
     @MockitoBean
-    protected PopularSearchPort popularSearchPort;
+    protected StockPriceReadPort stockPriceReadPort;
+
+    @MockitoBean
+    protected IndexDailyReadPort indexDailyReadPort;
 
     @MockitoBean
     protected CacheManager cacheManager;

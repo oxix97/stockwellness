@@ -19,7 +19,10 @@ public class MarketWeatherClassifier {
      * 통합 점수(Integrated Score)를 기반으로 7단계 시장 기상 상태를 결정합니다.
      */
     public MarketWeatherResult classify(MarketWeatherScore score, LocalDate asOfDate) {
-        int integratedScore = score.integratedScore();
+        return classify(score.integratedScore(), asOfDate);
+    }
+
+    public MarketWeatherResult classify(int integratedScore, LocalDate asOfDate) {
 
         if (integratedScore >= 90) {
             return marketWeatherFactory.create(MarketWeatherLevel.CLEAR, MarketWeatherReason.BROAD_RALLY, asOfDate);

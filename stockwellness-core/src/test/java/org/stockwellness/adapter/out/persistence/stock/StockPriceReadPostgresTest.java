@@ -5,29 +5,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.application.port.out.stock.PriceObservation;
-import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.support.ManualSqlTestSupport;
 
-@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers(disabledWithoutDocker = true)
-@Import({StockPriceReadAdapter.class, QueryDslConfig.class})
 class StockPriceReadPostgresTest {
     private static final LocalDate FIRST = LocalDate.of(2026, 10, 1);
     private static final LocalDate SECOND = FIRST.plusDays(1);
@@ -35,28 +27,29 @@ class StockPriceReadPostgresTest {
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
-    @DynamicPropertySource
-    static void postgres(DynamicPropertyRegistry registry) {
-        ManualSqlTestSupport.initializeLegacyPostgres(
-                new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-    }
-
-    @Autowired private JdbcTemplate jdbc;
-    @Autowired private StockPriceReadPort readPort;
+    private static JdbcTemplate jdbc;
+    private static StockPriceReadPort readPort;
     private long stockId;
+
+    @BeforeAll
+    static void initializeSchema() {
+        var dataSource = new DriverManagerDataSource(
+                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        ManualSqlTestSupport.initializeRedesignedPostgres(
+                dataSource);
+        jdbc = new JdbcTemplate(dataSource);
+        readPort = new StockPriceReadAdapter(new NamedParameterJdbcTemplate(dataSource));
+    }
 
     @BeforeEach
     void setUp() {
+        jdbc.update("DELETE FROM stock_technical_indicator");
         jdbc.update("DELETE FROM stock_price_adjustment");
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(currency, is_preferred, is_premium_tracking, created_at, market_type, status, ticker, name)
-                VALUES ('KRW', false, false, CURRENT_TIMESTAMP, 'KOSPI', 'ACTIVE', '005930', 'Samsung') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, currency, status)
+                VALUES ('KOSPI', '005930', 'Samsung', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class);
     }
 

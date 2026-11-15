@@ -142,7 +142,7 @@ class StockChartServiceTest {
             given(stockPort.loadStockByTicker(ticker)).willReturn(Optional.of(mockStock));
 
             List<PriceObservation> mockPrices = List.of(
-                    observation(stockId, LocalDate.of(2024, 1, 1), PriceBasis.RAW, "100"),
+                    observationWithMovingAverages(stockId, LocalDate.of(2024, 1, 1), "100"),
                     observation(stockId, LocalDate.of(2024, 1, 2), PriceBasis.RAW, "110")
             );
             given(stockPriceReadPort.history(eq(java.util.Set.of(stockId)), eq("KRX"), any(), any(), eq(PriceBasis.RAW)))
@@ -165,6 +165,8 @@ class StockChartServiceTest {
             assertThat(response.ticker()).isEqualTo(ticker);
             assertThat(response.currency()).isEqualTo("USD");
             assertThat(response.prices()).hasSize(2);
+            assertThat(response.prices().getFirst().ma5()).isEqualByComparingTo("98");
+            assertThat(response.prices().getFirst().ma20()).isEqualByComparingTo("95");
             assertThat(response.benchmarks()).hasSize(2);
             assertThat(response.benchmarks().get(1).returnRate()).isEqualByComparingTo("5.0"); // (2100-2000)/2000 * 100
         }
@@ -327,5 +329,13 @@ class StockChartServiceTest {
         BigDecimal value = new BigDecimal(close);
         return new PriceObservation(stockId, date, "KRX", basis, value, value, value, value,
                 100L, BigDecimal.TEN, "FINAL", 1);
+    }
+
+    private PriceObservation observationWithMovingAverages(Long stockId, LocalDate date, String close) {
+        BigDecimal value = new BigDecimal(close);
+        return new PriceObservation(stockId, date, "KRX", PriceBasis.RAW, value, value, value, value,
+                100L, BigDecimal.TEN, "FINAL", 1, null, null,
+                new BigDecimal("98"), new BigDecimal("95"), new BigDecimal("90"), new BigDecimal("85"),
+                null, null, null, null, null, null);
     }
 }
