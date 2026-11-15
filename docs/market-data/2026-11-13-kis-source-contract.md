@@ -24,6 +24,7 @@ The sanitized fixture `stockwellness-core/src/test/resources/kis/source-contract
 ## Other API surfaces and supported series
 
 - Investor trades use `inquire-investor` (`FHKST01010900`). The KIS example describes person/foreign/institution data and says same-day values are provided after market close. This timing statement is not a finality marker. The source sample does not specify all stored unit/precision rules for the planned investor categories.
+- For the historical, date-addressable `investor-trade-by-stock-daily` endpoint (`FHPTJ04160001`), the KIS full-document export `한국투자증권_오픈API_전체문서_20260211_030000`, tab `종목별 투자자매매동향(일별)`, specifies amount in million won and quantity in shares. This supports the current `×1,000,000` amount conversion for that endpoint only. It does not define a FINAL rule or numeric precision/rounding, and it does not resolve units for other endpoints. Source: [KIS API full-document export](https://docs.google.com/spreadsheets/d/1mDOe3herlalfgcmlxrdp-fXPf2Ck6VWVHWlx4Ur983o/edit).
 - Domestic index daily observations use `inquire-daily-indexchartprice` (`FHKUP03500100`). Current code also uses this index series endpoint for the new domestic index path.
 - The official KIS overseas index chart sample says its US index path supports only Dow 30, Nasdaq 100, and S&P 500. The current backend `BenchmarkType` lists five overseas series: SPX, COMP, NDX, SOX, and .DJI. The product decision is to collect only the three KIS-supported series and record COMP/SOX as unsupported. Do not synthesize values for unsupported series or mark them FINAL.
 - Nasdaq has announced 23/5 trading from 2026-12-06. The product decision is to keep EOD on the regular 09:30–16:00 ET core-session basis. This is a collection policy; KIS has not documented the daily series' settlement/finality semantics, so it does not provide evidence to promote rows to FINAL.
@@ -47,7 +48,7 @@ No reviewed KIS API sample or captured response exposes a provider-issued finali
 ## Still unresolved — blocks Task #320 and final cutover PR
 
 1. KIS documentation or an authoritative response field that establishes when an EOD row is FINAL.
-2. Provider-defined units, precision, and adjustment semantics for all persisted price, trading amount, investor flow, index, and sector fields.
+2. Provider-defined units, precision, and adjustment semantics for persisted price, trading amount, index, and sector fields; numeric precision/rounding for `FHPTJ04160001` investor fields.
 3. Full source/API contracts for investor, index, and sector collection, including whether status/revision fields can be supported by KIS evidence.
 4. A maintained holiday/early-close source and update mechanism for every configured US index calendar. The core-session policy is decided; this sample does not supply a maintained full calendar.
 
@@ -73,6 +74,6 @@ Reviewed the public KIS Developers API index and KIS-owned `open-trading-api` ex
 
 “Available after market close” is a publication-time note, not a provider statement that the value is settled. Likewise, `mod_yn` being labelled as a change indicator does not define FINAL or establish that `N` means immutable. The previously recorded same-query reread, where the successful post-close close changed while `mod_yn=N`, is consistent with keeping both observations PROVISIONAL; this is an implementation inference, not a KIS finality rule.
 
-The reviewed examples translate field names but do not provide authoritative units, numeric precision, rounding rules, or a full price-adjustment methodology for the persisted price, index, volume, trading-amount, and investor fields. This bounded review of public portal material and KIS-owned examples does not prove that no additional specification exists in the portal's downloadable endpoint guides or authenticated materials. FINAL promotion and unit normalization therefore remain blocked on an authoritative endpoint specification or KIS clarification.
+The reviewed public examples do not provide authoritative units, numeric precision, rounding rules, or a full price-adjustment methodology for persisted price, index, volume, and trading-amount fields. The KIS full-document export separately confirms the historical investor endpoint's amount and quantity units, but not precision, rounding, or finality. This bounded review does not prove that no additional specification exists in the portal's downloadable endpoint guides or authenticated materials. FINAL promotion and unresolved unit normalization remain blocked on authoritative endpoint evidence or KIS clarification.
 
 The Task #316 date-specific investor request has a KIS-owned request example and a separate output-field map. The repository's HTTP test fixture is constructed test data, not a sanitized live KIS response; no authenticated response was captured in this review. The real-response fixture acceptance condition therefore remains open.
