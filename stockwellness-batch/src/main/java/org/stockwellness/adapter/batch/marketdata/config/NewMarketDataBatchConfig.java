@@ -67,11 +67,14 @@ public class NewMarketDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> kisEodStockReader() {
+    public JpaPagingItemReader<Stock> kisEodStockReader(
+            @Value("#{jobParameters['ticker']}") String ticker) {
         return new JpaPagingItemReaderBuilder<Stock>().name("kisEodStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED)).build();
+                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') "
+                        + "and s.status <> :delisted and (:ticker = '' or s.ticker = :ticker) order by s.id")
+                .parameterValues(Map.of("delisted", StockStatus.DELISTED,
+                        "ticker", ticker == null ? "" : ticker.trim())).build();
     }
 
     @Bean
@@ -99,11 +102,14 @@ public class NewMarketDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> kisEodInvestorStockReader() {
+    public JpaPagingItemReader<Stock> kisEodInvestorStockReader(
+            @Value("#{jobParameters['ticker']}") String ticker) {
         return new JpaPagingItemReaderBuilder<Stock>().name("kisEodInvestorStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED)).build();
+                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') "
+                        + "and s.status <> :delisted and (:ticker = '' or s.ticker = :ticker) order by s.id")
+                .parameterValues(Map.of("delisted", StockStatus.DELISTED,
+                        "ticker", ticker == null ? "" : ticker.trim())).build();
     }
 
     @Bean

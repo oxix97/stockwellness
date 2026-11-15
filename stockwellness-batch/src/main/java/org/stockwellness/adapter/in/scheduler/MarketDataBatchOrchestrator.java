@@ -21,10 +21,12 @@ import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.TradingCalendarPort;
 import org.stockwellness.application.service.marketdata.UsMarketCalendar;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.domain.stock.TradingCalendar;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.global.error.ErrorCode;
 
 /** Runs the canonical market-data jobs in market-session order. */
@@ -36,19 +38,22 @@ public class MarketDataBatchOrchestrator {
     private static final ZoneId US_ZONE = ZoneId.of("America/New_York");
     private static final int CALENDAR_LOOKBACK_DAYS = 14;
     private static final Pattern RUN_ID_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,100}");
+    private static final Pattern KRX_TICKER_PATTERN = Pattern.compile("\\d{6}");
 
     private final JobLauncher jobLauncher;
     private final ApplicationContext applicationContext;
     private final TradingCalendarPort tradingCalendarPort;
     private final UsMarketCalendar usMarketCalendar;
+    private final StockPort stockPort;
 
     public MarketDataBatchOrchestrator(@Qualifier("jobLauncher") JobLauncher jobLauncher,
             ApplicationContext applicationContext, TradingCalendarPort tradingCalendarPort,
-            UsMarketCalendar usMarketCalendar) {
+            UsMarketCalendar usMarketCalendar, StockPort stockPort) {
         this.jobLauncher = jobLauncher;
         this.applicationContext = applicationContext;
         this.tradingCalendarPort = tradingCalendarPort;
         this.usMarketCalendar = usMarketCalendar;
+        this.stockPort = stockPort;
     }
 
     public RunResult runScheduled(String marketCode) {
@@ -61,21 +66,37 @@ public class MarketDataBatchOrchestrator {
         String runId = scheduledRunId(market, now);
         List<StageResult> calendarStages = prepareRecentCalendar(market, now, runId);
         LocalDate latest = resolveLatestCompletedSession(market, now);
-        RunResult result = runPrepared(market, latest, latest, latest, runId, calendarStages);
+        RunResult result = runPrepared(market, latest, latest, latest, runId, null, calendarStages);
         log.info("Canonical market-data run completed: market={}, date={}, runId={}, stages={}",
                 market, latest, runId, result.stages().size());
         return result;
     }
 
     public RunResult runManual(String marketCode, LocalDate startDate, LocalDate requestedEndDate, String requestedRunId) {
-        return runManual(marketCode, startDate, requestedEndDate, requestedRunId, Instant.now());
+        return runManual(marketCode, startDate, requestedEndDate, requestedRunId, null, Instant.now());
+    }
+
+    public RunResult runManual(String marketCode, LocalDate startDate, LocalDate requestedEndDate,
+            String requestedRunId, String requestedTicker) {
+        return runManual(marketCode, startDate, requestedEndDate, requestedRunId, requestedTicker, Instant.now());
     }
 
     RunResult runManual(String marketCode, LocalDate startDate, LocalDate requestedEndDate,
             String requestedRunId, Instant now) {
+        return runManual(marketCode, startDate, requestedEndDate, requestedRunId, null, now);
+    }
+
+    RunResult runManual(String marketCode, LocalDate startDate, LocalDate requestedEndDate,
+            String requestedRunId, String requestedTicker, Instant now) {
         Market market = Market.parse(marketCode);
+        String ticker = normalizeTicker(market, requestedTicker);
         if (startDate == null || requestedEndDate == null || startDate.isAfter(requestedEndDate) || now == null) {
             throw new IllegalArgumentException("Market and a valid start/end date range are required");
+        }
+        if (ticker != null && !stockPort.loadStocksByTickers(List.of(ticker)).stream().anyMatch(stock ->
+                stock != null && ("KOSPI".equals(stock.getMarketCode()) || "KOSDAQ".equals(stock.getMarketCode()))
+                        && stock.getStatus() != StockStatus.DELISTED)) {
+            throw new IllegalArgumentException("Ticker is not an available KRX stock in the stock master");
         }
         String runId = normalizeRunId(requestedRunId, market, startDate, requestedEndDate);
         List<StageResult> calendarStages = new ArrayList<>();
@@ -102,7 +123,8 @@ public class MarketDataBatchOrchestrator {
         } else {
             calendarStages.addAll(prepareCalendarRange(market, startDate, effectiveEndDate, runId));
         }
-        RunResult result = runPrepared(market, startDate, requestedEndDate, effectiveEndDate, runId, calendarStages);
+        RunResult result = runPrepared(market, startDate, requestedEndDate, effectiveEndDate, runId, ticker,
+                calendarStages);
         log.info("Canonical market-data manual run completed: market={}, requestedRange={}..{}, effectiveEnd={}, runId={}, stages={}",
                 market, startDate, requestedEndDate, effectiveEndDate, runId, result.stages().size());
         return result;
@@ -176,35 +198,53 @@ public class MarketDataBatchOrchestrator {
     }
 
     private RunResult runPrepared(Market market, LocalDate startDate, LocalDate requestedEndDate,
-            LocalDate effectiveEndDate, String runId, List<StageResult> calendarStages) {
+            LocalDate effectiveEndDate, String runId, String ticker, List<StageResult> calendarStages) {
         List<StageResult> stages = new ArrayList<>(calendarStages);
         if (market == Market.KR) {
+            if (ticker == null) {
+                stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
+                        "stockMasterSyncJob"));
+            }
             stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
-                    "stockMasterSyncJob"));
+                    "kisEodStockPriceSyncJob", ticker));
             stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
-                    "kisEodStockPriceSyncJob"));
-            stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
-                    "kisEodInvestorTradeSyncJob"));
+                    "kisEodInvestorTradeSyncJob", ticker));
         }
         stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
                 "kisEodIndexPriceSyncJob"));
-        stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
-                "marketDerivedDataJob"));
+        if (ticker == null) {
+            stages.add(runStage(market, startDate, requestedEndDate, effectiveEndDate, runId,
+                    "marketDerivedDataJob"));
+        }
         return new RunResult(market.name(), startDate, requestedEndDate, effectiveEndDate, runId, List.copyOf(stages));
     }
 
     private StageResult runStage(Market market, LocalDate startDate, LocalDate requestedEndDate,
             LocalDate effectiveEndDate, String runId, String jobName) {
-        JobParameters parameters = new JobParametersBuilder()
+        return runStage(market, startDate, requestedEndDate, effectiveEndDate, runId, jobName, null);
+    }
+
+    private StageResult runStage(Market market, LocalDate startDate, LocalDate requestedEndDate,
+            LocalDate effectiveEndDate, String runId, String jobName, String ticker) {
+        JobParametersBuilder parameters = new JobParametersBuilder()
                 .addString("market", market.name())
                 .addString("startDate", startDate.toString())
                 .addString("endDate", effectiveEndDate.toString())
                 .addString("requestedEndDate", requestedEndDate.toString())
                 .addString("targetDate", effectiveEndDate.toString())
                 .addString("sessionBasis", "REGULAR")
-                .addString("runId", runId)
-                .toJobParameters();
-        return runJob(jobName, jobName, parameters);
+                .addString("runId", runId);
+        if (ticker != null) parameters.addString("ticker", ticker);
+        return runJob(jobName, jobName, parameters.toJobParameters());
+    }
+
+    private static String normalizeTicker(Market market, String requestedTicker) {
+        if (requestedTicker == null || requestedTicker.isBlank()) return null;
+        String ticker = requestedTicker.trim();
+        if (market != Market.KR || !KRX_TICKER_PATTERN.matcher(ticker).matches()) {
+            throw new IllegalArgumentException("Ticker filter requires a six-digit KRX stock code");
+        }
+        return ticker;
     }
 
     private StageResult runJob(String stage, String jobName, JobParameters parameters) {
