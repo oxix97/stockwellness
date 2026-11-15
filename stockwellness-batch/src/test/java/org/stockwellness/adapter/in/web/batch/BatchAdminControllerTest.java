@@ -126,6 +126,44 @@ class BatchAdminControllerTest {
     }
 
     @Test
+    void marketDataSyncPassesOptionalTickerForScopedKrxReconciliation() throws Exception {
+        LocalDate date = LocalDate.of(2026, 11, 12);
+        var result = new MarketDataBatchOrchestrator.RunResult("KR", date, date, date, "kis-252-sample",
+                List.of(new MarketDataBatchOrchestrator.StageResult(
+                        "kisEodStockPriceSyncJob", "kisEodStockPriceSyncJob", "COMPLETED", 43L)));
+        when(marketDataBatchOrchestrator.runManual("KR", date, date, "kis-252-sample", "005930"))
+                .thenReturn(result);
+
+        mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
+                        .header("X-Market-Data-Token", "test-market-data-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"market":"KR","startDate":"2026-11-12","endDate":"2026-11-12",
+                                 "runId":"kis-252-sample","ticker":"005930"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.market").value("KR"))
+                .andExpect(jsonPath("$.data.stages[0].executionId").value(43));
+
+        verify(marketDataBatchOrchestrator).runManual("KR", date, date, "kis-252-sample", "005930");
+    }
+
+    @Test
+    void marketDataSyncRejectsTickerFilterOutsideKrx() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
+                        .header("X-Market-Data-Token", "test-market-data-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"market":"US","startDate":"2026-11-20","endDate":"2026-11-27",
+                                 "ticker":"005930"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        org.mockito.Mockito.verifyNoInteractions(marketDataBatchOrchestrator);
+    }
+
+    @Test
     void marketDataSyncRejectsMissingToken() throws Exception {
         mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
                         .contentType(MediaType.APPLICATION_JSON)
