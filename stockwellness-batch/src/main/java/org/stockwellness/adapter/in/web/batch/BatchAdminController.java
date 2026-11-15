@@ -2,7 +2,9 @@ package org.stockwellness.adapter.in.web.batch;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -11,10 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceSyncRequest;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
+import org.stockwellness.adapter.in.scheduler.MarketDataBatchOrchestrator;
 import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
 import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
 import org.stockwellness.adapter.in.web.batch.dto.DailyFullSyncRequest;
 import org.stockwellness.adapter.in.web.batch.dto.DataIntegrityResponse;
+import org.stockwellness.adapter.in.web.batch.dto.MarketDataSyncRequest;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
@@ -34,6 +38,8 @@ public class BatchAdminController {
     private final DailyBatchOrchestrationService dailyBatchOrchestrationService;
     private final KisDailyPriceAdapter kisDailyPriceAdapter;
     private final DailyBatchOrchestrator dailyBatchOrchestrator;
+    private final MarketDataBatchOrchestrator marketDataBatchOrchestrator;
+    private final MarketDataSyncTokenVerifier marketDataSyncTokenVerifier;
 
     /**
      * KIS 어댑터를 직접 호출하여 여러 종목의 현재가/시세를 즉시 조회 (테스트/관리용)
@@ -50,6 +56,28 @@ public class BatchAdminController {
     public ApiResponse<BatchExecutionResponse> runIndicesSync() {
         var result = batchControlUseCase.syncIndices(new BatchControlUseCase.MarketIndexSyncCommand("idxcode.mst"));
         return ApiResponse.success(new BatchExecutionResponse(result.executionId(), result.jobName(), result.statusUrl(), result.message()));
+    }
+
+    /**
+     * 신규 시장 원천을 지정한 시장과 완료 세션 범위로 수동 수집합니다.
+     */
+    @PostMapping("/market-data/sync")
+    public ApiResponse<MarketDataBatchOrchestrator.RunResult> runMarketDataSync(
+            @RequestHeader(name = "X-Market-Data-Token", required = false) String token,
+            @RequestBody MarketDataSyncRequest request) {
+        marketDataSyncTokenVerifier.verify(token);
+        if (request == null || !StringUtils.hasText(request.market())
+                || !Set.of("KR", "US").contains(request.market().trim().toUpperCase(Locale.ROOT))
+                || request.startDate() == null || request.endDate() == null
+                || request.startDate().isAfter(request.endDate())) {
+            throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        try {
+            return ApiResponse.success(marketDataBatchOrchestrator.runManual(
+                    request.market(), request.startDate(), request.endDate(), request.runId()));
+        } catch (IllegalArgumentException invalidRequest) {
+            throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
+        }
     }
 
     /**

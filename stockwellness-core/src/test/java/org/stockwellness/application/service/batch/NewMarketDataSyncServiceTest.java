@@ -25,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailyPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.adapter.out.external.kis.dto.KisDailySectorDetail;
 import org.stockwellness.adapter.out.external.kis.dto.KisOverseasIndexDailyPrice;
 import org.stockwellness.application.port.out.external.kis.KisDailyPricePort;
@@ -108,7 +109,8 @@ class NewMarketDataSyncServiceTest {
                 TradingCalendar.of("KOSPI", date, true, null, null, "test")));
         given(prices.fetchDailyPrices(stock, date, date)).willReturn(List.of());
 
-        service.syncStockPrices(stock, date, date);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
         verify(eod).upsertObservations(saved.capture(), anyList());
@@ -129,7 +131,8 @@ class NewMarketDataSyncServiceTest {
                 new KisDailyPriceDetail(date, new BigDecimal("10"), null, new BigDecimal("8"),
                         new BigDecimal("9"), 10L, new BigDecimal("100"), null, null, "N", null, null, null)));
 
-        service.syncStockPrices(stock, date, date);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
         verify(eod).upsertObservations(saved.capture(), anyList());
@@ -169,7 +172,8 @@ class NewMarketDataSyncServiceTest {
         given(prices.fetchDailyPrices(stock, start, middle)).willReturn(List.of());
         given(prices.fetchDailyPrices(stock, end, end)).willReturn(List.of());
 
-        service.syncStockPrices(stock, start, end);
+        assertThatThrownBy(() -> service.syncStockPrices(stock, start, end))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         verify(prices).fetchDailyPrices(stock, start, middle);
         verify(prices).fetchDailyPrices(stock, end, end);
@@ -227,7 +231,7 @@ class NewMarketDataSyncServiceTest {
 
         assertThatThrownBy(() -> service.syncIndexPrices(totalReturn, date, date))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("active canonical KIS KRW price");
+                .hasMessageContaining("active canonical KIS");
 
         verify(calendar, never()).findAll("KOSPI", date, date);
         verify(indexPrices, never()).fetchRawIndexDailyPrices(org.mockito.ArgumentMatchers.any(),
@@ -258,7 +262,7 @@ class NewMarketDataSyncServiceTest {
         service.syncStockPrices(stock, row.baseDate(), row.baseDate());
 
         ArgumentCaptor<List<EodStockPrice>> saved = ArgumentCaptor.forClass(List.class);
-        verify(eod).upsert(saved.capture());
+        verify(eod).upsertObservations(saved.capture(), anyList());
         assertThat(saved.getValue()).singleElement().satisfies(price ->
                 assertThat(price.getDataStatus()).isEqualTo("PROVISIONAL"));
     }
@@ -408,7 +412,8 @@ class NewMarketDataSyncServiceTest {
                 new KisDailySectorDetail("20261005", "2500.00", "1", "2", "0.04", "100", "250000",
                         "2490.00", "2510.00", "2480.00")));
 
-        service.syncIndexPrices(domesticSeries(), start, end);
+        assertThatThrownBy(() -> service.syncIndexPrices(domesticSeries(), start, end))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
         verify(indexDaily).upsert(saved.capture());
@@ -465,7 +470,8 @@ class NewMarketDataSyncServiceTest {
         given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of(
                 new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760", "6700", " ", "N")));
 
-        service.syncIndexPrices(usSeries("SPX", "NYSE"), date, date);
+        assertThatThrownBy(() -> service.syncIndexPrices(usSeries("SPX", "NYSE"), date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
         verify(indexDaily).upsert(saved.capture());
@@ -501,6 +507,27 @@ class NewMarketDataSyncServiceTest {
             if (date.equals(day.path("date").asText())) return day;
         }
         throw new AssertionError("Missing session fixture: " + market + " " + date);
+    }
+
+    @Test
+    void missing_open_day_index_response_is_persisted_as_incomplete_and_fails_the_collection() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        IndexSeries series = new IndexSeries(MarketIndex.of("0001", "코스피", "0"), "KIS",
+                "kis.idxcode.KOSPI", "0001", "KOSPI", "PRICE", "NONE", "KRW", true);
+        given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", date, true, null, null, "test")));
+        given(indexPrices.fetchRawIndexDailyPrices("0001", date, date)).willReturn(List.of());
+
+        assertThatThrownBy(() -> service.syncIndexPrices(series, date, date))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("incomplete");
+
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
+            assertThat(row.getClosePrice()).isNull();
+        });
     }
 
     private static Stock stock() {

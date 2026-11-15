@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.batch.marketdata.config;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
@@ -128,19 +129,33 @@ public class NewMarketDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<IndexSeries> kisEodIndexReader() {
+    public JpaPagingItemReader<IndexSeries> kisEodIndexReader(
+            @Value("#{jobParameters['market']}") String market) {
+        String normalizedMarket = market == null || market.isBlank()
+                ? "KR" : market.trim().toUpperCase(Locale.ROOT);
+        String marketPredicate;
+        Map<String, Object> queryParameters;
+        if ("KR".equals(normalizedMarket)) {
+            marketPredicate = "(s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
+                    + "and s.currency = 'KRW' and s.calendarMarketCode in ('KOSPI','KOSDAQ') "
+                    + "and i.kind in (:marketKind, :sectorKind))";
+            queryParameters = Map.of("marketKind", MarketIndexKind.MARKET,
+                    "sectorKind", MarketIndexKind.SECTOR);
+        } else if ("US".equals(normalizedMarket)) {
+            marketPredicate = "(s.providerNamespace = 'kis.ovrs.idxcode.N' "
+                    + "and s.providerSeriesCode in ('SPX','NDX','.DJI') "
+                    + "and s.calendarMarketCode in ('NASDAQ','NYSE') and s.currency = 'USD' "
+                    + "and i.kind = :marketKind)";
+            queryParameters = Map.of("marketKind", MarketIndexKind.MARKET);
+        } else {
+            throw new IllegalArgumentException("market must be KR or US");
+        }
         return new JpaPagingItemReaderBuilder<IndexSeries>().name("kisEodIndexReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(20)
                 .queryString("select s from IndexSeries s join s.marketIndex i where s.provider = 'KIS' "
                         + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' "
-                        + "and s.active = true and s.canonical = true and ("
-                        + "(s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
-                        + "and s.currency = 'KRW' and i.kind in (:marketKind, :sectorKind)) or "
-                        + "(s.providerNamespace = 'kis.ovrs.idxcode.N' and s.providerSeriesCode in ('SPX','NDX','.DJI') "
-                        + "and s.calendarMarketCode in ('NASDAQ','NYSE') and s.currency = 'USD' "
-                        + "and i.kind = :marketKind)) order by s.id")
-                .parameterValues(Map.of("marketKind", MarketIndexKind.MARKET,
-                        "sectorKind", MarketIndexKind.SECTOR)).build();
+                        + "and s.active = true and s.canonical = true and " + marketPredicate + " order by s.id")
+                .parameterValues(queryParameters).build();
     }
 
     @Bean

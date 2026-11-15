@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -218,6 +219,29 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
+    void trading_calendar_job_fetches_outside_transaction_and_persists_verified_session_times() throws Exception {
+        given(kisHolidayAdapter.fetchHolidays(START_DATE)).willAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return List.of(new KisHolidayEntry(START_DATE.format(DateTimeFormatter.BASIC_ISO_DATE), "Y"));
+        });
+
+        JobExecution execution = jobLauncher.run(tradingCalendarJob,
+                parameters("baseDate", START_DATE.toString()));
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from trading_calendar where trade_date = ? and is_trading_day",
+                Integer.class, START_DATE)).isEqualTo(2);
+        Map<String, Object> session = jdbcTemplate.queryForMap("""
+                select opens_at, closes_at, source from trading_calendar
+                where market_code = 'KOSPI' and trade_date = ?
+                """, START_DATE);
+        assertThat(session.get("opens_at").toString()).contains("09:00:00");
+        assertThat(session.get("closes_at").toString()).contains("15:30:00");
+        assertThat(session.get("source")).isEqualTo("KIS:CTCA0903R|KRX:REGULAR");
+        verify(kisHolidayAdapter).fetchHolidays(START_DATE);
+    }
+
+    @Test
     void stock_eod_job_reads_collectible_domestic_stocks_and_passes_the_date_range() throws Exception {
         Stock samsung = stockAdapter.save(StockFixture.createSamsung());
         stockAdapter.save(StockFixture.createDelisted("999999", "상장폐지 종목"));
@@ -227,7 +251,10 @@ class NewMarketDataBatchConfigIntegrationTest {
         given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(END_DATE)))
                 .willReturn(List.of(new KisDailyPriceDetail(START_DATE, new BigDecimal("70000"),
                         new BigDecimal("71000"), new BigDecimal("69000"), new BigDecimal("70500"),
-                        1_000_000L, new BigDecimal("70500000000"), null, null, "N", null, null, null)));
+                        1_000_000L, new BigDecimal("70500000000"), null, null, "N", null, null, null),
+                        new KisDailyPriceDetail(END_DATE, new BigDecimal("70500"),
+                                new BigDecimal("71500"), new BigDecimal("69500"), new BigDecimal("71000"),
+                                1_100_000L, new BigDecimal("78100000000"), null, null, "N", null, null, null)));
 
         JobExecution execution = jobLauncher.run(stockPriceJob, dateRangeParameters());
 
@@ -241,8 +268,23 @@ class NewMarketDataBatchConfigIntegrationTest {
                 """, String.class, samsung.getId(), START_DATE)).isEqualTo("PROVISIONAL");
         assertThat(jdbcTemplate.queryForObject("""
                 select data_status from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
-                """, String.class, samsung.getId(), END_DATE)).isEqualTo("INCOMPLETE");
+                """, String.class, samsung.getId(), END_DATE)).isEqualTo("PROVISIONAL");
         verify(kisDailyPriceAdapter).fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(END_DATE));
+    }
+
+    @Test
+    void stock_eod_job_fails_after_persisting_an_incomplete_open_day_observation() throws Exception {
+        Stock samsung = stockAdapter.save(StockFixture.createSamsung());
+        tradingCalendarAdapter.upsert(List.of(TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test")));
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(START_DATE)))
+                .willReturn(List.of());
+
+        JobExecution execution = jobLauncher.run(stockPriceJob, singleDateParameters());
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThat(jdbcTemplate.queryForObject("""
+                select data_status from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'
+                """, String.class, samsung.getId(), START_DATE)).isEqualTo("INCOMPLETE");
     }
 
     @Test
@@ -303,9 +345,13 @@ class NewMarketDataBatchConfigIntegrationTest {
         given(kisDailyPriceAdapter.fetchRawIndexDailyPrices(any(), eq(START_DATE), eq(END_DATE)))
                 .willAnswer(invocation -> {
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-                    return List.of(new KisDailySectorDetail(START_DATE.format(DateTimeFormatter.BASIC_ISO_DATE),
-                            "2500.00", "10.00", "2", "0.40", "1000000", "2500000000",
-                            "2490.00", "2510.00", "2480.00"));
+                    return List.of(
+                            new KisDailySectorDetail(START_DATE.format(DateTimeFormatter.BASIC_ISO_DATE),
+                                    "2500.00", "10.00", "2", "0.40", "1000000", "2500000000",
+                                    "2490.00", "2510.00", "2480.00"),
+                            new KisDailySectorDetail(END_DATE.format(DateTimeFormatter.BASIC_ISO_DATE),
+                                    "2510.00", "10.00", "2", "0.40", "1100000", "2761000000",
+                                    "2500.00", "2520.00", "2490.00"));
                 });
 
         JobExecution execution = jobLauncher.run(indexPriceJob, dateRangeParameters());
@@ -316,9 +362,9 @@ class NewMarketDataBatchConfigIntegrationTest {
         assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?, ?, ?, ?)",
                 Integer.class, kospi.getId(), kosdaq.getId(), kospi200.getId(), kosdaq150.getId(), sector.getId())).isEqualTo(10);
         assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?, ?, ?, ?) and d.price_status = 'PROVISIONAL'",
-                Integer.class, kospi.getId(), kosdaq.getId(), kospi200.getId(), kosdaq150.getId(), sector.getId())).isEqualTo(5);
+                Integer.class, kospi.getId(), kosdaq.getId(), kospi200.getId(), kosdaq150.getId(), sector.getId())).isEqualTo(10);
         assertThat(jdbcTemplate.queryForObject("select count(*) from index_daily d join index_series s on s.id = d.series_id where s.index_id in (?, ?, ?, ?, ?) and d.price_status = 'INCOMPLETE'",
-                Integer.class, kospi.getId(), kosdaq.getId(), kospi200.getId(), kosdaq150.getId(), sector.getId())).isEqualTo(5);
+                Integer.class, kospi.getId(), kosdaq.getId(), kospi200.getId(), kosdaq150.getId(), sector.getId())).isZero();
         verify(kisDailyPriceAdapter, org.mockito.Mockito.times(5))
                 .fetchRawIndexDailyPrices(any(), eq(START_DATE), eq(END_DATE));
     }
@@ -340,7 +386,7 @@ class NewMarketDataBatchConfigIntegrationTest {
                             "6700", "12345", "N"));
                 });
 
-        JobExecution execution = jobLauncher.run(indexPriceJob, dateRangeParameters());
+        JobExecution execution = jobLauncher.run(indexPriceJob, marketDateRangeParameters("US"));
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         assertThat(execution.getStepExecutions()).singleElement()
@@ -360,6 +406,43 @@ class NewMarketDataBatchConfigIntegrationTest {
         verify(kisDailyPriceAdapter).fetchOverseasIndexDailyPrices("SPX", START_DATE, END_DATE);
         org.mockito.Mockito.verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
                 .fetchOverseasIndexDailyPrices("COMP", START_DATE, END_DATE);
+    }
+
+    @Test
+    void us_index_job_does_not_read_domestic_series() throws Exception {
+        MarketIndex kospi = marketIndexRepository.saveAndFlush(MarketIndex.of("0001", "코스피", "0"));
+        indexSeriesRepository.saveAndFlush(new IndexSeries(kospi, "KIS", "kis.idxcode.KOSPI", "0001",
+                "KOSPI", "PRICE", "NONE", "KRW", true));
+        tradingCalendarAdapter.upsert(List.of(
+                TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
+                TradingCalendar.of("KOSDAQ", START_DATE, true, null, null, "test")));
+
+        String runId = "us-market-isolation-" + UUID.randomUUID();
+        JobExecution execution = jobLauncher.run(indexPriceJob, new JobParametersBuilder()
+                .addString("market", "US")
+                .addString("startDate", START_DATE.toString())
+                .addString("endDate", START_DATE.toString())
+                .addString("requestedEndDate", END_DATE.toString())
+                .addString("targetDate", START_DATE.toString())
+                .addString("sessionBasis", "REGULAR")
+                .addString("runId", runId)
+                .addLong("run.id", System.nanoTime())
+                .toJobParameters());
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(execution.getStepExecutions()).singleElement()
+                .satisfies(step -> assertThat(step.getReadCount()).isZero());
+        verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchRawIndexDailyPrices(any(), any(), any());
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from batch_job_execution_params
+                where job_execution_id = ? and parameter_name in
+                    ('market', 'startDate', 'endDate', 'requestedEndDate', 'targetDate', 'sessionBasis', 'runId')
+                """, Integer.class, execution.getId())).isEqualTo(7);
+        assertThat(jdbcTemplate.queryForObject("""
+                select count(*) from batch_job_execution_params
+                where job_execution_id = ? and parameter_name = 'runId' and parameter_value = ?
+                """, Integer.class, execution.getId(), runId)).isEqualTo(1);
     }
 
     @Test
@@ -417,6 +500,23 @@ class NewMarketDataBatchConfigIntegrationTest {
         return new JobParametersBuilder()
                 .addString("startDate", START_DATE.toString())
                 .addString("endDate", END_DATE.toString())
+                .addLong("run.id", System.nanoTime())
+                .toJobParameters();
+    }
+
+    private static JobParameters marketDateRangeParameters(String market) {
+        return new JobParametersBuilder()
+                .addString("market", market)
+                .addString("startDate", START_DATE.toString())
+                .addString("endDate", END_DATE.toString())
+                .addLong("run.id", System.nanoTime())
+                .toJobParameters();
+    }
+
+    private static JobParameters singleDateParameters() {
+        return new JobParametersBuilder()
+                .addString("startDate", START_DATE.toString())
+                .addString("endDate", START_DATE.toString())
                 .addLong("run.id", System.nanoTime())
                 .toJobParameters();
     }

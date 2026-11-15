@@ -1,11 +1,13 @@
 package org.stockwellness.adapter.in.scheduler;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.stockwellness.application.service.portfolio.AdvisorOrchestrator;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -14,7 +16,7 @@ import static org.mockito.Mockito.verify;
 class StockwellnessSchedulerTest {
 
     @Mock
-    private DailyBatchOrchestrator dailyBatchOrchestrator;
+    private MarketDataBatchOrchestrator marketDataBatchOrchestrator;
 
     @Mock
     private AdvisorOrchestrator advisorOrchestrator;
@@ -24,12 +26,27 @@ class StockwellnessSchedulerTest {
 
     @Test
     @DisplayName("일일 전체 동기화 스케줄러는 오케스트레이션 서비스만 호출한다")
-    void runDailyFullSync_delegatesToOrchestrator() {
+    void runDailyFullSync_delegates_to_the_canonical_kr_orchestrator() {
         stockwellnessScheduler.runDailyFullSync();
 
-        verify(dailyBatchOrchestrator).runDailyStockSync();
-        verify(dailyBatchOrchestrator).runDailySectorInsightSync();
-        verify(dailyBatchOrchestrator).runDailyMarketSync();
+        verify(marketDataBatchOrchestrator).runScheduled("KR");
+    }
+
+    @Test
+    void kr_market_schedule_runs_after_the_verified_late_close_session() throws Exception {
+        Scheduled schedule = StockwellnessScheduler.class.getMethod("runDailyFullSync")
+                .getAnnotation(Scheduled.class);
+
+        assertThat(schedule.cron()).isEqualTo("0 45 16 * * MON-FRI");
+        assertThat(schedule.zone()).isEqualTo("Asia/Seoul");
+    }
+
+    @Test
+    @DisplayName("미국 시장 스케줄은 해외 지수 전용 오케스트레이션을 호출한다")
+    void runDailyUsMarketSync_delegates_to_the_us_orchestrator() {
+        stockwellnessScheduler.runDailyUsMarketSync();
+
+        verify(marketDataBatchOrchestrator).runScheduled("US");
     }
 
     @Test

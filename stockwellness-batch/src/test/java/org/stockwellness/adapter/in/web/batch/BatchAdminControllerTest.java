@@ -6,12 +6,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
+import org.stockwellness.adapter.in.scheduler.MarketDataBatchOrchestrator;
+import org.stockwellness.adapter.in.web.batch.MarketDataSyncTokenVerifier;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.KisMultiStockPriceDetail;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
@@ -30,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(BatchAdminController.class)
+@TestPropertySource(properties = "stockwellness.batch.market-data.sync-token=test-market-data-token")
+@Import(MarketDataSyncTokenVerifier.class)
 class BatchAdminControllerTest {
 
     @Autowired
@@ -46,6 +52,9 @@ class BatchAdminControllerTest {
 
     @MockitoBean
     private DailyBatchOrchestrator dailyBatchOrchestrator;
+
+    @MockitoBean
+    private MarketDataBatchOrchestrator marketDataBatchOrchestrator;
 
     @MockitoBean
     private KisDailyPriceAdapter kisDailyPriceAdapter;
@@ -90,6 +99,59 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.data.jobName").value("stockMasterSyncJob"))
                 .andExpect(jsonPath("$.data.statusUrl").value("/api/v1/admin/batch/status/stockMasterSyncJob"))
                 .andExpect(jsonPath("$.data.message").exists());
+    }
+
+    @Test
+    void marketDataSyncRequiresExplicitMarketAndDateRange() throws Exception {
+        var result = new MarketDataBatchOrchestrator.RunResult("US", LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 27), LocalDate.of(2026, 11, 25), "us-2026-11-20-2026-11-27",
+                List.of(new MarketDataBatchOrchestrator.StageResult(
+                        "kisEodIndexPriceSyncJob", "kisEodIndexPriceSyncJob", "COMPLETED", 42L)));
+        when(marketDataBatchOrchestrator.runManual("US", LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 27), "us-2026-11-20-2026-11-27")).thenReturn(result);
+
+        mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
+                        .header("X-Market-Data-Token", "test-market-data-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"market":"US","startDate":"2026-11-20","endDate":"2026-11-27",
+                                 "runId":"us-2026-11-20-2026-11-27"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.market").value("US"))
+                .andExpect(jsonPath("$.data.startDate").value("2026-11-20"))
+                .andExpect(jsonPath("$.data.effectiveEndDate").value("2026-11-25"))
+                .andExpect(jsonPath("$.data.stages[0].executionId").value(42));
+    }
+
+    @Test
+    void marketDataSyncRejectsMissingToken() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"market":"US","startDate":"2026-11-20","endDate":"2026-11-27"}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+
+        org.mockito.Mockito.verifyNoInteractions(marketDataBatchOrchestrator);
+    }
+
+    @Test
+    void marketDataSyncRejectsIncorrectToken() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/batch/market-data/sync")
+                        .header("X-Market-Data-Token", "incorrect")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"market":"US","startDate":"2026-11-20","endDate":"2026-11-27"}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()));
+
+        org.mockito.Mockito.verifyNoInteractions(marketDataBatchOrchestrator);
     }
 
     @Test
