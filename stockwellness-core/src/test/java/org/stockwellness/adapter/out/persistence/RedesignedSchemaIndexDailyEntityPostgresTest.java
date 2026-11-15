@@ -11,6 +11,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Properties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.stockwellness.adapter.out.persistence.stock.EodStockPriceAdapter;
+import org.stockwellness.application.port.out.outbox.OutboxPort;
+import org.stockwellness.domain.outbox.OutboxEvent;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.Market;
 import org.stockwellness.domain.stock.TradingCalendar;
@@ -60,6 +63,7 @@ class RedesignedSchemaIndexDailyEntityPostgresTest {
                 .addAnnotatedClass(MarketIndex.class)
                 .addAnnotatedClass(IndexSeries.class)
                 .addAnnotatedClass(IndexDaily.class)
+                .addAnnotatedClass(OutboxEvent.class)
                 .addProperties(settings)
                 .buildSessionFactory()) {
             Long seriesId;
@@ -102,7 +106,7 @@ class RedesignedSchemaIndexDailyEntityPostgresTest {
                     """, Long.class);
             Stock stock = mock(Stock.class);
             when(stock.getId()).thenReturn(stockId);
-            EodStockPriceAdapter prices = new EodStockPriceAdapter(jdbc);
+            EodStockPriceAdapter prices = new EodStockPriceAdapter(jdbc, mock(OutboxPort.class), new ObjectMapper());
             prices.upsert(List.of(EodStockPrice.of(stock, TRADE_DATE, "KRX",
                     new BigDecimal("2490"), new BigDecimal("2510"), new BigDecimal("2480"),
                     new BigDecimal("2500"), 100L, new BigDecimal("100000"), "KIS:RAW", "PROVISIONAL")));

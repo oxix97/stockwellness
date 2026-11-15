@@ -6,6 +6,8 @@ import java.util.List;
 public interface SectorLeadingStockPort {
     List<SectorLeadingStockCandidate> finalCandidates(long seriesId, LocalDate tradeDate);
 
+    List<Long> seriesIdsForStock(long stockId);
+
     void replace(long seriesId, LocalDate tradeDate, List<RankedSectorStock> stocks, String inputManifest);
 
     record RankedSectorStock(long stockId, LocalDate priceDate, String quoteScope, int rank) {}

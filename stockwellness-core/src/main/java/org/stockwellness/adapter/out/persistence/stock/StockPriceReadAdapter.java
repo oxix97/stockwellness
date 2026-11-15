@@ -109,6 +109,18 @@ public class StockPriceReadAdapter implements StockPriceReadPort {
                 """, LocalDate.class, quoteScope, asOf));
     }
 
+    @Override
+    public List<LocalDate> finalDatesFrom(long stockId, String quoteScope, LocalDate startDate, int limit) {
+        if (stockId <= 0 || quoteScope == null || quoteScope.isBlank() || startDate == null || limit < 1) {
+            throw new IllegalArgumentException("Stock, quote scope, start date, and positive limit are required");
+        }
+        return jdbc.getJdbcTemplate().query("""
+                SELECT trade_date FROM stock_price_daily
+                WHERE stock_id = ? AND quote_scope = ? AND trade_date >= ? AND data_status = 'FINAL'
+                ORDER BY trade_date LIMIT ?
+                """, (rs, rowNum) -> rs.getObject("trade_date", LocalDate.class), stockId, quoteScope, startDate, limit);
+    }
+
     private Map<Long, List<PriceObservation>> query(Set<Long> stockIds, String quoteScope, PriceBasis basis,
             String filter, String order, MapSqlParameterSource parameters) {
         Map<Long, List<PriceObservation>> results = new LinkedHashMap<>();

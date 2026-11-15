@@ -158,6 +158,14 @@ class TechnicalIndicatorPostgresTest {
                 Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT input_manifest ->> 'revision' FROM market_signal WHERE signal_type = 'SECTOR_LEADING_STOCK'",
                 String.class)).isEqualTo("1");
+
+        leadingStockAdapter.replace(seriesId, TARGET_DATE, List.of(),
+                "{\"source\":\"stock_price_daily\",\"indexSeriesId\":" + seriesId
+                        + ",\"tradeDate\":\"" + TARGET_DATE + "\",\"candidates\":[],\"selected\":[]}");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sector_leading_stock WHERE series_id = ? AND trade_date = ?",
+                Integer.class, seriesId, TARGET_DATE)).isZero();
+        assertThat(jdbc.queryForObject("SELECT input_manifest ->> 'stale' FROM market_signal WHERE signal_type = 'SECTOR_LEADING_STOCK'",
+                String.class)).isEqualTo("true");
     }
 
     @Test

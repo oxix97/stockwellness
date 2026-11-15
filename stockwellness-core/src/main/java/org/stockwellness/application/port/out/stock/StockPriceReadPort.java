@@ -18,4 +18,6 @@ public interface StockPriceReadPort {
             LocalDate asOf, PriceBasis basis);
 
     Optional<LocalDate> latestFinalDate(String quoteScope, LocalDate asOf);
+
+    List<LocalDate> finalDatesFrom(long stockId, String quoteScope, LocalDate startDate, int limit);
 }

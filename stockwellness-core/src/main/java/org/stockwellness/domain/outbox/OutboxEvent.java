@@ -45,4 +45,10 @@ public class OutboxEvent extends AbstractEntity {
         this.status = OutboxStatus.FAILED;
         this.errorMessage = errorMessage;
     }
+
+    public void retry(String errorMessage) {
+        this.status = OutboxStatus.PENDING;
+        this.processedAt = null;
+        this.errorMessage = errorMessage;
+    }
 }

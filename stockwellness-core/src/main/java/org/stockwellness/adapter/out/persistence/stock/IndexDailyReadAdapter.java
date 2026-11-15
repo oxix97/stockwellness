@@ -15,6 +15,18 @@ public class IndexDailyReadAdapter implements IndexDailyReadPort {
     private final JdbcTemplate jdbc;
 
     @Override
+    public List<LocalDate> finalDatesFrom(long seriesId, LocalDate startDate, int limit) {
+        if (seriesId <= 0 || startDate == null || limit < 1) {
+            throw new IllegalArgumentException("Index series, start date, and positive limit are required");
+        }
+        return jdbc.query("""
+                SELECT trade_date FROM index_daily
+                WHERE series_id = ? AND trade_date >= ? AND price_status = 'FINAL' AND close_value IS NOT NULL
+                ORDER BY trade_date LIMIT ?
+                """, (rs, rowNum) -> rs.getObject("trade_date", LocalDate.class), seriesId, startDate, limit);
+    }
+
+    @Override
     public List<IndexPriceObservation> recentFinal(long seriesId, LocalDate asOf, int limit) {
         if (seriesId <= 0 || asOf == null || limit < 1) {
             throw new IllegalArgumentException("Index series, date, and positive limit are required");

@@ -10,6 +10,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -41,18 +42,19 @@ public class ApiRedisConfig {
 
     @Primary
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory factory) {
+    public CacheManager cacheManager(RedisConnectionFactory factory,
+            @Value("${stockwellness.cache.namespace:new-db-v1}") String cacheNamespace) {
         var domainSerializer = ApiRedisSerializerConfig.createDomainSerializer();
         var securitySerializer = ApiRedisSerializerConfig.createSecuritySerializer(getClass().getClassLoader());
 
         // 기본 설정 (1시간 TTL)
-        RedisCacheConfiguration defaultConfig = createCacheConfig(domainSerializer, Duration.ofHours(1));
+        RedisCacheConfiguration defaultConfig = createCacheConfig(domainSerializer, Duration.ofHours(1), cacheNamespace);
 
         // Enum 기반 자동 설정 맵 생성
         Map<String, RedisCacheConfiguration> configMap = new HashMap<>();
         for (CacheType type : CacheType.values()) {
             var serializer = type.isUseSecuritySerializer() ? securitySerializer : domainSerializer;
-            configMap.put(type.getCacheName(), createCacheConfig(serializer, type.getTtl()));
+            configMap.put(type.getCacheName(), createCacheConfig(serializer, type.getTtl(), cacheNamespace));
         }
 
         return RedisCacheManager.builder(factory)
@@ -61,8 +63,10 @@ public class ApiRedisConfig {
                 .build();
     }
 
-    private RedisCacheConfiguration createCacheConfig(GenericJackson2JsonRedisSerializer serializer, Duration ttl) {
+    private RedisCacheConfiguration createCacheConfig(GenericJackson2JsonRedisSerializer serializer, Duration ttl,
+            String cacheNamespace) {
         return RedisCacheConfiguration.defaultCacheConfig()
+                .computePrefixWith(cacheName -> CacheKeyNamespace.prefix(cacheNamespace, cacheName))
                 .entryTtl(ttl)
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))

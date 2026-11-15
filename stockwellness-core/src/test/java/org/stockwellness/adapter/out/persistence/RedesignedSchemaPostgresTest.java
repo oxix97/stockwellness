@@ -36,6 +36,24 @@ class RedesignedSchemaPostgresTest {
     }
 
     @Test
+    void outbox_schema_matches_the_existing_jpa_entity_contract() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from information_schema.columns
+                where table_schema='public' and table_name='outbox_event'
+                  and ((column_name='payload' and data_type='text')
+                    or (column_name='status' and data_type='character varying')
+                    or (column_name='processed_at' and data_type='timestamp without time zone')
+                    or (column_name='error_message' and data_type='text')
+                    or (column_name='created_at' and data_type='timestamp without time zone')
+                    or (column_name='updated_at' and data_type='timestamp without time zone'))
+                """, Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("""
+                select pg_get_constraintdef(oid) from pg_constraint
+                where conrelid = 'outbox_event'::regclass and contype='c'
+                """, String.class)).contains("COMPLETED");
+    }
+
+    @Test
     void createsIndexesForForeignKeyLookupsThatHaveNoLeadingPrimaryIndex() {
         assertThat(jdbc.queryForObject("""
                 select count(*) from pg_indexes where schemaname='public' and indexname in (

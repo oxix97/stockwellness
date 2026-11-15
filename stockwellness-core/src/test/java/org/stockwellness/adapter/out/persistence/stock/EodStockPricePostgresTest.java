@@ -15,12 +15,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,7 @@ import jakarta.persistence.EntityManager;
 import org.stockwellness.adapter.out.persistence.stock.repository.EodStockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.IndexDailyRepository;
 import org.stockwellness.adapter.out.persistence.insight.IndexDailyAdapter;
+import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.config.QueryDslConfig;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.price.EodStockPrice;
@@ -41,14 +45,29 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.BenchmarkDataStatus;
 import org.stockwellness.support.ManualSqlTestSupport;
+import org.stockwellness.domain.outbox.OutboxEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Testcontainers(disabledWithoutDocker = true)
 @EnableJpaRepositories(basePackageClasses = EodStockPriceRepository.class)
-@Import({EodStockPriceAdapter.class, IndexDailyAdapter.class, QueryDslConfig.class})
+@Import({EodStockPriceAdapter.class, IndexDailyAdapter.class, QueryDslConfig.class, EodStockPricePostgresTest.JacksonTestConfig.class})
 class EodStockPricePostgresTest {
+    @TestConfiguration(proxyBeanMethods = false)
+    static class JacksonTestConfig {
+        @Bean ObjectMapper objectMapper() {
+            return new ObjectMapper().findAndRegisterModules().disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        }
+    }
+
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
 
@@ -69,6 +88,7 @@ class EodStockPricePostgresTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager entityManager;
     @Autowired PlatformTransactionManager transactionManager;
+    @MockitoBean OutboxPort outboxPort;
     private Long stockId;
     private Long indexId;
     private Long seriesId;
@@ -109,6 +129,57 @@ class EodStockPricePostgresTest {
         tx.executeWithoutResult(status -> adapter.upsert(List.of(quote("101"))));
         assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT corrected_at FROM stock_price_daily", java.sql.Timestamp.class)).isNotNull();
+    }
+
+    @Test
+    void final_price_correction_emits_one_revision_event_and_identical_replay_emits_none() {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("100"))));
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("100.0000"))));
+        verify(outboxPort, never()).save(any());
+
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("101"))));
+
+        org.mockito.ArgumentCaptor<OutboxEvent> event = org.mockito.ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxPort).save(event.capture());
+        assertThat(event.getValue().getTopic()).isEqualTo("market-data-revision");
+        assertThat(event.getValue().getPayload())
+                .contains("\"sourceType\":\"STOCK_PRICE\"", "\"sourceId\":" + stockId,
+                        "\"tradeDate\":\"" + tradeDate + "\"", "\"revision\":2");
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void batched_final_price_write_emits_events_only_for_changed_existing_rows() {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("100"))));
+        Long secondStockId = jdbc.queryForObject("""
+                INSERT INTO stock(currency, is_preferred, is_premium_tracking, created_at, market_type, status, ticker, name)
+                VALUES ('KRW', false, false, CURRENT_TIMESTAMP, 'KOSPI', 'ACTIVE', '005931', 'Second') RETURNING id
+                """, Long.class);
+
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(
+                finalQuote("101"), finalQuote(entityManager.find(Stock.class, secondStockId), "105"))));
+
+        verify(outboxPort).save(any());
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily WHERE stock_id = ?",
+                Integer.class, stockId)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily WHERE stock_id = ?",
+                Integer.class, secondStockId)).isEqualTo(1);
+    }
+
+    @Test
+    void outbox_failure_rolls_back_a_final_price_correction() {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("100"))));
+        doThrow(new IllegalStateException("outbox unavailable")).when(outboxPort).save(any());
+
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> adapter.upsert(List.of(finalQuote("101")))))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(jdbc.queryForObject("SELECT close_price FROM stock_price_daily", BigDecimal.class))
+                .isEqualByComparingTo("100");
+        assertThat(jdbc.queryForObject("SELECT revision FROM stock_price_daily", Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -223,11 +294,40 @@ class EodStockPricePostgresTest {
         assertThat(jdbc.queryForObject("SELECT supply_status FROM index_daily", String.class)).isNull();
     }
 
+    @Test
+    void final_index_price_correction_emits_revision_event_but_supply_only_change_does_not() {
+        insertFinalIndexRow();
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(finalIndexQuote("2500", "1"))));
+        tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(finalIndexQuote("2500.0000", "1"))));
+        verify(outboxPort, never()).save(any());
+
+        tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(finalIndexQuote("2501", "1"))));
+        tx.executeWithoutResult(status -> indexDailyAdapter.upsert(List.of(finalIndexQuote("2501", "2"))));
+
+        org.mockito.ArgumentCaptor<OutboxEvent> event = org.mockito.ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxPort).save(event.capture());
+        assertThat(event.getValue().getTopic()).isEqualTo("market-data-revision");
+        assertThat(event.getValue().getPayload()).contains("\"sourceType\":\"INDEX_PRICE\"",
+                "\"sourceId\":" + seriesId, "\"revision\":2");
+    }
+
     private EodStockPrice quote(String close) {
         Stock stock = entityManager.find(Stock.class, stockId);
         return EodStockPrice.of(stock, tradeDate, "KRX", new BigDecimal("100"), new BigDecimal("110"),
                 new BigDecimal("90"), new BigDecimal(close), 1L, new BigDecimal("1000"),
                 "KIS:FHKST03010100:RAW", "PROVISIONAL");
+    }
+
+    private EodStockPrice finalQuote(String close) {
+        Stock stock = entityManager.find(Stock.class, stockId);
+        return finalQuote(stock, close);
+    }
+
+    private EodStockPrice finalQuote(Stock stock, String close) {
+        return EodStockPrice.of(stock, tradeDate, "KRX", new BigDecimal("100"), new BigDecimal("110"),
+                new BigDecimal("90"), new BigDecimal(close), 1L, new BigDecimal("1000"),
+                "KIS:FHKST03010100:RAW", "FINAL");
     }
 
     private IndexDaily indexQuote(String close) {
@@ -236,5 +336,29 @@ class EodStockPricePostgresTest {
                 new BigDecimal("2480"), new BigDecimal(close), 100L, new BigDecimal("100000"),
                 null, null, null, null, null, null, null, "FHKUP03500100", null,
                 BenchmarkDataStatus.PROVISIONAL, null);
+    }
+
+    private void insertFinalIndexRow() {
+        jdbc.update("""
+                INSERT INTO index_daily(index_id, series_id, trade_date, open_value, high_value, low_value,
+                    close_value, open_price, high_price, low_price, close_price, volume, trading_amount, foreign_net_amount,
+                    institution_net_amount, price_source, price_source_api, supply_source,
+                    supply_source_api, price_status, supply_status, collected_at, supply_collected_at,
+                    revision, supply_revision)
+                VALUES (?, ?, ?, 2490, 2510, 2480, 2500, 2490, 2510, 2480, 2500, 100, 100000, 1, 0,
+                    'FHKUP03500100', 'FHKUP03500100', 'KIS:SUPPLY', 'KIS:SUPPLY', 'FINAL',
+                    'PROVISIONAL', now(), now(), 1, 1)
+                """, indexId, seriesId, tradeDate);
+    }
+
+    private IndexDaily finalIndexQuote(String close, String foreignNetAmount) {
+        IndexSeries series = entityManager.find(IndexSeries.class, seriesId);
+        return IndexDaily.of(series, tradeDate, new BigDecimal("2490"), new BigDecimal("2510"),
+                new BigDecimal("2480"), new BigDecimal(close), 100L, new BigDecimal("100000"),
+                null, null, null, null, null, foreignNetAmount == null ? null : new BigDecimal(foreignNetAmount),
+                foreignNetAmount == null ? null : BigDecimal.ZERO,
+                "FHKUP03500100", foreignNetAmount == null ? null : "KIS:SUPPLY",
+                BenchmarkDataStatus.FINAL,
+                foreignNetAmount == null ? null : BenchmarkDataStatus.PROVISIONAL);
     }
 }
