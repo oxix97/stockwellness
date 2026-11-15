@@ -41,6 +41,7 @@ class SectorMarketReadAdapterPostgresTest {
     @BeforeEach
     void clearData() {
         jdbc.update("DELETE FROM sector_leading_stock");
+        jdbc.update("DELETE FROM market_signal");
         jdbc.update("DELETE FROM index_technical_indicator");
         jdbc.update("DELETE FROM index_daily");
         jdbc.update("DELETE FROM index_series");
@@ -73,6 +74,11 @@ class SectorMarketReadAdapterPostgresTest {
                 INSERT INTO sector_leading_stock(series_id, trade_date, rank, stock_id, price_date, quote_scope)
                 VALUES (?, ?, 1, ?, ?, 'KRX')
                 """, seriesId, FINAL_DATE, stockId, FINAL_DATE);
+        jdbc.update("""
+                INSERT INTO market_signal(stock_id, trade_date, quote_scope, signal_type, rule_version,
+                                          input_manifest, created_at)
+                VALUES (?, ?, 'KRX', 'SECTOR_LEADING_STOCK', 'sector-leading-turnover-gainers-v1', ?::jsonb, now())
+                """, stockId, FINAL_DATE, leaderManifest());
     }
 
     @Test
@@ -101,6 +107,14 @@ class SectorMarketReadAdapterPostgresTest {
 
         assertThat(row.ma20()).isNull();
         assertThat(row.changeRate()).isEqualByComparingTo("10.00000000");
+    }
+
+    @Test
+    void sector_leaders_are_hidden_when_any_ranking_input_revision_is_stale() {
+        jdbc.update("UPDATE stock_price_daily SET revision = 2 WHERE stock_id = ? AND trade_date = ?",
+                stockId, FINAL_DATE);
+
+        assertThat(sectors.leadingStocks(seriesId, FINAL_DATE)).isEmpty();
     }
 
     @Test
@@ -155,5 +169,13 @@ class SectorMarketReadAdapterPostgresTest {
                 {"source":"index_daily","sourceId":%d,"targetDate":"%s",
                  "observations":[{"date":"%s","revision":1},{"date":"%s","revision":1}]}
                 """.formatted(seriesId, FINAL_DATE, FIRST_DATE, FINAL_DATE);
+    }
+
+    private String leaderManifest() {
+        return """
+                {"source":"stock_price_daily","indexSeriesId":%d,"tradeDate":"%s",
+                 "candidates":[{"stockId":%d,"priceDate":"%s","quoteScope":"KRX",
+                 "priceRevision":1,"indexRevision":1}]}
+                """.formatted(seriesId, FINAL_DATE, stockId, FINAL_DATE);
     }
 }

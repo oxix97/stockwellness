@@ -12,6 +12,7 @@ public class KafkaTopicConfig {
     public static final String PORTFOLIO_ANALYSIS_COMPLETED_TOPIC = "portfolio-analysis-completed";
     public static final String MARKET_SCORE_CALCULATED_TOPIC = "market-score-calculated";
     public static final String MARKET_SCORE_CALCULATED_DLT_TOPIC = "market-score-calculated-dlt";
+    public static final String MARKET_DATA_REVISION_TOPIC = "market-data-revision";
 
     @Bean
     public NewTopic stockPriceUpdatedTopic() {
@@ -24,6 +25,14 @@ public class KafkaTopicConfig {
     @Bean
     public NewTopic portfolioAnalysisCompletedTopic() {
         return TopicBuilder.name(PORTFOLIO_ANALYSIS_COMPLETED_TOPIC)
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic marketDataRevisionTopic() {
+        return TopicBuilder.name(MARKET_DATA_REVISION_TOPIC)
                 .partitions(1)
                 .replicas(1)
                 .build();

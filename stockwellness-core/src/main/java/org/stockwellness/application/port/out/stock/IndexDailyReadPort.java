@@ -14,5 +14,7 @@ public interface IndexDailyReadPort {
 
     Optional<IndexPriceObservation> latestFinal(String publicBenchmarkCode, LocalDate asOf);
 
+    List<LocalDate> finalDatesFrom(long seriesId, LocalDate startDate, int limit);
+
     Optional<BigDecimal> finalWeatherScore(String publicBenchmarkCode, LocalDate tradeDate);
 }

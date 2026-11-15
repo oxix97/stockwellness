@@ -176,7 +176,8 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
         if (seriesId <= 0 || targetDate == null) {
             throw new IllegalArgumentException("Index series and target date are required");
         }
-        List<SectorLeadingStockCandidate> candidates = sectorLeadingStockPort.finalCandidates(seriesId, targetDate)
+        List<SectorLeadingStockCandidate> sourceCandidates = sectorLeadingStockPort.finalCandidates(seriesId, targetDate);
+        List<SectorLeadingStockCandidate> candidates = sourceCandidates
                 .stream()
                 .filter(value -> targetDate.equals(value.priceDate())
                         && "KRX".equals(value.quoteScope())
@@ -185,8 +186,7 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
                         && value.tradingAmount().signum() >= 0
                         && value.priceRevision() > 0 && value.indexRevision() > 0)
                 .toList();
-        if (candidates.isEmpty()) return;
-
+        if (!sourceCandidates.isEmpty() && candidates.isEmpty()) return;
         List<SectorLeadingStockCandidate> gainers = candidates.stream()
                 .filter(value -> value.close().compareTo(value.previousClose()) > 0)
                 .toList();
@@ -197,12 +197,24 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
                 .toList();
         List<SectorLeadingStockPort.RankedSectorStock> ranked = new ArrayList<>();
         List<Map<String, Object>> manifestCandidates = new ArrayList<>();
+        for (SectorLeadingStockCandidate candidate : candidates) {
+            manifestCandidates.add(Map.of(
+                    "stockId", candidate.stockId(),
+                    "priceDate", candidate.priceDate().toString(),
+                    "quoteScope", candidate.quoteScope(),
+                    "previousClose", candidate.previousClose(),
+                    "close", candidate.close(),
+                    "tradingAmount", candidate.tradingAmount(),
+                    "priceRevision", candidate.priceRevision(),
+                    "indexRevision", candidate.indexRevision()));
+        }
+        List<Map<String, Object>> selectedManifest = new ArrayList<>();
         for (int index = 0; index < selected.size(); index++) {
             SectorLeadingStockCandidate candidate = selected.get(index);
             int rank = index + 1;
             ranked.add(new SectorLeadingStockPort.RankedSectorStock(
                     candidate.stockId(), candidate.priceDate(), candidate.quoteScope(), rank));
-            manifestCandidates.add(Map.of(
+            selectedManifest.add(Map.of(
                     "rank", rank,
                     "stockId", candidate.stockId(),
                     "priceDate", candidate.priceDate().toString(),
@@ -215,7 +227,8 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
                 "indexSeriesId", seriesId,
                 "tradeDate", targetDate.toString(),
                 "ruleVersion", "sector-leading-turnover-gainers-v1",
-                "selected", manifestCandidates);
+                "candidates", manifestCandidates,
+                "selected", selectedManifest);
         sectorLeadingStockPort.replace(seriesId, targetDate, ranked,
                 toJson(manifest, "Could not serialize sector leading stock input manifest"));
     }

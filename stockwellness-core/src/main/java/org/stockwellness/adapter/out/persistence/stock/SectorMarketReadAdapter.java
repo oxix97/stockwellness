@@ -116,6 +116,10 @@ public class SectorMarketReadAdapter implements SectorMarketReadPort {
                 JOIN market calendar ON calendar.code = series.calendar_market_code AND calendar.currency = series.currency
                 JOIN index_daily index_day ON index_day.series_id = leader.series_id
                     AND index_day.trade_date = leader.trade_date AND index_day.price_status = 'FINAL'
+                JOIN market_signal signal ON signal.stock_id = leader.stock_id
+                    AND signal.trade_date = leader.trade_date AND signal.quote_scope = leader.quote_scope
+                    AND signal.signal_type = 'SECTOR_LEADING_STOCK'
+                    AND signal.rule_version = 'sector-leading-turnover-gainers-v1'
                 JOIN stock ON stock.id = leader.stock_id
                 JOIN stock_price_daily price ON price.stock_id = leader.stock_id
                     AND price.trade_date = leader.price_date AND price.quote_scope = leader.quote_scope
@@ -130,6 +134,28 @@ public class SectorMarketReadAdapter implements SectorMarketReadPort {
                 WHERE leader.series_id = ? AND leader.trade_date = ?
                   AND series.is_active AND series.is_canonical
                   AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                  AND signal.input_manifest ->> 'source' = 'stock_price_daily'
+                  AND signal.input_manifest ->> 'indexSeriesId' = leader.series_id::text
+                  AND signal.input_manifest ->> 'tradeDate' = leader.trade_date::text
+                  AND signal.input_manifest ->> 'stale' IS DISTINCT FROM 'true'
+                  AND jsonb_typeof(signal.input_manifest -> 'candidates') = 'array'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM jsonb_array_elements(CASE
+                          WHEN jsonb_typeof(signal.input_manifest -> 'candidates') = 'array'
+                          THEN signal.input_manifest -> 'candidates' ELSE '[]'::jsonb END) AS input(value)
+                      LEFT JOIN stock_price_daily source_price
+                        ON source_price.stock_id::text = input.value ->> 'stockId'
+                       AND source_price.trade_date::text = input.value ->> 'priceDate'
+                       AND source_price.quote_scope = input.value ->> 'quoteScope'
+                      LEFT JOIN index_daily source_index
+                        ON source_index.series_id = leader.series_id
+                       AND source_index.trade_date::text = input.value ->> 'priceDate'
+                      WHERE source_price.stock_id IS NULL OR source_price.data_status <> 'FINAL'
+                         OR source_price.revision::text IS DISTINCT FROM input.value ->> 'priceRevision'
+                         OR source_index.series_id IS NULL OR source_index.price_status <> 'FINAL'
+                         OR source_index.revision::text IS DISTINCT FROM input.value ->> 'indexRevision'
+                  )
                 ORDER BY leader.rank
                 """, (rs, rowNum) -> new LeadingStock(rs.getString("name"), rs.getString("ticker"),
                 changeRate(rs.getBigDecimal("close_price"), rs.getBigDecimal("previous_close")),

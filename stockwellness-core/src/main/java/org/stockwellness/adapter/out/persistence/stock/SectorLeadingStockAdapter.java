@@ -50,17 +50,31 @@ public class SectorLeadingStockAdapter implements SectorLeadingStockPort {
     }
 
     @Override
+    public List<Long> seriesIdsForStock(long stockId) {
+        if (stockId <= 0) throw new IllegalArgumentException("Stock id must be positive");
+        return jdbc.query("""
+                SELECT series.id
+                FROM stock
+                JOIN market_index sector ON sector.id = stock.sector_index_id AND sector.kind = 'SECTOR'
+                JOIN index_series series ON series.index_id = sector.id
+                WHERE stock.id = ? AND series.is_active AND series.is_canonical
+                  AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                ORDER BY series.id
+                """, (rs, rowNum) -> rs.getLong("id"), stockId);
+    }
+
+    @Override
     @Transactional
     public void replace(long seriesId, LocalDate tradeDate, List<RankedSectorStock> stocks, String inputManifest) {
-        if (seriesId <= 0 || tradeDate == null || stocks == null || stocks.isEmpty()
+        if (seriesId <= 0 || tradeDate == null || stocks == null
                 || inputManifest == null || inputManifest.isBlank()) {
-            throw new IllegalArgumentException("A complete leading stock result and its manifest are required");
+            throw new IllegalArgumentException("A leading stock result and its manifest are required");
         }
         if (jdbc.queryForObject("""
                 SELECT COUNT(*) FROM index_daily
                 WHERE series_id = ? AND trade_date = ? AND price_status = 'FINAL' AND close_value IS NOT NULL
                 """, Integer.class, seriesId, tradeDate) != 1) {
-            throw new IllegalStateException("A FINAL index observation is required for leading stocks");
+            return;
         }
         for (int index = 0; index < stocks.size(); index++) {
             RankedSectorStock stock = stocks.get(index);
@@ -71,6 +85,15 @@ public class SectorLeadingStockAdapter implements SectorLeadingStockPort {
         }
 
         Timestamp createdAt = Timestamp.from(Instant.now());
+        jdbc.update("""
+                UPDATE market_signal SET input_manifest = input_manifest || '{"stale":true}'::jsonb
+                WHERE signal_type = 'SECTOR_LEADING_STOCK'
+                  AND rule_version = 'sector-leading-turnover-gainers-v1'
+                  AND trade_date = ? AND quote_scope = 'KRX'
+                  AND stock_id IN (SELECT stock_id FROM sector_leading_stock
+                                   WHERE series_id = ? AND trade_date = ?)
+                """, tradeDate, seriesId, tradeDate);
+        jdbc.update("DELETE FROM sector_leading_stock WHERE series_id = ? AND trade_date = ?", seriesId, tradeDate);
         for (RankedSectorStock stock : stocks) {
             jdbc.update("""
                     INSERT INTO market_signal(stock_id, trade_date, quote_scope, signal_type, rule_version,
@@ -81,7 +104,7 @@ public class SectorLeadingStockAdapter implements SectorLeadingStockPort {
                     WHERE market_signal.input_manifest IS DISTINCT FROM EXCLUDED.input_manifest
                     """, stock.stockId(), tradeDate, stock.quoteScope(), inputManifest, createdAt);
         }
-        jdbc.update("DELETE FROM sector_leading_stock WHERE series_id = ? AND trade_date = ?", seriesId, tradeDate);
+        if (stocks.isEmpty()) return;
         jdbc.batchUpdate("""
                 INSERT INTO sector_leading_stock(series_id, trade_date, rank, stock_id, price_date, quote_scope)
                 VALUES (?, ?, ?, ?, ?, ?)
