@@ -72,9 +72,18 @@ public class BatchAdminController {
                 || request.startDate().isAfter(request.endDate())) {
             throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
         }
+        String market = request.market().trim().toUpperCase(Locale.ROOT);
+        String ticker = StringUtils.hasText(request.ticker()) ? request.ticker().trim() : null;
+        if (ticker != null && (!"KR".equals(market) || !ticker.matches("\\d{6}"))) {
+            throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
+        }
         try {
+            if (ticker == null) {
+                return ApiResponse.success(marketDataBatchOrchestrator.runManual(
+                        market, request.startDate(), request.endDate(), request.runId()));
+            }
             return ApiResponse.success(marketDataBatchOrchestrator.runManual(
-                    request.market(), request.startDate(), request.endDate(), request.runId()));
+                    market, request.startDate(), request.endDate(), request.runId(), ticker));
         } catch (IllegalArgumentException invalidRequest) {
             throw new BatchException(ErrorCode.INVALID_INPUT_VALUE);
         }

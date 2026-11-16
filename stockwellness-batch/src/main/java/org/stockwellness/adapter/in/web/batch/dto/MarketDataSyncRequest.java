@@ -7,5 +7,6 @@ public record MarketDataSyncRequest(
         String market,
         LocalDate startDate,
         LocalDate endDate,
-        String runId
+        String runId,
+        String ticker
 ) {}

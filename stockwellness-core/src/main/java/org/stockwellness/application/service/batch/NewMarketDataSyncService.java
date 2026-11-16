@@ -8,6 +8,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     private static final String OVERSEAS_INDEX_API = "FHKST03030100";
     private static final int STOCK_MAX_ROWS = 100;
     private static final int INDEX_MAX_ROWS = 50;
+    private static final int INVESTOR_MAX_ROWS = 30;
     private static final int PRICE_PRECISION = 19;
     private static final int AMOUNT_PRECISION = 25;
     private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
@@ -152,37 +154,59 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void syncStockInvestorTrades(Stock stock, LocalDate tradeDate) {
-        if (stock == null || tradeDate == null) throw new IllegalArgumentException("Stock and trade date are required");
+    public void syncStockInvestorTrades(Stock stock, LocalDate startDate, LocalDate endDate) {
+        validateRange(stock, startDate, endDate);
         if (!("KOSPI".equals(stock.getMarketCode()) || "KOSDAQ".equals(stock.getMarketCode()))
                 || stock.getStatus() == StockStatus.DELISTED) {
             throw new IllegalArgumentException("Only non-delisted KRX stocks are supported for investor collection");
         }
-        if (verifiedOpenDates(stock.getMarketCode(), tradeDate, tradeDate).size() != 1) {
-            throw new IllegalArgumentException("Investor trade date is not an open KRX session");
-        }
+        List<LocalDate> openDates = verifiedOpenDates(stock.getMarketCode(), startDate, endDate);
+        boolean incomplete = false;
+        for (int offset = 0; offset < openDates.size(); offset += INVESTOR_MAX_ROWS) {
+            List<LocalDate> chunk = List.copyOf(openDates.subList(offset,
+                    Math.min(offset + INVESTOR_MAX_ROWS, openDates.size())));
+            LocalDate firstDate = chunk.getFirst();
+            LocalDate lastDate = chunk.getLast();
+            Set<LocalDate> requestedDates = Set.copyOf(chunk);
+            List<KisInvestorTradeByStockDaily> response =
+                    kisDailyPricePort.fetchInvestorTradeByStockDaily(stock, lastDate);
+            if (response == null || response.size() > INVESTOR_MAX_ROWS) {
+                throw new IllegalArgumentException("Invalid KIS investor response size");
+            }
+            Map<LocalDate, KisInvestorTradeByStockDaily> observations = new HashMap<>();
+            for (KisInvestorTradeByStockDaily row : response) {
+                LocalDate date = row == null ? null : parseDate(row.baseDate());
+                if (date == null || date.isAfter(lastDate) || observations.containsKey(date)) {
+                    throw new IllegalArgumentException("KIS investor response contains an invalid or duplicate date");
+                }
+                // KIS may return older history beyond a short final chunk's requested sessions.
+                if (!date.isBefore(firstDate) && !requestedDates.contains(date)) {
+                    throw new IllegalArgumentException(
+                            "KIS investor response contains an unexpected date in the requested window");
+                }
+                observations.put(date, row);
+            }
 
-        List<KisInvestorTradeByStockDaily> response = kisDailyPricePort.fetchInvestorTradeByStockDaily(stock, tradeDate);
-        if (response == null || response.size() > 1 || response.stream().anyMatch(java.util.Objects::isNull)) {
-            throw new IllegalArgumentException("KIS investor response must contain at most one daily observation");
+            Instant collectedAt = Instant.now();
+            List<EodStockInvestorTradeDaily> records = new ArrayList<>(chunk.size() * INVESTOR_TYPES.size());
+            for (LocalDate tradeDate : chunk) {
+                Map<InvestorSourceType, InvestorFlows> flows = investorFlows(observations.get(tradeDate));
+                for (InvestorSourceType type : INVESTOR_TYPES) {
+                    InvestorFlows flow = flows.get(type);
+                    BigDecimal quantity = flow == null ? null : investorQuantity(flow.quantity());
+                    BigDecimal netAmount = flow == null ? null : investorAmount(flow.amount());
+                    String status = quantity != null && netAmount != null ? "PROVISIONAL" : "INCOMPLETE";
+                    records.add(new EodStockInvestorTradeDaily(stock.getId(), tradeDate, "KRX", type, quantity,
+                            netAmount, status, "KIS:" + INVESTOR_API + ":J", collectedAt));
+                }
+            }
+            incomplete |= records.stream().anyMatch(row -> "INCOMPLETE".equals(row.dataStatus()));
+            eodStockInvestorTradePort.upsert(records);
         }
-        KisInvestorTradeByStockDaily observation = response.isEmpty() ? null : response.getFirst();
-        if (observation != null && !tradeDate.equals(parseDate(observation.baseDate()))) {
-            throw new IllegalArgumentException("KIS investor response date does not match the requested trade date");
+        if (incomplete) {
+            throw new IllegalStateException("KIS investor source returned incomplete observations for "
+                    + stock.getTicker() + " in " + startDate + ".." + endDate);
         }
-
-        Instant collectedAt = Instant.now();
-        Map<InvestorSourceType, InvestorFlows> flows = investorFlows(observation);
-        List<EodStockInvestorTradeDaily> records = new ArrayList<>(INVESTOR_TYPES.size());
-        for (InvestorSourceType type : INVESTOR_TYPES) {
-            InvestorFlows flow = flows.get(type);
-            BigDecimal quantity = flow == null ? null : investorQuantity(flow.quantity());
-            BigDecimal netAmount = flow == null ? null : investorAmount(flow.amount());
-            String status = quantity != null && netAmount != null ? "PROVISIONAL" : "INCOMPLETE";
-            records.add(new EodStockInvestorTradeDaily(stock.getId(), tradeDate, "KRX", type, quantity,
-                    netAmount, status, "KIS:" + INVESTOR_API + ":J", collectedAt));
-        }
-        eodStockInvestorTradePort.upsert(records);
     }
 
     private List<StockPriceAdjustment> adjustedPrices(Stock stock, LocalDate from, LocalDate to,

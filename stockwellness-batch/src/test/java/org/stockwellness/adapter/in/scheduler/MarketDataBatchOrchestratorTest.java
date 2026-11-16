@@ -32,7 +32,13 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.stockwellness.batch.support.exception.BatchException;
+import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.stock.TradingCalendar;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockSector;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.application.port.out.stock.TradingCalendarPort;
 import org.stockwellness.application.service.marketdata.UsMarketCalendar;
 
@@ -42,12 +48,13 @@ class MarketDataBatchOrchestratorTest {
     @Mock JobLauncher jobLauncher;
     @Mock ApplicationContext applicationContext;
     @Mock TradingCalendarPort calendarPort;
+    @Mock StockPort stockPort;
     private MarketDataBatchOrchestrator orchestrator;
 
     @BeforeEach
     void setUp() throws Exception {
         orchestrator = new MarketDataBatchOrchestrator(
-                jobLauncher, applicationContext, calendarPort, new UsMarketCalendar());
+                jobLauncher, applicationContext, calendarPort, new UsMarketCalendar(), stockPort);
         for (String jobName : List.of("kisTradingCalendarSyncJob", "stockMasterSyncJob",
                 "kisEodStockPriceSyncJob", "kisEodInvestorTradeSyncJob",
                 "kisEodIndexPriceSyncJob", "marketDerivedDataJob")) {
@@ -148,6 +155,67 @@ class MarketDataBatchOrchestratorTest {
         assertThat(result.stages()).extracting(MarketDataBatchOrchestrator.StageResult::jobName)
                 .containsExactly("stockMasterSyncJob", "kisEodStockPriceSyncJob", "kisEodInvestorTradeSyncJob",
                         "kisEodIndexPriceSyncJob", "marketDerivedDataJob");
+    }
+
+    @Test
+    void targeted_kr_manual_run_passes_ticker_and_skips_unscoped_master_and_derived_jobs() throws Exception {
+        LocalDate today = LocalDate.of(2026, 11, 15);
+        LocalDate previousSession = LocalDate.of(2026, 11, 13);
+        given(calendarPort.find(eq("KOSPI"), any(LocalDate.class))).willAnswer(invocation ->
+                java.util.Optional.of(calendarDay("KOSPI", invocation.getArgument(1))));
+        given(calendarPort.find(eq("KOSDAQ"), any(LocalDate.class))).willAnswer(invocation ->
+                java.util.Optional.of(calendarDay("KOSDAQ", invocation.getArgument(1))));
+        given(calendarPort.latestTradingDayOnOrBefore("KOSPI", today.minusDays(1)))
+                .willReturn(java.util.Optional.of(previousSession));
+        given(calendarPort.latestTradingDayOnOrBefore("KOSPI", previousSession))
+                .willReturn(java.util.Optional.of(previousSession));
+        given(stockPort.loadStocksByTickers(List.of("005930"))).willReturn(List.of(
+                Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW,
+                        StockSector.empty(), StockStatus.ACTIVE)));
+
+        var result = orchestrator.runManual("KR", previousSession, today, "kis-252-sample", "005930",
+                Instant.parse("2026-11-15T03:00:00Z"));
+
+        assertThat(result.stages()).extracting(MarketDataBatchOrchestrator.StageResult::jobName)
+                .containsExactly("kisEodStockPriceSyncJob", "kisEodInvestorTradeSyncJob", "kisEodIndexPriceSyncJob");
+        verify(applicationContext, never()).getBean(eq("stockMasterSyncJob"), eq(Job.class));
+        verify(applicationContext, never()).getBean(eq("marketDerivedDataJob"), eq(Job.class));
+        ArgumentCaptor<Job> jobs = ArgumentCaptor.forClass(Job.class);
+        ArgumentCaptor<JobParameters> parameters = ArgumentCaptor.forClass(JobParameters.class);
+        verify(jobLauncher, times(3)).run(jobs.capture(), parameters.capture());
+        for (int i = 0; i < jobs.getAllValues().size(); i++) {
+            String jobName = jobs.getAllValues().get(i).getName();
+            String ticker = parameters.getAllValues().get(i).getString("ticker");
+            if (jobName.equals("kisEodStockPriceSyncJob") || jobName.equals("kisEodInvestorTradeSyncJob")) {
+                assertThat(ticker).isEqualTo("005930");
+            } else {
+                assertThat(jobName).isEqualTo("kisEodIndexPriceSyncJob");
+                assertThat(ticker).isNull();
+            }
+        }
+    }
+
+    @Test
+    void ticker_filter_is_rejected_for_us_manual_runs() {
+        assertThatThrownBy(() -> orchestrator.runManual("US", LocalDate.of(2026, 11, 20),
+                LocalDate.of(2026, 11, 27), "kis-252-sample", "005930",
+                Instant.parse("2026-11-27T18:00:00Z")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("KRX");
+    }
+
+    @Test
+    void targeted_kr_manual_run_rejects_a_ticker_missing_from_the_krx_master_before_side_effects() throws Exception {
+        given(stockPort.loadStocksByTickers(List.of("999999"))).willReturn(List.of());
+
+        assertThatThrownBy(() -> orchestrator.runManual("KR", LocalDate.of(2026, 11, 13),
+                LocalDate.of(2026, 11, 13), "kis-252-sample", "999999",
+                Instant.parse("2026-11-15T03:00:00Z")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("stock master");
+
+        verify(calendarPort, never()).find(any(), any());
+        verify(jobLauncher, never()).run(any(Job.class), any(JobParameters.class));
     }
 
     @Test
