@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,10 +67,14 @@ public class KisClientConfig {
      * - 커스텀 ObjectMapper (Snake Case, 날짜 처리, Unknown Field 무시)
      */
     @Bean("kisApiClient")
-    public RestClient kisApiClient(RestClient.Builder builder, KisTokenAdapter tokenAdapter) {
+    public RestClient kisApiClient(
+            RestClient.Builder builder,
+            KisTokenAdapter tokenAdapter,
+            @Qualifier("kisMarketDataResponseCaptureInterceptor") ClientHttpRequestInterceptor captureInterceptor) {
         return builder
                 .baseUrl(kisProperties.baseUrl())
                 .requestFactory(bufferingRequestFactory(poolingClientFactory()))
+                .requestInterceptor(captureInterceptor)
                 .requestInterceptor(tokenAuthInterceptor(tokenAdapter))
                 .defaultHeader("appkey", kisProperties.appKey())
                 .defaultHeader("appsecret", kisProperties.appSecret())
@@ -78,6 +84,13 @@ public class KisClientConfig {
                         converters.addFirst(new MappingJackson2HttpMessageConverter(kisObjectMapper()))
                 )
                 .build();
+    }
+
+    @Bean("kisMarketDataResponseCaptureInterceptor")
+    ClientHttpRequestInterceptor kisMarketDataResponseCaptureInterceptor(
+            @Value("${kis.evidence.capture-directory:}") String captureDirectory,
+            ObjectMapper objectMapper) {
+        return new KisMarketDataResponseCaptureInterceptor(captureDirectory, objectMapper);
     }
 
     // --- Helper Methods ---
