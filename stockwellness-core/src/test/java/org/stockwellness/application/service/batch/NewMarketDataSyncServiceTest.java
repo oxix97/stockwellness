@@ -306,7 +306,8 @@ class NewMarketDataSyncServiceTest {
                 date, "-2", "-1.25", "3", "2.5", "0", "0", "1", "2", "1", "3",
                 "1", "4", "1", "5", null, "6", "1", "7", "1", "8", "1", "9", "1", "10", "1", "11")));
 
-        service.syncStockInvestorTrades(stock, date);
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
         verify(investorTrades).upsert(saved.capture());
@@ -332,6 +333,91 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
+    void investor_trade_range_uses_the_latest_date_window_and_skips_closed_days() {
+        LocalDate first = LocalDate.of(2026, 10, 5);
+        LocalDate closed = first.plusDays(1);
+        LocalDate second = first.plusDays(2);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", first, second)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", first, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", closed, false, null, null, "test"),
+                TradingCalendar.of("KOSPI", second, true, null, null, "test")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, second)).willReturn(List.of(
+                investorRow(first, "-1", "2"), investorRow(second, "-2", "3")));
+
+        service.syncStockInvestorTrades(stock, first, second);
+
+        verify(prices, never()).fetchInvestorTradeByStockDaily(stock, first);
+        verify(prices).fetchInvestorTradeByStockDaily(stock, second);
+        verify(prices, never()).fetchInvestorTradeByStockDaily(stock, closed);
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(InvestorSourceType.values().length * 2);
+        assertThat(saved.getValue().stream().filter(row -> row.tradeDate().equals(first)).toList())
+                .hasSize(InvestorSourceType.values().length).allSatisfy(row ->
+                        assertThat(row.dataStatus()).isEqualTo("PROVISIONAL"));
+        assertThat(row(saved.getValue(), InvestorSourceType.FOREIGN).netAmount()).isEqualByComparingTo("2000000.00");
+        assertThat(saved.getValue().stream().filter(row -> row.tradeDate().equals(second)).toList())
+                .hasSize(InvestorSourceType.values().length).allSatisfy(row ->
+                        assertThat(row.dataStatus()).isEqualTo("PROVISIONAL"));
+        assertThat(saved.getValue().stream()
+                .filter(row -> row.tradeDate().equals(second) && row.investorType() == InvestorSourceType.FOREIGN)
+                .findFirst().orElseThrow().netAmount()).isEqualByComparingTo("3000000.00");
+    }
+
+    @Test
+    void investor_trade_range_requests_each_30_session_window_once() {
+        LocalDate start = LocalDate.of(2026, 1, 5);
+        Stock stock = stock();
+        List<LocalDate> openDates = new java.util.ArrayList<>();
+        List<TradingCalendar> calendarRows = new java.util.ArrayList<>();
+        for (LocalDate date = start; openDates.size() < 31; date = date.plusDays(1)) {
+            boolean open = date.getDayOfWeek().getValue() < 6;
+            calendarRows.add(TradingCalendar.of("KOSPI", date, open, null, null, "test"));
+            if (open) openDates.add(date);
+        }
+        LocalDate end = openDates.getLast();
+        given(calendar.findAll("KOSPI", start, end)).willReturn(calendarRows);
+        given(prices.fetchInvestorTradeByStockDaily(stock, openDates.get(29))).willReturn(
+                openDates.subList(0, 30).stream().map(date -> investorRow(date, "1", "1")).toList());
+        given(prices.fetchInvestorTradeByStockDaily(stock, end)).willReturn(
+                openDates.subList(1, 31).stream().map(date -> investorRow(date, "1", "1")).toList());
+
+        service.syncStockInvestorTrades(stock, start, end);
+
+        verify(prices).fetchInvestorTradeByStockDaily(stock, openDates.get(29));
+        verify(prices).fetchInvestorTradeByStockDaily(stock, end);
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades, times(2)).upsert(saved.capture());
+        assertThat(saved.getAllValues()).extracting(List::size)
+                .containsExactly(30 * InvestorSourceType.values().length, InvestorSourceType.values().length);
+        List<EodStockInvestorTradeDaily> allRows = saved.getAllValues().stream().flatMap(List::stream).toList();
+        assertThat(allRows.stream().map(EodStockInvestorTradeDaily::tradeDate).distinct().toList())
+                .containsExactlyElementsOf(openDates);
+    }
+
+    @Test
+    void investor_trade_window_without_the_requested_day_persists_that_day_as_incomplete() {
+        LocalDate requested = LocalDate.of(2026, 10, 5);
+        LocalDate previous = requested.minusDays(1);
+        Stock stock = stock();
+        given(calendar.findAll("KOSPI", requested, requested)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", requested, true, null, null, "test")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, requested))
+                .willReturn(List.of(investorRow(previous, "1", "1")));
+
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, requested, requested))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
+
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(InvestorSourceType.values().length).allSatisfy(row -> {
+            assertThat(row.tradeDate()).isEqualTo(requested);
+            assertThat(row.dataStatus()).isEqualTo("INCOMPLETE");
+        });
+    }
+
+    @Test
     void absent_investor_response_is_persisted_as_incomplete_nulls_not_zero() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
@@ -339,7 +425,8 @@ class NewMarketDataSyncServiceTest {
                 TradingCalendar.of("KOSPI", date, true, null, null, "KIS:CTCA0903R")));
         given(prices.fetchInvestorTradeByStockDaily(stock, date)).willReturn(List.of());
 
-        service.syncStockInvestorTrades(stock, date);
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
 
         ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
         verify(investorTrades).upsert(saved.capture());
@@ -351,7 +438,7 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
-    void investor_response_with_another_business_date_is_rejected_without_writing() {
+    void investor_response_with_another_business_date_marks_the_requested_date_incomplete() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
         given(calendar.findAll("KOSPI", date, date)).willReturn(List.of(
@@ -360,9 +447,14 @@ class NewMarketDataSyncServiceTest {
                 date.minusDays(1), "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",
                 "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")));
 
-        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("date");
-        verify(investorTrades, never()).upsert(anyList());
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).allSatisfy(row -> {
+            assertThat(row.tradeDate()).isEqualTo(date);
+            assertThat(row.dataStatus()).isEqualTo("INCOMPLETE");
+        });
     }
 
     @Test
@@ -375,7 +467,7 @@ class NewMarketDataSyncServiceTest {
                 date, "1.0000001", "1", "1", "1", "1", "1", "1", "1", "1", "1",
                 "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1")));
 
-        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date))
+        assertThatThrownBy(() -> service.syncStockInvestorTrades(stock, date, date))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("storage scale");
         verify(investorTrades, never()).upsert(anyList());
     }
@@ -557,6 +649,12 @@ class NewMarketDataSyncServiceTest {
                 pensionQuantity, pensionAmount, merchantBankQuantity, merchantBankAmount,
                 otherOrganizationQuantity, otherOrganizationAmount, otherCorporateQuantity, otherCorporateAmount,
                 otherQuantity, otherAmount);
+    }
+
+    private static KisInvestorTradeByStockDaily investorRow(LocalDate date, String foreignQuantity, String foreignAmount) {
+        return investorRow(date, foreignQuantity, foreignAmount,
+                "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",
+                "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0");
     }
 
     private static KisDailyPriceDetail price(LocalDate date, String close, String modYn) {

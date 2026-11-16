@@ -10,7 +10,7 @@ public interface KisDailyPricePort {
     List<KisMultiStockPriceDetail> fetchMultiStockPrices(List<String> tickers);
     List<KisDailyPriceDetail> fetchDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
     List<KisDailyPriceDetail> fetchAdjustedDailyPrices(Stock stock, LocalDate startDate, LocalDate endDate);
-    List<KisInvestorTradeByStockDaily> fetchInvestorTradeByStockDaily(Stock stock, LocalDate tradeDate);
+    List<KisInvestorTradeByStockDaily> fetchInvestorTradeByStockDaily(Stock stock, LocalDate asOfDate);
     List<BenchmarkPriceData> fetchIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate);
     List<BenchmarkPriceData> fetchOverseasIndexDailyPrices(String indexCode, LocalDate startDate, LocalDate endDate);
     List<InvestorTradeDetail> fetchForeignInstitutionData(String code);

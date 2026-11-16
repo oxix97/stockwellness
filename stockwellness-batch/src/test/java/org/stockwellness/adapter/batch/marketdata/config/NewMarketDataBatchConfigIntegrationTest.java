@@ -355,7 +355,7 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .willReturn(List.of(investorRow(START_DATE)));
 
         JobExecution execution = jobLauncher.run(investorTradeJob,
-                tickerParameters("targetDate", START_DATE.toString(), selected.getTicker()));
+                dateRangeParameters(START_DATE, START_DATE, selected.getTicker()));
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         assertThat(execution.getStepExecutions()).singleElement()
@@ -383,14 +383,16 @@ class NewMarketDataBatchConfigIntegrationTest {
     void investor_eod_job_saves_provider_rows_without_a_stock_price_dependency() throws Exception {
         Stock stock = stockAdapter.save(Stock.of("910003", "KR7910003003", "수급 테스트",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        LocalDate secondDate = START_DATE.plusDays(1);
         try {
             tradingCalendarAdapter.upsert(List.of(
-                    TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test")));
-            given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE)))
-                    .willReturn(List.of(investorRow(START_DATE)));
+                    TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
+                    TradingCalendar.of("KOSPI", secondDate, true, null, null, "test")));
+            given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(secondDate)))
+                    .willReturn(List.of(investorRow(START_DATE), investorRow(secondDate)));
 
             JobExecution execution = jobLauncher.run(investorTradeJob,
-                    parameters("targetDate", START_DATE.toString()));
+                    dateRangeParameters(START_DATE, secondDate, stock.getTicker()));
 
             assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
             assertThat(execution.getStepExecutions()).singleElement()
@@ -398,8 +400,8 @@ class NewMarketDataBatchConfigIntegrationTest {
             assertThat(jdbcTemplate.queryForObject(
                     "select count(*) from stock_price where stock_id = ? and base_date = ?",
                     Integer.class, stock.getId(), START_DATE)).isZero();
-            verify(kisDailyPriceAdapter).fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE));
-            verify(investorTradePort).upsert(org.mockito.ArgumentMatchers.argThat(rows -> rows.size() == 13
+            verify(kisDailyPriceAdapter).fetchInvestorTradeByStockDaily(any(Stock.class), eq(secondDate));
+            verify(investorTradePort).upsert(org.mockito.ArgumentMatchers.argThat(rows -> rows.size() == 26
                     && rows.stream().allMatch(row -> "PROVISIONAL".equals(row.dataStatus()))));
         } finally {
             stockRepository.delete(stock);
@@ -601,14 +603,6 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .addString("ticker", ticker)
                 .addString("startDate", start.toString())
                 .addString("endDate", end.toString())
-                .addLong("run.id", System.nanoTime())
-                .toJobParameters();
-    }
-
-    private static JobParameters tickerParameters(String name, String value, String ticker) {
-        return new JobParametersBuilder()
-                .addString("ticker", ticker)
-                .addString(name, value)
                 .addLong("run.id", System.nanoTime())
                 .toJobParameters();
     }

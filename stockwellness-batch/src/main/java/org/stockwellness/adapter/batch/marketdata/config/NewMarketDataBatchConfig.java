@@ -115,9 +115,11 @@ public class NewMarketDataBatchConfig {
     @Bean
     @StepScope
     public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor(
-            NewMarketDataSyncUseCase sync, @Value("#{jobParameters['targetDate']}") String targetDate) {
-        LocalDate tradeDate = LocalDate.parse(targetDate);
-        return stock -> { sync.syncStockInvestorTrades(stock, tradeDate); return stock; };
+            NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
+            @Value("#{jobParameters['endDate']}") String end) {
+        LocalDate from = LocalDate.parse(start);
+        LocalDate to = LocalDate.parse(end);
+        return stock -> { sync.syncStockInvestorTrades(stock, from, to); return stock; };
     }
 
     @Bean
