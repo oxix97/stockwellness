@@ -302,3 +302,14 @@ gha-creds-*.json
 /docs/diagrams/*
 !/docs/diagrams/*.html
 !/docs/diagrams/*.png
+
+# Tracked backend reference documentation
+!/docs/README.md
+!/docs/architecture.md
+!/docs/domain-rules.md
+!/docs/api-contracts.md
+!/docs/code-style.md
+!/docs/testing.md
+!/docs/agent-rules.md
+!/docs/autonomy.md
+!/docs/workflow.md
