@@ -53,7 +53,7 @@ class MainCdTest < Minitest::Test
     assert_equal ['deploy-api'], callers.keys
     caller = callers.fetch('deploy-api')
     assert_equal 'Build & Test', ci.fetch('jobs').fetch('build').fetch('name')
-    assert_equal 'build', caller.fetch('needs')
+    assert_equal %w[build integration-issue-331], caller.fetch('needs')
     assert_equal "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}", caller.fetch('if')
   end
 
@@ -63,7 +63,7 @@ class MainCdTest < Minitest::Test
       trigger = doc[true]
       assert trigger.key?('workflow_call'), 'workflow_call trigger is missing'
       caller = workflow('ci.yml')['jobs']["deploy-#{service}"]
-      assert_equal 'build', caller['needs']
+      assert_equal %w[build integration-issue-331], caller['needs']
       assert_includes caller['if'], "refs/heads/main"
       assert_includes caller['if'], "push"
       assert_equal "./.github/workflows/deploy-#{service}.yaml", caller['uses']
