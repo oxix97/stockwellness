@@ -115,26 +115,45 @@ public class IndexDaily {
 
     public boolean reviseFrom(IndexDaily source, OffsetDateTime now) {
         boolean changed = false;
-        if (accept(priceStatus, source.priceStatus)) {
-            boolean priceChanged = !same(openPrice, source.openPrice) || !same(highPrice, source.highPrice)
+        boolean acceptedStatus = accept(priceStatus, source.priceStatus);
+        boolean priceAccepted = acceptedStatus && completePriceObservation(source);
+        boolean breadthAccepted = acceptedStatus && completeBreadth(source);
+        if (priceAccepted) {
+            collectedAt = now;
+        }
+        Integer revisedSteadyIssueCount = source.steadyIssueCount == null
+                ? steadyIssueCount : source.steadyIssueCount;
+        boolean breadthChanged = breadthAccepted && (!Objects.equals(risingIssueCount, source.risingIssueCount)
+                    || !Objects.equals(upperLimitIssueCount, source.upperLimitIssueCount)
+                    || !Objects.equals(steadyIssueCount, revisedSteadyIssueCount)
+                    || !Objects.equals(fallingIssueCount, source.fallingIssueCount)
+                    || !Objects.equals(lowerLimitIssueCount, source.lowerLimitIssueCount));
+        boolean priceChanged = priceAccepted && (!same(openPrice, source.openPrice) || !same(highPrice, source.highPrice)
                     || !same(lowPrice, source.lowPrice) || !same(closePrice, source.closePrice)
                     || !Objects.equals(volume, source.volume) || !same(tradingAmount, source.tradingAmount)
                     || !Objects.equals(priceStatus, source.priceStatus)
-                    || !Objects.equals(priceSourceApi, source.priceSourceApi);
-            collectedAt = now;
-            if (priceChanged) {
-                openPrice = source.openPrice;
-                highPrice = source.highPrice;
-                lowPrice = source.lowPrice;
-                closePrice = source.closePrice;
-                volume = source.volume;
-                tradingAmount = source.tradingAmount;
-                priceStatus = source.priceStatus;
-                priceSourceApi = source.priceSourceApi;
-                revision++;
-                correctedAt = now;
-                changed = true;
-            }
+                    || !Objects.equals(priceSourceApi, source.priceSourceApi));
+        if (priceChanged) {
+            openPrice = source.openPrice;
+            highPrice = source.highPrice;
+            lowPrice = source.lowPrice;
+            closePrice = source.closePrice;
+            volume = source.volume;
+            tradingAmount = source.tradingAmount;
+            priceStatus = source.priceStatus;
+            priceSourceApi = source.priceSourceApi;
+        }
+        if (breadthChanged) {
+            risingIssueCount = source.risingIssueCount;
+            upperLimitIssueCount = source.upperLimitIssueCount;
+            steadyIssueCount = revisedSteadyIssueCount;
+            fallingIssueCount = source.fallingIssueCount;
+            lowerLimitIssueCount = source.lowerLimitIssueCount;
+        }
+        if (priceChanged || breadthChanged) {
+            revision++;
+            correctedAt = now;
+            changed = true;
         }
         if (source.supplyStatus != null && accept(supplyStatus, source.supplyStatus)) {
             boolean supplyChanged = !same(foreignNetAmount, source.foreignNetAmount)
@@ -160,7 +179,20 @@ public class IndexDaily {
                 && !(current == BenchmarkDataStatus.PROVISIONAL && incoming == BenchmarkDataStatus.INCOMPLETE);
     }
 
+    private boolean completePriceObservation(IndexDaily source) {
+        return source.closePrice != null
+                && (openPrice == null || source.openPrice != null)
+                && (highPrice == null || source.highPrice != null)
+                && (lowPrice == null || source.lowPrice != null)
+                && (volume == null || source.volume != null)
+                && (tradingAmount == null || source.tradingAmount != null);
+    }
+
     private static boolean valid(String value) { return value != null && !value.isBlank() && value.length() <= 100; }
+    private static boolean completeBreadth(IndexDaily value) {
+        return value.risingIssueCount != null && value.upperLimitIssueCount != null
+                && value.fallingIssueCount != null && value.lowerLimitIssueCount != null;
+    }
     private static boolean same(BigDecimal left, BigDecimal right) {
         return left == null ? right == null : right != null && left.compareTo(right) == 0;
     }

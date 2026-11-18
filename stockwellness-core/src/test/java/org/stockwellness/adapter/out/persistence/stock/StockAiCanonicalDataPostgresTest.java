@@ -17,12 +17,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.stockwellness.application.port.in.stock.result.StockAnalysisResult;
 import org.stockwellness.application.port.out.stock.StockAiAnalysisPort.StockAiAnalysisRecord;
+import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
+import org.stockwellness.application.service.insight.MarketWeatherService;
 import org.stockwellness.domain.stock.analysis.AiReport;
 import org.stockwellness.domain.stock.analysis.InvestmentDecision;
 import org.stockwellness.domain.stock.analysis.TrendStatus;
@@ -67,8 +70,8 @@ class StockAiCanonicalDataPostgresTest {
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, status)
-                VALUES ('KOSPI', '005930', '삼성전자', 'KRW', 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, status)
+                VALUES ('KOSPI', '005930', '삼성전자', 'KOSPI', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class);
     }
 
@@ -285,6 +288,135 @@ class StockAiCanonicalDataPostgresTest {
         assertThat(read.finalWeatherScore("0001", FINAL_DATE)).isEmpty();
     }
 
+    @Test
+    void sector_weather_read_rejects_partial_market_when_one_required_sector_is_stale() {
+        Long marketIndexId = insertMarketIndex("KOSPI:market", "KOSPI", "MARKET", "0001");
+        insertIndexSeries(marketIndexId, "kis.idxcode.KOSPI", "0001", "KOSPI");
+        Long currentSectorIndexId = insertMarketIndex("KOSPI:0002", "전기전자", "SECTOR", null);
+        Long currentSectorSeriesId = insertIndexSeries(currentSectorIndexId, "kis.idxcode.KOSPI", "0002", "KOSPI");
+        Long staleSectorIndexId = insertMarketIndex("KOSPI:0003", "금융", "SECTOR", null);
+        Long staleSectorSeriesId = insertIndexSeries(staleSectorIndexId, "kis.idxcode.KOSPI", "0003", "KOSPI");
+        insertFinalIndexWeather(currentSectorSeriesId, "85", 1);
+        insertFinalIndexWeather(staleSectorSeriesId, "99", 1);
+        jdbc.update("UPDATE index_daily SET revision = 2 WHERE series_id = ? AND trade_date = ?",
+                staleSectorSeriesId, FINAL_DATE);
+
+        var result = new IndexDailyReadAdapter(jdbc).finalSectorWeatherScores("0001", FINAL_DATE);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void market_weather_averages_only_complete_sectors_for_the_same_market_and_date() {
+        Long kospiMarket = insertMarketIndex("KOSPI:market", "KOSPI", "MARKET", "0001");
+        Long kospiMarketSeries = insertIndexSeries(kospiMarket, "kis.idxcode.KOSPI", "0001", "KOSPI");
+        insertFinalIndexWeather(kospiMarketSeries, "99", 1);
+        Long kospiElectronics = insertMarketIndex("KOSPI:0002", "전기전자", "SECTOR", null);
+        Long kospiElectronicsSeries = insertIndexSeries(
+                kospiElectronics, "kis.idxcode.KOSPI", "0002", "KOSPI");
+        Long kospiFinance = insertMarketIndex("KOSPI:0003", "금융", "SECTOR", null);
+        Long kospiFinanceSeries = insertIndexSeries(kospiFinance, "kis.idxcode.KOSPI", "0003", "KOSPI");
+        Long kospiUtilities = insertMarketIndex("KOSPI:0004", "유틸리티", "SECTOR", null);
+        Long kospiUtilitiesSeries = insertIndexSeries(kospiUtilities, "kis.idxcode.KOSPI", "0004", "KOSPI");
+        Long kospiTelecom = insertMarketIndex("KOSPI:0005", "통신", "SECTOR", null);
+        Long kospiTelecomSeries = insertIndexSeries(kospiTelecom, "kis.idxcode.KOSPI", "0005", "KOSPI");
+        insertFinalIndexWeather(kospiElectronicsSeries, "91", 1);
+        insertFinalIndexWeather(kospiFinanceSeries, "31", 1);
+        insertFinalIndexWeather(kospiUtilitiesSeries, "0", 1);
+        insertFinalIndexWeather(kospiTelecomSeries, "0", 1);
+        insertFinalIndexWeather(kospiElectronicsSeries, FIRST_DATE, "0", 1);
+        assertThatThrownBy(() -> insertFinalIndexWeather(kospiUtilitiesSeries, PROVISIONAL_DATE, "-1", 1))
+                .isInstanceOf(DataAccessException.class);
+
+        Long kosdaqMarket = insertMarketIndex("KOSDAQ:market", "KOSDAQ", "MARKET", "1001");
+        Long kosdaqMarketSeries = insertIndexSeries(kosdaqMarket, "kis.idxcode.KOSDAQ", "1001", "KOSDAQ");
+        insertFinalIndexWeather(kosdaqMarketSeries, "70", 1);
+        Long kosdaqBiotech = insertMarketIndex("KOSDAQ:1002", "코스닥 대형주", "SECTOR", null);
+        Long kosdaqBiotechSeries = insertIndexSeries(kosdaqBiotech, "kis.idxcode.KOSDAQ", "1002", "KOSDAQ");
+        insertFinalIndexWeather(kosdaqBiotechSeries, "10", 1);
+        Long outOfRangeSector = insertMarketIndex("KOSDAQ:2000", "범위 밖 업종", "SECTOR", null);
+        Long outOfRangeSeries = insertIndexSeries(outOfRangeSector, "kis.idxcode.KOSDAQ", "2000", "KOSDAQ");
+        insertFinalIndexWeather(outOfRangeSeries, "99", 1);
+
+        var readAdapter = new IndexDailyReadAdapter(jdbc);
+        assertThat(readAdapter.finalWeatherScore("1001", FINAL_DATE)).contains(new BigDecimal("70.00"));
+        assertThat(readAdapter.finalSectorWeatherScores("1001", FINAL_DATE))
+                .extracting(IndexDailyReadPort.SectorWeatherScore::code)
+                .containsExactly("1001", "1002");
+        var service = new MarketWeatherService(readAdapter);
+
+        var kospi = service.getLatestMarketWeather("KOSPI");
+        var kosdaq = service.getLatestMarketWeather("KOSDAQ");
+
+        assertThat(kospi).hasValueSatisfying(weather -> {
+            assertThat(weather.baseDate()).isEqualTo(FINAL_DATE);
+            assertThat(weather.marketType()).isEqualTo("KOSPI");
+            assertThat(weather.weatherScore()).isEqualTo(31);
+            assertThat(weather.topSectors()).extracting("sectorCode").containsExactly("0002", "0003", "0004");
+            assertThat(weather.bottomSectors()).extracting("sectorCode").containsExactly("0004", "0005", "0003");
+        });
+        assertThat(kosdaq).hasValueSatisfying(weather -> {
+            assertThat(weather.baseDate()).isEqualTo(FINAL_DATE);
+            assertThat(weather.marketType()).isEqualTo("KOSDAQ");
+            assertThat(weather.weatherScore()).isEqualTo(40);
+            assertThat(weather.topSectors()).extracting("sectorCode").containsExactly("1001", "1002");
+        });
+
+        jdbc.update("UPDATE index_daily SET revision = 2 WHERE series_id = ? AND trade_date = ?",
+                kosdaqMarketSeries, FINAL_DATE);
+        assertThat(readAdapter.finalSectorWeatherScores("1001", FINAL_DATE)).isEmpty();
+    }
+
+    @Test
+    void market_weather_is_unavailable_when_a_required_canonical_sector_score_is_missing_stale_or_provisional() {
+        Long market = insertMarketIndex("KOSPI:market", "KOSPI", "MARKET", "0001");
+        Long marketSeries = insertIndexSeries(market, "kis.idxcode.KOSPI", "0001", "KOSPI");
+        insertFinalIndexWeather(marketSeries, "99", 1);
+        Long firstSector = insertMarketIndex("KOSPI:0002", "전기전자", "SECTOR", null);
+        Long firstSeries = insertIndexSeries(firstSector, "kis.idxcode.KOSPI", "0002", "KOSPI");
+        Long secondSector = insertMarketIndex("KOSPI:0003", "금융", "SECTOR", null);
+        Long secondSeries = insertIndexSeries(secondSector, "kis.idxcode.KOSPI", "0003", "KOSPI");
+        insertFinalIndexWeather(firstSeries, "90", 1);
+        insertFinalIndexWeather(secondSeries, "30", 1);
+        var service = new MarketWeatherService(new IndexDailyReadAdapter(jdbc));
+
+        assertThat(service.getLatestMarketWeather("KOSPI")).hasValueSatisfying(weather ->
+                assertThat(weather.weatherScore()).isEqualTo(60));
+
+        jdbc.update("UPDATE index_daily SET price_status = 'PROVISIONAL' WHERE series_id = ? AND trade_date = ?",
+                secondSeries, FINAL_DATE);
+        assertThat(service.getLatestMarketWeather("KOSPI")).isEmpty();
+
+        jdbc.update("UPDATE index_daily SET price_status = 'FINAL', revision = 2 WHERE series_id = ? AND trade_date = ?",
+                secondSeries, FINAL_DATE);
+        assertThat(service.getLatestMarketWeather("KOSPI")).isEmpty();
+
+        jdbc.update("DELETE FROM index_weather WHERE series_id = ? AND trade_date = ?", secondSeries, FINAL_DATE);
+        assertThat(service.getLatestMarketWeather("KOSPI")).isEmpty();
+    }
+
+    @Test
+    void market_weather_returns_latest_complete_calculation_when_newer_date_has_incomplete_sector_coverage() {
+        Long market = insertMarketIndex("KOSPI:market", "KOSPI", "MARKET", "0001");
+        Long marketSeries = insertIndexSeries(market, "kis.idxcode.KOSPI", "0001", "KOSPI");
+        insertFinalIndexWeather(marketSeries, FIRST_DATE, "70", 1);
+        insertFinalIndexWeather(marketSeries, FINAL_DATE, "75", 1);
+        Long firstSector = insertMarketIndex("KOSPI:0002", "전기전자", "SECTOR", null);
+        Long firstSeries = insertIndexSeries(firstSector, "kis.idxcode.KOSPI", "0002", "KOSPI");
+        Long secondSector = insertMarketIndex("KOSPI:0003", "금융", "SECTOR", null);
+        Long secondSeries = insertIndexSeries(secondSector, "kis.idxcode.KOSPI", "0003", "KOSPI");
+        insertFinalIndexWeather(firstSeries, FIRST_DATE, "90", 1);
+        insertFinalIndexWeather(secondSeries, FIRST_DATE, "30", 1);
+        insertFinalIndexWeather(firstSeries, FINAL_DATE, "100", 1);
+        var service = new MarketWeatherService(new IndexDailyReadAdapter(jdbc));
+
+        assertThat(service.getLatestMarketWeather("KOSPI")).hasValueSatisfying(weather -> {
+            assertThat(weather.baseDate()).isEqualTo(FIRST_DATE);
+            assertThat(weather.weatherScore()).isEqualTo(60);
+            assertThat(weather.topSectors()).extracting("sectorCode").containsExactly("0002", "0003");
+        });
+    }
+
     private void insertPrice(LocalDate date, String close, String status, int revision) {
         jdbc.update("""
                 INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price, low_price,
@@ -292,6 +424,40 @@ class StockAiCanonicalDataPostgresTest {
                 VALUES (?, ?, 'KRX', ?, ?, ?, ?, 100, 1000, ?, 'KIS:FHKST03010100:RAW', ?, ?)
                 """, stockId, date, new BigDecimal(close), new BigDecimal(close), new BigDecimal(close),
                 new BigDecimal(close), status, java.sql.Timestamp.from(Instant.now()), revision);
+    }
+
+    private Long insertMarketIndex(String key, String name, String kind, String publicCode) {
+        return jdbc.queryForObject("""
+                INSERT INTO market_index(index_key, name, kind, public_benchmark_code)
+                VALUES (?, ?, ?, ?) RETURNING id
+                """, Long.class, key, name, kind, publicCode);
+    }
+
+    private Long insertIndexSeries(Long indexId, String namespace, String code, String calendarMarket) {
+        return jdbc.queryForObject("""
+                INSERT INTO index_series(index_id, provider, provider_namespace, provider_series_code,
+                    calendar_market_code, return_basis, dividend_basis, currency, is_canonical)
+                VALUES (?, 'KIS', ?, ?, ?, 'PRICE', 'NONE', 'KRW', true) RETURNING id
+                """, Long.class, indexId, namespace, code, calendarMarket);
+    }
+
+    private void insertFinalIndexWeather(Long seriesId, String score, int sourceRevision) {
+        insertFinalIndexWeather(seriesId, FINAL_DATE, score, sourceRevision);
+    }
+
+    private void insertFinalIndexWeather(Long seriesId, LocalDate date, String score, int sourceRevision) {
+        jdbc.update("""
+                INSERT INTO index_daily(series_id, trade_date, close_value, price_status, price_source, collected_at)
+                VALUES (?, ?, 100, 'FINAL', 'KIS:test', now())
+                """, seriesId, date);
+        String manifest = """
+                {"source":"index_daily","seriesId":%d,"targetDate":"%s",
+                 "observations":[{"date":"%s","revision":%d}]}
+                """.formatted(seriesId, date, date, sourceRevision);
+        jdbc.update("""
+                INSERT INTO index_weather(series_id, trade_date, score, status, score_version, input_manifest, calculated_at)
+                VALUES (?, ?, ?, 'FINAL', 'test-v1', ?::jsonb, now())
+                """, seriesId, date, new BigDecimal(score), manifest);
     }
 
     private void insertIndicator(LocalDate date, String ma5, String ma20, String ma60, String ma120, String manifest) {

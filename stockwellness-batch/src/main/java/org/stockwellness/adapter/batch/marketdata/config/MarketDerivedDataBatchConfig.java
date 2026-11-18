@@ -24,6 +24,7 @@ import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndexKind;
+import org.stockwellness.global.util.DateUtil;
 
 @Configuration
 @RequiredArgsConstructor
@@ -62,7 +63,8 @@ public class MarketDerivedDataBatchConfig {
     @StepScope
     public ItemProcessor<Stock, Stock> derivedStockProcessor(MarketDerivedDataUseCase derived,
             @Value("#{jobParameters['targetDate']}") String targetDate) {
-        LocalDate date = LocalDate.parse(targetDate);
+        LocalDate parsedDate = DateUtil.parseFlexible(targetDate);
+        LocalDate date = parsedDate != null ? parsedDate : DateUtil.today();
         return stock -> {
             derived.calculateStockIndicators(stock.getId(), "KRX", date);
             return stock;
@@ -110,7 +112,8 @@ public class MarketDerivedDataBatchConfig {
     public ItemProcessor<IndexSeries, IndexSeries> derivedIndexSeriesProcessor(MarketDerivedDataUseCase derived,
             @Value("#{jobParameters['targetDate']}") String targetDate,
             @Value("#{jobParameters['market']}") String market) {
-        LocalDate date = LocalDate.parse(targetDate);
+        LocalDate parsedDate = DateUtil.parseFlexible(targetDate);
+        LocalDate date = parsedDate != null ? parsedDate : DateUtil.today();
         String normalizedMarket = normalizeMarket(market);
         return series -> {
             derived.calculateIndexIndicators(series.getId(), date);

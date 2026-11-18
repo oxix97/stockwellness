@@ -13,7 +13,6 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
 import org.stockwellness.global.util.FinanceCalculationUtil;
@@ -43,6 +42,9 @@ public class Portfolio extends AbstractEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "configuration_version", nullable = false)
+    private long configurationVersion;
+
     /**
      * 포트폴리오 설명
      */
@@ -54,13 +56,6 @@ public class Portfolio extends AbstractEntity {
     @ToString.Exclude
     @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
     private List<PortfolioItem> items = new ArrayList<>();
-
-    /**
-     * AI 어드바이저가 생성한 조언 리포트 이력
-     */
-    @ToString.Exclude
-    @OneToMany(fetch = LAZY, mappedBy = "portfolio", cascade = ALL, orphanRemoval = true)
-    private List<AdvisorReport> advisorReports = new ArrayList<>();
 
     /**
      * 새로운 포트폴리오 인스턴스를 생성합니다.
@@ -90,15 +85,6 @@ public class Portfolio extends AbstractEntity {
     }
 
     /**
-     * AI 어드바이저의 리포트를 포트폴리오 이력에 추가합니다.
-     *
-     * @param report 추가할 조언 리포트
-     */
-    public void addAdvisorReport(AdvisorReport report) {
-        this.advisorReports.add(report);
-    }
-
-    /**
      * 포트폴리오의 구성 종목 리스트를 새로운 리스트로 교체합니다.
      * 교체 시 모든 종목의 목표 비중 합계가 100%인지 검증합니다.
      *
@@ -109,6 +95,7 @@ public class Portfolio extends AbstractEntity {
         this.items.clear();
         this.items.addAll(newItems);
         newItems.forEach(item -> item.assignPortfolio(this));
+        configurationVersion = Math.incrementExact(configurationVersion);
     }
 
     /**

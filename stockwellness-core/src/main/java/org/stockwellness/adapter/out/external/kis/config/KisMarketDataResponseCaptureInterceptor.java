@@ -22,7 +22,9 @@ import org.springframework.util.StreamUtils;
 final class KisMarketDataResponseCaptureInterceptor implements ClientHttpRequestInterceptor {
     private static final Set<String> CAPTURED_PATHS = Set.of(
             "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
-            "/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily");
+            "/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice",
+            "/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily",
+            "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice");
 
     private final Path captureDirectory;
     private final ObjectMapper objectMapper;

@@ -18,10 +18,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.in.batch.NewMarketDataSyncUseCase;
+import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndexKind;
+import org.stockwellness.global.util.DateUtil;
 
 @Configuration
 @RequiredArgsConstructor
@@ -69,12 +70,11 @@ public class NewMarketDataBatchConfig {
     @StepScope
     public JpaPagingItemReader<Stock> kisEodStockReader(
             @Value("#{jobParameters['ticker']}") String ticker) {
+        String targetTicker = ticker == null ? null : ticker.trim();
         return new JpaPagingItemReaderBuilder<Stock>().name("kisEodStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') "
-                        + "and s.status <> :delisted and (:ticker = '' or s.ticker = :ticker) order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED,
-                        "ticker", ticker == null ? "" : ticker.trim())).build();
+                .queryString(StockPriceBatchTargetQuery.selectQuery(targetTicker))
+                .parameterValues(StockPriceBatchTargetQuery.parameters(targetTicker)).build();
     }
 
     @Bean
@@ -82,8 +82,8 @@ public class NewMarketDataBatchConfig {
     public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodStockProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
-        LocalDate from = LocalDate.parse(start);
-        LocalDate to = LocalDate.parse(end);
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
         return stock -> { sync.syncStockPrices(stock, from, to); return stock; };
     }
 
@@ -104,12 +104,11 @@ public class NewMarketDataBatchConfig {
     @StepScope
     public JpaPagingItemReader<Stock> kisEodInvestorStockReader(
             @Value("#{jobParameters['ticker']}") String ticker) {
+        String targetTicker = ticker == null ? null : ticker.trim();
         return new JpaPagingItemReaderBuilder<Stock>().name("kisEodInvestorStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') "
-                        + "and s.status <> :delisted and (:ticker = '' or s.ticker = :ticker) order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED,
-                        "ticker", ticker == null ? "" : ticker.trim())).build();
+                .queryString(StockPriceBatchTargetQuery.selectQuery(targetTicker))
+                .parameterValues(StockPriceBatchTargetQuery.parameters(targetTicker)).build();
     }
 
     @Bean
@@ -117,8 +116,8 @@ public class NewMarketDataBatchConfig {
     public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
-        LocalDate from = LocalDate.parse(start);
-        LocalDate to = LocalDate.parse(end);
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
         return stock -> { sync.syncStockInvestorTrades(stock, from, to); return stock; };
     }
 
@@ -171,8 +170,16 @@ public class NewMarketDataBatchConfig {
     public org.springframework.batch.item.ItemProcessor<IndexSeries, IndexSeries> kisEodIndexProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
-        LocalDate from = LocalDate.parse(start);
-        LocalDate to = LocalDate.parse(end);
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
         return series -> { sync.syncIndexPrices(series, from, to); return series; };
+    }
+
+    private static LocalDate parseDate(String rawDate, String parameterName) {
+        LocalDate date = DateUtil.parseFlexible(rawDate);
+        if (date == null) {
+            throw new IllegalArgumentException(parameterName + " is required and must be a valid date");
+        }
+        return date;
     }
 }

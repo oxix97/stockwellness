@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
@@ -14,11 +15,15 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
+import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.insight.IndexSeries;
+import org.stockwellness.domain.stock.insight.MarketIndex;
 import org.stockwellness.support.BatchIntegrationTestSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,10 +42,27 @@ class BenchmarkPriceSyncJobIntegrationTest extends BatchIntegrationTestSupport {
     private Job job;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private MarketIndexRepository marketIndexRepository;
+
+    @Autowired
+    private IndexSeriesRepository indexSeriesRepository;
+
+    @Autowired
+    private BenchmarkPricePort benchmarkPricePort;
 
     @MockitoBean
     private KisDailyPriceAdapter kisDailyPriceAdapter;
+
+    @BeforeEach
+    void seedCanonicalBenchmarkSeries() {
+        seedDomestic("0001", "KOSPI", "0", "KOSPI");
+        seedDomestic("1001", "KOSDAQ", "1", "KOSDAQ");
+        seedDomestic("2001", "KOSPI 200", "2", "KOSPI");
+        seedDomestic("3003", "KOSDAQ 150", "3", "KOSDAQ");
+        seedOverseas("US:SPX", "S&P 500", "SPX", "NYSE");
+        seedOverseas("US:NDX", "NASDAQ 100", "NDX", "NASDAQ");
+        seedOverseas("US:DJI", "Dow Jones Industrial", ".DJI", "NYSE");
+    }
 
     @Test
     @DisplayName("지수 시세 동기화 배치가 성공적으로 실행된다")
@@ -133,7 +155,7 @@ class BenchmarkPriceSyncJobIntegrationTest extends BatchIntegrationTestSupport {
         JobExecution rerun = jobLauncher.run(job, jobParameters(timestamp + 1));
 
         assertThat(rerun.getStatus()).isEqualTo(BatchStatus.COMPLETED);
-        assertThat(changeRate(BenchmarkType.KOSPI_200.getTicker(), firstDate)).isEqualByComparingTo("0");
+        assertThat(changeRate(BenchmarkType.KOSPI_200.getTicker(), firstDate)).isNull();
     }
 
     private JobParameters jobParameters(long timestamp) {
@@ -145,12 +167,20 @@ class BenchmarkPriceSyncJobIntegrationTest extends BatchIntegrationTestSupport {
     }
 
     private BigDecimal changeRate(String ticker, LocalDate baseDate) {
-        return jdbcTemplate.queryForObject(
-                "select change_rate from benchmark_price where ticker = ? and base_date = ?",
-                BigDecimal.class,
-                ticker,
-                baseDate
-        );
+        return benchmarkPricePort.findByTickerAndBaseDate(ticker, baseDate)
+                .orElseThrow().getChangeRate();
+    }
+
+    private void seedDomestic(String code, String name, String division, String calendarMarket) {
+        MarketIndex index = marketIndexRepository.saveAndFlush(MarketIndex.of(code, name, division));
+        indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.idxcode." + calendarMarket,
+                code, calendarMarket, "PRICE", "NONE", "KRW", true));
+    }
+
+    private void seedOverseas(String key, String name, String code, String calendarMarket) {
+        MarketIndex index = marketIndexRepository.saveAndFlush(MarketIndex.ofOverseasBenchmark(key, name, code));
+        indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.ovrs.idxcode.N",
+                code, calendarMarket, "PRICE", "NONE", "USD", true));
     }
 
     private BenchmarkPriceData mockData(LocalDate date, String close, String changeRate, long volume) {

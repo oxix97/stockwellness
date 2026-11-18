@@ -1,59 +1,77 @@
 package org.stockwellness.domain.portfolio.advisor;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Map;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.stockwellness.domain.portfolio.Portfolio;
-import org.stockwellness.domain.shared.AbstractEntity;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-/**
- * AI 어드바이저가 특정 포트폴리오를 분석하여 생성한 조언 리포트 엔티티입니다.
- * 분석 내용(content)과 분석 결과에 따른 권장 조치(AdviceAction)를 포함합니다.
- */
 @Entity
 @Getter
-@Table(name = "advisor_reports")
+@Table(name = "portfolio_ai_report")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class AdvisorReport extends AbstractEntity {
+public class AdvisorReport {
 
-    /**
-     * 리포트의 대상이 되는 포트폴리오
-     */
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "portfolio_id", nullable = false)
-    private Portfolio portfolio;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    /**
-     * AI가 생성한 상세 분석 내용 (Markdown 형식 등 텍스트 데이터)
-     */
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String content;
+    @Column(name = "portfolio_id", nullable = false)
+    private Long portfolioId;
 
-    /**
-     * 분석 결과에 따른 권장 조치 타입 (매수 유지, 비중 축소, 리밸런싱 필요 등)
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AdviceAction action;
+    @Column(name = "model_version", nullable = false, length = 100)
+    private String modelVersion;
 
-    private AdvisorReport(Portfolio portfolio, String content, AdviceAction action) {
-        this.portfolio = portfolio;
-        this.content = content;
-        this.action = action;
+    @Column(name = "prompt_version", nullable = false, length = 100)
+    private String promptVersion;
+
+    // shortcut: only the input hash is stored; add source revisions when reproducible regeneration is required.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "input_manifest", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> inputManifest;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "result", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> result;
+
+    @Column(name = "generated_at", nullable = false)
+    private Instant generatedAt;
+
+    private AdvisorReport(Long portfolioId, String modelVersion, String promptVersion,
+                          String inputHash, String content, AdviceAction action) {
+        this.portfolioId = portfolioId;
+        this.modelVersion = modelVersion;
+        this.promptVersion = promptVersion;
+        this.inputManifest = Map.of("context_sha256", inputHash);
+        this.result = Map.of("content", content, "action", action.name());
+        this.generatedAt = Instant.now();
     }
 
-    /**
-     * 새로운 AI 조언 리포트 인스턴스를 생성합니다.
-     *
-     * @param portfolio 대상 포트폴리오
-     * @param content 분석 내용
-     * @param action 권장 조치
-     * @return 생성된 AdvisorReport 객체
-     */
-    public static AdvisorReport create(Portfolio portfolio, String content, AdviceAction action) {
-        return new AdvisorReport(portfolio, content, action);
+    public static AdvisorReport create(Long portfolioId, String modelVersion, String promptVersion,
+                                       String inputHash, String content, AdviceAction action) {
+        return new AdvisorReport(portfolioId, modelVersion, promptVersion, inputHash, content, action);
+    }
+
+    public String getContent() {
+        return (String) result.get("content");
+    }
+
+    public AdviceAction getAction() {
+        return AdviceAction.valueOf((String) result.get("action"));
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return LocalDateTime.ofInstant(generatedAt, ZoneId.systemDefault());
     }
 }

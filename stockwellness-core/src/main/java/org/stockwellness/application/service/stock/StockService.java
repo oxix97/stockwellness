@@ -62,7 +62,7 @@ public class StockService implements StockUseCase {
                 s.getTicker(),
                 s.getName(),
                 s.getMarketType(),
-                s.getSector().getSectorName(),
+                s.resolveSectorName(),
                 s.getStatus()
         ));
     }
@@ -84,7 +84,7 @@ public class StockService implements StockUseCase {
                     stock.getStandardCode(),
                     stock.getTicker(),
                     stock.getName(),
-                    stock.getSector().getSectorName(),
+                    stock.resolveSectorName(),
                     stock.getMarketType().name(),
                     stock.getListedShares(),
                     null,
@@ -115,7 +115,7 @@ public class StockService implements StockUseCase {
                 stock.getStandardCode(),
                 stock.getTicker(),
                 stock.getName(),
-                stock.getSector().getSectorName(),
+                stock.resolveSectorName(),
                 stock.getMarketType().name(),
                 stock.getListedShares(),
                 latestPrice.tradeDate(),
@@ -143,7 +143,7 @@ public class StockService implements StockUseCase {
                         s.getTicker(),
                         s.getName(),
                         s.getMarketType(),
-                        s.getSector().getSectorName(),
+                        s.resolveSectorName(),
                         s.getStatus()
                 ))
                 .collect(Collectors.toList());

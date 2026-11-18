@@ -43,6 +43,21 @@ class MarketIndexMstParserTest {
         assertThat(kospiTotal.get().getProviderCode()).isEqualTo("0001");
         assertThat(kospiTotal.get().getIndexKind()).isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.MARKET);
 
+        assertThat(indices).filteredOn(it -> "2001".equals(it.getProviderCode()))
+                .singleElement()
+                .satisfies(it -> {
+                    assertThat(it.getMarketCode()).isEqualTo("KOSPI");
+                    assertThat(it.getIndexKind())
+                            .isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.MARKET);
+                });
+        assertThat(indices).filteredOn(it -> "3003".equals(it.getProviderCode()))
+                .singleElement()
+                .satisfies(it -> {
+                    assertThat(it.getMarketCode()).isEqualTo("KOSDAQ");
+                    assertThat(it.getIndexKind())
+                            .isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.MARKET);
+                });
+
         // 2. IT 서비스 (0029) 확인
         Optional<MarketIndex> itService = indices.stream()
                 .filter(it -> "0029".equals(it.getIndexCode()))
@@ -60,6 +75,23 @@ class MarketIndexMstParserTest {
         assertThat(kosdaqIt).isPresent();
         assertThat(kosdaqIt.get().getMarketCode()).isEqualTo("KOSDAQ");
         log.info("검증 성공 [MarketIndex]: {} ({})", kosdaqIt.get().getIndexName(), kosdaqIt.get().getIndexCode());
+
+        assertThat(indices).filteredOn(it -> "1001".equals(it.getIndexCode()))
+                .singleElement()
+                .satisfies(it -> {
+                    assertThat(it.getIndexName()).isEqualTo("KOSDAQ");
+                    assertThat(it.getIndexKind()).isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.MARKET);
+                });
+        assertThat(indices.stream()
+                .filter(it -> it.getIndexCode().matches("\\d+"))
+                .filter(it -> {
+                    int code = Integer.parseInt(it.getIndexCode());
+                    return code > 1 && code < 2000 && !"1001".equals(it.getIndexCode());
+                })
+                .toList())
+                .isNotEmpty()
+                .allSatisfy(it -> assertThat(it.getIndexKind())
+                        .isEqualTo(org.stockwellness.domain.stock.insight.MarketIndexKind.SECTOR));
     }
 
     private Path findMstFile(String fileName) {

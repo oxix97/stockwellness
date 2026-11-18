@@ -78,6 +78,28 @@ class KisMarketDataResponseCaptureInterceptorTest {
     }
 
     @Test
+    void capturesOverseasIndexDailyResponses() throws Exception {
+        byte[] body = "{\"rt_cd\":\"0\",\"output2\":[{\"xymd\":\"20251113\"}]}"
+                .getBytes(StandardCharsets.UTF_8);
+        var interceptor = new KisMarketDataResponseCaptureInterceptor(captureDirectory.toString(), new ObjectMapper());
+        var request = request("/uapi/overseas-price/v1/quotations/inquire-daily-chartprice"
+                + "?FID_INPUT_ISCD=SPX&FID_INPUT_DATE_1=20251113&FID_INPUT_DATE_2=20261113");
+        request.getHeaders().set("tr_id", "FHKST03030100");
+        ClientHttpRequestExecution execution = (ignored, ignoredBody) ->
+                new MockClientHttpResponse(body, HttpStatus.OK);
+
+        interceptor.intercept(request, new byte[0], execution);
+
+        Path bodyFile;
+        try (var files = Files.list(captureDirectory)) {
+            bodyFile = files.filter(path -> path.toString().endsWith(".body")).findFirst().orElseThrow();
+        }
+        assertThat(Files.readAllBytes(bodyFile)).containsExactly(body);
+        String metadata = Files.readString(captureDirectory.resolve(bodyFile.getFileName().toString().replace(".body", ".json")));
+        assertThat(metadata).contains("FHKST03030100", "inquire-daily-chartprice", "20251113", "20261113");
+    }
+
+    @Test
     void closesResponseAndFailsTheRequestWhenCaptureCannotBeWritten() throws Exception {
         Path capturePath = captureDirectory.resolve("not-a-directory");
         Files.writeString(capturePath, "file");
@@ -106,6 +128,26 @@ class KisMarketDataResponseCaptureInterceptorTest {
         try (var files = Files.list(captureDirectory)) {
             assertThat(files.toList()).isEmpty();
         }
+    }
+
+    @Test
+    void capturesDomesticIndexDailyResponses() throws Exception {
+        byte[] body = "{\"rt_cd\":\"0\",\"output2\":[]}".getBytes(StandardCharsets.UTF_8);
+        var interceptor = new KisMarketDataResponseCaptureInterceptor(captureDirectory.toString(), new ObjectMapper());
+        var request = request("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice"
+                + "?FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=20251104&FID_INPUT_DATE_2=20251223");
+        request.getHeaders().set("tr_id", "FHKUP03500100");
+        request.getHeaders().set("Authorization", "Bearer must-not-be-captured");
+        interceptor.intercept(request, new byte[0], (ignored, ignoredBody) -> new MockClientHttpResponse(body, HttpStatus.OK));
+
+        Path bodyFile;
+        try (var files = Files.list(captureDirectory)) {
+            bodyFile = files.filter(path -> path.toString().endsWith(".body")).findFirst().orElseThrow();
+        }
+        assertThat(Files.readAllBytes(bodyFile)).containsExactly(body);
+        String metadata = Files.readString(captureDirectory.resolve(bodyFile.getFileName().toString().replace(".body", ".json")));
+        assertThat(metadata).contains("FHKUP03500100", "inquire-daily-indexchartprice", "20251104", "20251223")
+                .doesNotContain("must-not-be-captured", "Authorization", "Bearer");
     }
 
     private static org.springframework.http.HttpRequest request(String uri) {

@@ -8,6 +8,8 @@ import java.util.Set;
 import org.stockwellness.domain.stock.price.PriceBasis;
 
 public interface StockPriceReadPort {
+    List<InvalidPriceObservation> invalidPriceObservations(LocalDate start, LocalDate end);
+
     Map<Long, List<PriceObservation>> history(Set<Long> stockIds, String quoteScope,
             LocalDate start, LocalDate end, PriceBasis basis);
 

@@ -59,8 +59,8 @@ class MarketDerivedDataServiceTest {
         ArgumentCaptor<StockTechnicalIndicator> saved = ArgumentCaptor.forClass(StockTechnicalIndicator.class);
         verify(indicators).upsertStock(saved.capture());
         assertThat(saved.getValue().tradeDate()).isEqualTo(TARGET_DATE);
-        assertThat(saved.getValue().ma120()).isNotNull();
-        assertThat(saved.getValue().ma20Disparity()).isNotNull();
+        assertThat(saved.getValue().ma120()).isEqualByComparingTo("159.5000");
+        assertThat(saved.getValue().ma20Disparity()).isEqualByComparingTo("1.045346");
         assertThat(saved.getValue().inputManifest()).contains(TARGET_DATE.toString(), "\"revision\":1");
     }
 
@@ -130,7 +130,7 @@ class MarketDerivedDataServiceTest {
         ArgumentCaptor<IndexTechnicalIndicator> saved = ArgumentCaptor.forClass(IndexTechnicalIndicator.class);
         verify(indicators).upsertIndex(saved.capture());
         assertThat(saved.getValue().tradeDate()).isEqualTo(TARGET_DATE);
-        assertThat(saved.getValue().ma120()).isNotNull();
+        assertThat(saved.getValue().ma120()).isEqualByComparingTo("159.5000");
         assertThat(saved.getValue().inputManifest()).contains(TARGET_DATE.toString(), "\"revision\":1");
     }
 

@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.stockwellness.application.port.out.stock.InvalidPriceObservation;
 import org.stockwellness.application.port.out.stock.PriceObservation;
 import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.price.PriceBasis;
@@ -60,6 +61,24 @@ public class StockPriceReadAdapter implements StockPriceReadPort {
             """;
 
     private final NamedParameterJdbcTemplate jdbc;
+
+    @Override
+    public List<InvalidPriceObservation> invalidPriceObservations(LocalDate start, LocalDate end) {
+        if (start == null || end == null || start.isAfter(end)) {
+            throw new IllegalArgumentException("Invalid price integrity date range");
+        }
+        return jdbc.getJdbcTemplate().query("""
+                SELECT DISTINCT ON (p.trade_date, s.ticker, s.id)
+                       s.ticker, s.name, p.trade_date, p.close_price
+                FROM stock_price_daily p
+                JOIN stock s ON s.id = p.stock_id
+                WHERE p.trade_date BETWEEN ? AND ?
+                  AND (p.close_price IS NULL OR p.close_price <= 0)
+                ORDER BY p.trade_date, s.ticker, s.id, (p.close_price IS NULL) DESC, p.close_price ASC, p.quote_scope ASC
+                """, (rs, rowNum) -> new InvalidPriceObservation(
+                rs.getString("ticker"), rs.getString("name"), rs.getObject("trade_date", LocalDate.class),
+                rs.getBigDecimal("close_price")), start, end);
+    }
 
     @Override
     public Map<Long, List<PriceObservation>> history(Set<Long> stockIds, String quoteScope,

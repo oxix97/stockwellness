@@ -27,7 +27,7 @@ public record MemberResult(
                 member.getRiskLevel(),
                 member.getStatus(),
                 member.getCreatedAt(),
-                member.getModifiedAt(),
+                member.getUpdatedAt(),
                 summary
         );
     }

@@ -18,7 +18,7 @@ public class MemberAdapter implements LoadMemberPort, SaveMemberPort {
 
     @Override
     public Optional<Member> loadMember(Long memberId) {
-        return memberRepository.findById(memberId);
+        return memberRepository.findMemberWithIdentities(memberId);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package org.stockwellness.application.service.batch;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -127,6 +128,7 @@ class StockMasterSyncServiceTest {
             Stock existing = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI, Currency.KRW,
                     StockSector.of("0001", "0029", null, "기존업종"), StockStatus.ACTIVE);
             KospiItem item = createKospiItem("005930", "삼성전자우", "0029");
+            given(item.listingDate()).willReturn("19750611");
             
             given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSPI"))
                     .willReturn(List.of(indexSeries("KOSPI", "0029", "전기전자")));
@@ -141,6 +143,7 @@ class StockMasterSyncServiceTest {
             assertThat(result.created()).isFalse();
             assertThat(result.stock().getName()).isEqualTo("삼성전자우");
             assertThat(result.stock().getSector().getSectorName()).isEqualTo("전기전자");
+            assertThat(result.stock().getListingDate()).isEqualTo(LocalDate.of(1975, 6, 11));
         }
 
         @Test
@@ -200,6 +203,23 @@ class StockMasterSyncServiceTest {
             assertThat(result.created()).isTrue();
             assertThat(result.stock().getMarketType()).isEqualTo(MarketType.KOSDAQ);
             assertThat(result.stock().getSector().getSectorName()).isEqualTo("제약");
+        }
+
+        @Test
+        @DisplayName("기존 KOSDAQ 종목도 마스터 상장일을 반영한다")
+        void shouldUpdateListingDateForExistingKosdaqStock() {
+            Stock existing = Stock.of("000250", "KR7000250001", "삼천당제약", MarketType.KOSDAQ, Currency.KRW,
+                    StockSector.empty(), StockStatus.ACTIVE);
+            KosdaqItem item = createKosdaqItem("000250", "삼천당제약", "0027");
+            given(item.listingDate()).willReturn("20040102");
+            given(indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode.KOSDAQ"))
+                    .willReturn(List.of());
+            given(stockRepository.findByTickerAndMarketCode("000250", "KOSDAQ")).willReturn(Optional.of(existing));
+
+            Stock updated = stockMasterSyncService.upsertKosdaq(
+                    new StockMasterSyncUseCase.KosdaqMasterSyncCommand(item)).stock();
+
+            assertThat(updated.getListingDate()).isEqualTo(LocalDate.of(2004, 1, 2));
         }
     }
 

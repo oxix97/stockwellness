@@ -83,8 +83,8 @@ class StockInvestorTradeReadAdapterPostgresTest {
 
     private Long insertStock(String ticker, Long sectorId) {
         return jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, sector_index_id, status)
-                VALUES ('KOSPI', ?, ?, 'KRW', ?, 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, sector_index_id, status)
+                VALUES ('KOSPI', ?, ?, 'KOSPI', 'KRW', ?, 'ACTIVE') RETURNING id
                 """, Long.class, ticker, ticker, sectorId);
     }
 

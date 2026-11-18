@@ -5,26 +5,39 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
 import org.stockwellness.application.port.in.portfolio.result.ValuationStatus;
 
 public record PortfolioValuationResponse(
     BigDecimal totalPurchaseAmount,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal currentTotalValue,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal totalProfitLoss,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal totalReturnRate,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal dailyProfitLoss,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal dailyReturnRate,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal cagr,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal volatility,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal alpha,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal mdd,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal sharpeRatio,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal beta,
     BigDecimal totalInstitutionalNetBuying,
     BigDecimal totalForeignNetBuying,
     BigDecimal totalPersonNetBuying,
     ValuationStatus valuationStatus,
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     LocalDate asOfDate,
     List<String> missingSymbols
 ) {

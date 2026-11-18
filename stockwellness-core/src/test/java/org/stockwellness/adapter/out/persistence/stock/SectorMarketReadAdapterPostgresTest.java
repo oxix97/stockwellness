@@ -57,8 +57,8 @@ class SectorMarketReadAdapterPostgresTest {
                 VALUES (?, 'KIS', 'kis.sector', 'SEMI', 'KOSPI', 'PRICE', 'NONE', 'KRW', true) RETURNING id
                 """, Long.class, indexId);
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, sector_index_id, status)
-                VALUES ('KOSPI', '005930', '삼성전자', 'KRW', ?, 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, sector_index_id, status)
+                VALUES ('KOSPI', '005930', '삼성전자', 'KOSPI', 'KRW', ?, 'ACTIVE') RETURNING id
                 """, Long.class, indexId);
         insertIndexPrice(FIRST_DATE, "100", "FINAL", 1);
         insertIndexPrice(FINAL_DATE, "110", "FINAL", 1);

@@ -40,7 +40,7 @@ public class MarketDataRevisionCacheConsumer {
             dltTopicSuffix = "-cache-dlt"
     )
     @KafkaListener(
-            topics = KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC,
+            topics = KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC,
             groupId = "${spring.kafka.consumer.market-data-revision-cache-group-id:market-data-revision-cache-group}"
     )
     public void consume(MarketDataRevisionEvent event) {

@@ -16,11 +16,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
 import org.stockwellness.application.port.out.stock.IndexPriceObservation;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
@@ -32,7 +29,6 @@ import org.stockwellness.application.port.out.stock.StockInvestorTradeReadPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TechnicalIndicators;
@@ -40,41 +36,13 @@ import org.stockwellness.domain.stock.price.TradeDirection;
 
 @Component
 @RequiredArgsConstructor
-public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, BenchmarkPricePort {
+public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
-    private final StockPriceRepository stockPriceRepository;
-    private final BenchmarkPriceRepository benchmarkPriceRepository;
     private final StockPriceReadPort stockPriceReadPort;
     private final StockInvestorTradeReadPort investorTradeReadPort;
     private final StockPort stockPort;
     private final IndexDailyReadPort indexDailyReadPort;
-
-    @Override
-    public StockPrice save(StockPrice stockPrice) {
-        return stockPriceRepository.save(stockPrice);
-    }
-
-    @Override
-    public Optional<BenchmarkPrice> findByTickerAndBaseDate(String ticker, LocalDate baseDate) {
-        return benchmarkPriceRepository.findByTickerAndBaseDate(ticker, baseDate);
-    }
-
-    @Override
-    public Optional<BenchmarkPrice> findLatestBefore(String ticker, LocalDate baseDate) {
-        return benchmarkPriceRepository.findTopByTickerAndBaseDateLessThanOrderByBaseDateDesc(ticker, baseDate);
-    }
-
-    @Override
-    public List<BenchmarkPrice> findHistoryByTicker(String ticker, LocalDate endDate, int limit) {
-        return benchmarkPriceRepository.findByTickerAndBaseDateLessThanEqualOrderByBaseDateDesc(ticker, endDate,
-                org.springframework.data.domain.PageRequest.of(0, limit));
-    }
-
-    @Override
-    public void save(BenchmarkPrice benchmarkPrice) {
-        benchmarkPriceRepository.save(benchmarkPrice);
-    }
 
     @Override
     public List<StockSupplyRankingResult> findTopInstitutionStocksBySupply(
@@ -85,11 +53,6 @@ public class StockPriceAdapter implements StockPricePort, LoadBenchmarkPort, Ben
     @Override
     public Optional<LocalDate> findLatestInvestorTradeDate() {
         return investorTradeReadPort.latestFinalDate("KRX");
-    }
-
-    @Override
-    public void saveAll(List<StockPrice> stockPrices) {
-        stockPriceRepository.saveAll(stockPrices);
     }
 
     @Override

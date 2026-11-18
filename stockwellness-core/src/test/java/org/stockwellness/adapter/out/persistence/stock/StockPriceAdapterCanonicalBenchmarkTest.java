@@ -11,8 +11,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
 import org.stockwellness.application.port.out.stock.IndexPriceObservation;
 import org.stockwellness.application.port.out.stock.StockPort;
@@ -20,14 +18,12 @@ import org.stockwellness.application.port.out.stock.StockInvestorTradeReadPort;
 import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 
 class StockPriceAdapterCanonicalBenchmarkTest {
-    private final StockPriceRepository stockPriceRepository = mock(StockPriceRepository.class);
-    private final BenchmarkPriceRepository benchmarkPriceRepository = mock(BenchmarkPriceRepository.class);
     private final StockPriceReadPort stockPriceReadPort = mock(StockPriceReadPort.class);
     private final StockInvestorTradeReadPort investorTradeReadPort = mock(StockInvestorTradeReadPort.class);
     private final StockPort stockPort = mock(StockPort.class);
     private final IndexDailyReadPort indexDailyReadPort = mock(IndexDailyReadPort.class);
-    private final StockPriceAdapter adapter = new StockPriceAdapter(stockPriceRepository, benchmarkPriceRepository,
-            stockPriceReadPort, investorTradeReadPort, stockPort, indexDailyReadPort);
+    private final StockPriceAdapter adapter = new StockPriceAdapter(stockPriceReadPort, investorTradeReadPort,
+            stockPort, indexDailyReadPort);
 
     @Test
     void loadBenchmarkPrices_reads_final_index_daily_and_calculates_change_from_previous_final_close() {

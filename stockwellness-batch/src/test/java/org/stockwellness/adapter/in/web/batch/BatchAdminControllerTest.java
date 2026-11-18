@@ -13,7 +13,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
-import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
 import org.stockwellness.adapter.in.scheduler.MarketDataBatchOrchestrator;
 import org.stockwellness.adapter.in.web.batch.MarketDataSyncTokenVerifier;
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
@@ -49,9 +48,6 @@ class BatchAdminControllerTest {
 
     @MockitoBean
     private DailyBatchOrchestrationService dailyBatchOrchestrationService;
-
-    @MockitoBean
-    private DailyBatchOrchestrator dailyBatchOrchestrator;
 
     @MockitoBean
     private MarketDataBatchOrchestrator marketDataBatchOrchestrator;
@@ -123,6 +119,32 @@ class BatchAdminControllerTest {
                 .andExpect(jsonPath("$.data.startDate").value("2026-11-20"))
                 .andExpect(jsonPath("$.data.effectiveEndDate").value("2026-11-25"))
                 .andExpect(jsonPath("$.data.stages[0].executionId").value(42));
+    }
+
+    @Test
+    void runDailySyncUsesCanonicalMarketDataPipeline() throws Exception {
+        LocalDate date = LocalDate.of(2026, 11, 16);
+        var krResult = new MarketDataBatchOrchestrator.RunResult("KR", date, date, date, "scheduled-kr-20261116",
+                List.of(new MarketDataBatchOrchestrator.StageResult(
+                        "kisEodIndexPriceSyncJob", "kisEodIndexPriceSyncJob", "COMPLETED", 44L)));
+        var usResult = new MarketDataBatchOrchestrator.RunResult("US", date, date, date, "scheduled-us-20261116",
+                List.of(new MarketDataBatchOrchestrator.StageResult(
+                        "kisEodIndexPriceSyncJob", "kisEodIndexPriceSyncJob", "COMPLETED", 45L)));
+        when(marketDataBatchOrchestrator.runScheduled("KR")).thenReturn(krResult);
+        when(marketDataBatchOrchestrator.runScheduled("US")).thenReturn(usResult);
+
+        var response = mockMvc.perform(post("/api/v1/admin/batch/run-daily-sync")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(marketDataBatchOrchestrator);
+        order.verify(marketDataBatchOrchestrator).runScheduled("KR");
+        order.verify(marketDataBatchOrchestrator).runScheduled("US");
+        response.andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].market").value("KR"))
+                .andExpect(jsonPath("$.data[0].stages[0].jobName").value("kisEodIndexPriceSyncJob"))
+                .andExpect(jsonPath("$.data[1].market").value("US"))
+                .andExpect(jsonPath("$.data[1].stages[0].jobName").value("kisEodIndexPriceSyncJob"));
     }
 
     @Test

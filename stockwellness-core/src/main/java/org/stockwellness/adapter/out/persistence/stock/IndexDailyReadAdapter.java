@@ -186,4 +186,178 @@ public class IndexDailyReadAdapter implements IndexDailyReadPort {
                   )
                 """, rs -> rs.next() ? rs.getBigDecimal("score") : null, publicBenchmarkCode, tradeDate));
     }
+
+    @Override
+    public Optional<LocalDate> latestWeatherDate(String publicBenchmarkCode) {
+        if (publicBenchmarkCode == null || publicBenchmarkCode.isBlank()) {
+            throw new IllegalArgumentException("Benchmark code is required");
+        }
+        return jdbc.query("""
+                WITH market_series AS (
+                    SELECT series.calendar_market_code, series.currency
+                    FROM index_series series
+                    JOIN market_index market ON market.id = series.index_id
+                    WHERE market.public_benchmark_code = ? AND market.kind = 'MARKET'
+                      AND series.is_active AND series.is_canonical
+                      AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                ), sector_expected AS (
+                    SELECT series.id AS series_id
+                    FROM index_series series
+                    JOIN market_index sector ON sector.id = series.index_id
+                        AND ((sector.kind = 'SECTOR'
+                                AND CASE WHEN btrim(series.provider_series_code) ~ '^[+]?[0-9]+$'
+                                    THEN btrim(series.provider_series_code)::numeric > 1
+                                        AND btrim(series.provider_series_code)::numeric < 2000
+                                    ELSE false
+                                END)
+                            OR (sector.kind = 'MARKET' AND sector.public_benchmark_code = '1001'))
+                    JOIN market calendar ON calendar.code = series.calendar_market_code
+                        AND calendar.currency = series.currency
+                    WHERE series.is_active AND series.is_canonical
+                      AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                      AND EXISTS (
+                          SELECT 1 FROM market_series
+                          WHERE market_series.calendar_market_code = series.calendar_market_code
+                            AND market_series.currency = series.currency
+                      )
+                ), market_weather_candidates AS (
+                    SELECT DISTINCT weather.trade_date
+                    FROM index_weather weather
+                    JOIN index_series series ON series.id = weather.series_id
+                    JOIN market_index market ON market.id = series.index_id
+                    JOIN index_daily target ON target.series_id = weather.series_id
+                        AND target.trade_date = weather.trade_date
+                    WHERE market.public_benchmark_code = ? AND series.is_active AND series.is_canonical
+                      AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                      AND weather.status = 'FINAL' AND target.price_status = 'FINAL'
+                      AND weather.input_manifest ->> 'source' = 'index_daily'
+                      AND weather.input_manifest ->> 'seriesId' = series.id::text
+                      AND weather.input_manifest ->> 'targetDate' = weather.trade_date::text
+                      AND jsonb_typeof(weather.input_manifest -> 'observations') = 'array'
+                      AND EXISTS (
+                          SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                          WHERE input.value ->> 'date' = weather.trade_date::text
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                          LEFT JOIN index_daily source_day
+                            ON source_day.series_id = weather.series_id
+                           AND source_day.trade_date::text = input.value ->> 'date'
+                          WHERE source_day.series_id IS NULL
+                             OR source_day.price_status <> 'FINAL'
+                             OR source_day.revision::text IS DISTINCT FROM input.value ->> 'revision'
+                      )
+                )
+                SELECT candidate.trade_date
+                FROM market_weather_candidates candidate
+                WHERE EXISTS (SELECT 1 FROM sector_expected)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sector_expected expected
+                      WHERE NOT EXISTS (
+                          SELECT 1
+                          FROM index_weather weather
+                          JOIN index_daily target ON target.series_id = weather.series_id
+                              AND target.trade_date = weather.trade_date
+                          WHERE weather.series_id = expected.series_id
+                            AND weather.trade_date = candidate.trade_date
+                            AND weather.status = 'FINAL' AND target.price_status = 'FINAL'
+                            AND weather.input_manifest ->> 'source' = 'index_daily'
+                            AND weather.input_manifest ->> 'seriesId' = expected.series_id::text
+                            AND weather.input_manifest ->> 'targetDate' = weather.trade_date::text
+                            AND jsonb_typeof(weather.input_manifest -> 'observations') = 'array'
+                            AND EXISTS (
+                                SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                                WHERE input.value ->> 'date' = weather.trade_date::text
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                                LEFT JOIN index_daily source_day
+                                  ON source_day.series_id = expected.series_id
+                                 AND source_day.trade_date::text = input.value ->> 'date'
+                                WHERE source_day.series_id IS NULL
+                                   OR source_day.price_status <> 'FINAL'
+                                   OR source_day.revision::text IS DISTINCT FROM input.value ->> 'revision'
+                            )
+                      )
+                  )
+                ORDER BY candidate.trade_date DESC LIMIT 1
+                """, (rs, rowNum) -> rs.getObject("trade_date", LocalDate.class),
+                publicBenchmarkCode, publicBenchmarkCode)
+                .stream().findFirst();
+    }
+
+    @Override
+    public List<IndexDailyReadPort.SectorWeatherScore> finalSectorWeatherScores(
+            String publicBenchmarkCode, LocalDate tradeDate) {
+        if (publicBenchmarkCode == null || publicBenchmarkCode.isBlank() || tradeDate == null) {
+            throw new IllegalArgumentException("Benchmark code and trade date are required");
+        }
+        // Keep the former reader's numeric range; KOSDAQ 1001 is its in-range MARKET row.
+        return jdbc.query("""
+                WITH market_series AS (
+                    SELECT series.calendar_market_code, series.currency
+                    FROM index_series series
+                    JOIN market_index market ON market.id = series.index_id
+                    WHERE market.public_benchmark_code = ? AND market.kind = 'MARKET'
+                      AND series.is_active AND series.is_canonical
+                      AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                ), sector_expected AS (
+                    SELECT series.id AS series_id, series.provider_series_code AS code, sector.name
+                    FROM index_series series
+                    JOIN market_index sector ON sector.id = series.index_id
+                        AND ((sector.kind = 'SECTOR'
+                                AND CASE WHEN btrim(series.provider_series_code) ~ '^[+]?[0-9]+$'
+                                    THEN btrim(series.provider_series_code)::numeric > 1
+                                        AND btrim(series.provider_series_code)::numeric < 2000
+                                    ELSE false
+                                END)
+                            OR (sector.kind = 'MARKET' AND sector.public_benchmark_code = '1001'))
+                    JOIN market calendar ON calendar.code = series.calendar_market_code
+                        AND calendar.currency = series.currency
+                    WHERE series.is_active AND series.is_canonical
+                      AND series.return_basis = 'PRICE' AND series.dividend_basis = 'NONE'
+                      AND EXISTS (
+                          SELECT 1 FROM market_series
+                          WHERE market_series.calendar_market_code = series.calendar_market_code
+                            AND market_series.currency = series.currency
+                      )
+                ), sector_ready AS (
+                    SELECT expected.series_id, weather.score
+                    FROM sector_expected expected
+                    JOIN index_weather weather ON weather.series_id = expected.series_id
+                        AND weather.trade_date = ?
+                    JOIN index_daily target ON target.series_id = expected.series_id
+                        AND target.trade_date = weather.trade_date
+                    WHERE weather.status = 'FINAL' AND target.price_status = 'FINAL'
+                      AND weather.input_manifest ->> 'source' = 'index_daily'
+                      AND weather.input_manifest ->> 'seriesId' = expected.series_id::text
+                      AND weather.input_manifest ->> 'targetDate' = weather.trade_date::text
+                      AND jsonb_typeof(weather.input_manifest -> 'observations') = 'array'
+                      AND EXISTS (
+                          SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                          WHERE input.value ->> 'date' = weather.trade_date::text
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM jsonb_array_elements(weather.input_manifest -> 'observations') AS input(value)
+                          LEFT JOIN index_daily source_day
+                            ON source_day.series_id = expected.series_id
+                           AND source_day.trade_date::text = input.value ->> 'date'
+                          WHERE source_day.series_id IS NULL
+                             OR source_day.price_status <> 'FINAL'
+                             OR source_day.revision::text IS DISTINCT FROM input.value ->> 'revision'
+                      )
+                ), coverage AS (
+                    SELECT (SELECT count(*) FROM sector_expected) AS expected_count,
+                           (SELECT count(*) FROM sector_ready) AS ready_count
+                )
+                SELECT expected.code, expected.name, ready.score
+                FROM sector_expected expected
+                JOIN sector_ready ready ON ready.series_id = expected.series_id
+                CROSS JOIN coverage
+                WHERE coverage.expected_count > 0 AND coverage.expected_count = coverage.ready_count
+                ORDER BY ready.score DESC, expected.code
+                """, (rs, rowNum) -> new IndexDailyReadPort.SectorWeatherScore(
+                rs.getString("code"), rs.getString("name"), rs.getBigDecimal("score")),
+                publicBenchmarkCode, tradeDate);
+    }
 }

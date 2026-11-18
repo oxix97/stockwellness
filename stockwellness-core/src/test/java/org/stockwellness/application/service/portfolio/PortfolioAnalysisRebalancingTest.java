@@ -69,4 +69,79 @@ class PortfolioAnalysisRebalancingTest {
         assertThat(stockGuide.diffWeight()).isEqualByComparingTo(new BigDecimal("-20"));
         assertThat(stockGuide.recommendedQuantity()).isEqualByComparingTo(new BigDecimal("-2.5"));
     }
+
+    @Test
+    @DisplayName("0원 종목과 양수 현금 포트폴리오는 0원 종목의 권장 수량을 null로 반환한다")
+    void zero_price_stock_with_positive_cash_returns_null_recommended_quantity() {
+        Long memberId = 1L;
+        Long portfolioId = 101L;
+        Portfolio portfolio = Portfolio.create(memberId, "Zero Price + Cash", "");
+        PortfolioItem stockItem = PortfolioItem.createStock("964003", BigDecimal.ONE, new BigDecimal("100"), "KRW", new BigDecimal("50"), LocalDate.of(2026, 11, 17));
+        PortfolioItem cashItem = PortfolioItem.createCash(new BigDecimal("1000"), "KRW", new BigDecimal("50"), LocalDate.of(2026, 11, 17));
+        portfolio.updateItems(List.of(stockItem, cashItem));
+
+        StockPrice zeroPrice = mock(StockPrice.class);
+        given(zeroPrice.getClosePrice()).willReturn(BigDecimal.ZERO);
+        given(dataLoader.loadContext(portfolioId, memberId))
+                .willReturn(new AnalysisContext(portfolio, Map.of(), Map.of("964003", List.of(zeroPrice)), null));
+
+        PortfolioRebalancingResult result = portfolioAnalysisService.getRebalancingGuide(memberId, portfolioId);
+
+        assertThat(result.totalValue()).isEqualByComparingTo("1000");
+        PortfolioRebalancingResult.RebalancingItem zeroStock = result.items().stream()
+                .filter(i -> i.symbol().equals("964003")).findFirst().orElseThrow();
+        PortfolioRebalancingResult.RebalancingItem cash = result.items().stream()
+                .filter(i -> i.symbol().equals("CASH")).findFirst().orElseThrow();
+
+        assertThat(zeroStock.currentPrice()).isEqualByComparingTo("0");
+        assertThat(zeroStock.recommendedQuantity()).isNull();
+        assertThat(cash.currentPrice()).isEqualByComparingTo("1");
+        assertThat(cash.recommendedQuantity()).isEqualByComparingTo("-500");
+    }
+
+    @Test
+    @DisplayName("0원 단일 종목 포트폴리오는 총 평가액 0을 유지하되 권장 수량은 null로 반환한다")
+    void zero_price_single_stock_returns_null_recommended_quantity() {
+        Long memberId = 1L;
+        Long portfolioId = 102L;
+        Portfolio portfolio = Portfolio.create(memberId, "Single Zero Price", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964003", BigDecimal.ONE, new BigDecimal("100"), "KRW", new BigDecimal("100"), LocalDate.of(2026, 11, 17))
+        ));
+
+        StockPrice zeroPrice = mock(StockPrice.class);
+        given(zeroPrice.getClosePrice()).willReturn(BigDecimal.ZERO);
+        given(dataLoader.loadContext(portfolioId, memberId))
+                .willReturn(new AnalysisContext(portfolio, Map.of(), Map.of("964003", List.of(zeroPrice)), null));
+
+        PortfolioRebalancingResult result = portfolioAnalysisService.getRebalancingGuide(memberId, portfolioId);
+
+        assertThat(result.totalValue()).isEqualByComparingTo("0");
+        PortfolioRebalancingResult.RebalancingItem zeroStock = result.items().getFirst();
+        assertThat(zeroStock.currentPrice()).isEqualByComparingTo("0");
+        assertThat(zeroStock.recommendedQuantity()).isNull();
+    }
+
+    @Test
+    @DisplayName("양수 현재가에서 목표 비중과 현재 비중이 일치하면 권장 수량은 숫자 0을 반환한다")
+    void positive_price_zero_diff_returns_numeric_zero_recommended_quantity() {
+        Long memberId = 1L;
+        Long portfolioId = 103L;
+        Portfolio portfolio = Portfolio.create(memberId, "Exact Weight", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964001", BigDecimal.TEN, new BigDecimal("100"), "KRW", new BigDecimal("100"), LocalDate.of(2026, 11, 17))
+        ));
+
+        StockPrice positivePrice = mock(StockPrice.class);
+        given(positivePrice.getClosePrice()).willReturn(new BigDecimal("100"));
+        given(dataLoader.loadContext(portfolioId, memberId))
+                .willReturn(new AnalysisContext(portfolio, Map.of(), Map.of("964001", List.of(positivePrice)), null));
+
+        PortfolioRebalancingResult result = portfolioAnalysisService.getRebalancingGuide(memberId, portfolioId);
+
+        assertThat(result.totalValue()).isEqualByComparingTo("1000");
+        PortfolioRebalancingResult.RebalancingItem item = result.items().getFirst();
+        assertThat(item.currentPrice()).isEqualByComparingTo("100");
+        assertThat(item.recommendedQuantity()).isNotNull().isEqualByComparingTo("0");
+    }
 }

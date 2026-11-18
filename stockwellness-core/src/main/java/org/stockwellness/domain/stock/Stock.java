@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
@@ -70,6 +72,7 @@ public class Stock extends AbstractEntity {
     private MarketType marketType;
 
     @Enumerated(STRING)
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 3)
     private Currency currency;
 
@@ -235,6 +238,7 @@ public class Stock extends AbstractEntity {
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
+        updateListingDate(item.listingDate());
         this.parValue = parseLong(item.parValue());
         this.fiscalMonth = item.fiscalMonth();
         this.isPreferred = !"0".equals(item.preferredStockType());
@@ -250,6 +254,7 @@ public class Stock extends AbstractEntity {
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
+        updateListingDate(item.listingDate());
         this.parValue = parseLong(item.parValue());
         this.fiscalMonth = item.fiscalMonth();
         this.isPreferred = !"0".equals(item.preferredStockType());
@@ -275,6 +280,13 @@ public class Stock extends AbstractEntity {
     public void delist() {
         this.status = StockStatus.DELISTED;
         this.isPremiumTracking = false;
+    }
+
+    public String resolveSectorName() {
+        if (sector != null && sector.getSectorName() != null && !sector.getSectorName().isBlank()) {
+            return sector.getSectorName();
+        }
+        return StockSector.empty().getSectorName();
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
@@ -303,6 +315,11 @@ public class Stock extends AbstractEntity {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void updateListingDate(String raw) {
+        LocalDate parsed = parseDate(raw);
+        if (parsed != null) this.listingDate = parsed;
     }
 
     private static Long parseLong(String raw) {

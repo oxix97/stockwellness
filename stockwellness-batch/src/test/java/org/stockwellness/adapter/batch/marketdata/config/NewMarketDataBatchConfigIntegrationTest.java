@@ -9,9 +9,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.clearInvocations;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,9 +25,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
@@ -31,6 +40,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -82,13 +92,27 @@ import org.testcontainers.junit.jupiter.Testcontainers;
                 "spring.sql.init.mode=never",
                 "spring.batch.job.enabled=false",
                 "spring.docker.compose.enabled=false",
-                "spring.kafka.admin.auto-create=false"
+                "spring.kafka.admin.auto-create=false",
+                "spring.kafka.listener.auto-startup=false",
+                "spring.kafka.bootstrap-servers=localhost:9092",
+                "management.health.redis.enabled=false",
+                "management.health.kafka.enabled=false",
+                "KAKAO_CLIENT_ID=dummy-kakao-client-id",
+                "KAKAO_CLIENT_SECRET=dummy-kakao-client-secret",
+                "GOOGLE_CLIENT_ID=dummy-google-client-id",
+                "GOOGLE_CLIENT_SECRET=dummy-google-client-secret",
+                "OPENAI_API_KEY=dummy-openai-key",
+                "JWT_SECRET=dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl",
+                "KIS_APP_KEY=dummy-kis-key",
+                "KIS_APP_SECRET=dummy-kis-secret",
+                "SLACK_WEBHOOK_URL_BATCH="
         })
-@ActiveProfiles("test")
+@ActiveProfiles("prod")
 class NewMarketDataBatchConfigIntegrationTest {
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
+    private static final Path STAGING_DIRECTORY = createStagingDirectory();
 
     private static final LocalDate START_DATE = LocalDate.of(2026, 10, 5);
     private static final LocalDate END_DATE = LocalDate.of(2026, 10, 6);
@@ -128,6 +152,10 @@ class NewMarketDataBatchConfigIntegrationTest {
     private Job marketDerivedDataJob;
 
     @Autowired
+    @Qualifier("sectorEodJob")
+    private Job sectorEodJob;
+
+    @Autowired
     @Qualifier("stockMasterSyncJob")
     private Job stockMasterSyncJob;
 
@@ -136,15 +164,29 @@ class NewMarketDataBatchConfigIntegrationTest {
     @MockitoBean private EodStockInvestorTradePort investorTradePort;
     @MockitoBean private MarketDerivedDataUseCase derivedDataUseCase;
 
+    private static Path createStagingDirectory() {
+        try {
+            return Files.createTempDirectory("stockwellness-canonical-schema-test-").toAbsolutePath().normalize();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @AfterAll
+    static void deleteStagingDirectory() throws IOException {
+        FileSystemUtils.deleteRecursively(STAGING_DIRECTORY);
+    }
+
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         POSTGRES.start();
-        ManualSqlTestSupport.initializeLegacyPostgres(
+        ManualSqlTestSupport.initializeRedesignedPostgres(
                 new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
+        registry.add("stockwellness.batch.stock-master.staging-directory", STAGING_DIRECTORY::toString);
     }
 
     @BeforeEach
@@ -192,6 +234,59 @@ class NewMarketDataBatchConfigIntegrationTest {
                   and table_name in ('batch_job_instance', 'batch_job_execution', 'batch_job_execution_params',
                       'batch_step_execution', 'batch_step_execution_context', 'batch_job_execution_context')
                 """, Integer.class)).isEqualTo(6);
+    }
+
+    @Test
+    void production_batch_context_restarts_and_reads_saved_job_metadata() throws Exception {
+        String runId = "restart-" + UUID.randomUUID();
+        JobExecution execution = jobLauncher.run(marketDerivedDataJob, new JobParametersBuilder()
+                .addString("market", "KR")
+                .addString("targetDate", START_DATE.toString())
+                .addString("run.id", runId)
+                .toJobParameters());
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+
+        try (var restarted = new SpringApplicationBuilder(StockwellnessBatchApplication.class)
+                .profiles("prod")
+                .run(restartArguments())) {
+            JdbcTemplate restartedJdbc = new JdbcTemplate(restarted.getBean(DataSource.class));
+            assertThat(restartedJdbc.queryForObject(
+                    "select count(*) from batch_job_execution where job_execution_id = ?",
+                    Integer.class, execution.getId())).isEqualTo(1);
+            assertThat(restartedJdbc.queryForObject(
+                    "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'",
+                    Integer.class)).isEqualTo(37);
+        }
+    }
+
+    private static String[] restartArguments() {
+        return new String[] {
+                "--DB_URL=" + POSTGRES.getJdbcUrl(),
+                "--DB_USERNAME=" + POSTGRES.getUsername(),
+                "--DB_PASSWORD=" + POSTGRES.getPassword(),
+                "--spring.datasource.driver-class-name=" + POSTGRES.getDriverClassName(),
+                "--spring.jpa.hibernate.ddl-auto=validate",
+                "--spring.sql.init.mode=never",
+                "--spring.batch.jdbc.initialize-schema=never",
+                "--spring.batch.job.enabled=false",
+                "--spring.kafka.listener.auto-startup=false",
+                "--spring.kafka.admin.auto-create=false",
+                "--spring.kafka.bootstrap-servers=localhost:9092",
+                "--spring.cache.type=none",
+                "--management.health.redis.enabled=false",
+                "--management.health.kafka.enabled=false",
+                "--stockwellness.batch.stock-master.staging-directory=" + STAGING_DIRECTORY,
+                "--server.port=0",
+                "--KAKAO_CLIENT_ID=dummy-kakao-client-id",
+                "--KAKAO_CLIENT_SECRET=dummy-kakao-client-secret",
+                "--GOOGLE_CLIENT_ID=dummy-google-client-id",
+                "--GOOGLE_CLIENT_SECRET=dummy-google-client-secret",
+                "--OPENAI_API_KEY=dummy-openai-key",
+                "--JWT_SECRET=dGhpcy1pcy10ZXN0LXNlY3JldC1rZXktZm9yLXN0b2Nrd2VsbG5lc3MtcHJvamVjdC13aGljaC1pcy1zYWZl",
+                "--KIS_APP_KEY=dummy-kis-key",
+                "--KIS_APP_SECRET=dummy-kis-secret",
+                "--SLACK_WEBHOOK_URL_BATCH="
+        };
     }
 
     @Test
@@ -251,10 +346,11 @@ class NewMarketDataBatchConfigIntegrationTest {
     @Test
     void stock_eod_job_reads_collectible_domestic_stocks_and_passes_the_date_range() throws Exception {
         Stock samsung = stockAdapter.save(StockFixture.createSamsung());
+        setGroupCode(samsung, "ST");
         stockAdapter.save(StockFixture.createDelisted("999999", "상장폐지 종목"));
         tradingCalendarAdapter.upsert(List.of(
-                TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
-                TradingCalendar.of("KOSPI", END_DATE, true, null, null, "test")));
+                calendarDay("KOSPI", START_DATE, true, "test"),
+                calendarDay("KOSPI", END_DATE, true, "test")));
         given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(END_DATE)))
                 .willReturn(List.of(new KisDailyPriceDetail(START_DATE, new BigDecimal("70000"),
                         new BigDecimal("71000"), new BigDecimal("69000"), new BigDecimal("70500"),
@@ -280,12 +376,74 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
+    void price_and_investor_jobs_share_the_existing_active_stocks_etfs_and_etns_target_scope() throws Exception {
+        List<Stock> fixtures = new ArrayList<>();
+        fixtures.add(saveDomesticStock("920011", MarketType.KOSPI, StockStatus.ACTIVE, "ST"));
+        fixtures.add(saveDomesticStock("920012", MarketType.KOSDAQ, StockStatus.ACTIVE, "EF"));
+        fixtures.add(saveDomesticStock("920013", MarketType.KOSDAQ, StockStatus.ACTIVE, "EN"));
+        fixtures.add(saveDomesticStock("0001A0", MarketType.KOSDAQ, StockStatus.ACTIVE, "ST"));
+        fixtures.add(saveDomesticStock("920014", MarketType.KOSPI, StockStatus.ACTIVE, "BC"));
+        fixtures.add(saveDomesticStock("920015", MarketType.KOSPI, StockStatus.HALTED, "ST"));
+        fixtures.add(saveDomesticStock("920016", MarketType.KOSDAQ, StockStatus.ADMINISTRATIVE, "ST"));
+        fixtures.add(saveDomesticStock("A92017", MarketType.KOSPI, StockStatus.ACTIVE, "ST"));
+        fixtures.add(saveDomesticStock("920019", MarketType.KOSPI, StockStatus.DELISTED, "ST"));
+
+        try {
+            tradingCalendarAdapter.upsert(List.of(
+                    calendarDay("KOSPI", START_DATE, true, "test:target-universe"),
+                    calendarDay("KOSPI", END_DATE, true, "test:target-universe"),
+                    calendarDay("KOSDAQ", START_DATE, true, "test:target-universe"),
+                    calendarDay("KOSDAQ", END_DATE, true, "test:target-universe")));
+            given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(END_DATE)))
+                    .willReturn(List.of(
+                            new KisDailyPriceDetail(START_DATE, new BigDecimal("70000"), new BigDecimal("71000"),
+                                    new BigDecimal("69000"), new BigDecimal("70500"), 1_000_000L,
+                                    new BigDecimal("70500000000"), null, null, "N", null, null, null),
+                            new KisDailyPriceDetail(END_DATE, new BigDecimal("70500"), new BigDecimal("71500"),
+                                    new BigDecimal("69500"), new BigDecimal("71000"), 1_100_000L,
+                                    new BigDecimal("78100000000"), null, null, "N", null, null, null)));
+            given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(END_DATE)))
+                    .willReturn(List.of(investorRow(START_DATE), investorRow(END_DATE)));
+
+            JobExecution priceExecution = jobLauncher.run(stockPriceJob,
+                    dateRangeParameters(START_DATE, END_DATE, ""));
+            assertThat(priceExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(priceExecution.getStepExecutions()).singleElement()
+                    .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(4));
+            org.mockito.ArgumentCaptor<Stock> priceTargets = org.mockito.ArgumentCaptor.forClass(Stock.class);
+            verify(kisDailyPriceAdapter, org.mockito.Mockito.times(4))
+                    .fetchDailyPrices(priceTargets.capture(), eq(START_DATE), eq(END_DATE));
+            assertThat(priceTargets.getAllValues()).extracting(Stock::getTicker)
+                    .containsExactlyInAnyOrder("920011", "920012", "920013", "0001A0");
+
+            JobExecution investorExecution = jobLauncher.run(investorTradeJob,
+                    dateRangeParameters(START_DATE, END_DATE, ""));
+            assertThat(investorExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(investorExecution.getStepExecutions()).singleElement()
+                    .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(4));
+            org.mockito.ArgumentCaptor<Stock> investorTargets = org.mockito.ArgumentCaptor.forClass(Stock.class);
+            verify(kisDailyPriceAdapter, org.mockito.Mockito.times(4))
+                    .fetchInvestorTradeByStockDaily(investorTargets.capture(), any(LocalDate.class));
+            assertThat(investorTargets.getAllValues()).extracting(Stock::getTicker)
+                    .containsExactlyInAnyOrder("920011", "920012", "920013", "0001A0");
+        } finally {
+            for (Stock fixture : fixtures) {
+                jdbcTemplate.update("delete from stock_price_daily where stock_id = ?", fixture.getId());
+                stockRepository.delete(fixture);
+            }
+            jdbcTemplate.update("delete from trading_calendar where source = 'test:target-universe'");
+        }
+    }
+
+    @Test
     void stock_eod_job_targets_one_ticker_and_reconciles_a_captured_row_during_a_252_session_postgres_load()
             throws Exception {
         Stock selected = stockAdapter.save(Stock.of("910004", "KR7910004002", "대사 대상",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
         Stock other = stockAdapter.save(Stock.of("910005", "KR7910005009", "비대상",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        setGroupCode(selected, "ST");
+        setGroupCode(other, "ST");
         LocalDate capturedDate = LocalDate.of(2026, 11, 12);
         List<LocalDate> sessions = weekdaySessionsEndingAt(capturedDate, 252);
         LocalDate start = sessions.getFirst();
@@ -296,7 +454,7 @@ class NewMarketDataBatchConfigIntegrationTest {
         for (LocalDate date = start; !date.isAfter(capturedDate); date = date.plusDays(1)) {
             boolean open = date.getDayOfWeek().getValue() < 6;
             for (String market : List.of("KOSPI", "KOSDAQ")) {
-                calendar.add(TradingCalendar.of(market, date, open, null, null, "test:kis-252-session"));
+                calendar.add(calendarDay(market, date, open, "test:kis-252-session"));
             }
         }
         tradingCalendarAdapter.upsert(calendar);
@@ -347,10 +505,12 @@ class NewMarketDataBatchConfigIntegrationTest {
     void investor_eod_job_targets_only_the_requested_ticker() throws Exception {
         Stock selected = stockAdapter.save(Stock.of("910006", "KR7910006006", "수급 대상",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
-        stockAdapter.save(Stock.of("910007", "KR7910007003", "비대상 수급",
+        Stock other = stockAdapter.save(Stock.of("910007", "KR7910007003", "비대상 수급",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        setGroupCode(selected, "ST");
+        setGroupCode(other, "ST");
         tradingCalendarAdapter.upsert(List.of(
-                TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test:kis-target-investor")));
+                calendarDay("KOSPI", START_DATE, true, "test:kis-target-investor")));
         given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE)))
                 .willReturn(List.of(investorRow(START_DATE)));
 
@@ -365,9 +525,43 @@ class NewMarketDataBatchConfigIntegrationTest {
     }
 
     @Test
+    void eod_price_and_investor_readers_skip_active_stocks_with_unsupported_group_codes() throws Exception {
+        Stock unsupported = stockAdapter.save(Stock.of("910004", "KR7910004002", "범위 제외 종목",
+                MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        setGroupCode(unsupported, "ZZ");
+        tradingCalendarAdapter.upsert(List.of(
+                calendarDay("KOSPI", START_DATE, true, "test:kis-target-investor")));
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(START_DATE)))
+                .willReturn(List.of(capturedOrGeneratedRow(START_DATE, 0)));
+        given(kisDailyPriceAdapter.fetchAdjustedDailyPrices(any(Stock.class), eq(START_DATE), eq(START_DATE)))
+                .willReturn(List.of());
+        given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(START_DATE)))
+                .willReturn(List.of(investorRow(START_DATE)));
+
+        JobExecution priceExecution = jobLauncher.run(stockPriceJob,
+                dateRangeParameters(START_DATE, START_DATE, unsupported.getTicker()));
+        JobExecution investorExecution = jobLauncher.run(investorTradeJob,
+                dateRangeParameters(START_DATE, START_DATE, unsupported.getTicker()));
+
+        assertThat(priceExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(priceExecution.getStepExecutions()).singleElement()
+                .satisfies(step -> assertThat(step.getReadCount()).isZero());
+        assertThat(investorExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(investorExecution.getStepExecutions()).singleElement()
+                .satisfies(step -> assertThat(step.getReadCount()).isZero());
+        verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchDailyPrices(any(Stock.class), any(LocalDate.class), any(LocalDate.class));
+        verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchAdjustedDailyPrices(any(Stock.class), any(LocalDate.class), any(LocalDate.class));
+        verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchInvestorTradeByStockDaily(any(Stock.class), any(LocalDate.class));
+    }
+
+    @Test
     void stock_eod_job_fails_after_persisting_an_incomplete_open_day_observation() throws Exception {
         Stock samsung = stockAdapter.save(StockFixture.createSamsung());
-        tradingCalendarAdapter.upsert(List.of(TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test")));
+        setGroupCode(samsung, "ST");
+        tradingCalendarAdapter.upsert(List.of(calendarDay("KOSPI", START_DATE, true, "test")));
         given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(START_DATE), eq(START_DATE)))
                 .willReturn(List.of());
 
@@ -383,11 +577,12 @@ class NewMarketDataBatchConfigIntegrationTest {
     void investor_eod_job_saves_provider_rows_without_a_stock_price_dependency() throws Exception {
         Stock stock = stockAdapter.save(Stock.of("910003", "KR7910003003", "수급 테스트",
                 MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        setGroupCode(stock, "ST");
         LocalDate secondDate = START_DATE.plusDays(1);
         try {
             tradingCalendarAdapter.upsert(List.of(
-                    TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
-                    TradingCalendar.of("KOSPI", secondDate, true, null, null, "test")));
+                    calendarDay("KOSPI", START_DATE, true, "test"),
+                    calendarDay("KOSPI", secondDate, true, "test")));
             given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(secondDate)))
                     .willReturn(List.of(investorRow(START_DATE), investorRow(secondDate)));
 
@@ -397,9 +592,8 @@ class NewMarketDataBatchConfigIntegrationTest {
             assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
             assertThat(execution.getStepExecutions()).singleElement()
                     .satisfies(step -> assertThat(step.getReadCount()).isEqualTo(1));
-            assertThat(jdbcTemplate.queryForObject(
-                    "select count(*) from stock_price where stock_id = ? and base_date = ?",
-                    Integer.class, stock.getId(), START_DATE)).isZero();
+            assertThat(jdbcTemplate.queryForObject("select to_regclass('public.stock_price') is null", Boolean.class))
+                    .isTrue();
             verify(kisDailyPriceAdapter).fetchInvestorTradeByStockDaily(any(Stock.class), eq(secondDate));
             verify(investorTradePort).upsert(org.mockito.ArgumentMatchers.argThat(rows -> rows.size() == 26
                     && rows.stream().allMatch(row -> "PROVISIONAL".equals(row.dataStatus()))));
@@ -412,8 +606,8 @@ class NewMarketDataBatchConfigIntegrationTest {
     void index_eod_job_reads_kis_market_indices_and_passes_the_date_range() throws Exception {
         MarketIndex kospi = marketIndexRepository.saveAndFlush(MarketIndex.of("0001", "코스피", "0"));
         MarketIndex kosdaq = marketIndexRepository.saveAndFlush(MarketIndex.of("1001", "코스닥", "1"));
-        MarketIndex kospi200 = marketIndexRepository.saveAndFlush(MarketIndex.of("2001", "코스피200", "0"));
-        MarketIndex kosdaq150 = marketIndexRepository.saveAndFlush(MarketIndex.of("3003", "코스닥150", "1"));
+        MarketIndex kospi200 = marketIndexRepository.saveAndFlush(MarketIndex.of("2001", "코스피200", "2"));
+        MarketIndex kosdaq150 = marketIndexRepository.saveAndFlush(MarketIndex.of("3003", "코스닥150", "3"));
         MarketIndex sector = marketIndexRepository.saveAndFlush(MarketIndex.of("0027", "제약", "0"));
         indexSeriesRepository.saveAndFlush(new IndexSeries(kospi, "KIS", "kis.idxcode.KOSPI", "0001",
                 "KOSPI", "PRICE", "NONE", "KRW", true));
@@ -432,10 +626,10 @@ class NewMarketDataBatchConfigIntegrationTest {
         indexSeriesRepository.saveAndFlush(new IndexSeries(sector, "KIS", "kis.idxcode.KOSPI", "0027",
                 "KOSPI", "PRICE", "NONE", "KRW", true));
         tradingCalendarAdapter.upsert(List.of(
-                TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
-                TradingCalendar.of("KOSPI", END_DATE, true, null, null, "test"),
-                TradingCalendar.of("KOSDAQ", START_DATE, true, null, null, "test"),
-                TradingCalendar.of("KOSDAQ", END_DATE, true, null, null, "test")));
+                calendarDay("KOSPI", START_DATE, true, "test"),
+                calendarDay("KOSPI", END_DATE, true, "test"),
+                calendarDay("KOSDAQ", START_DATE, true, "test"),
+                calendarDay("KOSDAQ", END_DATE, true, "test")));
         given(kisDailyPriceAdapter.fetchRawIndexDailyPrices(any(), eq(START_DATE), eq(END_DATE)))
                 .willAnswer(invocation -> {
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -473,11 +667,17 @@ class NewMarketDataBatchConfigIntegrationTest {
                 "NYSE", "PRICE", "NONE", "USD", true));
         indexSeriesRepository.saveAndFlush(new IndexSeries(unsupported, "KIS", "kis.ovrs.idxcode.N", "COMP",
                 "NASDAQ", "PRICE", "NONE", "USD", true));
+        tradingCalendarAdapter.upsert(List.of(
+                calendarDay("NYSE", START_DATE, true, "test"),
+                calendarDay("NYSE", END_DATE, true, "test")));
         given(kisDailyPriceAdapter.fetchOverseasIndexDailyPrices(any(), eq(START_DATE), eq(END_DATE)))
                 .willAnswer(invocation -> {
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-                    return List.of(new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760",
-                            "6700", "12345", "N"));
+                    return List.of(
+                            new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760",
+                                    "6700", "12345", "N"),
+                            new KisOverseasIndexDailyPrice("20261006", "6760.25", "6740", "6770",
+                                    "6710", "12346", "N"));
                 });
 
         JobExecution execution = jobLauncher.run(indexPriceJob, marketDateRangeParameters("US"));
@@ -487,12 +687,12 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .satisfies(step -> assertThat(step.getReadCount()).isGreaterThanOrEqualTo(1));
         assertThat(jdbcTemplate.queryForObject("""
                 select d.price_status from index_daily d join index_series s on s.id = d.series_id
-                join market_index i on i.id = s.index_id where i.index_key = 'TEST:KIS:SPX'
-                """, String.class)).isEqualTo("PROVISIONAL");
+                join market_index i on i.id = s.index_id where i.index_key = 'TEST:KIS:SPX' and d.trade_date = ?
+                """, String.class, START_DATE)).isEqualTo("PROVISIONAL");
         assertThat(jdbcTemplate.queryForObject("""
                 select d.trading_amount from index_daily d join index_series s on s.id = d.series_id
-                join market_index i on i.id = s.index_id where i.index_key = 'TEST:KIS:SPX'
-                """, BigDecimal.class)).isNull();
+                join market_index i on i.id = s.index_id where i.index_key = 'TEST:KIS:SPX' and d.trade_date = ?
+                """, BigDecimal.class, START_DATE)).isNull();
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*) from index_daily d join index_series s on s.id = d.series_id
                 join market_index i on i.id = s.index_id where i.index_key = 'TEST:KIS:COMP'
@@ -508,8 +708,8 @@ class NewMarketDataBatchConfigIntegrationTest {
         indexSeriesRepository.saveAndFlush(new IndexSeries(kospi, "KIS", "kis.idxcode.KOSPI", "0001",
                 "KOSPI", "PRICE", "NONE", "KRW", true));
         tradingCalendarAdapter.upsert(List.of(
-                TradingCalendar.of("KOSPI", START_DATE, true, null, null, "test"),
-                TradingCalendar.of("KOSDAQ", START_DATE, true, null, null, "test")));
+                calendarDay("KOSPI", START_DATE, true, "test"),
+                calendarDay("KOSDAQ", START_DATE, true, "test")));
 
         String runId = "us-market-isolation-" + UUID.randomUUID();
         JobExecution execution = jobLauncher.run(indexPriceJob, new JobParametersBuilder()
@@ -546,6 +746,9 @@ class NewMarketDataBatchConfigIntegrationTest {
         MarketIndex index = marketIndexRepository.saveAndFlush(MarketIndex.of("9099", "파생 테스트 지수", "0"));
         IndexSeries series = indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.idxcode.KOSPI", "9099",
                 "KOSPI", "PRICE", "NONE", "KRW", true));
+        MarketIndex kosdaqMarket = marketIndexRepository.saveAndFlush(MarketIndex.of("1001", "KOSDAQ", "1"));
+        IndexSeries kosdaqSeries = indexSeriesRepository.saveAndFlush(new IndexSeries(kosdaqMarket, "KIS",
+                "kis.idxcode.KOSDAQ", "1001", "KOSDAQ", "PRICE", "NONE", "KRW", true));
         MarketIndex usIndex = marketIndexRepository.saveAndFlush(MarketIndex.of("SPX", "S&P 500"));
         jdbcTemplate.update("update market_index set kind = 'MARKET' where id = ?", usIndex.getId());
         IndexSeries usSeries = indexSeriesRepository.saveAndFlush(new IndexSeries(usIndex, "KIS", "kis.ovrs.idxcode.N", "SPX",
@@ -559,11 +762,14 @@ class NewMarketDataBatchConfigIntegrationTest {
 
             assertThat(krExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
             assertThat(krExecution.getStepExecutions()).extracting(step -> step.getReadCount())
-                    .containsExactly(1L, 1L);
+                    .containsExactly(1L, 2L);
             verify(derivedDataUseCase).calculateStockIndicators(stock.getId(), "KRX", START_DATE);
             verify(derivedDataUseCase).calculateIndexIndicators(series.getId(), START_DATE);
             verify(derivedDataUseCase).calculateIndexWeather(series.getId(), START_DATE);
             verify(derivedDataUseCase).calculateSectorLeadingStocks(series.getId(), START_DATE);
+            verify(derivedDataUseCase).calculateIndexIndicators(kosdaqSeries.getId(), START_DATE);
+            verify(derivedDataUseCase).calculateIndexWeather(kosdaqSeries.getId(), START_DATE);
+            verify(derivedDataUseCase, never()).calculateSectorLeadingStocks(kosdaqSeries.getId(), START_DATE);
             verify(derivedDataUseCase, never()).calculateIndexIndicators(usSeries.getId(), START_DATE);
 
             clearInvocations(derivedDataUseCase);
@@ -583,8 +789,38 @@ class NewMarketDataBatchConfigIntegrationTest {
             verify(derivedDataUseCase, never()).calculateSectorLeadingStocks(usSeries.getId(), START_DATE);
         } finally {
             indexSeriesRepository.delete(usSeries);
+            indexSeriesRepository.delete(kosdaqSeries);
             indexSeriesRepository.delete(series);
             marketIndexRepository.delete(usIndex);
+            marketIndexRepository.delete(kosdaqMarket);
+            marketIndexRepository.delete(index);
+            stockRepository.delete(stock);
+        }
+    }
+
+    @Test
+    void sector_eod_job_updates_stock_and_index_derived_data() throws Exception {
+        Stock stock = stockAdapter.save(Stock.of("919993", "KR7919993000", "섹터 작업 테스트 종목",
+                MarketType.KOSPI, Currency.KRW, StockSector.empty(), StockStatus.ACTIVE));
+        MarketIndex index = marketIndexRepository.saveAndFlush(MarketIndex.of("9099", "섹터 작업 테스트 지수", "0"));
+        IndexSeries series = indexSeriesRepository.saveAndFlush(new IndexSeries(index, "KIS", "kis.idxcode.KOSPI", "9099",
+                "KOSPI", "PRICE", "NONE", "KRW", true));
+        try {
+            JobExecution execution = jobLauncher.run(sectorEodJob, new JobParametersBuilder()
+                    .addString("market", "KR")
+                    .addString("targetDate", START_DATE.toString())
+                    .addString("run.id", UUID.randomUUID().toString())
+                    .toJobParameters());
+
+            assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+            assertThat(execution.getStepExecutions()).extracting(step -> step.getStepName())
+                    .containsExactly("stockTechnicalIndicatorStep", "indexTechnicalIndicatorStep");
+            verify(derivedDataUseCase).calculateStockIndicators(stock.getId(), "KRX", START_DATE);
+            verify(derivedDataUseCase).calculateIndexIndicators(series.getId(), START_DATE);
+            verify(derivedDataUseCase).calculateIndexWeather(series.getId(), START_DATE);
+            verify(derivedDataUseCase).calculateSectorLeadingStocks(series.getId(), START_DATE);
+        } finally {
+            indexSeriesRepository.delete(series);
             marketIndexRepository.delete(index);
             stockRepository.delete(stock);
         }
@@ -607,6 +843,17 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .toJobParameters();
     }
 
+    private Stock saveDomesticStock(String ticker, MarketType market, StockStatus status, String groupCode) {
+        Stock stock = stockAdapter.save(Stock.of(ticker, "KR7" + ticker + "000", ticker,
+                market, Currency.KRW, StockSector.empty(), status));
+        setGroupCode(stock, groupCode);
+        return stock;
+    }
+
+    private void setGroupCode(Stock stock, String groupCode) {
+        jdbcTemplate.update("update stock set group_code = ? where id = ?", groupCode, stock.getId());
+    }
+
     private static List<LocalDate> weekdaySessionsEndingAt(LocalDate endDate, int count) {
         List<LocalDate> sessions = new ArrayList<>(count);
         for (LocalDate date = endDate; sessions.size() < count; date = date.minusDays(1)) {
@@ -614,6 +861,14 @@ class NewMarketDataBatchConfigIntegrationTest {
         }
         Collections.reverse(sessions);
         return List.copyOf(sessions);
+    }
+
+    private static TradingCalendar calendarDay(String market, LocalDate date, boolean open, String source) {
+        if (!open) return TradingCalendar.of(market, date, false, null, null, source);
+        ZoneId zone = ZoneId.of("Asia/Seoul");
+        return TradingCalendar.of(market, date, true,
+                date.atTime(LocalTime.of(9, 0)).atZone(zone).toOffsetDateTime(),
+                date.atTime(LocalTime.of(15, 30)).atZone(zone).toOffsetDateTime(), source);
     }
 
     private static KisDailyPriceDetail capturedOrGeneratedRow(LocalDate date, int ordinal) {

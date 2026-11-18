@@ -137,8 +137,8 @@ class MarketIndexSyncServiceTest {
         }
 
         @Test
-        @DisplayName("논리 지수와 provider series를 분리 저장한다")
-        void shouldSaveProviderSeriesSeparately() throws IOException {
+        @DisplayName("실제 마스터 division의 국내 benchmark 4개를 canonical series로 등록한다")
+        void shouldRegisterAllFourDomesticBenchmarksFromMasterDivisions() throws IOException {
             String fileName = "idxcode.mst";
             Path kisDir = Paths.get("kis");
             if (!Files.exists(kisDir)) Files.createDirectory(kisDir);
@@ -146,8 +146,12 @@ class MarketIndexSyncServiceTest {
             Files.createFile(tempFile);
 
             try {
-                MarketIndex index = MarketIndex.of("0001", "종합", "0");
-                parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(List.of(index));
+                List<MarketIndex> benchmarks = List.of(
+                        MarketIndex.of("0001", "KOSPI", "0"),
+                        MarketIndex.of("1001", "KOSDAQ", "1"),
+                        MarketIndex.of("2001", "KOSPI 200", "2"),
+                        MarketIndex.of("3003", "KOSDAQ 150", "3"));
+                parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(benchmarks);
                 given(marketIndexRepository.findAll()).willReturn(List.of());
                 given(marketIndexRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
                 given(indexSeriesRepository
@@ -157,14 +161,26 @@ class MarketIndexSyncServiceTest {
 
                 marketIndexSyncService.syncIndices(fileName);
 
-                verify(marketIndexRepository).save(index);
+                org.mockito.ArgumentCaptor<MarketIndex> savedIndexes = org.mockito.ArgumentCaptor.forClass(MarketIndex.class);
+                verify(marketIndexRepository, times(7)).save(savedIndexes.capture());
+                assertThat(savedIndexes.getAllValues()).extracting(MarketIndex::getIndexKey)
+                        .containsExactlyInAnyOrder("KOSPI:0001", "KOSDAQ:1001", "KOSPI:2001", "KOSDAQ:3003",
+                                "US:SPX", "US:NDX", "US:DJI");
                 org.mockito.ArgumentCaptor<IndexSeries> series = org.mockito.ArgumentCaptor.forClass(IndexSeries.class);
-                verify(indexSeriesRepository, times(4)).save(series.capture());
+                verify(indexSeriesRepository, times(7)).save(series.capture());
                 assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSPI".equals(value.getProviderNamespace()))
-                        .singleElement().satisfies(value -> {
+                        .extracting(value -> value.getProviderSeriesCode() + ":" + value.getCalendarMarketCode())
+                        .containsExactlyInAnyOrder("0001:KOSPI", "2001:KOSPI");
+                assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSDAQ".equals(value.getProviderNamespace()))
+                        .extracting(value -> value.getProviderSeriesCode() + ":" + value.getCalendarMarketCode())
+                        .containsExactlyInAnyOrder("1001:KOSDAQ", "3003:KOSDAQ");
+                assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSPI".equals(value.getProviderNamespace())
+                                || "kis.idxcode.KOSDAQ".equals(value.getProviderNamespace()))
+                        .allSatisfy(value -> {
                             assertThat(value.getProvider()).isEqualTo("KIS");
-                            assertThat(value.getProviderSeriesCode()).isEqualTo("0001");
-                            assertThat(value.getMarketIndex()).isSameAs(index);
+                            assertThat(value.getReturnBasis()).isEqualTo("PRICE");
+                            assertThat(value.getDividendBasis()).isEqualTo("NONE");
+                            assertThat(value.getCurrency()).isEqualTo("KRW");
                         });
             } finally {
                 Files.deleteIfExists(tempFile);

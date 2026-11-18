@@ -17,6 +17,7 @@ import org.stockwellness.application.port.in.portfolio.command.CreatePortfolioCo
 import org.stockwellness.application.port.in.portfolio.command.CreateSimulatedPortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.application.port.out.portfolio.DeletePortfolioDependenciesPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.AssetType;
@@ -50,6 +51,9 @@ class PortfolioCommandServiceTest {
 
     @Mock
     private PortfolioPort portfolioPort;
+
+    @Mock
+    private DeletePortfolioDependenciesPort deletePortfolioDependenciesPort;
 
     @Mock
     private StockPort stockPort;
@@ -338,6 +342,7 @@ class PortfolioCommandServiceTest {
         portfolioCommandService.deletePortfolio(MEMBER_ID, PORTFOLIO_ID);
 
         // then
+        verify(deletePortfolioDependenciesPort).deleteByPortfolioId(PORTFOLIO_ID);
         verify(portfolioPort).deletePortfolio(PORTFOLIO_ID);
     }
 
@@ -351,6 +356,7 @@ class PortfolioCommandServiceTest {
         // when & then
         assertThatThrownBy(() -> portfolioCommandService.deletePortfolio(MEMBER_ID, PORTFOLIO_ID))
                 .isInstanceOf(PortfolioAccessDeniedException.class);
+        verify(deletePortfolioDependenciesPort, never()).deleteByPortfolioId(PORTFOLIO_ID);
     }
 
     @Test
@@ -363,5 +369,6 @@ class PortfolioCommandServiceTest {
         // when & then
         assertThatThrownBy(() -> portfolioCommandService.deletePortfolio(MEMBER_ID, PORTFOLIO_ID))
                 .isInstanceOf(PortfolioNotFoundException.class);
+        verify(deletePortfolioDependenciesPort, never()).deleteByPortfolioId(PORTFOLIO_ID);
     }
 }

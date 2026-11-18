@@ -70,6 +70,10 @@ class BenchmarkPriceDataReaderTest {
         assertThat(first.type()).isEqualTo(BenchmarkType.KOSPI);
         assertThat(first.data().closePrice()).isEqualByComparingTo("2500.00");
         assertThat(second).isNull();
+        org.mockito.Mockito.verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchOverseasIndexDailyPrices(eq(BenchmarkType.NASDAQ_COMPOSITE.getTicker()), any(), any());
+        org.mockito.Mockito.verify(kisDailyPriceAdapter, org.mockito.Mockito.never())
+                .fetchOverseasIndexDailyPrices(eq(BenchmarkType.PHLX_SEMICONDUCTOR.getTicker()), any(), any());
     }
 
     @Test

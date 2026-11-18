@@ -120,8 +120,8 @@ class EodStockInvestorTradePostgresTest {
 
     private long stock(String ticker) {
         return jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, status)
-                VALUES ('KOSPI', ?, ?, 'KRW', 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, status)
+                VALUES ('KOSPI', ?, ?, 'KOSPI', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class, ticker, ticker);
     }
 

@@ -85,7 +85,11 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     @Override
     public PortfolioAnalysisSummaryResult getAnalysisSummary(Long memberId, Long portfolioId, LocalDate startDate, LocalDate endDate) {
         AnalysisContext context = dataLoader.loadContext(portfolioId, memberId);
-        BacktestResult performanceResult = calculateSummaryPerformance(context, startDate, endDate);
+        ValuationStatus valuationStatus = resolveValuationStatus(
+                context.portfolio(),
+                missingSymbolsForValuation(context.portfolio(), context.priceMap())
+        );
+        BacktestResult performanceResult = calculateSummaryPerformance(context, startDate, endDate, valuationStatus);
 
         return new PortfolioAnalysisSummaryResult(
                 calculateValuation(context, performanceResult),
@@ -104,7 +108,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
         Map<String, BigDecimal> contributions = new HashMap<>();
         for (PortfolioItem item : context.portfolio().getItems()) {
-            BigDecimal currentPrice = getCurrentPrice(item, context.priceMap());
+            BigDecimal currentPrice = currentPriceForValuation(item, context.priceMap());
+            if (currentPrice == null) {
+                continue;
+            }
             // 기여도 = (개별 종목 손익 / 전체 포트폴리오 총 투자액) * 100
             contributions.put(item.getSymbol(), item.calculateContribution(currentPrice, totalInvestment));
         }
@@ -434,9 +441,22 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
 
     // ── 내부 계산 로직 (Private Helpers) ──────────────────────────────────────────
 
-    private BacktestResult calculateSummaryPerformance(AnalysisContext context, LocalDate startDate, LocalDate endDate) {
+    private BacktestResult calculateSummaryPerformance(
+            AnalysisContext context,
+            LocalDate startDate,
+            LocalDate endDate,
+            ValuationStatus valuationStatus
+    ) {
+        if (valuationStatus != ValuationStatus.COMPLETE) {
+            return null;
+        }
+        if (context.portfolio().calculateTotalPurchaseAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
         List<PortfolioItem> stockItems = context.portfolio().getItems().stream()
                 .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .filter(item -> item.getTargetWeight() != null && item.getTargetWeight().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
 
         if (stockItems.isEmpty()) {
@@ -444,20 +464,54 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         }
 
         Map<String, BigDecimal> weights = normalizeWeights(stockItems.stream()
-                .collect(Collectors.toMap(PortfolioItem::getSymbol, PortfolioItem::getTargetWeight)));
+                .collect(Collectors.toMap(
+                        PortfolioItem::getSymbol,
+                        PortfolioItem::getTargetWeight,
+                        BigDecimal::add,
+                        LinkedHashMap::new
+                )));
+        BigDecimal totalWeight = weights.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalWeight.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
         List<String> symbols = new ArrayList<>(weights.keySet());
         List<String> benchmarkTickers = BenchmarkType.defaultSimulationBenchmarkTickers();
-        SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, startDate, endDate);
+        try {
+            SimulationData data = simulationDataProvider.loadData(symbols, benchmarkTickers, startDate, endDate);
 
-        return backtestEngine.runLumpSum(
-                data,
-                weights,
-                context.portfolio().calculateTotalPurchaseAmount(),
-                RebalancingPeriod.NONE,
-                benchmarkTickers.getFirst(),
-                BigDecimal.valueOf(3.0),
-                false
-        );
+            return backtestEngine.runLumpSum(
+                    data,
+                    weights,
+                    context.portfolio().calculateTotalPurchaseAmount(),
+                    RebalancingPeriod.NONE,
+                    benchmarkTickers.getFirst(),
+                    BigDecimal.valueOf(3.0),
+                    false
+            );
+        } catch (GlobalException exception) {
+            if (exception.getErrorCode() == ErrorCode.PRICE_DATA_NOT_FOUND) {
+                return null;
+            }
+            throw exception;
+        }
+    }
+
+    private List<String> missingSymbolsForValuation(Portfolio portfolio, Map<String, List<StockPrice>> priceMap) {
+        return portfolio.getItems().stream()
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .filter(item -> latestAvailablePrice(item.getSymbol(), priceMap) == null)
+                .map(PortfolioItem::getSymbol)
+                .toList();
+    }
+
+    private ValuationStatus resolveValuationStatus(Portfolio portfolio, List<String> missingSymbols) {
+        long stockCount = portfolio.getItems().stream()
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .count();
+        return stockCount == 0 || missingSymbols.isEmpty()
+                ? ValuationStatus.COMPLETE
+                : missingSymbols.size() == stockCount ? ValuationStatus.UNAVAILABLE : ValuationStatus.PARTIAL;
     }
 
     /**
@@ -468,17 +522,8 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         Portfolio portfolio = context.portfolio();
         BigDecimal totalPurchaseAmount = portfolio.calculateTotalPurchaseAmount();
         LocalDate asOfDate = latestCompletedEodDate(context.priceMap());
-        List<String> missingSymbols = portfolio.getItems().stream()
-                .filter(item -> item.getAssetType() == AssetType.STOCK)
-                .filter(item -> latestAvailablePrice(item.getSymbol(), context.priceMap()) == null)
-                .map(PortfolioItem::getSymbol)
-                .toList();
-        long stockCount = portfolio.getItems().stream()
-                .filter(item -> item.getAssetType() == AssetType.STOCK)
-                .count();
-        ValuationStatus valuationStatus = stockCount == 0 || missingSymbols.isEmpty()
-                ? ValuationStatus.COMPLETE
-                : missingSymbols.size() == stockCount ? ValuationStatus.UNAVAILABLE : ValuationStatus.PARTIAL;
+        List<String> missingSymbols = missingSymbolsForValuation(portfolio, context.priceMap());
+        ValuationStatus valuationStatus = resolveValuationStatus(portfolio, missingSymbols);
 
         // 수급 데이터 계산 (StockPrice에서 분리됨에 따라 0으로 초기화)
         BigDecimal totalInstitutionalNetBuying = BigDecimal.ZERO;
@@ -491,41 +536,55 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         BigDecimal dailyProfitLoss = null;
         BigDecimal dailyReturnRate = null;
         if (valuationStatus == ValuationStatus.COMPLETE) {
-            Map<String, BigDecimal> currentPrices = portfolio.getItems().stream()
-                    .collect(Collectors.toMap(PortfolioItem::getSymbol, item -> currentPriceForValuation(item, context.priceMap())));
+            Map<String, BigDecimal> currentPrices = new HashMap<>();
+            for (PortfolioItem item : portfolio.getItems()) {
+                currentPrices.put(item.getSymbol(), currentPriceForValuation(item, context.priceMap()));
+            }
             currentTotalValue = portfolio.calculateTotalCurrentValue(currentPrices);
             totalProfitLoss = currentTotalValue.subtract(totalPurchaseAmount);
             totalReturnRate = totalPurchaseAmount.compareTo(BigDecimal.ZERO) == 0
                     ? BigDecimal.ZERO
                     : FinanceCalculationUtil.calculateRate(totalProfitLoss, totalPurchaseAmount);
 
-            Map<String, BigDecimal> previousPrices = portfolio.getItems().stream()
-                    .collect(Collectors.toMap(PortfolioItem::getSymbol, item -> previousPriceForValuation(item, context.priceMap())));
+            Map<String, BigDecimal> previousPrices = new HashMap<>();
+            for (PortfolioItem item : portfolio.getItems()) {
+                previousPrices.put(item.getSymbol(), previousPriceForValuation(item, context.priceMap()));
+            }
             if (previousPrices.values().stream().allMatch(Objects::nonNull)) {
                 BigDecimal previousTotalValue = portfolio.calculateTotalCurrentValue(previousPrices);
                 dailyProfitLoss = currentTotalValue.subtract(previousTotalValue);
-                dailyReturnRate = FinanceCalculationUtil.calculateRate(dailyProfitLoss, previousTotalValue);
+                dailyReturnRate = previousTotalValue.compareTo(BigDecimal.ZERO) <= 0
+                        ? null
+                        : FinanceCalculationUtil.calculateRate(dailyProfitLoss, previousTotalValue);
             }
         }
 
         return new PortfolioValuationResult(
                 totalPurchaseAmount, currentTotalValue, totalProfitLoss, totalReturnRate,
                 dailyProfitLoss, dailyReturnRate,
-                performanceResult != null ? performanceResult.cagr() : BigDecimal.ZERO,
-                performanceResult != null ? performanceResult.volatility() : BigDecimal.ZERO,
-                performanceResult != null ? performanceResult.alpha() : BigDecimal.ZERO,
-                context.stats() != null ? context.stats().getMdd() : BigDecimal.ZERO,
-                context.stats() != null ? context.stats().getSharpeRatio() : BigDecimal.ZERO,
-                context.stats() != null ? context.stats().getBeta() : BigDecimal.ZERO,
+                performanceResult != null ? performanceResult.cagr() : null,
+                performanceResult != null ? performanceResult.volatility() : null,
+                performanceResult != null ? performanceResult.alpha() : null,
+                context.stats() != null ? context.stats().getMdd() : null,
+                context.stats() != null ? context.stats().getSharpeRatio() : null,
+                context.stats() != null ? context.stats().getBeta() : null,
                 totalInstitutionalNetBuying, totalForeignNetBuying, totalPersonNetBuying,
                 valuationStatus, asOfDate, missingSymbols
         );
     }
 
     /**
-     * 자산군/업종/국가별 그룹핑을 통한 분산 비중 산출 로직
+     * 자산군/업종/국가별 그루핑을 통한 분산 비중 산출 로직
      */
     private PortfolioDiversificationResult calculateDiversification(AnalysisContext context) {
+        ValuationStatus valuationStatus = resolveValuationStatus(
+                context.portfolio(),
+                missingSymbolsForValuation(context.portfolio(), context.priceMap())
+        );
+        if (valuationStatus != ValuationStatus.COMPLETE) {
+            return new PortfolioDiversificationResult(null, Map.of(), Map.of(), Map.of());
+        }
+
         BigDecimal totalValue = BigDecimal.ZERO;
         
         Map<AssetType, BigDecimal> assetValueMap = new EnumMap<>(AssetType.class);
@@ -533,7 +592,10 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
         Map<Country, BigDecimal> countryValueMap = new EnumMap<>(Country.class);
 
         for (PortfolioItem item : context.portfolio().getItems()) {
-            BigDecimal currentValue = calculateCurrentValue(item, context.priceMap());
+            BigDecimal currentPrice = currentPriceForValuation(item, context.priceMap());
+            BigDecimal currentValue = item.getAssetType() == AssetType.CASH
+                    ? item.getQuantity()
+                    : item.getQuantity().multiply(currentPrice);
             totalValue = totalValue.add(currentValue);
 
             // 1. 자산군별(주식/현금) 금액 합산
@@ -544,7 +606,7 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
                 Stock stock = context.stockMap().get(item.getSymbol());
                 if (stock != null) {
                     // 2. 주식 종목의 업종별 금액 합산
-                    String sector = stock.getSector().getSectorName();
+                    String sector = stock.resolveSectorName();
                     sectorValueMap.put(sector, sectorValueMap.getOrDefault(sector, BigDecimal.ZERO).add(currentValue));
                     // 3. 주식 종목의 상장 국가별 금액 합산
                     Country country = PortfolioMapperUtil.resolveCountry(stock.getMarketType());
@@ -565,12 +627,18 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
     }
 
     private Map<String, BigDecimal> convertAssetRatios(Map<AssetType, BigDecimal> assetValueMap, BigDecimal total) {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            return Map.of();
+        }
         Map<String, BigDecimal> ratios = new HashMap<>();
         assetValueMap.forEach((k, v) -> ratios.put(k.name(), FinanceCalculationUtil.calculateRate(v, total)));
         return ratios;
     }
 
     private Map<String, BigDecimal> convertCountryRatios(Map<Country, BigDecimal> countryValueMap, BigDecimal total) {
+        if (total == null || total.compareTo(BigDecimal.ZERO) == 0) {
+            return Map.of();
+        }
         Map<String, BigDecimal> ratios = new HashMap<>();
         countryValueMap.forEach((k, v) -> ratios.put(k.name(), FinanceCalculationUtil.calculateRate(v, total)));
         return ratios;
@@ -580,14 +648,26 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
      * 목표 비중과 실시간 현재 비중을 비교하여 리밸런싱을 위해 매매해야 할 수량을 산출합니다.
      */
     private PortfolioRebalancingResult calculateRebalancing(AnalysisContext context) {
-        BigDecimal totalValue = context.portfolio().calculateTotalCurrentValue(
-                context.portfolio().getItems().stream().collect(Collectors.toMap(PortfolioItem::getSymbol, i -> getCurrentPrice(i, context.priceMap())))
+        ValuationStatus valuationStatus = resolveValuationStatus(
+                context.portfolio(),
+                missingSymbolsForValuation(context.portfolio(), context.priceMap())
         );
+        if (valuationStatus != ValuationStatus.COMPLETE) {
+            return new PortfolioRebalancingResult(null, List.of());
+        }
+
+        Map<String, BigDecimal> currentPrices = new HashMap<>();
+        for (PortfolioItem item : context.portfolio().getItems()) {
+            currentPrices.put(item.getSymbol(), currentPriceForValuation(item, context.priceMap()));
+        }
+        BigDecimal totalValue = context.portfolio().calculateTotalCurrentValue(currentPrices);
 
         List<PortfolioRebalancingResult.RebalancingItem> items = new ArrayList<>();
         for (PortfolioItem item : context.portfolio().getItems()) {
-            BigDecimal currentPrice = getCurrentPrice(item, context.priceMap());
-            BigDecimal currentValue = calculateCurrentValue(item, context.priceMap());
+            BigDecimal currentPrice = currentPrices.get(item.getSymbol());
+            BigDecimal currentValue = item.getAssetType() == AssetType.CASH
+                    ? item.getQuantity()
+                    : item.getQuantity().multiply(currentPrice);
             
             // 1. 실시간 현재 비중 (%) 계산
             BigDecimal currentWeight = totalValue.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO :
@@ -600,9 +680,9 @@ public class PortfolioAnalysisService implements PortfolioAnalysisUseCase {
             BigDecimal targetValue = totalValue.multiply(targetWeight).divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
             BigDecimal diffValue = targetValue.subtract(currentValue);
             
-            // 4. 차이 금액을 현재가로 나누어 매매 추천 수량(Quantity) 산출
-            BigDecimal recommendedQuantity = currentPrice.compareTo(BigDecimal.ZERO) > 0 ?
-                    diffValue.divide(currentPrice, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            // 4. 차이 금액을 현재가로 나누어 매매 추천 수량(Quantity) 산출 (현재가 0/null이면 산출 불가로 null)
+            BigDecimal recommendedQuantity = (currentPrice != null && currentPrice.compareTo(BigDecimal.ZERO) > 0) ?
+                    diffValue.divide(currentPrice, 4, RoundingMode.HALF_UP) : null;
 
             items.add(new PortfolioRebalancingResult.RebalancingItem(
                     item.getSymbol(),

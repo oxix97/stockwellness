@@ -16,8 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.in.stock.result.StockSupplyRankingResult;
 import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
@@ -27,7 +25,6 @@ import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.domain.stock.price.StockPrice;
 import org.stockwellness.domain.stock.price.TradeDirection;
@@ -35,36 +32,11 @@ import org.stockwellness.domain.stock.price.TradeDirection;
 class StockPriceAdapterCanonicalReadTest {
     private static final LocalDate DATE = LocalDate.of(2026, 11, 12);
 
-    private final StockPriceRepository legacyStockWrites = mock(StockPriceRepository.class);
-    private final BenchmarkPriceRepository legacyBenchmarkWrites = mock(BenchmarkPriceRepository.class);
     private final StockPriceReadPort canonicalPrices = mock(StockPriceReadPort.class);
     private final StockInvestorTradeReadPort investorTrades = mock(StockInvestorTradeReadPort.class);
     private final StockPort stocks = mock(StockPort.class);
     private final IndexDailyReadPort indexes = mock(IndexDailyReadPort.class);
-    private final StockPriceAdapter adapter = new StockPriceAdapter(
-            legacyStockWrites, legacyBenchmarkWrites, canonicalPrices, investorTrades, stocks, indexes);
-
-    @Test
-    void legacy_write_methods_and_benchmark_repository_methods_keep_their_ports() {
-        StockPrice stockPrice = mock(StockPrice.class);
-        BenchmarkPrice benchmark = mock(BenchmarkPrice.class);
-        when(legacyStockWrites.save(stockPrice)).thenReturn(stockPrice);
-        when(legacyBenchmarkWrites.findByTickerAndBaseDate("^KS11", DATE)).thenReturn(Optional.of(benchmark));
-        when(legacyBenchmarkWrites.findTopByTickerAndBaseDateLessThanOrderByBaseDateDesc("^KS11", DATE))
-                .thenReturn(Optional.of(benchmark));
-        when(legacyBenchmarkWrites.findByTickerAndBaseDateLessThanEqualOrderByBaseDateDesc(
-                eq("^KS11"), eq(DATE), any())).thenReturn(List.of(benchmark));
-
-        assertThat(adapter.save(stockPrice)).isSameAs(stockPrice);
-        adapter.saveAll(List.of(stockPrice));
-        adapter.save(benchmark);
-        assertThat(adapter.findByTickerAndBaseDate("^KS11", DATE)).contains(benchmark);
-        assertThat(adapter.findLatestBefore("^KS11", DATE)).contains(benchmark);
-        assertThat(adapter.findHistoryByTicker("^KS11", DATE, 5)).containsExactly(benchmark);
-
-        verify(legacyStockWrites).saveAll(List.of(stockPrice));
-        verify(legacyBenchmarkWrites).save(benchmark);
-    }
+    private final StockPriceAdapter adapter = new StockPriceAdapter(canonicalPrices, investorTrades, stocks, indexes);
 
     @Test
     void investor_rankings_use_final_normalized_source() {

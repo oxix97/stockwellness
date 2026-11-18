@@ -150,17 +150,18 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
         int score = MarketWeatherPolicy.DEFAULT.calculateIntegratedScore(trendScore, breadthScore, momentumScore);
         List<Map<String, Object>> manifestInputs = history.stream().map(value -> {
             IndexPriceObservation observation = value.observation();
-            return Map.<String, Object>of(
-                    "date", observation.tradeDate().toString(),
-                    "revision", observation.revision(),
-                    "advanceCount", observation.advanceCount(),
-                    "declineCount", observation.declineCount(),
-                    "unchangedCount", observation.unchangedCount(),
-                    "upperLimitCount", observation.upperLimitCount(),
-                    "lowerLimitCount", observation.lowerLimitCount(),
-                    "ma20Disparity", value.ma20Disparity(),
-                    "advanceDeclineRatio", value.advanceDeclineRatio(),
-                    "rsi14", value.rsi14());
+            Map<String, Object> input = new LinkedHashMap<>();
+            input.put("date", observation.tradeDate().toString());
+            input.put("revision", observation.revision());
+            input.put("advanceCount", observation.advanceCount());
+            input.put("declineCount", observation.declineCount());
+            if (observation.unchangedCount() != null) input.put("unchangedCount", observation.unchangedCount());
+            input.put("upperLimitCount", observation.upperLimitCount());
+            input.put("lowerLimitCount", observation.lowerLimitCount());
+            input.put("ma20Disparity", value.ma20Disparity());
+            input.put("advanceDeclineRatio", value.advanceDeclineRatio());
+            input.put("rsi14", value.rsi14());
+            return input;
         }).toList();
         Map<String, Object> manifest = Map.of("source", "index_daily", "seriesId", seriesId,
                 "targetDate", targetDate.toString(), "indicatorAlgorithm", ALGORITHM_VERSION,
@@ -268,11 +269,11 @@ public class MarketDerivedDataService implements MarketDerivedDataUseCase {
     private static boolean hasCompleteBreadth(IndexPriceObservation value) {
         return value.advanceCount() != null && value.advanceCount() >= 0
                 && value.declineCount() != null && value.declineCount() >= 0
-                && value.unchangedCount() != null && value.unchangedCount() >= 0
                 && value.upperLimitCount() != null && value.upperLimitCount() >= 0
                 && value.lowerLimitCount() != null && value.lowerLimitCount() >= 0
-                && (long) value.advanceCount() + value.declineCount() + value.unchangedCount()
-                        + value.upperLimitCount() + value.lowerLimitCount() > 0;
+                && (value.unchangedCount() == null || value.unchangedCount() >= 0)
+                && (long) value.advanceCount() + value.declineCount() + value.upperLimitCount()
+                        + value.lowerLimitCount() + (value.unchangedCount() == null ? 0 : value.unchangedCount()) > 0;
     }
 
     private static BigDecimal advanceDeclineRatio(IndexPriceObservation value) {

@@ -70,12 +70,16 @@ public class MarketIndex {
         entity.marketCode = switch (division) {
             case "0" -> "KOSPI";
             case "1" -> "KOSDAQ";
+            case "2" -> "2001".equals(rawCode) ? "KOSPI" : null;
+            case "3" -> "3003".equals(rawCode) ? "KOSDAQ" : null;
             default -> null;
         };
         entity.indexKey = entity.marketCode == null ? "UNKNOWN:" + division + ":" + rawCode
                 : entity.marketCode + ":" + rawCode;
-        if (("0".equals(division) && ("0001".equals(rawCode) || "2001".equals(rawCode)))
-                || ("1".equals(division) && ("1001".equals(rawCode) || "3003".equals(rawCode)))) {
+        if (("0".equals(division) && "0001".equals(rawCode))
+                || ("2".equals(division) && "2001".equals(rawCode))
+                || ("1".equals(division) && "1001".equals(rawCode))
+                || ("3".equals(division) && "3003".equals(rawCode))) {
             entity.kind = MarketIndexKind.MARKET;
         } else if (entity.marketCode != null) {
             entity.kind = MarketIndexKind.SECTOR;

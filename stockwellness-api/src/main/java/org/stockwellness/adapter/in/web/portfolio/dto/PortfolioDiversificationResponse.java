@@ -5,9 +5,11 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversificationResult;
 
 public record PortfolioDiversificationResponse(
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal totalValue,
     List<ChartData> assetRatios,
     List<ChartData> sectorRatios,
@@ -17,7 +19,7 @@ public record PortfolioDiversificationResponse(
 
     public static PortfolioDiversificationResponse from(PortfolioDiversificationResult result) {
         return new PortfolioDiversificationResponse(
-            result.totalValue().setScale(0, RoundingMode.HALF_UP),
+            result.totalValue() == null ? null : result.totalValue().setScale(0, RoundingMode.HALF_UP),
             mapToChartData(result.assetRatios()),
             mapToChartData(result.sectorRatios()),
             mapToChartData(result.countryRatios())

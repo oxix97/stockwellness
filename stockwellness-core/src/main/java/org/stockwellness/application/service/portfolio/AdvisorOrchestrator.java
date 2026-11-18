@@ -1,9 +1,15 @@
 package org.stockwellness.application.service.portfolio;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.application.port.out.portfolio.AiAdviceProviderPort;
@@ -23,6 +29,10 @@ public class AdvisorOrchestrator {
     private final AdvisorAiDataLoader dataLoader;
     private final AiAdviceProviderPort aiAdviceProviderPort;
     private final SaveAdvisorPort saveAdvisorPort;
+    private final ObjectMapper objectMapper;
+
+    @Value("${spring.ai.openai.chat.options.model:gpt-4o-mini}")
+    private String modelVersion = "gpt-4o-mini";
 
     private static final int BATCH_SIZE = 100;
 
@@ -41,7 +51,10 @@ public class AdvisorOrchestrator {
             var aiResult = aiAdviceProviderPort.getRebalancingAdvice(context);
 
             AdvisorReport report = AdvisorReport.create(
-                    portfolio,
+                    portfolioId,
+                    modelVersion,
+                    "unversioned",
+                    contextHash(context),
                     aiResult.adviceContent(),
                     aiResult.primaryAction()
             );
@@ -51,6 +64,15 @@ public class AdvisorOrchestrator {
         } catch (Exception e) {
             log.error("❌ Failed to generate AI advice for portfolio {}: {}", portfolioId, e.getMessage());
             throw e; // Rethrow to let the caller (scheduler) know it failed
+        }
+    }
+
+    private String contextHash(Object context) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(objectMapper.writeValueAsBytes(context)));
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Unable to fingerprint advisor input", e);
         }
     }
 

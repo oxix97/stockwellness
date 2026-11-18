@@ -2,6 +2,7 @@ package org.stockwellness.domain.portfolio;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -9,8 +10,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.stockwellness.domain.portfolio.exception.InvalidPortfolioException;
 import org.stockwellness.domain.shared.AbstractEntity;
+import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.global.util.FinanceCalculationUtil;
 import static jakarta.persistence.FetchType.LAZY;
 import static lombok.AccessLevel.PROTECTED;
@@ -32,19 +36,25 @@ public class PortfolioItem extends AbstractEntity {
     @JsonIgnore
     @ToString.Exclude
     @ManyToOne(fetch = LAZY)
-    @JoinColumn(name = "portfolio_id")
+    @JoinColumn(name = "portfolio_id", nullable = false)
     private Portfolio portfolio;
+
+    @JsonIgnore
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "stock_id")
+    private Stock stock;
 
     /**
      * 종목 코드 (주식인 경우 Ticker, 현금인 경우 'CASH')
      */
-    @Column(nullable = false)
+    @Transient
     private String symbol;
 
     /**
      * 자산 타입 (주식, 현금 등)
      */
     @Enumerated(EnumType.STRING)
+    @Column(name = "asset_type", nullable = false, length = 12)
     private AssetType assetType;
 
     /**
@@ -56,26 +66,40 @@ public class PortfolioItem extends AbstractEntity {
     /**
      * 매수 평균 단가 (현금인 경우 1)
      */
-    @Column(nullable = false, precision = 19, scale = 4)
+    @Column(name = "average_purchase_price", nullable = false, precision = 19, scale = 4)
     private BigDecimal purchasePrice;
 
     /**
      * 통화 단위 (KRW, USD 등)
      */
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(nullable = false, length = 3, columnDefinition = "char(3)")
     private String currency;
 
     /**
      * 포트폴리오 내에서 이 자산이 차지해야 할 목표 비중 (%)
      */
-    @Column(nullable = false, precision = 7, scale = 4)
+    @Column(name = "target_weight", precision = 12, scale = 6)
     private BigDecimal targetWeight = BigDecimal.ZERO;
 
     /**
      * 자산 매수일
      */
-    @Column(nullable = false)
+    @Column(name = "purchase_date", nullable = false)
     private LocalDate purchaseDate;
+
+    public String getSymbol() {
+        if (assetType == AssetType.CASH) return "CASH";
+        return symbol != null ? symbol : stock == null ? null : stock.getTicker();
+    }
+
+    public void assignStock(Stock stock) {
+        if (assetType != AssetType.STOCK || stock == null || !Objects.equals(getSymbol(), stock.getTicker())
+                || !Objects.equals(currency, stock.getCurrency().name())) {
+            throw new IllegalArgumentException("Portfolio stock identity must match the stored ticker and currency");
+        }
+        this.stock = stock;
+    }
 
     /**
      * 주식 종목 항목을 생성합니다. (목표 비중 0%)

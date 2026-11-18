@@ -15,6 +15,7 @@ import org.stockwellness.application.port.in.portfolio.command.CreateSimulatedPo
 import org.stockwellness.application.port.in.portfolio.command.UpdatePortfolioCommand;
 import org.stockwellness.application.port.in.portfolio.result.CreateSimulatedPortfolioResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
+import org.stockwellness.application.port.out.portfolio.DeletePortfolioDependenciesPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
 import org.stockwellness.domain.portfolio.AssetType;
@@ -40,6 +41,7 @@ import static org.stockwellness.global.error.ErrorCode.UNSUPPORTED_PORTFOLIO_CUR
 public class PortfolioCommandService implements ManagePortfolioUseCase {
 
     private final PortfolioPort portfolioPort;
+    private final DeletePortfolioDependenciesPort deletePortfolioDependenciesPort;
     private final StockPort stockPort;
     private final StockPricePort stockPricePort;
     private final ApplicationEventPublisher eventPublisher;
@@ -109,6 +111,7 @@ public class PortfolioCommandService implements ManagePortfolioUseCase {
     @Override
     public void deletePortfolio(Long memberId, Long portfolioId) {
         loadOwnedPortfolio(portfolioId, memberId);
+        deletePortfolioDependenciesPort.deleteByPortfolioId(portfolioId);
         portfolioPort.deletePortfolio(portfolioId);
     }
 

@@ -48,8 +48,8 @@ class StockPriceReadAdapterCanonicalPostgresTest {
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, status)
-                VALUES ('KOSPI', '005930', '삼성전자', 'KRW', 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, status)
+                VALUES ('KOSPI', '005930', '삼성전자', 'KOSPI', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class);
     }
 
@@ -111,6 +111,62 @@ class StockPriceReadAdapterCanonicalPostgresTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> prices.recent(Set.of(stockId), "KRX", PROVISIONAL_DATE, 1, null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void invalid_price_check_reads_null_and_zero_prices_from_canonical_table() {
+        insertPrice(FIRST_DATE, "100", "FINAL", 1);
+        insertPrice(FINAL_DATE, "0", "FINAL", 1);
+        jdbc.update("""
+                INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, data_status, source, collected_at)
+                VALUES (?, ?, 'KRX', 'INCOMPLETE', 'KIS:test', CURRENT_TIMESTAMP)
+                """, stockId, PROVISIONAL_DATE);
+
+        var invalid = prices.invalidPriceObservations(FIRST_DATE, PROVISIONAL_DATE);
+
+        assertThat(invalid).hasSize(2);
+        assertThat(invalid).extracting("tradeDate").containsExactlyInAnyOrder(FINAL_DATE, PROVISIONAL_DATE);
+        assertThat(invalid).extracting("ticker").containsOnly("005930");
+        assertThat(invalid).extracting("name").containsOnly("삼성전자");
+    }
+
+    /*
+     * Contract evidence: DataIntegrityResponse.InvalidPriceDetail exposes (ticker, name, baseDate, issueType) without quote_scope.
+     * Unresolved PO decisions (kept non-breaking by aggregating across all scopes and ordering NULL before <=0):
+     * 1) Monitoring scope: all quote_scopes vs canonical/KRX only vs adding quoteScope to the admin response.
+     * 2) Representative issueType on KRX/NXT disagreement: NULL_PRICE priority vs ZERO_PRICE vs KRX scope priority.
+     */
+    @Test
+    void invalid_price_check_aggregates_multiple_quote_scopes_deterministically_per_stock_and_date() {
+        insertInvalidPrice(FIRST_DATE, "KRX", null, "INCOMPLETE");
+        insertInvalidPrice(FIRST_DATE, "NXT", null, "INCOMPLETE");
+        insertInvalidPrice(FINAL_DATE, "KRX", null, "INCOMPLETE");
+        insertInvalidPrice(FINAL_DATE, "NXT", "0", "PROVISIONAL");
+        insertInvalidPrice(PROVISIONAL_DATE, "KRX", "0", "PROVISIONAL");
+        insertInvalidPrice(PROVISIONAL_DATE, "NXT", null, "INCOMPLETE");
+        LocalDate fourthDate = PROVISIONAL_DATE.plusDays(1);
+        insertInvalidPrice(fourthDate, "KRX", "70000", "FINAL");
+        insertInvalidPrice(fourthDate, "NXT", "0", "PROVISIONAL");
+
+        var invalid = prices.invalidPriceObservations(FIRST_DATE, fourthDate);
+
+        assertThat(invalid).hasSize(4);
+        assertThat(invalid).extracting("tradeDate")
+                .containsExactly(FIRST_DATE, FINAL_DATE, PROVISIONAL_DATE, fourthDate);
+        assertThat(invalid).extracting("ticker").containsOnly("005930");
+        assertThat(invalid.get(0).closePrice()).isNull();
+        assertThat(invalid.get(1).closePrice()).isNull();
+        assertThat(invalid.get(2).closePrice()).isNull();
+        assertThat(invalid.get(3).closePrice()).isEqualByComparingTo("0");
+    }
+
+    private void insertInvalidPrice(LocalDate date, String quoteScope, String close, String status) {
+        java.math.BigDecimal closePrice = close == null ? null : new java.math.BigDecimal(close);
+        jdbc.update("""
+                INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price, low_price,
+                    close_price, volume, trading_amount, data_status, source, collected_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 100, 1000, ?, 'KIS:test', CURRENT_TIMESTAMP)
+                """, stockId, date, quoteScope, closePrice, closePrice, closePrice, closePrice, status);
     }
 
     private void insertPrice(LocalDate date, String close, String status, int revision) {

@@ -88,6 +88,60 @@ class NewMarketDataSyncServiceTest {
     }
 
     @Test
+    void listed_stock_price_range_ignores_open_sessions_before_listing_date() {
+        LocalDate start = LocalDate.of(2026, 10, 5);
+        LocalDate listed = start.plusDays(2);
+        LocalDate end = listed.plusDays(1);
+        Stock stock = stock();
+        ReflectionTestUtils.setField(stock, "listingDate", listed);
+        given(calendar.findAll("KOSPI", start, end)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", start, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", start.plusDays(1), true, null, null, "test"),
+                TradingCalendar.of("KOSPI", listed, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", end, true, null, null, "test")));
+        given(prices.fetchDailyPrices(stock, listed, end)).willReturn(List.of(
+                price(listed, "10", "N"), price(end, "11", "N")));
+        given(prices.fetchAdjustedDailyPrices(stock, listed, end)).willReturn(List.of(
+                price(listed, "9", "N"), price(end, "10", "N")));
+
+        service.syncStockPrices(stock, start, end);
+
+        verify(prices).fetchDailyPrices(stock, listed, end);
+        verify(prices).fetchAdjustedDailyPrices(stock, listed, end);
+        ArgumentCaptor<List<EodStockPrice>> raw = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<StockPriceAdjustment>> adjusted = ArgumentCaptor.forClass(List.class);
+        verify(eod).upsertObservations(raw.capture(), adjusted.capture());
+        assertThat(raw.getValue()).extracting(row -> row.getId().getTradeDate()).containsExactly(listed, end);
+        assertThat(adjusted.getValue()).extracting(row -> row.getId().getTradeDate()).containsExactly(listed, end);
+    }
+
+    @Test
+    void listed_stock_investor_range_ignores_open_sessions_before_listing_date() {
+        LocalDate start = LocalDate.of(2026, 10, 5);
+        LocalDate listed = start.plusDays(2);
+        LocalDate end = listed.plusDays(1);
+        Stock stock = stock();
+        ReflectionTestUtils.setField(stock, "listingDate", listed);
+        given(calendar.findAll("KOSPI", start, end)).willReturn(List.of(
+                TradingCalendar.of("KOSPI", start, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", start.plusDays(1), true, null, null, "test"),
+                TradingCalendar.of("KOSPI", listed, true, null, null, "test"),
+                TradingCalendar.of("KOSPI", end, true, null, null, "test")));
+        given(prices.fetchInvestorTradeByStockDaily(stock, end)).willReturn(List.of(
+                investorRow(end, "1", "1"), investorRow(listed, "1", "1"), investorRow(start, "1", "1")));
+
+        service.syncStockInvestorTrades(stock, start, end);
+
+        verify(prices).fetchInvestorTradeByStockDaily(stock, end);
+        ArgumentCaptor<List<EodStockInvestorTradeDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(investorTrades).upsert(saved.capture());
+        assertThat(saved.getValue()).hasSize(2 * InvestorSourceType.values().length)
+                .extracting(EodStockInvestorTradeDaily::tradeDate).doesNotContain(start, start.plusDays(1));
+        assertThat(saved.getValue().stream().map(EodStockInvestorTradeDaily::tradeDate).distinct().toList())
+                .containsExactly(listed, end);
+    }
+
+    @Test
     void unknown_calendar_stops_before_calling_the_price_provider() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         Stock stock = stock();
@@ -489,6 +543,11 @@ class NewMarketDataSyncServiceTest {
             assertThat(row.getClosePrice()).isEqualByComparingTo("2500");
             assertThat(row.getVolume()).isZero();
             assertThat(row.getTradingAmount()).isEqualByComparingTo("0");
+            assertThat(row.getRisingIssueCount()).isNull();
+            assertThat(row.getFallingIssueCount()).isNull();
+            assertThat(row.getUpperLimitIssueCount()).isNull();
+            assertThat(row.getLowerLimitIssueCount()).isNull();
+            assertThat(row.getSteadyIssueCount()).isNull();
             assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.PROVISIONAL);
         });
     }
@@ -523,6 +582,8 @@ class NewMarketDataSyncServiceTest {
     void supported_us_index_uses_the_overseas_endpoint_and_keeps_unreported_trading_amount_null() {
         LocalDate date = LocalDate.of(2026, 10, 5);
         IndexSeries sp500 = usSeries("SPX", "NYSE");
+        given(calendar.findAll("NYSE", date, date)).willReturn(List.of(
+                TradingCalendar.of("NYSE", date, true, null, null, "test")));
         given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of(
                 new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760", "6700", "12345", "N")));
 
@@ -538,6 +599,11 @@ class NewMarketDataSyncServiceTest {
             assertThat(row.getClosePrice()).isEqualByComparingTo("6750.2500");
             assertThat(row.getVolume()).isEqualTo(12345L);
             assertThat(row.getTradingAmount()).isNull();
+            assertThat(row.getRisingIssueCount()).isNull();
+            assertThat(row.getFallingIssueCount()).isNull();
+            assertThat(row.getUpperLimitIssueCount()).isNull();
+            assertThat(row.getLowerLimitIssueCount()).isNull();
+            assertThat(row.getSteadyIssueCount()).isNull();
             assertThat(row.getPriceSourceApi()).isEqualTo("FHKST03030100");
             assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.PROVISIONAL);
         });
@@ -559,6 +625,8 @@ class NewMarketDataSyncServiceTest {
     @Test
     void missing_us_volume_remains_null_and_marks_the_quote_incomplete() {
         LocalDate date = LocalDate.of(2026, 10, 5);
+        given(calendar.findAll("NYSE", date, date)).willReturn(List.of(
+                TradingCalendar.of("NYSE", date, true, null, null, "test")));
         given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of(
                 new KisOverseasIndexDailyPrice("20261005", "6750.25", "6730", "6760", "6700", " ", "N")));
 
@@ -570,6 +638,26 @@ class NewMarketDataSyncServiceTest {
         assertThat(saved.getValue()).singleElement().satisfies(row -> {
             assertThat(row.getVolume()).isNull();
             assertThat(row.getPriceStatus()).isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
+        });
+    }
+
+    @Test
+    void missing_us_open_day_is_persisted_as_incomplete_and_fails_the_collection() {
+        LocalDate date = LocalDate.of(2026, 10, 5);
+        given(calendar.findAll("NYSE", date, date)).willReturn(List.of(
+                TradingCalendar.of("NYSE", date, true, null, null, "test")));
+        given(indexPrices.fetchOverseasIndexDailyPrices("SPX", date, date)).willReturn(List.of());
+
+        assertThatThrownBy(() -> service.syncIndexPrices(usSeries("SPX", "NYSE"), date, date))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("incomplete observations");
+
+        ArgumentCaptor<List<org.stockwellness.domain.stock.insight.IndexDaily>> saved = ArgumentCaptor.forClass(List.class);
+        verify(indexDaily).upsert(saved.capture());
+        assertThat(saved.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.getId().getTradeDate()).isEqualTo(date);
+            assertThat(row.getClosePrice()).isNull();
+            assertThat(row.getPriceStatus())
+                    .isEqualTo(org.stockwellness.domain.stock.insight.BenchmarkDataStatus.INCOMPLETE);
         });
     }
 

@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.math.BigDecimal;
 
 public interface IndexDailyReadPort {
+    record SectorWeatherScore(String code, String name, BigDecimal score) {}
+
     List<IndexPriceObservation> recentFinal(long seriesId, LocalDate asOf, int limit);
 
     List<IndexPriceObservation> recentFinal(String publicBenchmarkCode, LocalDate asOf, int limit);
@@ -17,4 +19,8 @@ public interface IndexDailyReadPort {
     List<LocalDate> finalDatesFrom(long seriesId, LocalDate startDate, int limit);
 
     Optional<BigDecimal> finalWeatherScore(String publicBenchmarkCode, LocalDate tradeDate);
+
+    Optional<LocalDate> latestWeatherDate(String publicBenchmarkCode);
+
+    List<SectorWeatherScore> finalSectorWeatherScores(String publicBenchmarkCode, LocalDate tradeDate);
 }

@@ -17,7 +17,6 @@ import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.adapter.in.web.portfolio.dto.CreateSimulatedPortfolioRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
@@ -71,9 +70,6 @@ class PortfolioControllerTest extends RestDocsSupport {
 
     @Autowired
     private StockRepository stockRepository;
-
-    @Autowired
-    private StockPriceRepository stockPriceRepository;
 
     @MockitoBean
     private PortfolioFacade portfolioFacade;

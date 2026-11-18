@@ -158,6 +158,24 @@ class StockServiceTest {
         verify(eventPublisher).publishEvent(any(StockSearchEvent.class));
     }
 
+    @Test
+    @DisplayName("섹터가 미지정(null)인 종목 상세 조회는 500 없이 미분류 섹터로 반환한다")
+    void getStockDetail_when_sector_is_null_returns_unclassified() {
+        String ticker = "964004";
+        Stock stock = Stock.of(ticker, null, "격리검증 오류주", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", 64004L);
+        ReflectionTestUtils.setField(stock, "sector", null);
+        given(stockRepository.findByTicker(ticker)).willReturn(Optional.of(stock));
+        given(stockPriceReadPort.recent(Set.of(64004L), "KRX", LocalDate.now(), 2, PriceBasis.RAW))
+                .willReturn(Map.of());
+
+        StockDetailResult result = stockService.getStockDetail(ticker);
+
+        assertThat(result.ticker()).isEqualTo(ticker);
+        assertThat(result.sectorName()).isEqualTo("미분류");
+        assertThat(result.currentPrice()).isNull();
+    }
+
     private static PriceObservation observation(Long stockId, LocalDate date, String close) {
         BigDecimal value = new BigDecimal(close);
         return new PriceObservation(stockId, date, "KRX", PriceBasis.RAW, value, value, value, value,

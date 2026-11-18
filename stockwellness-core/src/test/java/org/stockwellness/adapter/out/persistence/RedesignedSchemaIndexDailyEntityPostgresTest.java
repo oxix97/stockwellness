@@ -83,7 +83,7 @@ class RedesignedSchemaIndexDailyEntityPostgresTest {
                 seriesId = series.getId();
                 session.persist(IndexDaily.of(series, TRADE_DATE,
                         new BigDecimal("2490"), new BigDecimal("2510"), new BigDecimal("2480"), new BigDecimal("2500"),
-                        100L, new BigDecimal("100000"), null, null, null, null, null,
+                        100L, new BigDecimal("100000"), 12, 3, 4, 6, 1,
                         new BigDecimal("-100"), BigDecimal.ZERO, "FHKUP03500100", "KIS:TEST:SUPPLY",
                         BenchmarkDataStatus.PROVISIONAL, BenchmarkDataStatus.PROVISIONAL));
                 transaction.commit();
@@ -101,8 +101,8 @@ class RedesignedSchemaIndexDailyEntityPostgresTest {
                     values ('KOSPI', ?, true, 'test', now())
                     """, CALENDAR_DATE.plusDays(1))).isInstanceOf(DataAccessException.class);
             long stockId = jdbc.queryForObject("""
-                    insert into stock(market_code, ticker, name, currency, status)
-                    values ('KOSPI', 'TEST01', '테스트', 'KRW', 'ACTIVE') returning id
+                    insert into stock(market_code, ticker, name, market_type, currency, status)
+                    values ('KOSPI', 'TEST01', '테스트', 'KOSPI', 'KRW', 'ACTIVE') returning id
                     """, Long.class);
             Stock stock = mock(Stock.class);
             when(stock.getId()).thenReturn(stockId);
@@ -122,6 +122,16 @@ class RedesignedSchemaIndexDailyEntityPostgresTest {
             assertThat(jdbc.queryForObject("select close_value from index_daily where series_id = ? and trade_date = ?",
                     BigDecimal.class, seriesId, TRADE_DATE)).isEqualByComparingTo("2500");
             assertThat(jdbc.queryForObject("select revision from index_daily where series_id = ? and trade_date = ?",
+                    Integer.class, seriesId, TRADE_DATE)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("select advance_count from index_daily where series_id = ? and trade_date = ?",
+                    Integer.class, seriesId, TRADE_DATE)).isEqualTo(12);
+            assertThat(jdbc.queryForObject("select upper_limit_count from index_daily where series_id = ? and trade_date = ?",
+                    Integer.class, seriesId, TRADE_DATE)).isEqualTo(3);
+            assertThat(jdbc.queryForObject("select unchanged_count from index_daily where series_id = ? and trade_date = ?",
+                    Integer.class, seriesId, TRADE_DATE)).isEqualTo(4);
+            assertThat(jdbc.queryForObject("select decline_count from index_daily where series_id = ? and trade_date = ?",
+                    Integer.class, seriesId, TRADE_DATE)).isEqualTo(6);
+            assertThat(jdbc.queryForObject("select lower_limit_count from index_daily where series_id = ? and trade_date = ?",
                     Integer.class, seriesId, TRADE_DATE)).isEqualTo(1);
             assertThat(jdbc.queryForObject("select foreign_net_amount from index_daily where series_id = ? and trade_date = ?",
                     BigDecimal.class, seriesId, TRADE_DATE)).isEqualByComparingTo("-100");

@@ -82,6 +82,117 @@ class IndexDailyTest {
     }
 
     @Test
+    void breadth_count_revision_persists_required_counts_and_optional_unchanged_count() {
+        IndexSeries series = series();
+        LocalDate date = LocalDate.of(2026, 10, 2);
+        IndexDaily current = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), null, null, null, null, null,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+        IndexDaily corrected = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), 8, 1, null, 5, 2,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+        OffsetDateTime correctionTime = OffsetDateTime.of(2026, 10, 5, 1, 2, 3, 0, ZoneOffset.UTC);
+
+        assertThat(current.reviseFrom(corrected, correctionTime)).isTrue();
+
+        assertThat(current.getRisingIssueCount()).isEqualTo(8);
+        assertThat(current.getFallingIssueCount()).isEqualTo(5);
+        assertThat(current.getUpperLimitIssueCount()).isEqualTo(1);
+        assertThat(current.getLowerLimitIssueCount()).isEqualTo(2);
+        assertThat(current.getSteadyIssueCount()).isNull();
+        assertThat(current.getRevision()).isEqualTo(2);
+        assertThat(current.getCorrectedAt()).isEqualTo(correctionTime);
+    }
+
+    @Test
+    void complete_breadth_correction_preserves_existing_optional_unchanged_count_when_missing() {
+        IndexSeries series = series();
+        LocalDate date = LocalDate.of(2026, 10, 2);
+        IndexDaily current = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), 8, 1, 3, 5, 2,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+        IndexDaily corrected = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), 9, 1, null, 4, 2,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+
+        assertThat(current.reviseFrom(corrected, OffsetDateTime.now(ZoneOffset.UTC))).isTrue();
+
+        assertThat(current.getRisingIssueCount()).isEqualTo(9);
+        assertThat(current.getFallingIssueCount()).isEqualTo(4);
+        assertThat(current.getSteadyIssueCount()).isEqualTo(3);
+    }
+
+    @Test
+    void final_breadth_only_correction_preserves_existing_price_observation() {
+        IndexSeries series = series();
+        LocalDate date = LocalDate.of(2026, 10, 2);
+        IndexDaily current = IndexDaily.of(series, date, new BigDecimal("2490"), new BigDecimal("2510"),
+                new BigDecimal("2480"), new BigDecimal("2500"), 100L, new BigDecimal("100000"),
+                8, 1, 3, 5, 2, null, null, "PRICE_API", null,
+                BenchmarkDataStatus.FINAL, null);
+        IndexDaily breadthOnly = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                null, null, 9, 1, 3, 4, 2, null, null, "BREADTH_API", null,
+                BenchmarkDataStatus.FINAL, null);
+        OffsetDateTime correctionTime = OffsetDateTime.of(2026, 10, 5, 1, 2, 3, 0, ZoneOffset.UTC);
+
+        assertThat(current.reviseFrom(breadthOnly, correctionTime)).isTrue();
+
+        assertThat(current.getOpenPrice()).isEqualByComparingTo("2490");
+        assertThat(current.getHighPrice()).isEqualByComparingTo("2510");
+        assertThat(current.getLowPrice()).isEqualByComparingTo("2480");
+        assertThat(current.getClosePrice()).isEqualByComparingTo("2500");
+        assertThat(current.getVolume()).isEqualTo(100L);
+        assertThat(current.getTradingAmount()).isEqualByComparingTo("100000");
+        assertThat(current.getPriceSourceApi()).isEqualTo("PRICE_API");
+        assertThat(current.getPriceStatus()).isEqualTo(BenchmarkDataStatus.FINAL);
+        assertThat(current.getRisingIssueCount()).isEqualTo(9);
+        assertThat(current.getFallingIssueCount()).isEqualTo(4);
+        assertThat(current.getRevision()).isEqualTo(2);
+
+        assertThat(current.reviseFrom(breadthOnly, correctionTime.plusDays(1))).isFalse();
+        assertThat(current.getRevision()).isEqualTo(2);
+        assertThat(current.getOpenPrice()).isEqualByComparingTo("2490");
+    }
+
+    @Test
+    void breadth_only_final_input_does_not_promote_provisional_price_status() {
+        IndexSeries series = series();
+        LocalDate date = LocalDate.of(2026, 10, 2);
+        IndexDaily current = IndexDaily.of(series, date, new BigDecimal("2490"), new BigDecimal("2510"),
+                new BigDecimal("2480"), new BigDecimal("2500"), 100L, new BigDecimal("100000"),
+                null, null, null, null, null, null, null, "PRICE_API", null,
+                BenchmarkDataStatus.PROVISIONAL, null);
+        IndexDaily breadthOnly = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                null, null, 9, 1, 3, 4, 2, null, null, "BREADTH_API", null,
+                BenchmarkDataStatus.FINAL, null);
+
+        assertThat(current.reviseFrom(breadthOnly, OffsetDateTime.now(ZoneOffset.UTC))).isTrue();
+
+        assertThat(current.getPriceStatus()).isEqualTo(BenchmarkDataStatus.PROVISIONAL);
+        assertThat(current.getRevision()).isEqualTo(2);
+        assertThat(current.getRisingIssueCount()).isEqualTo(9);
+    }
+
+    @Test
+    void price_redelivery_without_breadth_does_not_clear_confirmed_counts() {
+        IndexSeries series = series();
+        LocalDate date = LocalDate.of(2026, 10, 2);
+        IndexDaily current = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), 8, 1, 3, 5, 2,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+        IndexDaily priceOnly = IndexDaily.of(series, date, null, null, null, new BigDecimal("2500"),
+                10L, new BigDecimal("100"), null, null, null, null, null,
+                null, null, "FHKUP03500100", null, BenchmarkDataStatus.PROVISIONAL, null);
+
+        assertThat(current.reviseFrom(priceOnly, OffsetDateTime.now(ZoneOffset.UTC))).isFalse();
+
+        assertThat(current.getRisingIssueCount()).isEqualTo(8);
+        assertThat(current.getFallingIssueCount()).isEqualTo(5);
+        assertThat(current.getSteadyIssueCount()).isEqualTo(3);
+        assertThat(current.getRevision()).isEqualTo(1);
+    }
+
+    @Test
     void incomplete_redelivery_cannot_downgrade_final_price() {
         IndexSeries series = series();
         LocalDate date = LocalDate.of(2026, 10, 2);

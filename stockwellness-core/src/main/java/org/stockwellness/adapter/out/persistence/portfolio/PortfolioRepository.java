@@ -16,12 +16,12 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long>, Por
 
     boolean existsByMemberIdAndName(Long memberId, String name);
 
-    @Query("SELECT DISTINCT p.id FROM Portfolio p JOIN p.items i WHERE i.symbol IN :symbols")
+    @Query("SELECT DISTINCT p.id FROM Portfolio p JOIN p.items i WHERE i.stock.ticker IN :symbols")
     List<Long> findPortfolioIdsBySymbols(@Param("symbols") List<String> symbols);
 
     @Query("SELECT p.id FROM Portfolio p")
     List<Long> findAllIds(Pageable pageable);
 
-    @Query("SELECT DISTINCT p FROM Portfolio p LEFT JOIN FETCH p.items WHERE p.id IN :ids")
+    @Query("SELECT DISTINCT p FROM Portfolio p LEFT JOIN FETCH p.items item LEFT JOIN FETCH item.stock WHERE p.id IN :ids")
     List<Portfolio> findAllWithItemsByIdIn(@Param("ids") List<Long> ids);
 }

@@ -25,7 +25,8 @@ public class KafkaOutboxEventAdapter implements OutboxEventPublisherPort {
     public void publish(String topic, String payload) {
         log.info("Outbox 이벤트를 Kafka로 발행 중. Topic: {}", topic);
         try {
-            if (KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC.equals(topic)) {
+            if (KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC.equals(topic)
+                    || KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC.equals(topic)) {
                 MarketDataRevisionEvent event = objectMapper.readValue(payload, MarketDataRevisionEvent.class);
                 kafkaTemplate.send(topic, event.eventId(), event).get(10, TimeUnit.SECONDS);
             } else {

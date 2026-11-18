@@ -16,10 +16,7 @@ import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.CreateSimulatedPortfolioRequest;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
 import org.stockwellness.application.port.out.stock.IndexPriceObservation;
@@ -32,8 +29,6 @@ import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.integration.common.BaseIntegrationTest;
@@ -61,15 +56,6 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PortfolioRepository portfolioRepository;
 
-    @Autowired
-    private StockPriceRepository stockPriceRepository;
-
-    @Autowired
-    private BenchmarkPriceRepository benchmarkPriceRepository;
-
-    @Autowired
-    private BenchmarkRepository benchmarkRepository;
-
     private String accessToken;
 
     @BeforeEach
@@ -86,50 +72,9 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
         Stock skHynix = Stock.of("000660", "KR7000660001", "SK하이닉스", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
         stockRepository.saveAndFlush(skHynix);
 
-        // 테스트용 벤치마크 지수 생성 (KOSPI)
-        Stock kospi = Stock.of("KOSPI", null, "코스피", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
-        stockRepository.saveAndFlush(kospi);
-
-        // 시세 데이터 생성 (어제, 오늘)
+        // Prices are supplied through the canonical read port mock below.
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
-
-        stockPriceRepository.save(StockPrice.of(
-                samsung, yesterday, new BigDecimal("50000"), new BigDecimal("51000"), new BigDecimal("49000"),
-                new BigDecimal("50500"), new BigDecimal("50500"), new BigDecimal("50000"), 1000000L, 
-                new BigDecimal("50000000000"), null));
-        
-        stockPriceRepository.save(StockPrice.of(
-                samsung, today, new BigDecimal("50500"), new BigDecimal("52000"), new BigDecimal("50000"),
-                new BigDecimal("51500"), new BigDecimal("51500"), new BigDecimal("50500"), 1200000L, 
-                new BigDecimal("60000000000"), null));
-
-        stockPriceRepository.save(StockPrice.of(
-                skHynix, today, new BigDecimal("200000"), new BigDecimal("205000"), new BigDecimal("195000"),
-                new BigDecimal("200000"), new BigDecimal("200000"), new BigDecimal("198000"), 900000L,
-                new BigDecimal("180000000000"), null));
-
-        stockPriceRepository.save(StockPrice.of(
-                kospi, yesterday, new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"),
-                new BigDecimal("2505"), new BigDecimal("2505"), new BigDecimal("2500"), 500000L, 
-                new BigDecimal("100000000000"), null));
-
-        stockPriceRepository.save(StockPrice.of(
-                kospi, today, new BigDecimal("2505"), new BigDecimal("2530"), new BigDecimal("2500"),
-                new BigDecimal("2520"), new BigDecimal("2520"), new BigDecimal("2505"), 600000L, 
-                new BigDecimal("120000000000"), null));
-
-        // 백테스트는 benchmark_price를 기준 데이터로 사용하므로, 테스트 지수도
-        // 동일한 EOD 계약으로 저장한다. StockPrice의 지수 행만으로는
-        // benchmark 전용 조회 포트가 빈 결과를 반환하여 S002가 된다.
-        benchmarkPriceRepository.save(BenchmarkPrice.of("코스피", "0001", yesterday, new BigDecimal("2505")));
-        benchmarkPriceRepository.save(BenchmarkPrice.of("코스피", "0001", today, new BigDecimal("2520")));
-        
-        stockPriceRepository.flush();
-        benchmarkPriceRepository.flush();
-        assertThat(benchmarkPriceRepository.findByTickerAndBaseDate("0001", today)).isPresent();
-        assertThat(benchmarkRepository.findBenchmarkPrices("0001", LocalDate.of(1990, 1, 1), today))
-                .hasSize(2);
         stubCanonicalPriceReads(samsung, skHynix, today, yesterday);
     }
 

@@ -18,14 +18,20 @@ class MarketIndexIdentityTest {
     }
 
     @Test
-    void classifies_all_four_supported_domestic_benchmarks_as_market_indices() {
-        assertThat(java.util.List.of(
+    void classifies_all_four_supported_domestic_benchmarks_using_master_divisions() {
+        var benchmarks = java.util.List.of(
                 MarketIndex.of("0001", "KOSPI", "0"),
                 MarketIndex.of("1001", "KOSDAQ", "1"),
-                MarketIndex.of("2001", "KOSPI 200", "0"),
-                MarketIndex.of("3003", "KOSDAQ 150", "1")))
+                MarketIndex.of("2001", "KOSPI 200", "2"),
+                MarketIndex.of("3003", "KOSDAQ 150", "3"));
+
+        assertThat(benchmarks)
                 .extracting(MarketIndex::getIndexKind)
                 .containsOnly(MarketIndexKind.MARKET);
+        assertThat(benchmarks).extracting(MarketIndex::getMarketCode)
+                .containsExactly("KOSPI", "KOSDAQ", "KOSPI", "KOSDAQ");
+        assertThat(benchmarks).extracting(MarketIndex::getIndexKey)
+                .containsExactly("KOSPI:0001", "KOSDAQ:1001", "KOSPI:2001", "KOSDAQ:3003");
 
         assertThat(MarketIndex.of("0027", "제약", "0").getIndexKind())
                 .isEqualTo(MarketIndexKind.SECTOR);

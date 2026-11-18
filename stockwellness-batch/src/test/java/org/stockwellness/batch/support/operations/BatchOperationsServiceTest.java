@@ -1,6 +1,8 @@
 package org.stockwellness.batch.support.operations;
 
+import java.math.BigDecimal;
 import java.lang.reflect.Modifier;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -25,9 +27,10 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.InvalidPriceObservation;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.application.service.batch.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.global.error.ErrorCode;
@@ -85,7 +88,7 @@ class BatchOperationsServiceTest {
     private MarketIndexSyncService marketIndexSyncService;
 
     @Mock
-    private StockPriceRepository stockPriceRepository;
+    private StockPriceReadPort stockPriceReadPort;
 
     @InjectMocks
     private BatchOperationsService batchOperationsService;
@@ -117,19 +120,21 @@ class BatchOperationsServiceTest {
     }
 
     @Test
-    @DisplayName("투자주체 보정은 baseDate가 null이면 해당 파라미터를 JobParameters에 추가하지 않는다")
-    void buildParameters_stockForeignInstitution_omitsNullBaseDate() {
+    @DisplayName("투자주체 보정은 targetDate를 canonical startDate와 endDate로 전달한다")
+    void buildParameters_stockForeignInstitution_addsCanonicalDateRange() {
         JobParameters parameters = ReflectionTestUtils.invokeMethod(batchOperationsService, "buildParameters",
                 new BatchControlUseCase.BatchLaunchCommand(
                 BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION,
                 null,
                 null,
                 null,
-                null,
+                "20260422",
                 false
         ));
 
-        assertThat(parameters.getString("targetDate")).isNull();
+        assertThat(parameters.getString("startDate")).isEqualTo("20260422");
+        assertThat(parameters.getString("endDate")).isEqualTo("20260422");
+        assertThat(parameters.getString("targetDate")).isEqualTo("20260422");
         assertThat(parameters.getLong("time")).isNotNull();
     }
 
@@ -167,6 +172,22 @@ class BatchOperationsServiceTest {
         assertThat(UUID.fromString(parameters.getString("runId"))).isNotNull();
         assertThat(parameters.getLong("time")).isNull();
         assertThat(parameters.getParameters()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("데이터 무결성 점검은 canonical 가격 조회 결과를 API 이슈로 변환한다")
+    void checkDataIntegrity_mapsCanonicalInvalidPrices() {
+        LocalDate start = LocalDate.of(2026, 4, 1);
+        LocalDate end = LocalDate.of(2026, 4, 2);
+        given(stockPriceReadPort.invalidPriceObservations(start, end)).willReturn(List.of(
+                new InvalidPriceObservation("005930", "삼성전자", start, null),
+                new InvalidPriceObservation("000660", "SK하이닉스", end, BigDecimal.ZERO)));
+
+        var result = batchOperationsService.checkDataIntegrity(start, end);
+
+        assertThat(result.totalCount()).isEqualTo(2);
+        assertThat(result.issues()).extracting("issueType").containsExactly("NULL_PRICE", "ZERO_PRICE");
+        assertThat(result.issues()).extracting("ticker").containsExactly("005930", "000660");
     }
 
     @Test

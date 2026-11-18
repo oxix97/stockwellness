@@ -16,7 +16,7 @@ import org.stockwellness.domain.stock.insight.MarketIndex;
  *
  * <h2>파일 구조 (45 bytes + \n)</h2>
  * <pre>
- * - idx_div  (1 byte)  : 시장구분 (0:KOSPI, 1:KOSDAQ 등)
+ * - idx_div  (1 byte)  : 0:KOSPI 업종, 1:KOSDAQ 업종, 2:KOSPI200, 3:KOSDAQ150 등
  * - idx_code (4 bytes) : 업종 코드 (Stock 엔티티와 매핑되는 핵심 키)
  * - idx_name (40 bytes): 업종명 (CP949)
  * </pre>

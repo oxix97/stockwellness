@@ -2,6 +2,7 @@ package org.stockwellness.application.service.batch;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -109,6 +110,20 @@ class BenchmarkPriceSyncServiceTest {
         }
 
         @Test
+        @DisplayName("0 이하 OHLC는 이전 종가 조회 전에 거부한다")
+        void shouldRejectNonPositiveOhlcBeforeLookingUpPreviousClose() {
+            List.of(
+                    command(BigDecimal.ZERO, BigDecimal.valueOf(2), BigDecimal.ONE, BigDecimal.ONE),
+                    command(BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ONE),
+                    command(BigDecimal.ONE, BigDecimal.valueOf(2), BigDecimal.ZERO, BigDecimal.ONE),
+                    command(BigDecimal.ONE, BigDecimal.valueOf(2), BigDecimal.ONE, BigDecimal.ZERO))
+                    .forEach(command -> assertThatThrownBy(() -> benchmarkPriceSyncService.toBenchmarkPrice(command))
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("유효하지 않은 가격"));
+            verify(benchmarkPricePort, never()).findLatestBefore(anyString(), any());
+        }
+
+        @Test
         @DisplayName("필수 가격이 누락되면 benchmark row를 만들지 않는다")
         void shouldRejectMissingRequiredPrice() {
             BenchmarkPriceSyncUseCase.BenchmarkPriceCommand command =
@@ -146,5 +161,11 @@ class BenchmarkPriceSyncServiceTest {
                 changeRate,
                 1_000L
         );
+    }
+
+    private BenchmarkPriceSyncUseCase.BenchmarkPriceCommand command(
+            BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close) {
+        return new BenchmarkPriceSyncUseCase.BenchmarkPriceCommand(
+                BenchmarkType.S_P_500, LocalDate.of(2026, 4, 24), open, high, low, close, null, 100L);
     }
 }

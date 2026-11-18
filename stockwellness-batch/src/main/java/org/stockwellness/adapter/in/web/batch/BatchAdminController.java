@@ -3,7 +3,6 @@ package org.stockwellness.adapter.in.web.batch;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.stockwellness.adapter.batch.stockprice.support.StockPriceSyncRequest;
 import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrationService;
-import org.stockwellness.adapter.in.scheduler.DailyBatchOrchestrator;
 import org.stockwellness.adapter.in.scheduler.MarketDataBatchOrchestrator;
 import org.stockwellness.adapter.in.web.batch.dto.BatchExecutionResponse;
 import org.stockwellness.adapter.in.web.batch.dto.BatchJobStatusResponse;
@@ -37,7 +35,6 @@ public class BatchAdminController {
     private final BatchMonitoringUseCase batchMonitoringUseCase;
     private final DailyBatchOrchestrationService dailyBatchOrchestrationService;
     private final KisDailyPriceAdapter kisDailyPriceAdapter;
-    private final DailyBatchOrchestrator dailyBatchOrchestrator;
     private final MarketDataBatchOrchestrator marketDataBatchOrchestrator;
     private final MarketDataSyncTokenVerifier marketDataSyncTokenVerifier;
 
@@ -174,40 +171,13 @@ public class BatchAdminController {
     }
 
     @PostMapping("/run-daily-sync")
-    public ApiResponse<Map<String, String>> runDailySync() {
-        long totalStartTime = System.currentTimeMillis();
-
-        // 1. 지수 동기화 (KOSPI, S&P500 등)
-        long marketStart = System.currentTimeMillis();
-        dailyBatchOrchestrator.runDailyMarketSync();
-        long marketDuration = System.currentTimeMillis() - marketStart;
-
-        // 2. 주식 데이터 동기화 (마스터, 수급, 시세) - 섹터 분석의 선행 작업
-        long stockStart = System.currentTimeMillis();
-        dailyBatchOrchestrator.runDailyStockSync();
-        long stockDuration = System.currentTimeMillis() - stockStart;
-
-        // 3. 섹터 인사이트 동기화 (주식 시세를 기반으로 계산)
-        long sectorStart = System.currentTimeMillis();
-        dailyBatchOrchestrator.runDailySectorInsightSync();
-        long sectorDuration = System.currentTimeMillis() - sectorStart;
-
-        long totalDuration = System.currentTimeMillis() - totalStartTime;
-
-        // 밀리초(ms)를 초(s) 단위로 가독성 있게 변환하여 응답
-        Map<String, String> timings = Map.of(
-                "marketSync", (marketDuration / 1000.0) + "s",
-                "stockSync", (stockDuration / 1000.0) + "s",
-                "sectorSync", (sectorDuration / 1000.0) + "s",
-                "totalTime", (totalDuration / 1000.0) + "s"
-        );
-
-        return ApiResponse.success(timings);
+    public ApiResponse<List<MarketDataBatchOrchestrator.RunResult>> runDailySync() {
+        return ApiResponse.success(List.of(
+                marketDataBatchOrchestrator.runScheduled("KR"),
+                marketDataBatchOrchestrator.runScheduled("US")));
     }
 
-    /**
-     * 섹터 인사이트 배치 실행
-     */
+    /** 시장과 업종의 파생 데이터 배치 실행 */
     @PostMapping("/sync-sector")
     public ApiResponse<BatchExecutionResponse> runSectorSync(
             @RequestParam(required = false) String startDate,

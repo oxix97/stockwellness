@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -58,6 +59,7 @@ import static org.mockito.Mockito.verify;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Testcontainers(disabledWithoutDocker = true)
+@EntityScan(basePackageClasses = {Stock.class, EodStockPrice.class, IndexDaily.class, OutboxEvent.class})
 @EnableJpaRepositories(basePackageClasses = EodStockPriceRepository.class)
 @Import({EodStockPriceAdapter.class, IndexDailyAdapter.class, QueryDslConfig.class, EodStockPricePostgresTest.JacksonTestConfig.class})
 class EodStockPricePostgresTest {

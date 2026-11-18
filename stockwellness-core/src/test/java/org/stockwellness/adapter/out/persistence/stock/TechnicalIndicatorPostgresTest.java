@@ -2,9 +2,13 @@ package org.stockwellness.adapter.out.persistence.stock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +20,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.stockwellness.application.service.marketdata.MarketDataRevisionService;
+import org.stockwellness.application.port.out.outbox.OutboxPort;
+import org.stockwellness.application.service.marketdata.MarketDerivedDataService;
+import org.stockwellness.domain.stock.event.MarketDataRevisionEvent;
 import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.domain.stock.price.StockTechnicalIndicator;
 import org.stockwellness.domain.stock.insight.IndexTechnicalIndicator;
@@ -29,8 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @JdbcTest(properties = "spring.jpa.hibernate.ddl-auto=none")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers(disabledWithoutDocker = true)
-@Import({TechnicalIndicatorAdapter.class, IndexDailyReadAdapter.class, IndexWeatherAdapter.class,
-        SectorLeadingStockAdapter.class})
+@Import({TechnicalIndicatorAdapter.class, StockPriceReadAdapter.class, IndexDailyReadAdapter.class,
+        IndexWeatherAdapter.class, SectorLeadingStockAdapter.class})
 class TechnicalIndicatorPostgresTest {
     private static final LocalDate TARGET_DATE = LocalDate.of(2026, 10, 5);
     private static final Instant CALCULATED_AT = Instant.parse("2026-10-05T08:00:00Z");
@@ -49,6 +57,7 @@ class TechnicalIndicatorPostgresTest {
     }
 
     @Autowired private TechnicalIndicatorAdapter adapter;
+    @Autowired private StockPriceReadAdapter stockPriceReadAdapter;
     @Autowired private IndexDailyReadAdapter indexReadAdapter;
     @Autowired private IndexWeatherAdapter weatherAdapter;
     @Autowired private SectorLeadingStockAdapter leadingStockAdapter;
@@ -67,8 +76,8 @@ class TechnicalIndicatorPostgresTest {
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, status)
-                VALUES ('KOSPI', '005930', 'Samsung', 'KRW', 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, status)
+                VALUES ('KOSPI', '005930', 'Samsung', 'KOSPI', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class);
         jdbc.update("""
                 INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price,
@@ -106,6 +115,53 @@ class TechnicalIndicatorPostgresTest {
                 .isEqualByComparingTo("1.020000");
         assertThat(jdbc.queryForObject("SELECT input_manifest ->> 'revision' FROM stock_technical_indicator", String.class))
                 .isEqualTo("2");
+    }
+
+    @Test
+    void stock_revision_recalculates_and_persists_target_and_later_final_sessions() {
+        jdbc.update("DELETE FROM stock_price_daily WHERE stock_id = ?", stockId);
+        List<LocalDate> dates = new ArrayList<>();
+        for (LocalDate date = TARGET_DATE; dates.size() < 120; date = date.minusDays(1)) {
+            if (date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+                dates.add(date);
+            }
+        }
+        Collections.reverse(dates);
+        for (int i = 0; i < dates.size(); i++) {
+            int close = 100 + i;
+            jdbc.update("""
+                    INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price,
+                        low_price, close_price, volume, trading_amount, data_status, source, collected_at)
+                    VALUES (?, ?, 'KRX', ?, ?, ?, ?, 1000, 100000, 'FINAL', 'KIS:TEST', now())
+                    """, stockId, dates.get(i), close, close + 2, close - 2, close);
+        }
+        jdbc.update("""
+                INSERT INTO stock_price_daily(stock_id, trade_date, quote_scope, open_price, high_price,
+                    low_price, close_price, volume, trading_amount, data_status, source, collected_at)
+                VALUES (?, ?, 'KRX', 1000, 1002, 999, 1001, 1000, 100000, 'FINAL', 'KIS:TEST', now())
+                """, stockId, TARGET_DATE.plusDays(1));
+
+        var derivedData = new MarketDerivedDataService(stockPriceReadAdapter, indexReadAdapter, weatherAdapter, adapter,
+                leadingStockAdapter, new ObjectMapper());
+        var revisionService = new MarketDataRevisionService(
+                stockPriceReadAdapter, indexReadAdapter, leadingStockAdapter, derivedData,
+                org.mockito.Mockito.mock(OutboxPort.class),
+                new ObjectMapper().findAndRegisterModules());
+        revisionService.recalculate(MarketDataRevisionEvent.stock(stockId, TARGET_DATE, "KRX", 2));
+
+        assertThat(jdbc.queryForObject("SELECT ma120 FROM stock_technical_indicator WHERE trade_date = ?",
+                BigDecimal.class, TARGET_DATE))
+                .isEqualByComparingTo("159.5000");
+        assertThat(jdbc.queryForObject("SELECT ma20_disparity FROM stock_technical_indicator WHERE trade_date = ?",
+                BigDecimal.class, TARGET_DATE))
+                .isEqualByComparingTo("1.045346");
+        assertThat(jdbc.queryForObject("SELECT jsonb_array_length(input_manifest -> 'observations') "
+                + "FROM stock_technical_indicator WHERE trade_date = ?", Integer.class, TARGET_DATE)).isEqualTo(120);
+        assertThat(jdbc.queryForObject("SELECT input_manifest -> 'observations' -> -1 ->> 'date' "
+                + "FROM stock_technical_indicator WHERE trade_date = ?", String.class, TARGET_DATE))
+                .isEqualTo(TARGET_DATE.toString());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stock_technical_indicator WHERE trade_date = ?",
+                Integer.class, TARGET_DATE.plusDays(1))).isEqualTo(1);
     }
 
     @Test

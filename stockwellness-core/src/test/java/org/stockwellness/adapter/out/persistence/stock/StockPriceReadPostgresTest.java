@@ -48,8 +48,8 @@ class StockPriceReadPostgresTest {
         jdbc.update("DELETE FROM stock_price_daily");
         jdbc.update("DELETE FROM stock");
         stockId = jdbc.queryForObject("""
-                INSERT INTO stock(market_code, ticker, name, currency, status)
-                VALUES ('KOSPI', '005930', 'Samsung', 'KRW', 'ACTIVE') RETURNING id
+                INSERT INTO stock(market_code, ticker, name, market_type, currency, status)
+                VALUES ('KOSPI', '005930', 'Samsung', 'KOSPI', 'KRW', 'ACTIVE') RETURNING id
                 """, Long.class);
     }
 

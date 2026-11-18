@@ -104,6 +104,7 @@ class PortfolioRepositoryTest {
         entityManager.clear();
 
         Portfolio reloaded = portfolioRepository.findWithItems(saved.getId(), memberId).orElseThrow();
+        assertThat(reloaded.getDescription()).isEqualTo("설명");
         assertThat(reloaded.getItems()).singleElement()
                 .extracting(PortfolioItem::getQuantity)
                 .isEqualTo(new BigDecimal("116.504854"));

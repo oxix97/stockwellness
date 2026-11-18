@@ -3,11 +3,16 @@ package org.stockwellness.adapter.out.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.stockwellness.domain.portfolio.advisor.AdviceAction;
+import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
 import org.stockwellness.support.ManualSqlTestSupport;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,6 +38,67 @@ class RedesignedSchemaPostgresTest {
                 .isEqualTo(37);
         assertThat(jdbc.queryForObject("select count(*) from market", Integer.class)).isEqualTo(5);
         assertThat(jdbc.queryForObject("select to_regclass('public.flyway_schema_history') is null", Boolean.class)).isTrue();
+    }
+
+    @Test
+    void validates_all_runtime_entities_against_the_redesigned_schema() {
+        var factory = new LocalContainerEntityManagerFactoryBean();
+        factory.setDataSource(new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+        factory.setPackagesToScan("org.stockwellness");
+        factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        factory.setJpaPropertyMap(java.util.Map.of(
+                "hibernate.hbm2ddl.auto", "validate",
+                "hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy"));
+
+        try {
+            factory.afterPropertiesSet();
+        } finally {
+            factory.destroy();
+        }
+    }
+
+    @Test
+    void persistsAdvisorReportThroughItsCanonicalJsonbMapping() {
+        long memberId = member("advisor-report");
+        long portfolioId = jdbc.queryForObject(
+                "insert into portfolio(member_id,name) values (?, 'advisor test') returning id",
+                Long.class, memberId);
+
+        var factory = new LocalContainerEntityManagerFactoryBean();
+        factory.setDataSource(new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+        factory.setPackagesToScan("org.stockwellness.domain.portfolio.advisor");
+        factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        factory.setJpaPropertyMap(java.util.Map.of(
+                "hibernate.hbm2ddl.auto", "validate",
+                "hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy"));
+
+        EntityManagerFactory entityManagerFactory = null;
+        Long reportId;
+        try {
+            factory.afterPropertiesSet();
+            entityManagerFactory = factory.getObject();
+            var entityManager = entityManagerFactory.createEntityManager();
+            entityManager.getTransaction().begin();
+            var report = AdvisorReport.create(portfolioId, "gpt-4o-mini", "unversioned", "abc123",
+                    "조언", AdviceAction.REBALANCE);
+            entityManager.persist(report);
+            entityManager.getTransaction().commit();
+            reportId = report.getId();
+            entityManager.close();
+
+            var reader = entityManagerFactory.createEntityManager();
+            var loaded = reader.find(AdvisorReport.class, reportId);
+            assertThat(loaded.getContent()).isEqualTo("조언");
+            assertThat(loaded.getAction()).isEqualTo(AdviceAction.REBALANCE);
+            assertThat(loaded.getInputManifest()).containsEntry("context_sha256", "abc123");
+            assertThat(loaded.getGeneratedAt()).isNotNull();
+            reader.close();
+        } finally {
+            if (entityManagerFactory != null) factory.destroy();
+        }
+
+        assertThat(jdbc.queryForObject("select result->>'content' from portfolio_ai_report where id=?", String.class, reportId))
+                .isEqualTo("조언");
     }
 
     @Test
@@ -110,9 +176,9 @@ class RedesignedSchemaPostgresTest {
 
     @Test
     void distinguishesProviderNamespacesAndReturnSeriesAndRejectsDuplicateCanonicalSeries() {
-        jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSPI','DUP001','A','KRW','ACTIVE')");
-        jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSDAQ','DUP001','B','KRW','ACTIVE')");
-        assertThatThrownBy(() -> jdbc.update("insert into stock(market_code,ticker,name,currency,status) values ('KOSPI','DUP001','C','KRW','ACTIVE')"))
+        jdbc.update("insert into stock(market_code,ticker,name,market_type,currency,status) values ('KOSPI','DUP001','A','KOSPI','KRW','ACTIVE')");
+        jdbc.update("insert into stock(market_code,ticker,name,market_type,currency,status) values ('KOSDAQ','DUP001','B','KOSDAQ','KRW','ACTIVE')");
+        assertThatThrownBy(() -> jdbc.update("insert into stock(market_code,ticker,name,market_type,currency,status) values ('KOSPI','DUP001','C','KOSPI','KRW','ACTIVE')"))
                 .isInstanceOf(DataAccessException.class);
 
         long kospi = jdbc.queryForObject("insert into market_index(index_key,name,kind,public_benchmark_code) values ('KRX:KOSPI:0001','KOSPI','MARKET','0001') returning id", Long.class);
@@ -140,6 +206,6 @@ class RedesignedSchemaPostgresTest {
     }
 
     private long stock(String ticker) {
-        return jdbc.queryForObject("insert into stock(market_code,ticker,name,currency,status) values ('KOSPI',?,'test','KRW','ACTIVE') returning id", Long.class, ticker);
+        return jdbc.queryForObject("insert into stock(market_code,ticker,name,market_type,currency,status) values ('KOSPI',?,'test','KOSPI','KRW','ACTIVE') returning id", Long.class, ticker);
     }
 }

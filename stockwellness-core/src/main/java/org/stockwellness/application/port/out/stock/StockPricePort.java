@@ -14,10 +14,6 @@ import org.stockwellness.domain.stock.price.TradeDirection;
 
 public interface StockPricePort {
 
-    StockPrice save(StockPrice stockPrice);
-
-    void saveAll(List<StockPrice> stockPrices);
-
     List<StockSupplyRankingResult> findTopInstitutionStocksBySupply(LocalDate date, TradeDirection direction, int limit);
 
     List<StockSupplyRankingResult> findTopForeignStocksBySupply(LocalDate date, TradeDirection direction, int limit);
