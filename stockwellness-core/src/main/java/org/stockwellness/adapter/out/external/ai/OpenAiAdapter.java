@@ -5,6 +5,7 @@ import java.util.concurrent.*;
 
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.retry.annotation.Backoff;
@@ -32,6 +33,9 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
 
     private final ChatClient chatClient;
     private final PromptTemplateMapper promptTemplateMapper;
+
+    @Value("${spring.ai.openai.chat.options.model:gpt-4o-mini}")
+    private String modelVersion;
 
     public OpenAiAdapter(ChatClient.Builder builder, PromptTemplateMapper promptTemplateMapper) {
         this.chatClient = builder.build();
@@ -90,20 +94,21 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
             maxAttempts = 3,
             backoff = @Backoff(delay = 2000, multiplier = 2.0)
     )
-    public AiReport generateInsight(String systemInstruction, AiAnalysisContext context) {
+    public LlmClientPort.AiGenerationResult generateInsight(String systemInstruction, AiAnalysisContext context) {
         String userContext = promptTemplateMapper.toPromptString(context);
-
         try {
-            return executeAiCall(systemInstruction, userContext, AiReport.class, "Stock AI Analysis");
-        } catch (Exception e) {
-            return recoverGenerateInsight(e, systemInstruction, context);
+            AiReport report = executeAiCall(systemInstruction, userContext, AiReport.class, "Stock AI Analysis");
+            return new LlmClientPort.AiGenerationResult(report, configuredModelVersion(), true, null);
+        } catch (Exception exception) {
+            return recoverGenerateInsight(exception, systemInstruction, context);
         }
     }
 
     @Recover
-    public AiReport recoverGenerateInsight(Exception e, String systemInstruction, AiAnalysisContext context) {
+    public LlmClientPort.AiGenerationResult recoverGenerateInsight(Exception e, String systemInstruction, AiAnalysisContext context) {
         log.error("❌ Stock AI Analysis Failed after retries: {}", e.getMessage());
-        return AiReport.fallback();
+        return new LlmClientPort.AiGenerationResult(AiReport.fallback(), configuredModelVersion(), false,
+                "AI_GENERATION_FAILED");
     }
 
     @Override
@@ -169,6 +174,10 @@ public class OpenAiAdapter implements LlmClientPort, LoadPortfolioAiPort, LoadSe
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             throw new IllegalStateException(taskName + " failed", cause);
         }
+    }
+
+    private String configuredModelVersion() {
+        return modelVersion == null || modelVersion.isBlank() ? "gpt-4o-mini" : modelVersion;
     }
 
     @PreDestroy

@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 
 public record PortfolioRebalancingResponse(
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     BigDecimal totalValue,
     List<RebalancingItemResponse> items
 ) {
@@ -17,27 +19,41 @@ public record PortfolioRebalancingResponse(
         BigDecimal targetWeight,
         BigDecimal diffWeight,
         BigDecimal currentQuantity,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         BigDecimal recommendedQuantity,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         BigDecimal currentPrice,
+        @JsonInclude(JsonInclude.Include.ALWAYS)
         BigDecimal expectedTradeAmount
     ) {}
 
     public static PortfolioRebalancingResponse from(PortfolioRebalancingResult result) {
         return new PortfolioRebalancingResponse(
-            result.totalValue().setScale(0, RoundingMode.HALF_UP),
-            result.items().stream()
-                .map(i -> new RebalancingItemResponse(
-                    i.symbol(),
-                    i.name(),
-                    i.currentWeight().setScale(4, RoundingMode.HALF_UP),
-                    i.targetWeight().setScale(4, RoundingMode.HALF_UP),
-                    i.diffWeight().setScale(4, RoundingMode.HALF_UP),
-                    i.currentQuantity().setScale(4, RoundingMode.HALF_UP), // Quantities can be fractional
-                    i.recommendedQuantity().setScale(4, RoundingMode.HALF_UP),
-                    i.currentPrice().setScale(0, RoundingMode.HALF_UP),
-                    i.recommendedQuantity().multiply(i.currentPrice()).setScale(0, RoundingMode.HALF_UP)
-                ))
+            scale(result.totalValue(), 0),
+            result.items() == null ? List.of() : result.items().stream()
+                .map(i -> {
+                    BigDecimal recommendedQuantity = scale(i.recommendedQuantity(), 4);
+                    BigDecimal currentPrice = scale(i.currentPrice(), 0);
+                    BigDecimal expectedTradeAmount = (i.recommendedQuantity() != null && i.currentPrice() != null)
+                        ? i.recommendedQuantity().multiply(i.currentPrice()).setScale(0, RoundingMode.HALF_UP)
+                        : null;
+                    return new RebalancingItemResponse(
+                        i.symbol(),
+                        i.name(),
+                        scale(i.currentWeight(), 4),
+                        scale(i.targetWeight(), 4),
+                        scale(i.diffWeight(), 4),
+                        scale(i.currentQuantity(), 4), // Quantities can be fractional
+                        recommendedQuantity,
+                        currentPrice,
+                        expectedTradeAmount
+                    );
+                })
                 .toList()
         );
+    }
+
+    private static BigDecimal scale(BigDecimal value, int scale) {
+        return value == null ? null : value.setScale(scale, RoundingMode.HALF_UP);
     }
 }

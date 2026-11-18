@@ -1,6 +1,31 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     id("org.springframework.boot")
     id("com.epages.restdocs-api-spec")
+}
+
+val integrationTestSourceSet = sourceSets.create("integrationTest") {
+    compileClasspath += sourceSets["main"].output + sourceSets["test"].output
+    runtimeClasspath += sourceSets["main"].output + sourceSets["test"].output
+}
+
+configurations[integrationTestSourceSet.implementationConfigurationName]
+    .extendsFrom(configurations["testImplementation"])
+configurations[integrationTestSourceSet.runtimeOnlyConfigurationName]
+    .extendsFrom(configurations["testRuntimeOnly"])
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs the isolated cross-module Issue 331 integration tests."
+    group = "verification"
+    testClassesDirs = integrationTestSourceSet.output.classesDirs
+    classpath = integrationTestSourceSet.runtimeClasspath
+    dependsOn(integrationTestSourceSet.classesTaskName)
+    useJUnitPlatform()
+    testLogging { events("passed", "skipped", "failed") }
+    // The environment gate and disposable service state are not Gradle task inputs.
+    outputs.upToDateWhen { false }
+    shouldRunAfter(tasks.test)
 }
 
 openapi3 {
@@ -14,6 +39,7 @@ openapi3 {
 dependencies {
     implementation(project(":stockwellness-core"))
     testImplementation(testFixtures(project(":stockwellness-core")))
+    add(integrationTestSourceSet.implementationConfigurationName, project(":stockwellness-batch"))
 
     // web
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -37,11 +63,6 @@ dependencies {
     // ai / external http
     implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
     implementation("org.apache.httpcomponents.client5:httpclient5")
-
-    // flyway / db
-//    implementation("org.flywaydb:flyway-core")
-//    implementation("org.flywaydb:flyway-database-postgresql")
-//    runtimeOnly("org.postgresql:postgresql")
 
     // logging
     implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.11.0")

@@ -20,9 +20,9 @@ import org.stockwellness.application.port.in.portfolio.result.PortfolioDiversifi
 import org.stockwellness.application.port.in.portfolio.result.PortfolioInceptionChartResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioRebalancingResult;
 import org.stockwellness.application.port.in.portfolio.result.PortfolioValuationResult;
+import org.stockwellness.application.port.in.portfolio.result.ValuationStatus;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
 import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.application.port.out.stock.StockPricePort;
@@ -32,14 +32,23 @@ import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.domain.stock.price.ChartPeriod;
 import org.stockwellness.domain.stock.price.StockPrice;
+import org.stockwellness.domain.stock.price.StockPriceId;
 import org.stockwellness.fixture.StockFixture;
+import org.stockwellness.global.error.ErrorCode;
+import org.stockwellness.global.error.exception.GlobalException;
+import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,9 +73,6 @@ class PortfolioAnalysisServiceTest {
     private StockPricePort stockPricePort;
 
     @Mock
-    private BenchmarkPricePort benchmarkPricePort;
-
-    @Mock
     private LoadBenchmarkPort loadBenchmarkPort;
 
     @Mock
@@ -80,6 +86,25 @@ class PortfolioAnalysisServiceTest {
 
     private static final Long MEMBER_ID = 1L;
     private static final Long PORTFOLIO_ID = 100L;
+
+    @Test
+    @DisplayName("벤치마크 수익률은 새 구조의 기준일 이전 FINAL 종가로 계산한다")
+    void calculateBenchmarkReturn_usesCanonicalFinalBenchmarkPrices() {
+        LocalDate startDate = LocalDate.of(2026, 1, 1);
+        LocalDate endDate = LocalDate.of(2026, 1, 31);
+        given(loadBenchmarkPort.loadBenchmarkPriceAtOrBefore("0001", startDate))
+                .willReturn(Optional.of(new StockPriceResult(startDate.minusDays(1), null, null, null,
+                        new BigDecimal("100"), new BigDecimal("100"), null, null, null, null, null, null)));
+        given(loadBenchmarkPort.loadBenchmarkPriceAtOrBefore("0001", endDate))
+                .willReturn(Optional.of(new StockPriceResult(endDate.minusDays(1), null, null, null,
+                        new BigDecimal("110"), new BigDecimal("110"), null, null, null, null, null, null)));
+
+        BigDecimal result = portfolioAnalysisService.calculateBenchmarkReturn("0001", startDate, endDate);
+
+        assertThat(result).isEqualByComparingTo("10.0");
+        verify(loadBenchmarkPort).loadBenchmarkPriceAtOrBefore("0001", startDate);
+        verify(loadBenchmarkPort).loadBenchmarkPriceAtOrBefore("0001", endDate);
+    }
 
     @Test
     @DisplayName("포트폴리오 가치 평가: 주식과 현금이 포함된 포트폴리오의 총 평가액 및 수익률을 계산한다")
@@ -97,7 +122,9 @@ class PortfolioAnalysisServiceTest {
                 portfolio,
                 Map.of(),
                 Map.of("005930", List.of(samsungPrice)),
-                PortfolioStats.create(portfolio, LocalDate.now(), BigDecimal.valueOf(10), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1), BigDecimal.ZERO, BigDecimal.ZERO)
+                PortfolioStats.create(portfolio, LocalDate.now().minusYears(2), LocalDate.now(),
+                        "RAW", Map.of("source", "test"), BigDecimal.valueOf(10), BigDecimal.valueOf(1.5),
+                        BigDecimal.valueOf(1.1), BigDecimal.ZERO, BigDecimal.ZERO)
         );
 
         given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
@@ -316,7 +343,48 @@ class PortfolioAnalysisServiceTest {
         assertThat(result.valuation().cagr()).isEqualByComparingTo("15.5");
         assertThat(result.valuation().volatility()).isEqualByComparingTo("8.4");
         assertThat(result.valuation().alpha()).isEqualByComparingTo("3.2");
+        assertThat(result.valuation().mdd()).isNull();
+        assertThat(result.valuation().sharpeRatio()).isNull();
+        assertThat(result.valuation().beta()).isNull();
         assertThat(result.itemContributions().get("005930")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("통합 요약 분석: 실제 계산 결과가 0인 지표는 null이 아니라 숫자 0으로 유지된다")
+    void getAnalysisSummary_preservesRealZeroPerformanceAndStats() {
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "실제 0 지표", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("005930", BigDecimal.valueOf(10), BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now())
+        ));
+        StockPrice samsungPrice = createStockPrice("005930", 50000, 50000);
+        PortfolioStats zeroStats = PortfolioStats.create(
+                portfolio, LocalDate.now().minusYears(2), LocalDate.now(),
+                "RAW", Map.of("source", "test"),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO
+        );
+        AnalysisContext context = new AnalysisContext(portfolio, Map.of(), Map.of("005930", List.of(samsungPrice)), zeroStats);
+
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusMonths(12);
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(context);
+        given(simulationDataProvider.loadData(anyList(), anyList(), eq(start), eq(end)))
+                .willReturn(new SimulationData(Map.of(), Map.of()));
+
+        BacktestResult zeroPerf = new BacktestResult(
+                Collections.emptyList(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Collections.emptyList(), "Advice");
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean())).willReturn(zeroPerf);
+
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        assertThat(result.valuation().cagr()).isNotNull().isEqualByComparingTo("0");
+        assertThat(result.valuation().volatility()).isNotNull().isEqualByComparingTo("0");
+        assertThat(result.valuation().alpha()).isNotNull().isEqualByComparingTo("0");
+        assertThat(result.valuation().mdd()).isNotNull().isEqualByComparingTo("0");
+        assertThat(result.valuation().sharpeRatio()).isNotNull().isEqualByComparingTo("0");
+        assertThat(result.valuation().beta()).isNotNull().isEqualByComparingTo("0");
     }
 
     @Test
@@ -370,5 +438,153 @@ class PortfolioAnalysisServiceTest {
                 BigDecimal.valueOf(10000),
                 null
         );
+    }
+
+    @Test
+    @DisplayName("통합 요약: 유효한 0원 FINAL 보유는 성과 백테스트가 불가해도 0원 평가와 COMPLETE 상태를 반환한다")
+    void getAnalysisSummary_preservesZeroHoldingWhenBacktestCannotRun() {
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "SW64 zero-holding", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964003", BigDecimal.ONE, new BigDecimal("100"), "KRW", BigDecimal.valueOf(100), LocalDate.of(2026, 11, 17))
+        ));
+        Stock stock = Stock.of("964003", null, "격리검증 영원주", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
+        ReflectionTestUtils.setField(stock, "id", 64003L);
+        StockPrice zeroPrice = mock(StockPrice.class);
+        given(zeroPrice.getId()).willReturn(new StockPriceId(LocalDate.of(2026, 11, 17), 64003L));
+        given(zeroPrice.getClosePrice()).willReturn(BigDecimal.ZERO);
+        given(zeroPrice.getPreviousClosePrice()).willReturn(null);
+
+        LocalDate end = LocalDate.of(2026, 11, 17);
+        LocalDate start = end.minusMonths(12);
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID))
+                .willReturn(new AnalysisContext(portfolio, Map.of("964003", stock), Map.of("964003", List.of(zeroPrice)), null));
+        given(simulationDataProvider.loadData(anyList(), anyList(), eq(start), eq(end)))
+                .willReturn(new SimulationData(Map.of(), Map.of()));
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean()))
+                .willThrow(new GlobalException(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        assertThat(result.valuation().valuationStatus()).isEqualTo(ValuationStatus.COMPLETE);
+        assertThat(result.valuation().asOfDate()).isEqualTo(LocalDate.of(2026, 11, 17));
+        assertThat(result.valuation().missingSymbols()).isEmpty();
+        assertThat(result.valuation().currentTotalValue()).isEqualByComparingTo("0");
+        assertThat(result.valuation().totalProfitLoss()).isEqualByComparingTo("-100");
+        assertThat(result.valuation().totalReturnRate()).isEqualByComparingTo("-100");
+        assertThat(result.valuation().dailyProfitLoss()).isNull();
+        assertThat(result.valuation().dailyReturnRate()).isNull();
+        assertThat(result.valuation().cagr()).isNull();
+        assertThat(result.valuation().volatility()).isNull();
+        assertThat(result.valuation().alpha()).isNull();
+        assertThat(result.valuation().mdd()).isNull();
+        assertThat(result.valuation().sharpeRatio()).isNull();
+        assertThat(result.valuation().beta()).isNull();
+        assertThat(result.diversification().totalValue()).isEqualByComparingTo("0");
+        assertThat(result.diversification().assetRatios()).isEmpty();
+        assertThat(result.rebalancing().totalValue()).isEqualByComparingTo("0");
+        assertThat(result.rebalancing().items()).singleElement()
+                .satisfies(item -> {
+                    assertThat(item.currentPrice()).isEqualByComparingTo("0");
+                    assertThat(item.recommendedQuantity()).isNull();
+                });
+        assertThat(result.itemContributions().get("964003")).isEqualByComparingTo("-100");
+    }
+
+    @Test
+    @DisplayName("통합 요약: PARTIAL 가격 결손 시 성과 백테스트를 생략하고 status/date/missingSymbols와 불완전 합계 null을 보존한다")
+    void getAnalysisSummary_preservesPartialStatusAndNullTotalsWithoutPurchaseFallback() {
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "SW64 partial-holding", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964001", BigDecimal.ONE, new BigDecimal("100.49"), "KRW", BigDecimal.valueOf(60), LocalDate.of(2026, 11, 17)),
+                PortfolioItem.createStock("964002", BigDecimal.ONE, new BigDecimal("100.49"), "KRW", BigDecimal.valueOf(40), LocalDate.of(2026, 11, 17))
+        ));
+        StockPrice price964001 = mock(StockPrice.class);
+        given(price964001.getId()).willReturn(new StockPriceId(LocalDate.of(2026, 11, 17), 64001L));
+        given(price964001.getClosePrice()).willReturn(new BigDecimal("950.55"));
+
+        LocalDate end = LocalDate.of(2026, 11, 17);
+        LocalDate start = end.minusMonths(12);
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID))
+                .willReturn(new AnalysisContext(portfolio, Map.of(), Map.of("964001", List.of(price964001)), null));
+
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        verify(simulationDataProvider, never()).loadData(anyList(), anyList(), any(), any());
+        assertThat(result.valuation().valuationStatus()).isEqualTo(ValuationStatus.PARTIAL);
+        assertThat(result.valuation().asOfDate()).isEqualTo(LocalDate.of(2026, 11, 17));
+        assertThat(result.valuation().missingSymbols()).containsExactly("964002");
+        assertThat(result.valuation().totalPurchaseAmount()).isEqualByComparingTo("200.98");
+        assertThat(result.valuation().currentTotalValue()).isNull();
+        assertThat(result.valuation().totalProfitLoss()).isNull();
+        assertThat(result.valuation().totalReturnRate()).isNull();
+        assertThat(result.valuation().cagr()).isNull();
+        assertThat(result.valuation().volatility()).isNull();
+        assertThat(result.valuation().alpha()).isNull();
+        assertThat(result.valuation().mdd()).isNull();
+        assertThat(result.valuation().sharpeRatio()).isNull();
+        assertThat(result.valuation().beta()).isNull();
+        assertThat(result.diversification().totalValue()).isNull();
+        assertThat(result.diversification().assetRatios()).isEmpty();
+        assertThat(result.diversification().sectorRatios()).isEmpty();
+        assertThat(result.diversification().countryRatios()).isEmpty();
+        assertThat(result.rebalancing().totalValue()).isNull();
+        assertThat(result.rebalancing().items()).isEmpty();
+        assertThat(result.itemContributions()).doesNotContainKey("964002");
+    }
+
+    @Test
+    @DisplayName("통합 요약: UNAVAILABLE 가격 결손 시 404를 던지지 않고 UNAVAILABLE 상태와 null 합계를 반환한다")
+    void getAnalysisSummary_preservesUnavailableStatusAndNullTotals() {
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "SW64 missing-holding", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964002", BigDecimal.ONE, new BigDecimal("100"), "KRW", BigDecimal.valueOf(100), LocalDate.of(2026, 11, 17))
+        ));
+
+        LocalDate end = LocalDate.of(2026, 11, 17);
+        LocalDate start = end.minusMonths(12);
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID))
+                .willReturn(new AnalysisContext(portfolio, Map.of(), Map.of(), null));
+
+        PortfolioAnalysisSummaryResult result = portfolioAnalysisService.getAnalysisSummary(MEMBER_ID, PORTFOLIO_ID, start, end);
+
+        verify(simulationDataProvider, never()).loadData(anyList(), anyList(), any(), any());
+        assertThat(result.valuation().valuationStatus()).isEqualTo(ValuationStatus.UNAVAILABLE);
+        assertThat(result.valuation().asOfDate()).isNull();
+        assertThat(result.valuation().missingSymbols()).containsExactly("964002");
+        assertThat(result.valuation().currentTotalValue()).isNull();
+        assertThat(result.valuation().cagr()).isNull();
+        assertThat(result.valuation().volatility()).isNull();
+        assertThat(result.valuation().alpha()).isNull();
+        assertThat(result.valuation().mdd()).isNull();
+        assertThat(result.valuation().sharpeRatio()).isNull();
+        assertThat(result.valuation().beta()).isNull();
+        assertThat(result.diversification().totalValue()).isNull();
+        assertThat(result.diversification().assetRatios()).isEmpty();
+        assertThat(result.rebalancing().totalValue()).isNull();
+        assertThat(result.rebalancing().items()).isEmpty();
+        assertThat(result.itemContributions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("명시적 백테스트는 가격 결손 시 기존 PRICE_DATA_NOT_FOUND 예외를 그대로 유지한다")
+    void runBacktest_preservesPriceValidationFailure() {
+        List<String> benchmarkTickers = List.of("0001", "1001", "SPX");
+        BacktestPortfolioCommand command = new BacktestPortfolioCommand(
+                MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", BigDecimal.valueOf(10000000),
+                benchmarkTickers, ChartPeriod.ONE_YEAR, false, RebalancingPeriod.NONE, Map.of());
+        Portfolio portfolio = Portfolio.create(MEMBER_ID, "Missing", "");
+        portfolio.updateItems(List.of(
+                PortfolioItem.createStock("964002", BigDecimal.ONE, BigDecimal.valueOf(100), "KRW", BigDecimal.valueOf(100), LocalDate.now())
+        ));
+        given(dataLoader.loadContext(PORTFOLIO_ID, MEMBER_ID)).willReturn(new AnalysisContext(portfolio, Map.of(), Map.of(), null));
+        given(simulationDataProvider.loadData(anyList(), eq(benchmarkTickers), any(), any()))
+                .willReturn(new SimulationData(Map.of(), Map.of()));
+        given(backtestEngine.runLumpSum(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean()))
+                .willThrow(new GlobalException(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        assertThatThrownBy(() -> portfolioAnalysisService.runBacktest(command))
+                .isInstanceOf(GlobalException.class)
+                .extracting(e -> ((GlobalException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND);
     }
 }

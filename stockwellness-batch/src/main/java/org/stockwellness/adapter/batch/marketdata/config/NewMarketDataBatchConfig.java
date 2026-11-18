@@ -1,6 +1,7 @@
 package org.stockwellness.adapter.batch.marketdata.config;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Map;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.stockwellness.application.port.in.batch.NewMarketDataSyncUseCase;
+import org.stockwellness.adapter.batch.stockprice.support.StockPriceBatchTargetQuery;
 import org.stockwellness.domain.stock.Stock;
-import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndexKind;
+import org.stockwellness.global.util.DateUtil;
 
 @Configuration
 @RequiredArgsConstructor
@@ -66,11 +68,13 @@ public class NewMarketDataBatchConfig {
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<Stock> kisEodStockReader() {
+    public JpaPagingItemReader<Stock> kisEodStockReader(
+            @Value("#{jobParameters['ticker']}") String ticker) {
+        String targetTicker = ticker == null ? null : ticker.trim();
         return new JpaPagingItemReaderBuilder<Stock>().name("kisEodStockReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(100)
-                .queryString("select s from Stock s where s.marketCode in ('KOSPI','KOSDAQ') and s.status <> :delisted order by s.id")
-                .parameterValues(Map.of("delisted", StockStatus.DELISTED)).build();
+                .queryString(StockPriceBatchTargetQuery.selectQuery(targetTicker))
+                .parameterValues(StockPriceBatchTargetQuery.parameters(targetTicker)).build();
     }
 
     @Bean
@@ -78,9 +82,43 @@ public class NewMarketDataBatchConfig {
     public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodStockProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
-        LocalDate from = LocalDate.parse(start);
-        LocalDate to = LocalDate.parse(end);
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
         return stock -> { sync.syncStockPrices(stock, from, to); return stock; };
+    }
+
+    @Bean
+    public Job kisEodInvestorTradeSyncJob(Step kisEodInvestorTradeStep) {
+        return new JobBuilder("kisEodInvestorTradeSyncJob", jobRepository).start(kisEodInvestorTradeStep).build();
+    }
+
+    @Bean
+    public Step kisEodInvestorTradeStep(JpaPagingItemReader<Stock> kisEodInvestorStockReader,
+            org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor) {
+        return new StepBuilder("kisEodInvestorTradeStep", jobRepository)
+                .<Stock, Stock>chunk(1, transactionManager)
+                .reader(kisEodInvestorStockReader).processor(kisEodInvestorStockProcessor).writer(chunk -> {}).build();
+    }
+
+    @Bean
+    @StepScope
+    public JpaPagingItemReader<Stock> kisEodInvestorStockReader(
+            @Value("#{jobParameters['ticker']}") String ticker) {
+        String targetTicker = ticker == null ? null : ticker.trim();
+        return new JpaPagingItemReaderBuilder<Stock>().name("kisEodInvestorStockReader")
+                .entityManagerFactory(entityManagerFactory).pageSize(100)
+                .queryString(StockPriceBatchTargetQuery.selectQuery(targetTicker))
+                .parameterValues(StockPriceBatchTargetQuery.parameters(targetTicker)).build();
+    }
+
+    @Bean
+    @StepScope
+    public org.springframework.batch.item.ItemProcessor<Stock, Stock> kisEodInvestorStockProcessor(
+            NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
+            @Value("#{jobParameters['endDate']}") String end) {
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
+        return stock -> { sync.syncStockInvestorTrades(stock, from, to); return stock; };
     }
 
     @Bean
@@ -89,29 +127,59 @@ public class NewMarketDataBatchConfig {
     }
 
     @Bean
-    public Step kisEodIndexPriceStep(JpaPagingItemReader<MarketIndex> kisEodIndexReader,
-            org.springframework.batch.item.ItemProcessor<MarketIndex, MarketIndex> kisEodIndexProcessor) {
+    public Step kisEodIndexPriceStep(JpaPagingItemReader<IndexSeries> kisEodIndexReader,
+            org.springframework.batch.item.ItemProcessor<IndexSeries, IndexSeries> kisEodIndexProcessor) {
         return new StepBuilder("kisEodIndexPriceStep", jobRepository)
-                .<MarketIndex, MarketIndex>chunk(1, transactionManager)
+                .<IndexSeries, IndexSeries>chunk(1, transactionManager)
                 .reader(kisEodIndexReader).processor(kisEodIndexProcessor).writer(chunk -> {}).build();
     }
 
     @Bean
     @StepScope
-    public JpaPagingItemReader<MarketIndex> kisEodIndexReader() {
-        return new JpaPagingItemReaderBuilder<MarketIndex>().name("kisEodIndexReader")
+    public JpaPagingItemReader<IndexSeries> kisEodIndexReader(
+            @Value("#{jobParameters['market']}") String market) {
+        String normalizedMarket = market == null || market.isBlank()
+                ? "KR" : market.trim().toUpperCase(Locale.ROOT);
+        String marketPredicate;
+        Map<String, Object> queryParameters;
+        if ("KR".equals(normalizedMarket)) {
+            marketPredicate = "(s.providerNamespace in ('kis.idxcode.KOSPI','kis.idxcode.KOSDAQ') "
+                    + "and s.currency = 'KRW' and s.calendarMarketCode in ('KOSPI','KOSDAQ') "
+                    + "and i.kind in (:marketKind, :sectorKind))";
+            queryParameters = Map.of("marketKind", MarketIndexKind.MARKET,
+                    "sectorKind", MarketIndexKind.SECTOR);
+        } else if ("US".equals(normalizedMarket)) {
+            marketPredicate = "(s.providerNamespace = 'kis.ovrs.idxcode.N' "
+                    + "and s.providerSeriesCode in ('SPX','NDX','.DJI') "
+                    + "and s.calendarMarketCode in ('NASDAQ','NYSE') and s.currency = 'USD' "
+                    + "and i.kind = :marketKind)";
+            queryParameters = Map.of("marketKind", MarketIndexKind.MARKET);
+        } else {
+            throw new IllegalArgumentException("market must be KR or US");
+        }
+        return new JpaPagingItemReaderBuilder<IndexSeries>().name("kisEodIndexReader")
                 .entityManagerFactory(entityManagerFactory).pageSize(20)
-                .queryString("select i from MarketIndex i where i.provider = 'KIS' and i.marketCode in ('KOSPI','KOSDAQ') and i.indexKind = :kind order by i.id")
-                .parameterValues(Map.of("kind", MarketIndexKind.MARKET)).build();
+                .queryString("select s from IndexSeries s join s.marketIndex i where s.provider = 'KIS' "
+                        + "and s.returnBasis = 'PRICE' and s.dividendBasis = 'NONE' "
+                        + "and s.active = true and s.canonical = true and " + marketPredicate + " order by s.id")
+                .parameterValues(queryParameters).build();
     }
 
     @Bean
     @StepScope
-    public org.springframework.batch.item.ItemProcessor<MarketIndex, MarketIndex> kisEodIndexProcessor(
+    public org.springframework.batch.item.ItemProcessor<IndexSeries, IndexSeries> kisEodIndexProcessor(
             NewMarketDataSyncUseCase sync, @Value("#{jobParameters['startDate']}") String start,
             @Value("#{jobParameters['endDate']}") String end) {
-        LocalDate from = LocalDate.parse(start);
-        LocalDate to = LocalDate.parse(end);
-        return index -> { sync.syncIndexPrices(index, from, to); return index; };
+        LocalDate from = parseDate(start, "startDate");
+        LocalDate to = parseDate(end, "endDate");
+        return series -> { sync.syncIndexPrices(series, from, to); return series; };
+    }
+
+    private static LocalDate parseDate(String rawDate, String parameterName) {
+        LocalDate date = DateUtil.parseFlexible(rawDate);
+        if (date == null) {
+            throw new IllegalArgumentException(parameterName + " is required and must be a valid date");
+        }
+        return date;
     }
 }

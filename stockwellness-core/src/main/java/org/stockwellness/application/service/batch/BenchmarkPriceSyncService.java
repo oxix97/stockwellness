@@ -6,12 +6,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 
-@Service
 @RequiredArgsConstructor
 public class BenchmarkPriceSyncService implements BenchmarkPriceSyncUseCase {
 
@@ -22,6 +20,14 @@ public class BenchmarkPriceSyncService implements BenchmarkPriceSyncUseCase {
     public BenchmarkPriceResult toBenchmarkPrice(BenchmarkPriceCommand command) {
         String ticker = command.type().getTicker();
         BigDecimal close = command.closePrice();
+        if (command.openPrice() == null || command.highPrice() == null
+                || command.lowPrice() == null || close == null) {
+            throw new IllegalArgumentException("벤치마크 필수 시세 누락: " + ticker + ", " + command.baseDate());
+        }
+        if (command.openPrice().signum() <= 0 || command.highPrice().signum() <= 0
+                || command.lowPrice().signum() <= 0 || close.signum() <= 0) {
+            throw new IllegalArgumentException("벤치마크 유효하지 않은 가격: " + ticker + ", " + command.baseDate());
+        }
         BigDecimal changeRate = command.changeRate();
         BigDecimal prevClose = prevCloseMap.get(ticker);
 

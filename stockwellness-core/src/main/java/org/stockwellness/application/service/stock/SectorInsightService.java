@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -17,185 +16,159 @@ import org.stockwellness.application.port.in.stock.SectorInsightUseCase;
 import org.stockwellness.application.port.in.stock.result.SectorComparisonResult;
 import org.stockwellness.application.port.in.stock.result.SectorDetailResult;
 import org.stockwellness.application.port.in.stock.result.SectorRankingResult;
-import org.stockwellness.application.port.out.stock.*;
+import org.stockwellness.application.port.in.stock.result.StockPriceResult;
+import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.SectorMarketObservation;
+import org.stockwellness.application.port.out.stock.SectorMarketReadPort;
+import org.stockwellness.domain.stock.BenchmarkType;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.analysis.DiagnosisStatus;
-import org.stockwellness.domain.stock.insight.SectorInsight;
+import org.stockwellness.domain.stock.analysis.TechnicalCalculator;
 import org.stockwellness.domain.stock.insight.SectorTechnicalIndicators;
 import org.stockwellness.domain.stock.insight.exception.SectorDomainException;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.global.error.ErrorCode;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SectorInsightService implements SectorInsightUseCase {
-
-    private final SectorInsightPort sectorInsightPort;
-    private final BenchmarkPricePort benchmarkPricePort;
+    private final SectorMarketReadPort sectorMarketReadPort;
+    private final LoadBenchmarkPort loadBenchmarkPort;
 
     @Override
     @Transactional
     public void syncAllSectorInsights() {
-        log.info("섹터 동기화는 이제 Batch Job(sectorEodJob)을 통해 관리됩니다. 이 메서드는 더 이상 사용되지 않습니다.");
+        log.info("섹터 데이터는 market orchestration Job에서 관리됩니다.");
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorRanking:v3", key = "#p0 + '_' + (#p1 != null ? #p1 : 'ALL') + '_' + #p2", unless = "#result == null")
+    @Cacheable(cacheNames = "sectorRanking:v4", key = "#p0 + '_' + (#p1 != null ? #p1 : 'ALL') + '_' + #p2", unless = "#result == null")
     public List<SectorRankingResult> getTopSectorsByFluctuation(LocalDate date, MarketType marketType, int limit) {
-        // 지정된 날짜의 전체 섹터 조회 (KOSPI/KOSDAQ 동시 조회 시 이름 중복 해결을 위해)
-        List<SectorInsight> allInsights = sectorInsightPort.findAllByDate(date, marketType);
-
-        if (allInsights.isEmpty()) {
-            allInsights = sectorInsightPort.findLatestDate()
-                    .map(latestDate -> sectorInsightPort.findAllByDate(latestDate, marketType))
-                    .orElse(List.of());
+        String marketCode = marketType == null ? null : marketType.name();
+        LocalDate effectiveDate = date;
+        List<SectorMarketObservation> observations = effectiveDate == null
+                ? List.of() : sectorMarketReadPort.finalOnDate(effectiveDate, marketCode);
+        if (observations.isEmpty()) {
+            effectiveDate = sectorMarketReadPort.latestFinalDate(marketCode).orElse(null);
+            if (effectiveDate == null) return List.of();
+            observations = sectorMarketReadPort.finalOnDate(effectiveDate, marketCode);
         }
 
-        if (allInsights.isEmpty()) {
-            return List.of();
-        }
-
-        // 1. 이름별로 그룹화 (이름이 같은 KOSPI/KOSDAQ 업종 통합, 공백 및 특수문자 제거하여 정규화)
-        // NPE 방지를 위해 sectorName 및 indicators가 없는 데이터는 제외
-        Map<String, List<SectorInsight>> groupedByName = allInsights.stream()
-                .filter(s -> s.getSectorName() != null && s.getIndicators() != null && s.getAvgFluctuationRate() != null && s.getSectorIndexCurrentPrice() != null)
-                .collect(Collectors.groupingBy(s -> s.getSectorName().replaceAll("[^가-힣a-zA-Z0-9]", "")));
-
-        // 2. 그룹별 평균 등락률 계산 및 결과 객체 생성
-        return groupedByName.entrySet().stream()
-                .map(entry -> {
-                    List<SectorInsight> group = entry.getValue();
-                    String name = group.getFirst().getSectorName(); // 원본 이름 중 하나 사용
-
-                    // 등락률 평균 계산
-                    BigDecimal avgRate = group.stream()
-                            .map(SectorInsight::getAvgFluctuationRate)
+        return observations.stream()
+                .filter(row -> row.sectorName() != null && row.closePrice() != null && row.changeRate() != null)
+                .collect(Collectors.groupingBy(row -> normalize(row.sectorName())))
+                .values().stream()
+                .filter(group -> !group.isEmpty())
+                .map(group -> {
+                    SectorMarketObservation representative = group.getFirst();
+                    BigDecimal averageRate = group.stream().map(SectorMarketObservation::changeRate)
                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(group.size()), 4, RoundingMode.HALF_UP);
-
-                    // 현재가 평균 (또는 대표값)
-                    BigDecimal avgPrice = group.stream()
-                            .map(SectorInsight::getSectorIndexCurrentPrice)
+                    BigDecimal averagePrice = group.stream().map(SectorMarketObservation::closePrice)
                             .reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(group.size()), 2, RoundingMode.HALF_UP);
-
-                    // 과열 여부 (그룹 내 하나라도 과열이면 과열로 간주)
-                    boolean isOverheated = group.stream().anyMatch(SectorInsight::isOverheated);
-
-                    // 대표 코드 (첫 번째 것 사용)
-                    String repCode = group.getFirst().getSectorCode();
-
-                    // AI 의견 (첫 번째 것 사용 또는 요약)
-                    String diagnosis = generateDiagnosisMessage(group.getFirst());
-
-                    return new SectorRankingResult(repCode, name, avgPrice, avgRate, isOverheated, diagnosis);
+                    boolean overheated = group.stream().anyMatch(SectorInsightService::isOverheated);
+                    return new SectorRankingResult(representative.sectorCode(), representative.sectorName(),
+                            averagePrice, averageRate, overheated, null);
                 })
-                // 3. 평균 등락률 기준 내림차순 정렬
-                .sorted((a, b) -> b.fluctuationRate().compareTo(a.fluctuationRate()))
-                // 4. 상위 limit(10)개 추출
+                .sorted(Comparator.comparing(SectorRankingResult::fluctuationRate).reversed())
                 .limit(limit)
                 .toList();
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorDetail:v3", key = "#p0 + '_' + #p1", unless = "#result == null")
+    @Cacheable(cacheNames = "sectorDetail:v4", key = "#p0 + '_' + #p1", unless = "#result == null")
     public SectorDetailResult getSectorDetail(String sectorCode, LocalDate date) {
         if (sectorCode == null || sectorCode.isBlank()) {
             throw new SectorDomainException(ErrorCode.INVALID_INPUT_VALUE);
         }
-
-        SectorInsight insight = sectorInsightPort.findBySectorCodeAndDate(sectorCode, date)
-                .or(() -> sectorInsightPort.findLatestBefore(sectorCode, date))
+        LocalDate asOf = date == null ? LocalDate.now() : date;
+        SectorMarketObservation sector = sectorMarketReadPort.latestFinal(sectorCode, asOf)
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
-
-        return new SectorDetailResult(
-                insight.getSectorCode(), insight.getSectorName(), insight.getBaseDate(),
-                insight.getSectorIndexCurrentPrice(), insight.getAvgFluctuationRate(),
-                insight.getTechnicalIndicators(), insight.isOverheated(),
-                generateDiagnosisMessage(insight), insight.getLeadingStocks(),
-                insight.getAiOpinion()
-        );
+        SectorTechnicalIndicators indicators = technicalIndicators(sector);
+        return new SectorDetailResult(sector.sectorCode(), sector.sectorName(), sector.tradeDate(),
+                sector.closePrice(), sector.changeRate(), indicators, isOverheated(sector),
+                generateDiagnosisMessage(sector.closePrice(), indicators),
+                sectorMarketReadPort.leadingStocks(sector.seriesId(), sector.tradeDate()), null);
     }
 
     @Override
-    @Cacheable(cacheNames = "sectorComparison:v3", key = "#p0", unless = "#result == null")
+    @Cacheable(cacheNames = "sectorComparison:v4", key = "#p0", unless = "#result == null")
     public SectorComparisonResult compareWithMarket(String sectorCode) {
         if (sectorCode == null || sectorCode.isBlank()) {
             throw new SectorDomainException(ErrorCode.INVALID_INPUT_VALUE);
         }
-
-        SectorInsight sector = sectorInsightPort.findLatestBefore(sectorCode, LocalDate.now().plusDays(1))
+        SectorMarketObservation sector = sectorMarketReadPort.latestFinal(sectorCode, LocalDate.now().plusDays(1))
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
-
-        LocalDate effectiveDate = sector.getBaseDate();
-        String marketTicker = sector.getMarketType().getBenchmarkTicker();
-
-        // 시장 데이터는 BenchmarkPricePort에서 조회
-        var market = benchmarkPricePort.findByTickerAndBaseDate(marketTicker, effectiveDate)
+        String marketTicker = marketTicker(sector.marketCode());
+        StockPriceResult market = loadBenchmarkPort.loadBenchmarkPriceAtOrBefore(marketTicker, sector.tradeDate())
                 .orElseThrow(() -> new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND));
+        if (sector.changeRate() == null || market.changeRate() == null) {
+            throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
+        }
 
-        BigDecimal rs = sector.getAvgFluctuationRate().subtract(market.getChangeRate());
-        List<SectorInsight> sectorHistory = sectorInsightPort.findHistoryByCode(sectorCode, effectiveDate, 30);
-        List<BenchmarkPrice> marketHistory = benchmarkPricePort.findHistoryByTicker(marketTicker, effectiveDate, 30);
-        
-        List<SectorComparisonResult.HistoricalRS> history = calculateHistoricalRSFromBenchmark(sectorHistory, marketHistory);
-
-        return new SectorComparisonResult(
-                sectorCode, sector.getSectorName(), effectiveDate,
-                sector.getAvgFluctuationRate(), market.getChangeRate(),
-                rs, resolvePerformanceStatus(rs), history
-        );
-    }
-
-    private List<SectorComparisonResult.HistoricalRS> calculateHistoricalRSFromBenchmark(
-            List<SectorInsight> sectorHistory, 
-            List<BenchmarkPrice> marketHistory
-    ) {
-        Map<LocalDate, BigDecimal> marketMap = marketHistory.stream()
-                .collect(Collectors.toMap(
-                        BenchmarkPrice::getBaseDate, 
-                        BenchmarkPrice::getChangeRate,
-                        (v1, v2) -> v1
-                ));
-
-        return sectorHistory.stream()
-                .filter(s -> marketMap.containsKey(s.getBaseDate()))
-                .map(s -> {
-                    BigDecimal mRate = marketMap.get(s.getBaseDate());
-                    BigDecimal rs = s.getAvgFluctuationRate().subtract(mRate);
-                    return new SectorComparisonResult.HistoricalRS(s.getBaseDate(), s.getAvgFluctuationRate(), mRate, rs);
+        BigDecimal relativeStrength = sector.changeRate().subtract(market.changeRate());
+        List<SectorMarketObservation> sectorHistory = sectorMarketReadPort
+                .historyFinal(sector.seriesId(), sector.tradeDate(), 30);
+        LocalDate firstDate = sectorHistory.stream().map(SectorMarketObservation::tradeDate)
+                .min(LocalDate::compareTo).orElse(sector.tradeDate());
+        Map<LocalDate, BigDecimal> marketRates = loadBenchmarkPort
+                .loadBenchmarkPrices(marketTicker, firstDate, sector.tradeDate()).stream()
+                .filter(price -> price.changeRate() != null)
+                .collect(Collectors.toMap(StockPriceResult::baseDate, StockPriceResult::changeRate, (first, ignored) -> first));
+        List<SectorComparisonResult.HistoricalRS> history = sectorHistory.stream()
+                .filter(row -> row.changeRate() != null && marketRates.containsKey(row.tradeDate()))
+                .map(row -> {
+                    BigDecimal marketRate = marketRates.get(row.tradeDate());
+                    return new SectorComparisonResult.HistoricalRS(row.tradeDate(), row.changeRate(), marketRate,
+                            row.changeRate().subtract(marketRate));
                 })
                 .sorted(Comparator.comparing(SectorComparisonResult.HistoricalRS::date))
                 .toList();
+        return new SectorComparisonResult(sector.sectorCode(), sector.sectorName(), sector.tradeDate(),
+                sector.changeRate(), market.changeRate(), relativeStrength, resolvePerformanceStatus(relativeStrength),
+                history);
     }
 
-    private String resolvePerformanceStatus(BigDecimal rs) {
-        if (rs == null) return "NEUTRAL";
-        // 0.4%p 차이를 기준으로 판별 (노이즈 감소를 위해 0.3%에서 추가 상향)
-        if (rs.compareTo(new BigDecimal("0.4")) > 0) return "OUTPERFORM";
-        if (rs.compareTo(new BigDecimal("-0.4")) < 0) return "UNDERPERFORM";
-        return "NEUTRAL";
+    private static String normalize(String name) {
+        return name.replaceAll("[^가-힣a-zA-Z0-9]", "");
     }
 
-    private String generateDiagnosisMessage(SectorInsight insight) {
-        SectorTechnicalIndicators indicators = insight.getTechnicalIndicators();
-        if (indicators == null || indicators.getRsi14() == null) return DiagnosisStatus.DATA_INSUFFICIENT.getMessage();
+    private static boolean isOverheated(SectorMarketObservation row) {
+        return TechnicalCalculator.isOverheated(row.closePrice(), row.ma20(), row.rsi14());
+    }
 
+    private static SectorTechnicalIndicators technicalIndicators(SectorMarketObservation row) {
+        return SectorTechnicalIndicators.of(row.ma5(), row.ma20(), row.rsi14(), null, null, null, null, null);
+    }
+
+    private String generateDiagnosisMessage(BigDecimal currentPrice, SectorTechnicalIndicators indicators) {
+        if (currentPrice == null || indicators == null || indicators.getRsi14() == null || indicators.getMa20() == null) {
+            return DiagnosisStatus.DATA_INSUFFICIENT.getMessage();
+        }
         boolean rsiOver = indicators.getRsi14().compareTo(new BigDecimal("70")) > 0;
         boolean rsiUnder = indicators.getRsi14().compareTo(new BigDecimal("30")) < 0;
-        
         BigDecimal disparity = BigDecimal.ZERO;
-        if (indicators.getMa20() != null && indicators.getMa20().compareTo(BigDecimal.ZERO) > 0) {
-            disparity = insight.getSectorIndexCurrentPrice().divide(indicators.getMa20(), 4, RoundingMode.HALF_UP);
+        if (indicators.getMa20() != null && indicators.getMa20().signum() > 0) {
+            disparity = currentPrice.divide(indicators.getMa20(), 4, RoundingMode.HALF_UP);
         }
         boolean disparityOver = disparity.compareTo(new BigDecimal("1.1")) >= 0;
-
         if (rsiOver && disparityOver) return DiagnosisStatus.OVERHEATED_BOTH.getMessage();
         if (rsiOver) return DiagnosisStatus.OVERHEATED_RSI.getMessage();
         if (disparityOver) return DiagnosisStatus.OVERHEATED_DISPARITY.getMessage();
         if (rsiUnder) return DiagnosisStatus.STAGNANT.getMessage();
-        
         return DiagnosisStatus.NORMAL.getMessage();
+    }
+
+    private String resolvePerformanceStatus(BigDecimal relativeStrength) {
+        if (relativeStrength.compareTo(new BigDecimal("0.4")) > 0) return "OUTPERFORM";
+        if (relativeStrength.compareTo(new BigDecimal("-0.4")) < 0) return "UNDERPERFORM";
+        return "NEUTRAL";
+    }
+
+    private static String marketTicker(String marketCode) {
+        if ("KOSPI".equals(marketCode)) return BenchmarkType.KOSPI.getTicker();
+        if ("KOSDAQ".equals(marketCode)) return BenchmarkType.KOSDAQ.getTicker();
+        throw new SectorDomainException(ErrorCode.SECTOR_DATA_NOT_FOUND);
     }
 }

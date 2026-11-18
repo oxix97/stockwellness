@@ -24,13 +24,9 @@ public class StockPriceJobConfig {
      * 가격 정보 반영 Job
      */
     @Bean
-    public Job dailyStockPriceBatchJob(
-            Step dailyStockPriceStep,
-            Step technicalIndicatorCalculateStep
-    ) {
+    public Job dailyStockPriceBatchJob(Step dailyStockPriceStep) {
         return new JobBuilder("dailyStockPriceBatchJob", jobRepository)
                 .start(dailyStockPriceStep)
-                .next(technicalIndicatorCalculateStep)
                 .listener(commonJobListener)
                 .listener(eventListener)
                 .build();

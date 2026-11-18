@@ -52,8 +52,8 @@ public class DailyBatchOrchestrator {
     }
 
     /**
-     * 1. 업종 지수 동기화 <br>
-     * 2. AI 인사이트 작성 (미구현)
+     * 1. 종목 기술지표 동기화 <br>
+     * 2. 시장/업종 기술지표와 날씨 동기화
      */
     public void runDailySectorInsightSync() {
         try {

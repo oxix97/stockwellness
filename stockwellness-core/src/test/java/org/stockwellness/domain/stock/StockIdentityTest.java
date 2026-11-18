@@ -3,6 +3,7 @@ package org.stockwellness.domain.stock;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StockIdentityTest {
     @Test
@@ -17,7 +18,10 @@ class StockIdentityTest {
     }
 
     @Test
-    void non_listed_index_rows_do_not_claim_a_stock_market() {
-        assertThat(Stock.ofIndex("KOSPI", "코스피").getMarketCode()).isNull();
+    void stock_requires_a_listed_market() {
+        assertThatThrownBy(() -> Stock.of("0001", null, "코스피", MarketType.INDEX,
+                Currency.KRW, null, StockStatus.ACTIVE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("market");
     }
 }

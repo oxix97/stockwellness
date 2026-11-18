@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.stockwellness.adapter.out.external.kis.client.KisMasterClient;
-import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.parser.KosdaqMstParser;
 import org.stockwellness.application.parser.KospiMstParser;
@@ -17,6 +17,7 @@ import org.stockwellness.domain.stock.KospiItem;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockSector;
+import org.stockwellness.domain.stock.insight.IndexSeries;
 import org.stockwellness.domain.stock.insight.MarketIndex;
 
 @Slf4j
@@ -26,7 +27,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
 
     private final KisMasterClient kisMasterClient;
     private final StockRepository stockRepository;
-    private final MarketIndexRepository marketIndexRepository;
+    private final IndexSeriesRepository indexSeriesRepository;
 
     @Override
     public byte[] downloadKospiMasterArchive() {
@@ -73,7 +74,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
             return new StockMasterSyncResult(null, false);
         }
 
-        Map<String, MarketIndex> indexMap = marketIndexRepository.findActiveIndexMap();
+        Map<String, MarketIndex> indexMap = sectorIndexMap("KOSPI");
         StockSector sector = StockSector.of(
                 item.sectorLarge(),
                 item.sectorMedium(),
@@ -98,7 +99,7 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
             return new StockMasterSyncResult(null, false);
         }
 
-        Map<String, MarketIndex> indexMap = marketIndexRepository.findActiveIndexMap();
+        Map<String, MarketIndex> indexMap = sectorIndexMap("KOSDAQ");
         StockSector sector = StockSector.of(
                 item.sectorLarge(),
                 item.sectorMedium(),
@@ -122,5 +123,15 @@ public class StockMasterSyncService implements StockMasterSyncUseCase {
         }
         int count = stockRepository.delistMissingStocks(command.marketType(), command.activeTickers());
         return new StockDelistResult(command.marketType(), count);
+    }
+
+    private Map<String, MarketIndex> sectorIndexMap(String marketCode) {
+        return indexSeriesRepository.findAllByProviderAndProviderNamespace("KIS", "kis.idxcode." + marketCode).stream()
+                .filter(IndexSeries::isActive)
+                .filter(IndexSeries::isCanonical)
+                .filter(series -> "PRICE".equals(series.getReturnBasis())
+                        && "NONE".equals(series.getDividendBasis()) && "KRW".equals(series.getCurrency()))
+                .collect(java.util.stream.Collectors.toMap(IndexSeries::getProviderSeriesCode,
+                        IndexSeries::getMarketIndex));
     }
 }

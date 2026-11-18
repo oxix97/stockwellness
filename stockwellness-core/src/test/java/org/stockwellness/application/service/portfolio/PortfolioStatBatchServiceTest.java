@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
 import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.service.portfolio.internal.BacktestEngine;
@@ -35,6 +36,10 @@ import org.stockwellness.domain.member.Member;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import org.stockwellness.domain.portfolio.PortfolioStats;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.StockStatus;
 import org.stockwellness.global.util.JsonUtil;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
@@ -47,7 +52,6 @@ import static org.mockito.Mockito.verify;
 
 @DataJpaTest
 @TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @Import({PortfolioStatBatchService.class, JsonUtil.class, QueryDslConfig.class, JpaConfig.class})
@@ -58,6 +62,9 @@ class PortfolioStatBatchServiceTest {
 
     @Autowired
     private PortfolioStatsRepository portfolioStatsRepository;
+
+    @Autowired
+    private StockRepository stockRepository;
 
     @Autowired
     private PortfolioRepository portfolioRepository;
@@ -128,7 +135,9 @@ class PortfolioStatBatchServiceTest {
             Portfolio portfolio = loadPortfolioWithItems(portfolioId);
             
             transactionTemplate.executeWithoutResult(status -> {
-                portfolioStatsRepository.save(PortfolioStats.create(portfolio, LocalDate.now().minusDays(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                portfolioStatsRepository.save(PortfolioStats.create(portfolioRepository.getReferenceById(portfolioId), LocalDate.now().minusYears(2),
+                        LocalDate.now().minusDays(1), "RAW", java.util.Map.of("source", "test"),
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
             });
 
             given(portfolioPort.loadAllWithItems(anyList())).willReturn(List.of(portfolio));
@@ -180,8 +189,11 @@ class PortfolioStatBatchServiceTest {
             Portfolio portfolio = loadPortfolioWithItems(portfolioId);
             transactionTemplate.executeWithoutResult(status -> portfolioStatsRepository.save(
                     PortfolioStats.create(
-                            portfolio,
+                            portfolioRepository.getReferenceById(portfolioId),
+                            LocalDate.now().minusYears(2),
                             LocalDate.now().minusDays(1),
+                            "RAW",
+                            java.util.Map.of("source", "test"),
                             BigDecimal.valueOf(9.9),
                             BigDecimal.valueOf(2.2),
                             BigDecimal.valueOf(1.1),
@@ -268,6 +280,7 @@ class PortfolioStatBatchServiceTest {
 
                 Portfolio portfolio = Portfolio.create(member.getId(), "포트폴리오", "설명");
                 PortfolioItem item = PortfolioItem.createStock(ticker, BigDecimal.TEN, BigDecimal.valueOf(50000), "KRW", BigDecimal.valueOf(100), LocalDate.now());
+                item.assignStock(saveStock(ticker));
                 portfolio.updateItems(List.of(item));
                 
                 portfolioRepository.save(portfolio);
@@ -284,9 +297,11 @@ class PortfolioStatBatchServiceTest {
                 PortfolioItem stock = PortfolioItem.createStock(
                         "005930", BigDecimal.TEN, BigDecimal.valueOf(50000), "KRW",
                         BigDecimal.valueOf(70), LocalDate.now());
+                stock.assignStock(saveStock("005930"));
                 PortfolioItem zeroWeightStock = PortfolioItem.createStock(
                         "000660", BigDecimal.TEN, BigDecimal.valueOf(50000), "KRW",
                         BigDecimal.ZERO, LocalDate.now());
+                zeroWeightStock.assignStock(saveStock("000660"));
                 PortfolioItem cash = PortfolioItem.createCash(
                         BigDecimal.valueOf(300000), "KRW", BigDecimal.valueOf(30), LocalDate.now());
                 portfolio.updateItems(new ArrayList<>(List.of(stock, zeroWeightStock, cash)));
@@ -299,7 +314,9 @@ class PortfolioStatBatchServiceTest {
         private Portfolio loadPortfolioWithItems(Long id) {
             return transactionTemplate.execute(status -> {
                 Portfolio p = portfolioRepository.findById(id).orElseThrow();
-                p.getItems().size();
+                p.getItems().forEach(item -> {
+                    if (item.getStock() != null) item.getStock().getTicker();
+                });
                 return p;
             });
         }
@@ -309,6 +326,12 @@ class PortfolioStatBatchServiceTest {
             given(backtestEngine.runLumpSum(any(), any(), any(), any(), any(), any(), anyBoolean()))
                     .willReturn(new BacktestResult(List.of(), BigDecimal.ZERO, BigDecimal.valueOf(15.5), BigDecimal.ZERO, BigDecimal.valueOf(1.2), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(0.9), BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), List.of(), null));
             given(portfolioAnalysisService.calculateBenchmarkReturn(anyString(), any(), any())).willReturn(BigDecimal.valueOf(5.0));
+        }
+
+        private Stock saveStock(String ticker) {
+            return stockRepository.findByTickerAndMarketCode(ticker, "KOSPI").orElseGet(() ->
+                    stockRepository.save(Stock.of(ticker, null, ticker, MarketType.KOSPI,
+                            Currency.KRW, null, StockStatus.ACTIVE)));
         }
 
         private void assertStats(Long id, String mdd, String sharpe, String beta) {

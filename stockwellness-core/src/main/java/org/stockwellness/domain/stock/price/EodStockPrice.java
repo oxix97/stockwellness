@@ -3,6 +3,7 @@ package org.stockwellness.domain.stock.price;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -17,9 +18,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.stock.Stock;
 
-/** Source-verified quote model. Legacy StockPrice remains the active compatibility model. */
+/** One source observation of raw EOD prices for a market scope and trade date. */
 @Entity
-@Table(name = "stock_price_eod")
+@Table(name = "stock_price_daily")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EodStockPrice {
@@ -39,34 +40,32 @@ public class EodStockPrice {
     private BigDecimal lowPrice;
     @Column(name = "close_price", precision = 19, scale = 4)
     private BigDecimal closePrice;
-    @Column(name = "previous_close_price", precision = 19, scale = 4)
-    private BigDecimal previousClosePrice;
     @Column(name = "volume")
     private Long volume;
     @Column(name = "trading_amount", precision = 25, scale = 2)
     private BigDecimal tradingAmount;
-    @Column(name = "no_trade")
-    private Boolean noTrade;
-    @Column(name = "source_api", nullable = false, length = 50)
-    private String sourceApi;
+    @Column(name = "source", nullable = false, length = 100)
+    private String source;
     @Column(name = "data_status", nullable = false, length = 20)
     private String dataStatus;
     @Column(name = "collected_at", nullable = false)
     private Instant collectedAt;
     @Column(name = "corrected_at")
     private Instant correctedAt;
-    @Column(name = "data_revision", nullable = false)
-    private Integer dataRevision;
+    @Column(name = "revision", nullable = false)
+    private Integer revision;
 
     public static EodStockPrice of(Stock stock, java.time.LocalDate tradeDate, String quoteScope,
-            BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, BigDecimal previousClose,
-            Long volume, BigDecimal tradingAmount, Boolean noTrade, String sourceApi, String dataStatus) {
-        if (stock == null || tradeDate == null || !"KRX".equals(quoteScope)
-                || sourceApi == null || sourceApi.isBlank() || sourceApi.length() > 50
-                || !java.util.Set.of("PROVISIONAL", "FINAL", "INCOMPLETE").contains(dataStatus)
-                || (high != null && low != null && high.compareTo(low) < 0)
-                || (volume != null && volume < 0) || negative(open) || negative(high) || negative(low)
-                || negative(close) || negative(previousClose) || negative(tradingAmount)) {
+            BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, Long volume,
+            BigDecimal tradingAmount, String source, String dataStatus) {
+        if (stock == null || tradeDate == null || quoteScope == null || quoteScope.isBlank()
+                || quoteScope.length() > 20 || source == null || source.isBlank() || source.length() > 100
+                || dataStatus == null || !Set.of("PROVISIONAL", "FINAL", "INCOMPLETE").contains(dataStatus)
+                || below(high, low) || below(high, open) || below(high, close)
+                || above(low, open) || above(low, close)
+                || ("FINAL".equals(dataStatus) && (open == null || high == null || low == null || close == null))
+                || (volume != null && volume < 0) || negative(open) || negative(high)
+                || negative(low) || negative(close) || negative(tradingAmount)) {
             throw new IllegalArgumentException("Invalid EOD quote");
         }
         EodStockPrice value = new EodStockPrice();
@@ -76,43 +75,56 @@ public class EodStockPrice {
         value.highPrice = high;
         value.lowPrice = low;
         value.closePrice = close;
-        value.previousClosePrice = previousClose;
         value.volume = volume;
         value.tradingAmount = tradingAmount;
-        value.noTrade = noTrade;
-        value.sourceApi = sourceApi;
+        value.source = source;
         value.dataStatus = dataStatus;
         value.collectedAt = Instant.now();
-        value.dataRevision = 1;
+        value.revision = 1;
         return value;
     }
 
     public boolean reviseFrom(EodStockPrice source, Instant now) {
+        if (statusRank(source.dataStatus) < statusRank(dataStatus)) return false;
         boolean changed = !same(openPrice, source.openPrice) || !same(highPrice, source.highPrice)
                 || !same(lowPrice, source.lowPrice) || !same(closePrice, source.closePrice)
-                || !same(previousClosePrice, source.previousClosePrice) || !Objects.equals(volume, source.volume)
-                || !same(tradingAmount, source.tradingAmount) || !Objects.equals(noTrade, source.noTrade)
-                || !Objects.equals(dataStatus, source.dataStatus) || !Objects.equals(sourceApi, source.sourceApi);
+                || !Objects.equals(volume, source.volume) || !same(tradingAmount, source.tradingAmount)
+                || !Objects.equals(dataStatus, source.dataStatus) || !Objects.equals(this.source, source.source);
         collectedAt = now;
         if (changed) {
             openPrice = source.openPrice;
             highPrice = source.highPrice;
             lowPrice = source.lowPrice;
             closePrice = source.closePrice;
-            previousClosePrice = source.previousClosePrice;
             volume = source.volume;
             tradingAmount = source.tradingAmount;
-            noTrade = source.noTrade;
             dataStatus = source.dataStatus;
-            sourceApi = source.sourceApi;
-            dataRevision++;
+            this.source = source.source;
+            revision++;
             correctedAt = now;
         }
         return changed;
     }
 
+    private static int statusRank(String status) {
+        return switch (status) {
+            case "INCOMPLETE" -> 0;
+            case "PROVISIONAL" -> 1;
+            case "FINAL" -> 2;
+            default -> throw new IllegalArgumentException("Unknown EOD data status: " + status);
+        };
+    }
+
     private static boolean same(BigDecimal left, BigDecimal right) {
         return left == null ? right == null : right != null && left.compareTo(right) == 0;
+    }
+
+    private static boolean below(BigDecimal value, BigDecimal lower) {
+        return value != null && lower != null && value.compareTo(lower) < 0;
+    }
+
+    private static boolean above(BigDecimal value, BigDecimal upper) {
+        return value != null && upper != null && value.compareTo(upper) > 0;
     }
 
     private static boolean negative(BigDecimal value) { return value != null && value.signum() < 0; }

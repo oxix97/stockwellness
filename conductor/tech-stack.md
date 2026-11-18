@@ -16,7 +16,7 @@
 - **PostgreSQL**: 포트폴리오·사용자 등 트랜잭션 정합성이 필요한 메인 RDB
 - **Redis**: API 응답 캐싱, JWT Refresh Token 관리
 - **JPA + QueryDSL**: 객체 중심 데이터 접근 + 타입 안정성 보장 동적 쿼리
-- **Flyway**: DB 마이그레이션 버전 관리
+- **PostgreSQL schema**: 검토된 수동 SQL 묶음으로 생성, 애플리케이션은 Hibernate `validate`만 수행
 
 ## Infrastructure & Messaging
 

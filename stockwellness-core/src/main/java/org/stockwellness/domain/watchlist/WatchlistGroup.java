@@ -40,7 +40,7 @@ public class WatchlistGroup extends AbstractEntity {
 
     private LocalDateTime deletedAt;
 
-    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL)
     private final List<WatchlistItem> items = new ArrayList<>();
 
     private WatchlistGroup(Member member, String name) {
@@ -64,8 +64,7 @@ public class WatchlistGroup extends AbstractEntity {
 
     public void delete() {
         this.deletedAt = LocalDateTime.now();
-        this.items.forEach(WatchlistItem::delete);
-        this.items.clear();
+        this.items.stream().filter(item -> item.getDeletedAt() == null).forEach(WatchlistItem::delete);
     }
 
     public void addItem(Stock stock) {
@@ -74,26 +73,34 @@ public class WatchlistGroup extends AbstractEntity {
 
     public void addItem(Stock stock, String note) {
         validateItemLimit();
-        validateDuplicateItem(stock);
+        WatchlistItem existing = this.items.stream()
+                .filter(item -> sameStock(item.getStock(), stock))
+                .findFirst()
+                .orElse(null);
+        if (existing != null) {
+            if (existing.getDeletedAt() == null) {
+                throw new GlobalException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
+            }
+            existing.restore(note);
+            return;
+        }
 
         WatchlistItem item = WatchlistItem.create(this, stock, note);
         this.items.add(item);
     }
 
-    public void updateItemNote(String ticker, String newNote) {
-        WatchlistItem item = findItemByTicker(ticker);
+    public void updateItemNote(Stock stock, String newNote) {
+        WatchlistItem item = findActiveItemByStock(stock);
         item.updateNote(newNote);
     }
 
-    public void removeItem(String ticker) {
-        WatchlistItem itemToRemove = findItemByTicker(ticker);
-        itemToRemove.delete();
-        this.items.remove(itemToRemove);
+    public void removeItem(Stock stock) {
+        findActiveItemByStock(stock).delete();
     }
 
-    private WatchlistItem findItemByTicker(String ticker) {
+    private WatchlistItem findActiveItemByStock(Stock stock) {
         return this.items.stream()
-                .filter(item -> item.getTicker().equals(ticker) && item.getDeletedAt() == null)
+                .filter(item -> sameStock(item.getStock(), stock) && item.getDeletedAt() == null)
                 .findFirst()
                 .orElseThrow(() -> new GlobalException(ErrorCode.RESOURCE_NOT_FOUND));
     }
@@ -107,12 +114,10 @@ public class WatchlistGroup extends AbstractEntity {
         }
     }
 
-    private void validateDuplicateItem(Stock stock) {
-        boolean isDuplicate = this.items.stream()
-                .anyMatch(item -> item.getTicker().equals(stock.getTicker()) && item.getDeletedAt() == null);
-        if (isDuplicate) {
-            throw new GlobalException(ErrorCode.DUPLICATE_WATCHLIST_ITEM);
-        }
+    private static boolean sameStock(Stock left, Stock right) {
+        return left.getId() != null && right.getId() != null
+                ? left.getId().equals(right.getId())
+                : left == right;
     }
 
     private void validation(String name) {

@@ -5,6 +5,7 @@ import java.util.Collection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.stockwellness.global.logging.LogExecution;
 
 /**
@@ -69,7 +71,7 @@ public class LoggingAspect {
                     MDC.get("traceId"),
                     className,
                     methodName,
-                    joinPoint.getArgs(),
+                    maskedArgs(joinPoint),
                     exception == null ? logResult : null,
                     executionTime,
                     exception != null ? exception.getClass().getSimpleName() : null,
@@ -79,6 +81,22 @@ public class LoggingAspect {
             writeLog(event);
             IS_LOGGING.remove();
         }
+    }
+
+    private static Object[] maskedArgs(ProceedingJoinPoint joinPoint) {
+        Object[] args = joinPoint.getArgs().clone();
+        if (joinPoint.getSignature() instanceof MethodSignature signature) {
+            var annotations = signature.getMethod().getParameterAnnotations();
+            for (int i = 0; i < Math.min(args.length, annotations.length); i++) {
+                for (var annotation : annotations[i]) {
+                    if (annotation instanceof RequestHeader) {
+                        args[i] = "********";
+                        break;
+                    }
+                }
+            }
+        }
+        return args;
     }
 
     private void writeLog(LogEvent event) {

@@ -11,10 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.dao.DataAccessException;
-import org.flywaydb.core.Flyway;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.stockwellness.support.ManualSqlTestSupport;
 
 @Testcontainers(disabledWithoutDocker = true)
 class EodSchemaMigrationTest {
@@ -25,14 +25,10 @@ class EodSchemaMigrationTest {
     private static Long stockId;
 
     @BeforeAll
-    static void migrate() {
-        Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration")
-                .load()
-                .migrate();
-        jdbc = new JdbcTemplate(new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+    static void initializeSchema() {
+        var dataSource = new DriverManagerDataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        ManualSqlTestSupport.initializeLegacyPostgres(dataSource);
+        jdbc = new JdbcTemplate(dataSource);
     }
 
     @BeforeEach

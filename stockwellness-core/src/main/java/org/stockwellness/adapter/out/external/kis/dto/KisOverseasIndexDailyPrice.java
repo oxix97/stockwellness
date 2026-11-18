@@ -62,22 +62,22 @@ public record KisOverseasIndexDailyPrice(
 
     @Override
     public BigDecimal openPrice() {
-        return ovrsNmixOprc != null ? new BigDecimal(ovrsNmixOprc) : BigDecimal.ZERO;
+        return price(ovrsNmixOprc);
     }
 
     @Override
     public BigDecimal highPrice() {
-        return ovrsNmixHgpr != null ? new BigDecimal(ovrsNmixHgpr) : BigDecimal.ZERO;
+        return price(ovrsNmixHgpr);
     }
 
     @Override
     public BigDecimal lowPrice() {
-        return ovrsNmixLwpr != null ? new BigDecimal(ovrsNmixLwpr) : BigDecimal.ZERO;
+        return price(ovrsNmixLwpr);
     }
 
     @Override
     public BigDecimal closePrice() {
-        return ovrsNmixPrpr != null ? new BigDecimal(ovrsNmixPrpr) : BigDecimal.ZERO;
+        return price(ovrsNmixPrpr);
     }
 
     @Override
@@ -94,6 +94,10 @@ public record KisOverseasIndexDailyPrice(
 
     @Override
     public Long volume() {
-        return acmlVol != null ? Long.parseLong(acmlVol) : 0L;
+        return acmlVol == null || acmlVol.isBlank() ? null : Long.valueOf(acmlVol.trim());
+    }
+
+    private BigDecimal price(String raw) {
+        return raw == null || raw.isBlank() ? null : new BigDecimal(raw);
     }
 }

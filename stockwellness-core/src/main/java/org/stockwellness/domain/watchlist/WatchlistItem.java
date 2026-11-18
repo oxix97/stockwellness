@@ -4,8 +4,6 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -13,7 +11,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.stockwellness.domain.shared.AbstractEntity;
-import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
@@ -33,13 +30,6 @@ public class WatchlistItem extends AbstractEntity {
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    @Column(nullable = false, length = 20)
-    private String ticker;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private MarketType marketType;
-
     @Column(length = 200)
     private String note;
 
@@ -49,8 +39,6 @@ public class WatchlistItem extends AbstractEntity {
         validateNote(note);
         this.group = group;
         this.stock = stock;
-        this.ticker = stock.getTicker();
-        this.marketType = stock.getMarketType();
         this.note = note;
     }
 
@@ -74,6 +62,12 @@ public class WatchlistItem extends AbstractEntity {
     }
 
     public void delete() {
-        this.deletedAt = LocalDateTime.now();
+        if (this.deletedAt == null) this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore(String note) {
+        validateNote(note);
+        this.note = note;
+        this.deletedAt = null;
     }
 }

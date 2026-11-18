@@ -25,7 +25,7 @@ import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.flyway.enabled=false")
+@DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
 class PortfolioRepositoryTest {
@@ -104,6 +104,7 @@ class PortfolioRepositoryTest {
         entityManager.clear();
 
         Portfolio reloaded = portfolioRepository.findWithItems(saved.getId(), memberId).orElseThrow();
+        assertThat(reloaded.getDescription()).isEqualTo("설명");
         assertThat(reloaded.getItems()).singleElement()
                 .extracting(PortfolioItem::getQuantity)
                 .isEqualTo(new BigDecimal("116.504854"));

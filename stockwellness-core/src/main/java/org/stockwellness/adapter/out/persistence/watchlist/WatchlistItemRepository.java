@@ -1,7 +1,6 @@
 package org.stockwellness.adapter.out.persistence.watchlist;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.stockwellness.domain.stock.Stock;
@@ -12,5 +11,4 @@ public interface WatchlistItemRepository extends JpaRepository<WatchlistItem, Lo
     List<WatchlistItem> findAllByGroupAndDeletedAtIsNull(WatchlistGroup group);
     long countByGroupAndDeletedAtIsNull(WatchlistGroup group);
     boolean existsByGroupAndStockAndDeletedAtIsNull(WatchlistGroup group, Stock stock);
-    Optional<WatchlistItem> findByGroupAndTickerAndDeletedAtIsNull(WatchlistGroup group, String ticker);
 }

@@ -2,7 +2,10 @@ package org.stockwellness.integration.portfolio;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,12 +16,11 @@ import org.stockwellness.adapter.in.web.portfolio.dto.BacktestRequest;
 import org.stockwellness.adapter.in.web.portfolio.dto.CreateSimulatedPortfolioRequest;
 import org.stockwellness.adapter.out.persistence.member.MemberRepository;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkPriceRepository;
-import org.stockwellness.adapter.out.persistence.stock.repository.BenchmarkRepository;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioCreateRequest;
 import org.stockwellness.application.port.in.portfolio.dto.PortfolioItemRequest;
+import org.stockwellness.application.port.out.stock.IndexPriceObservation;
+import org.stockwellness.application.port.out.stock.PriceObservation;
 import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
@@ -27,8 +29,7 @@ import org.stockwellness.domain.stock.Currency;
 import org.stockwellness.domain.stock.MarketType;
 import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.StockStatus;
-import org.stockwellness.domain.stock.price.StockPrice;
-import org.stockwellness.domain.stock.price.BenchmarkPrice;
+import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.fixture.StockFixture;
 import org.stockwellness.integration.common.BaseIntegrationTest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,6 +39,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 
 class PortfolioIntegrationTest extends BaseIntegrationTest {
 
@@ -49,15 +55,6 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private PortfolioRepository portfolioRepository;
-
-    @Autowired
-    private StockPriceRepository stockPriceRepository;
-
-    @Autowired
-    private BenchmarkPriceRepository benchmarkPriceRepository;
-
-    @Autowired
-    private BenchmarkRepository benchmarkRepository;
 
     private String accessToken;
 
@@ -75,50 +72,79 @@ class PortfolioIntegrationTest extends BaseIntegrationTest {
         Stock skHynix = Stock.of("000660", "KR7000660001", "SK하이닉스", MarketType.KOSPI, Currency.KRW, null, StockStatus.ACTIVE);
         stockRepository.saveAndFlush(skHynix);
 
-        // 테스트용 벤치마크 지수 생성 (KOSPI)
-        Stock kospi = Stock.ofIndex("KOSPI", "코스피");
-        stockRepository.saveAndFlush(kospi);
-
-        // 시세 데이터 생성 (어제, 오늘)
+        // Prices are supplied through the canonical read port mock below.
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
+        stubCanonicalPriceReads(samsung, skHynix, today, yesterday);
+    }
 
-        stockPriceRepository.save(StockPrice.of(
-                samsung, yesterday, new BigDecimal("50000"), new BigDecimal("51000"), new BigDecimal("49000"),
-                new BigDecimal("50500"), new BigDecimal("50500"), new BigDecimal("50000"), 1000000L, 
-                new BigDecimal("50000000000"), null));
-        
-        stockPriceRepository.save(StockPrice.of(
-                samsung, today, new BigDecimal("50500"), new BigDecimal("52000"), new BigDecimal("50000"),
-                new BigDecimal("51500"), new BigDecimal("51500"), new BigDecimal("50500"), 1200000L, 
-                new BigDecimal("60000000000"), null));
+    private void stubCanonicalPriceReads(Stock samsung, Stock skHynix, LocalDate today, LocalDate yesterday) {
+        PriceObservation samsungToday = price(samsung.getId(), today, "51500", "50500");
+        PriceObservation samsungYesterday = price(samsung.getId(), yesterday, "50500", "50000");
+        PriceObservation hynixToday = price(skHynix.getId(), today, "200000", "198000");
+        Map<Long, List<PriceObservation>> history = Map.of(
+                samsung.getId(), List.of(samsungToday, samsungYesterday),
+                skHynix.getId(), List.of(hynixToday));
 
-        stockPriceRepository.save(StockPrice.of(
-                skHynix, today, new BigDecimal("200000"), new BigDecimal("205000"), new BigDecimal("195000"),
-                new BigDecimal("200000"), new BigDecimal("200000"), new BigDecimal("198000"), 900000L,
-                new BigDecimal("180000000000"), null));
+        given(stockPriceReadPort.latest(anySet(), eq("KRX"), any(), eq(PriceBasis.RAW))).willAnswer(invocation -> {
+            Set<Long> stockIds = invocation.getArgument(0);
+            Map<Long, PriceObservation> latest = new LinkedHashMap<>();
+            stockIds.forEach(id -> {
+                List<PriceObservation> rows = history.get(id);
+                if (rows != null && !rows.isEmpty()) latest.put(id, rows.getFirst());
+            });
+            return latest;
+        });
+        given(stockPriceReadPort.recent(anySet(), eq("KRX"), any(), anyInt(), eq(PriceBasis.RAW)))
+                .willAnswer(invocation -> limitHistory(history, invocation.getArgument(0), invocation.getArgument(3)));
+        given(stockPriceReadPort.history(anySet(), eq("KRX"), any(), any(), eq(PriceBasis.RAW)))
+                .willAnswer(invocation -> {
+                    LocalDate start = invocation.getArgument(2);
+                    LocalDate end = invocation.getArgument(3);
+                    Map<Long, List<PriceObservation>> matching = new LinkedHashMap<>();
+                    history.forEach((id, rows) -> matching.put(id, rows.stream()
+                            .filter(row -> !row.tradeDate().isBefore(start) && !row.tradeDate().isAfter(end))
+                            .sorted(java.util.Comparator.comparing(PriceObservation::tradeDate))
+                            .toList()));
+                    return matching;
+                });
 
-        stockPriceRepository.save(StockPrice.of(
-                kospi, yesterday, new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"),
-                new BigDecimal("2505"), new BigDecimal("2505"), new BigDecimal("2500"), 500000L, 
-                new BigDecimal("100000000000"), null));
+        IndexPriceObservation kospiYesterday = indexPrice(1L, yesterday, "2505", "2500");
+        IndexPriceObservation kospiToday = indexPrice(1L, today, "2520", "2505");
+        List<IndexPriceObservation> indexHistory = List.of(kospiYesterday, kospiToday);
+        given(indexDailyReadPort.historyFinal(eq("0001"), any(), any())).willAnswer(invocation -> {
+            LocalDate start = invocation.getArgument(1);
+            LocalDate end = invocation.getArgument(2);
+            return indexHistory.stream().filter(row -> !row.tradeDate().isBefore(start)
+                    && !row.tradeDate().isAfter(end)).toList();
+        });
+        given(indexDailyReadPort.latestFinal(eq("0001"), any())).willAnswer(invocation -> {
+            LocalDate asOf = invocation.getArgument(1);
+            return indexHistory.stream().filter(row -> !row.tradeDate().isAfter(asOf))
+                    .max(java.util.Comparator.comparing(IndexPriceObservation::tradeDate));
+        });
+    }
 
-        stockPriceRepository.save(StockPrice.of(
-                kospi, today, new BigDecimal("2505"), new BigDecimal("2530"), new BigDecimal("2500"),
-                new BigDecimal("2520"), new BigDecimal("2520"), new BigDecimal("2505"), 600000L, 
-                new BigDecimal("120000000000"), null));
+    private static Map<Long, List<PriceObservation>> limitHistory(
+            Map<Long, List<PriceObservation>> history, Set<Long> stockIds, int limit) {
+        Map<Long, List<PriceObservation>> result = new LinkedHashMap<>();
+        stockIds.forEach(id -> result.put(id, history.getOrDefault(id, List.of()).stream()
+                .limit(limit).toList()));
+        return result;
+    }
 
-        // 백테스트는 benchmark_price를 기준 데이터로 사용하므로, 테스트 지수도
-        // 동일한 EOD 계약으로 저장한다. StockPrice의 지수 행만으로는
-        // benchmark 전용 조회 포트가 빈 결과를 반환하여 S002가 된다.
-        benchmarkPriceRepository.save(BenchmarkPrice.of("코스피", "0001", yesterday, new BigDecimal("2505")));
-        benchmarkPriceRepository.save(BenchmarkPrice.of("코스피", "0001", today, new BigDecimal("2520")));
-        
-        stockPriceRepository.flush();
-        benchmarkPriceRepository.flush();
-        assertThat(benchmarkPriceRepository.findByTickerAndBaseDate("0001", today)).isPresent();
-        assertThat(benchmarkRepository.findBenchmarkPrices("0001", LocalDate.of(1990, 1, 1), today))
-                .hasSize(2);
+    private static PriceObservation price(long stockId, LocalDate date, String close, String previousClose) {
+        BigDecimal value = new BigDecimal(close);
+        return new PriceObservation(stockId, date, "KRX", PriceBasis.RAW, value, value, value, value,
+                1000L, BigDecimal.TEN, "FINAL", 1, value, new BigDecimal(previousClose),
+                null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private static IndexPriceObservation indexPrice(
+            long seriesId, LocalDate date, String close, String previousClose) {
+        BigDecimal value = new BigDecimal(close);
+        return new IndexPriceObservation(seriesId, date, value, value, value, 1, 1, 1, 0, 0, 1,
+                "FINAL", value, 1000L, BigDecimal.TEN, new BigDecimal(previousClose));
     }
 
     @Test

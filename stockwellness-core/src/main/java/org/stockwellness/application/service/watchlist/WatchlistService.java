@@ -86,13 +86,17 @@ public class WatchlistService implements WatchlistUseCase {
     @Override
     public void removeItem(Long memberId, Long groupId, String ticker) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        group.removeItem(ticker);
+        Stock stock = stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new GlobalException(ErrorCode.STOCK_NOT_FOUND));
+        group.removeItem(stock);
     }
 
     @Override
     public void updateItemNote(Long memberId, Long groupId, String ticker, String note) {
         WatchlistGroup group = getGroupAndCheckOwnership(memberId, groupId);
-        group.updateItemNote(ticker, note);
+        Stock stock = stockPort.loadStockByTicker(ticker)
+                .orElseThrow(() -> new GlobalException(ErrorCode.STOCK_NOT_FOUND));
+        group.updateItemNote(stock, note);
     }
 
     @Override
@@ -105,14 +109,14 @@ public class WatchlistService implements WatchlistUseCase {
     }
 
     private List<WatchlistItemDetail> toItemDetails(List<WatchlistItem> items) {
-        List<String> isinCodes = items.stream()
-                .map(item -> item.getStock().getStandardCode())
+        List<Stock> stocks = items.stream()
+                .map(WatchlistItem::getStock)
                 .toList();
 
-        Map<String, StockDataPort.StockWellnessDetail> details = stockDataPort.getStockDetails(isinCodes);
+        Map<Long, StockDataPort.StockWellnessDetail> details = stockDataPort.getStockDetails(stocks);
 
         return items.stream()
-                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getStandardCode())))
+                .map(item -> WatchlistItemDetail.of(item, details.get(item.getStock().getId())))
                 .toList();
     }
 

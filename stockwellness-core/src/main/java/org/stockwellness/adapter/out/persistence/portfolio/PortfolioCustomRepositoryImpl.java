@@ -21,6 +21,7 @@ public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository 
                 queryFactory
                         .selectFrom(portfolio)
                         .leftJoin(portfolio.items, portfolioItem).fetchJoin()
+                        .leftJoin(portfolioItem.stock).fetchJoin()
                         .where(
                                 portfolio.id.eq(id),
                                 portfolio.memberId.eq(memberId)
@@ -35,6 +36,7 @@ public class PortfolioCustomRepositoryImpl implements PortfolioCustomRepository 
         return queryFactory
                 .selectFrom(portfolio)
                 .leftJoin(portfolio.items, portfolioItem).fetchJoin()
+                .leftJoin(portfolioItem.stock).fetchJoin()
                 .where(eqMemberId(memberId))
                 .distinct()
                 .fetch();

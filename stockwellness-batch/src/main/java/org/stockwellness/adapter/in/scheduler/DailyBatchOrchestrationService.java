@@ -24,7 +24,7 @@ public class DailyBatchOrchestrationService {
             new ScheduledBatchStep(BatchControlUseCase.BatchJobType.STOCK_PRICE_SYNC, true, "[2단계] 종목 시세 동기화 및 카프카 이벤트 발행 시작..."),
             new ScheduledBatchStep(BatchControlUseCase.BatchJobType.BENCHMARK_PRICE_SYNC, false, "[3단계] 지수(KOSPI·KOSDAQ·S&P500) 시세 동기화 시작..."),
             new ScheduledBatchStep(BatchControlUseCase.BatchJobType.STOCK_FOREIGN_INSTITUTION, false, "[4단계] 국내기관 및 외국인 매매종목 보정 시작..."),
-            new ScheduledBatchStep(BatchControlUseCase.BatchJobType.SECTOR_EOD_SYNC, false, "[5단계] 섹터 인사이트 및 AI 분석 동기화 시작..."),
+            new ScheduledBatchStep(BatchControlUseCase.BatchJobType.SECTOR_EOD_SYNC, false, "[5단계] 시장 파생 지표 및 섹터 인사이트 동기화 시작..."),
             new ScheduledBatchStep(BatchControlUseCase.BatchJobType.PORTFOLIO_STATS_SYNC, false, "[6단계] 전체 사용자 포트폴리오 성과 지표 갱신 시작...")
     );
 

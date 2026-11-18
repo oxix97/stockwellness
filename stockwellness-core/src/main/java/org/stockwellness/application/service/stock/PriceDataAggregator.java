@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.stockwellness.application.port.in.stock.result.ChartDataResponse.ChartPoint;
@@ -56,14 +55,13 @@ public class PriceDataAggregator {
                 .map(StockPriceResult::lowPrice)
                 .reduce(first.lowPrice(), BigDecimal::min);
 
-        long totalVolume = prices.stream()
-                .mapToLong(StockPriceResult::volume)
-                .sum();
+        Long totalVolume = prices.stream().anyMatch(price -> price.volume() == null)
+                ? null
+                : prices.stream().map(StockPriceResult::volume).reduce(0L, Math::addExact);
 
-        BigDecimal totalTransactionAmt = prices.stream()
-                .map(StockPriceResult::transactionAmt)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalTransactionAmt = prices.stream().anyMatch(price -> price.transactionAmt() == null)
+                ? null
+                : prices.stream().map(StockPriceResult::transactionAmt).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ChartPoint(
                 date,

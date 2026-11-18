@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.stockwellness.adapter.out.persistence.portfolio.PortfolioStatsRepository;
+import org.stockwellness.adapter.out.persistence.portfolio.PortfolioRepository;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
@@ -22,6 +23,7 @@ import org.stockwellness.domain.portfolio.RebalancingPeriod;
 import org.stockwellness.domain.portfolio.event.PortfolioAnalysisCompletedEvent;
 import org.stockwellness.domain.portfolio.indicator.BenchmarkCode;
 import org.stockwellness.domain.stock.BenchmarkType;
+import org.stockwellness.domain.stock.price.PriceBasis;
 import org.stockwellness.global.util.JsonUtil;
 
 import java.math.BigDecimal;
@@ -45,6 +47,7 @@ import java.util.stream.Collectors;
 public class PortfolioStatBatchService {
 
     private final PortfolioStatsRepository portfolioStatsRepository;
+    private final PortfolioRepository portfolioRepository;
     private final SimulationDataProvider simulationDataProvider;
     private final BacktestEngine backtestEngine;
     private final OutboxPort outboxPort;
@@ -171,11 +174,25 @@ public class PortfolioStatBatchService {
 
         BigDecimal inceptionReturn = portfolio.calculateTotalReturnRate(currentPrices);
         BigDecimal benchmarkReturn = portfolioAnalysisService.calculateBenchmarkReturn(BenchmarkType.KOSPI.getTicker(), baseDate.minusYears(2), baseDate);
+        LocalDate windowStart = baseDate.minusYears(2);
+        // shortcut: store source and date range only; capture source revisions when the readers expose them.
+        Map<String, Object> inputManifest = Map.of(
+                "sources", List.of("stock_price_daily", "index_daily"),
+                "quoteScope", "KRX",
+                "priceBasis", PriceBasis.RAW.name(),
+                "windowStart", windowStart.toString(),
+                "windowEnd", baseDate.toString()
+        );
+        Portfolio managedPortfolio = portfolioRepository.getReferenceById(portfolio.getId());
 
         portfolioStatsRepository.findByPortfolioId(portfolio.getId())
                 .ifPresentOrElse(
-                        stats -> stats.update(baseDate, mdd, sharpe, beta, inceptionReturn, benchmarkReturn),
-                        () -> portfolioStatsRepository.save(PortfolioStats.create(portfolio, baseDate, mdd, sharpe, beta, inceptionReturn, benchmarkReturn))
+                        stats -> stats.update(portfolio.getConfigurationVersion(), windowStart, baseDate,
+                                PriceBasis.RAW.name(), inputManifest,
+                                mdd, sharpe, beta, inceptionReturn, benchmarkReturn),
+                        () -> portfolioStatsRepository.save(PortfolioStats.create(managedPortfolio, windowStart, baseDate,
+                                PriceBasis.RAW.name(), inputManifest, mdd, sharpe, beta,
+                                inceptionReturn, benchmarkReturn))
                 );
 
         String payload = jsonUtil.toJson(new PortfolioAnalysisCompletedEvent(

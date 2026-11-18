@@ -3,9 +3,10 @@ package org.stockwellness.application.port.out.watchlist;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import org.stockwellness.domain.stock.Stock;
 
 public interface StockDataPort {
-    Map<String, StockWellnessDetail> getStockDetails(List<String> isinCodes);
+    Map<Long, StockWellnessDetail> getStockDetails(List<Stock> stocks);
 
     record StockWellnessDetail(
             String isinCode,

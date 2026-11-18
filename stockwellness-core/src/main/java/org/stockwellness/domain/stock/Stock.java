@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.stockwellness.domain.shared.AbstractEntity;
@@ -39,8 +41,7 @@ public class Stock extends AbstractEntity {
     @Column(nullable = false, length = 20)
     private String ticker;
 
-    /** Null is reserved for legacy synthetic index rows until Benchmark migration is complete. */
-    @Column(name = "market_code", length = 20, updatable = false)
+    @Column(name = "market_code", nullable = false, length = 20, updatable = false)
     private String marketCode;
 
     @Column(name = "listed_shares")
@@ -71,6 +72,7 @@ public class Stock extends AbstractEntity {
     private MarketType marketType;
 
     @Enumerated(STRING)
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 3)
     private Currency currency;
 
@@ -155,6 +157,9 @@ public class Stock extends AbstractEntity {
             StockSector sector,
             StockStatus status
     ) {
+        if (marketType == null || marketType == MarketType.INDEX) {
+            throw new IllegalArgumentException("Stock market must identify a listed market");
+        }
         Stock s = new Stock();
         s.ticker = ticker.replaceAll("[^0-9A-Za-z]", "").toUpperCase();
         s.standardCode = standardCode;
@@ -164,25 +169,6 @@ public class Stock extends AbstractEntity {
         s.currency = currency;
         s.sector = (sector != null) ? sector : StockSector.empty();
         s.status = status;
-        s.isPremiumTracking = false;
-        s.isPreferred = false;
-        s.tradingStatus = StockTradingStatus.defaultValue();
-        s.warningStatus = StockWarningStatus.defaultValue();
-        s.overheatStatus = StockOverheatStatus.defaultValue();
-        return s;
-    }
-
-    /**
-     * 지수(Benchmark) 종목 생성
-     */
-    public static Stock ofIndex(String ticker, String name) {
-        Stock s = new Stock();
-        s.ticker = ticker;
-        s.name = name;
-        s.marketType = MarketType.INDEX;
-        s.marketCode = null;
-        s.currency = Currency.KRW;
-        s.status = StockStatus.ACTIVE;
         s.isPremiumTracking = false;
         s.isPreferred = false;
         s.tradingStatus = StockTradingStatus.defaultValue();
@@ -252,6 +238,7 @@ public class Stock extends AbstractEntity {
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
+        updateListingDate(item.listingDate());
         this.parValue = parseLong(item.parValue());
         this.fiscalMonth = item.fiscalMonth();
         this.isPreferred = !"0".equals(item.preferredStockType());
@@ -267,6 +254,7 @@ public class Stock extends AbstractEntity {
         this.status = resolveStatus(item);
         this.groupCode = item.groupCode();
         this.marketCapSize = item.marketCapSize();
+        updateListingDate(item.listingDate());
         this.parValue = parseLong(item.parValue());
         this.fiscalMonth = item.fiscalMonth();
         this.isPreferred = !"0".equals(item.preferredStockType());
@@ -294,10 +282,17 @@ public class Stock extends AbstractEntity {
         this.isPremiumTracking = false;
     }
 
+    public String resolveSectorName() {
+        if (sector != null && sector.getSectorName() != null && !sector.getSectorName().isBlank()) {
+            return sector.getSectorName();
+        }
+        return StockSector.empty().getSectorName();
+    }
+
     // ── 내부 헬퍼 ─────────────────────────────────────────────────────────────
 
     private static String marketCodeFor(MarketType marketType) {
-        return marketType == null || marketType == MarketType.INDEX ? null : marketType.name();
+        return marketType.name();
     }
 
     private static StockStatus resolveStatus(KospiItem item) {
@@ -320,6 +315,11 @@ public class Stock extends AbstractEntity {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void updateListingDate(String raw) {
+        LocalDate parsed = parseDate(raw);
+        if (parsed != null) this.listingDate = parsed;
     }
 
     private static Long parseLong(String raw) {

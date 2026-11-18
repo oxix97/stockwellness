@@ -46,6 +46,7 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.snippet.Attributes.key;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,32 +66,14 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
                 BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                ValuationStatus.COMPLETE, LocalDate.of(2026, 11, 17), List.of()
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
-        responseFields.addAll(List.of(
-                fieldWithPath("data.totalPurchaseAmount").description("총 매수 금액"),
-                fieldWithPath("data.currentTotalValue").description("현재 총 자산 가치"),
-                fieldWithPath("data.totalProfitLoss").description("총 평가 손익"),
-                fieldWithPath("data.totalReturnRate").description("총 수익률 (%)"),
-                fieldWithPath("data.dailyProfitLoss").description("당일 평가 손익"),
-                fieldWithPath("data.dailyReturnRate").description("당일 수익률 (%)"),
-                fieldWithPath("data.cagr").description("연평균 성장률 (CAGR)"),
-                fieldWithPath("data.volatility").description("연간 변동성"),
-                fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"),
-                fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
-                fieldWithPath("data.sharpeRatio").description("샤프 지수"),
-                fieldWithPath("data.beta").description("베타 계수"),
-                fieldWithPath("data.totalInstitutionalNetBuying").description("총 기관 순매수 금액"),
-                fieldWithPath("data.totalForeignNetBuying").description("총 외국인 순매수 금액"),
-                fieldWithPath("data.totalPersonNetBuying").description("총 개인 순매수 금액"),
-                fieldWithPath("data.valuationStatus").description("평가 상태 (COMPLETE, PARTIAL, UNAVAILABLE)"),
-                fieldWithPath("data.asOfDate").description("평가에 사용한 마지막 완료 EOD 기준일"),
-                fieldWithPath("data.missingSymbols").description("가격 누락 종목 코드 목록")
-        ));
+        responseFields.addAll(valuationFields("data."));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
@@ -111,53 +94,46 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
     @Test
     @MockMember(id = 1L)
-    @DisplayName("자산가치: 가격 누락 시 합계 금융 수치를 null과 상태로 반환한다")
+    @DisplayName("자산가치: 가격 누락 시 합계 금융 수치와 미산출 지표를 null과 상태로 반환한다")
     void get_value_partial() throws Exception {
         PortfolioValuationResult result = new PortfolioValuationResult(
                 BigDecimal.valueOf(1350000), null, null, null, null, null,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, null, null,
+                null, null, null,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 ValuationStatus.PARTIAL, LocalDate.of(2026, 8, 7), List.of("005930")
         );
         given(portfolioFacade.getValuation(1L, 100L)).willReturn(result);
 
-        List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
-        responseFields.addAll(List.of(
-                fieldWithPath("data.totalPurchaseAmount").description("총 매수 금액"),
-                fieldWithPath("data.currentTotalValue").description("가격 누락 시 null인 현재 총 자산 가치"),
-                fieldWithPath("data.totalProfitLoss").description("가격 누락 시 null인 총 평가 손익"),
-                fieldWithPath("data.totalReturnRate").description("가격 누락 시 null인 총 수익률 (%)"),
-                fieldWithPath("data.dailyProfitLoss").description("가격 누락 시 null인 당일 평가 손익"),
-                fieldWithPath("data.dailyReturnRate").description("가격 누락 시 null인 당일 수익률 (%)"),
-                fieldWithPath("data.cagr").description("연평균 성장률 (CAGR)"),
-                fieldWithPath("data.volatility").description("연간 변동성"),
-                fieldWithPath("data.alpha").description("초과 수익률 (Alpha)"),
-                fieldWithPath("data.mdd").description("최대 낙폭 (MDD)"),
-                fieldWithPath("data.sharpeRatio").description("샤프 지수"),
-                fieldWithPath("data.beta").description("베타 계수"),
-                fieldWithPath("data.totalInstitutionalNetBuying").description("총 기관 순매수 금액"),
-                fieldWithPath("data.totalForeignNetBuying").description("총 외국인 순매수 금액"),
-                fieldWithPath("data.totalPersonNetBuying").description("총 개인 순매수 금액"),
-                fieldWithPath("data.valuationStatus").description("평가 상태 (COMPLETE, PARTIAL, UNAVAILABLE)"),
-                fieldWithPath("data.asOfDate").description("평가에 사용한 마지막 완료 EOD 기준일"),
-                fieldWithPath("data.missingSymbols").description("가격 누락 종목 코드 목록")
-        ));
-
-        mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
+        String responseBody = mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/valuation", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
                         .contentType(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.valuationStatus").value("PARTIAL"))
                 .andExpect(jsonPath("$.data.currentTotalValue").value(nullValue()))
-                .andDo(document("portfolio-analysis-value-partial",
-                        resource(ResourceSnippetParameters.builder()
-                                .tag("Portfolio Analysis")
-                                .summary("포트폴리오 자산 가치 분석 (가격 부분 누락)")
-                                .pathParameters(parameterWithName("portfolioId").description("포트폴리오 ID"))
-                                .responseFields(responseFields)
-                                .build())
-                ));
+                .andExpect(jsonPath("$.data.cagr").value(nullValue()))
+                .andExpect(jsonPath("$.data.volatility").value(nullValue()))
+                .andExpect(jsonPath("$.data.alpha").value(nullValue()))
+                .andExpect(jsonPath("$.data.mdd").value(nullValue()))
+                .andExpect(jsonPath("$.data.sharpeRatio").value(nullValue()))
+                .andExpect(jsonPath("$.data.beta").value(nullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var dataNode = objectMapper.readTree(responseBody).get("data");
+        assertThat(dataNode.has("cagr")).isTrue();
+        assertThat(dataNode.get("cagr").isNull()).isTrue();
+        assertThat(dataNode.has("volatility")).isTrue();
+        assertThat(dataNode.get("volatility").isNull()).isTrue();
+        assertThat(dataNode.has("alpha")).isTrue();
+        assertThat(dataNode.get("alpha").isNull()).isTrue();
+        assertThat(dataNode.has("mdd")).isTrue();
+        assertThat(dataNode.get("mdd").isNull()).isTrue();
+        assertThat(dataNode.has("sharpeRatio")).isTrue();
+        assertThat(dataNode.get("sharpeRatio").isNull()).isTrue();
+        assertThat(dataNode.has("beta")).isTrue();
+        assertThat(dataNode.get("beta").isNull()).isTrue();
     }
 
     @Test
@@ -175,15 +151,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
-        responseFields.addAll(List.of(
-                fieldWithPath("data.totalValue").description("총 자산 가치"),
-                fieldWithPath("data.assetRatios[].name").description("자산군 명칭"),
-                fieldWithPath("data.assetRatios[].value").description("비중 (%)"),
-                fieldWithPath("data.sectorRatios[].name").description("섹터 명칭"),
-                fieldWithPath("data.sectorRatios[].value").description("비중 (%)"),
-                fieldWithPath("data.countryRatios[].name").description("국가 명칭"),
-                fieldWithPath("data.countryRatios[].value").description("비중 (%)")
-        ));
+        responseFields.addAll(diversificationFields("data."));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/diversification", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
@@ -212,13 +180,17 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                 BigDecimal.valueOf(12.5), BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(15.5), BigDecimal.valueOf(12.0), BigDecimal.valueOf(3.5),
                 BigDecimal.valueOf(10.2), BigDecimal.valueOf(1.5), BigDecimal.valueOf(1.1),
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                ValuationStatus.COMPLETE, LocalDate.of(2026, 11, 17), List.of()
         );
         PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
                 BigDecimal.valueOf(1500000), Map.of("STOCK", BigDecimal.valueOf(100)), Map.of("TECH", BigDecimal.valueOf(100)), Map.of("US", BigDecimal.valueOf(100))
         );
         PortfolioRebalancingResult rebalancing = new PortfolioRebalancingResult(
-                BigDecimal.valueOf(1500000), List.of()
+                BigDecimal.valueOf(1500000),
+                List.of(new PortfolioRebalancingResult.RebalancingItem(
+                        "AAPL", "애플", BigDecimal.valueOf(50), BigDecimal.valueOf(60), BigDecimal.valueOf(-10),
+                        BigDecimal.TEN, BigDecimal.valueOf(12), BigDecimal.valueOf(150000)))
         );
         PortfolioAnalysisSummaryResult result = new PortfolioAnalysisSummaryResult(
                 valuation, diversification, rebalancing, Map.of("AAPL", BigDecimal.valueOf(12.5))
@@ -228,12 +200,13 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
-        responseFields.addAll(List.of(
-                subsectionWithPath("data.valuation").description("가치 평가 정보"),
-                subsectionWithPath("data.diversification").description("분산도 정보"),
-                subsectionWithPath("data.rebalancing").description("리밸런싱 정보"),
-                subsectionWithPath("data.itemContributions").description("종목별 수익 기여도 (Ticker -> Contribution)")
-        ));
+        responseFields.add(fieldWithPath("data.valuation").type(JsonFieldType.OBJECT).description("가치 평가 정보"));
+        responseFields.addAll(valuationFields("data.valuation."));
+        responseFields.add(fieldWithPath("data.diversification").type(JsonFieldType.OBJECT).description("분산도 정보"));
+        responseFields.addAll(diversificationFields("data.diversification."));
+        responseFields.add(fieldWithPath("data.rebalancing").type(JsonFieldType.OBJECT).description("리밸런싱 정보"));
+        responseFields.addAll(rebalancingFields("data.rebalancing."));
+        responseFields.add(subsectionWithPath("data.itemContributions").description("종목별 수익 기여도 (Ticker -> Contribution)"));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/summary", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
@@ -277,18 +250,7 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
 
         // when & then
         List<FieldDescriptor> responseFields = new ArrayList<>(commonResponseFields());
-        responseFields.addAll(List.of(
-                fieldWithPath("data.totalValue").description("총 자산 가치"),
-                fieldWithPath("data.items[].symbol").description("종목 심볼"),
-                fieldWithPath("data.items[].name").description("종목명"),
-                fieldWithPath("data.items[].currentWeight").description("현재 비중 (%)"),
-                fieldWithPath("data.items[].targetWeight").description("목표 비중 (%)"),
-                fieldWithPath("data.items[].diffWeight").description("비중 차이 (%p)"),
-                fieldWithPath("data.items[].currentQuantity").description("현재 보유 수량"),
-                fieldWithPath("data.items[].recommendedQuantity").description("권장 보유 수량"),
-                fieldWithPath("data.items[].currentPrice").description("현재가"),
-                fieldWithPath("data.items[].expectedTradeAmount").description("예상 매매 금액")
-        ));
+        responseFields.addAll(rebalancingFields("data."));
 
         mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
                         .header("Authorization", "Bearer {ACCESS_TOKEN}")
@@ -804,5 +766,265 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
                                 .responseFields(responseFields)
                                 .build())
                 ));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("요약분석: 부분 가격 누락 시 valuationStatus=PARTIAL과 nullable 합계를 그대로 직렬화한다")
+    void get_summary_partial() throws Exception {
+        PortfolioValuationResult valuation = new PortfolioValuationResult(
+                BigDecimal.valueOf(1350000), null, null, null, null, null,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                ValuationStatus.PARTIAL, LocalDate.of(2026, 11, 17), List.of("964002")
+        );
+        PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
+                null, Map.of(), Map.of(), Map.of()
+        );
+        PortfolioRebalancingResult rebalancing = new PortfolioRebalancingResult(
+                null, List.of()
+        );
+        PortfolioAnalysisSummaryResult result = new PortfolioAnalysisSummaryResult(
+                valuation, diversification, rebalancing, Map.of("964001", BigDecimal.valueOf(-4.95))
+        );
+
+        given(portfolioFacade.getAnalysisSummary(any(), any(), any(), any())).willReturn(result);
+
+        mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/summary", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.valuation.valuationStatus").value("PARTIAL"))
+                .andExpect(jsonPath("$.data.valuation.asOfDate").value("2026-11-17"))
+                .andExpect(jsonPath("$.data.valuation.missingSymbols[0]").value("964002"))
+                .andExpect(jsonPath("$.data.valuation.currentTotalValue").value(nullValue()))
+                .andExpect(jsonPath("$.data.diversification.totalValue").value(nullValue()))
+                .andExpect(jsonPath("$.data.rebalancing.totalValue").value(nullValue()))
+                .andExpect(jsonPath("$.data.itemContributions['964001']").value(-4.95));
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("리밸런싱: 현재가 0원 종목은 권장 수량과 예상 매매 금액을 null로 직렬화한다")
+    void get_rebalancing_zero_price() throws Exception {
+        PortfolioRebalancingResult result = new PortfolioRebalancingResult(
+                BigDecimal.valueOf(1000),
+                List.of(
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "964003", "영원주", BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.valueOf(50),
+                                BigDecimal.ONE, null, BigDecimal.ZERO)
+                )
+        );
+        given(portfolioFacade.getRebalancingGuide(1L, 100L)).willReturn(result);
+
+        String responseBody = mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalValue").value(1000))
+                .andExpect(jsonPath("$.data.items[0].currentPrice").value(0))
+                .andExpect(jsonPath("$.data.items[0].recommendedQuantity").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[0].expectedTradeAmount").value(nullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var items = objectMapper.readTree(responseBody).get("data").get("items");
+        assertThat(items.get(0).has("recommendedQuantity")).isTrue();
+        assertThat(items.get(0).get("recommendedQuantity").isNull()).isTrue();
+        assertThat(items.get(0).has("expectedTradeAmount")).isTrue();
+        assertThat(items.get(0).get("expectedTradeAmount").isNull()).isTrue();
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("리밸런싱: 현재가 0원 null과 양수 현재가 실제 0을 구분해 직렬화한다")
+    void get_rebalancing_distinguishes_zero_price_null_and_real_zero() throws Exception {
+        PortfolioRebalancingResult result = new PortfolioRebalancingResult(
+                BigDecimal.valueOf(1000),
+                List.of(
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "964003", "영원주", BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.valueOf(50),
+                                BigDecimal.ONE, null, BigDecimal.ZERO),
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "AAPL", "애플", BigDecimal.valueOf(50), BigDecimal.valueOf(50), BigDecimal.ZERO,
+                                BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.valueOf(100))
+                )
+        );
+        given(portfolioFacade.getRebalancingGuide(1L, 100L)).willReturn(result);
+
+        String responseBody = mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].recommendedQuantity").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[0].expectedTradeAmount").value(nullValue()))
+                .andExpect(jsonPath("$.data.items[1].recommendedQuantity").value(0.0))
+                .andExpect(jsonPath("$.data.items[1].expectedTradeAmount").value(0))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var items = objectMapper.readTree(responseBody).get("data").get("items");
+        assertThat(items.get(0).get("recommendedQuantity").isNull()).isTrue();
+        assertThat(items.get(0).get("expectedTradeAmount").isNull()).isTrue();
+        assertThat(items.get(1).get("recommendedQuantity").isNumber()).isTrue();
+        assertThat(items.get(1).get("expectedTradeAmount").isNumber()).isTrue();
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("리밸런싱: 가격 누락 시 totalValue는 null이고 items는 빈 배열을 반환한다")
+    void get_rebalancing_partial() throws Exception {
+        PortfolioRebalancingResult result = new PortfolioRebalancingResult(null, List.of());
+        given(portfolioFacade.getRebalancingGuide(1L, 100L)).willReturn(result);
+
+        String responseBody = mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/rebalancing", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalValue").value(nullValue()))
+                .andExpect(jsonPath("$.data.items").isArray())
+                .andExpect(jsonPath("$.data.items").isEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var dataNode = objectMapper.readTree(responseBody).get("data");
+        assertThat(dataNode.has("totalValue")).isTrue();
+        assertThat(dataNode.get("totalValue").isNull()).isTrue();
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("요약분석: 미산출 지표는 JSON null, 실제 계산된 0과 음수/양수는 JSON 숫자로 동일하게 직렬화한다")
+    void get_summary_distinguishes_explicit_null_and_real_zero() throws Exception {
+        PortfolioValuationResult valuation = new PortfolioValuationResult(
+                BigDecimal.valueOf(1000), BigDecimal.valueOf(1000), BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                null, BigDecimal.ZERO, new BigDecimal("-1.2500"),
+                BigDecimal.ZERO, null, new BigDecimal("1.0500"),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                ValuationStatus.COMPLETE, LocalDate.of(2026, 11, 17), List.of()
+        );
+        PortfolioDiversificationResult diversification = new PortfolioDiversificationResult(
+                BigDecimal.valueOf(1000), Map.of("STOCK", BigDecimal.valueOf(100)), Map.of("TECH", BigDecimal.valueOf(100)), Map.of("KR", BigDecimal.valueOf(100))
+        );
+        PortfolioRebalancingResult rebalancing = new PortfolioRebalancingResult(
+                BigDecimal.valueOf(1000),
+                List.of(
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "964003", "영원주", BigDecimal.ZERO, BigDecimal.valueOf(50), BigDecimal.valueOf(50),
+                                BigDecimal.ONE, null, BigDecimal.ZERO),
+                        new PortfolioRebalancingResult.RebalancingItem(
+                                "964001", "정상주", BigDecimal.valueOf(100), BigDecimal.valueOf(50), BigDecimal.valueOf(-50),
+                                BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.valueOf(100))
+                )
+        );
+        PortfolioAnalysisSummaryResult result = new PortfolioAnalysisSummaryResult(
+                valuation, diversification, rebalancing, Map.of("964001", BigDecimal.ZERO)
+        );
+
+        given(portfolioFacade.getAnalysisSummary(any(), any(), any(), any())).willReturn(result);
+
+        String responseBody = mockMvc.perform(get("/api/v1/portfolios/{portfolioId}/analysis/summary", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.valuation.cagr").value(nullValue()))
+                .andExpect(jsonPath("$.data.valuation.volatility").value(0.0))
+                .andExpect(jsonPath("$.data.valuation.alpha").value(-1.25))
+                .andExpect(jsonPath("$.data.valuation.mdd").value(0.0))
+                .andExpect(jsonPath("$.data.valuation.sharpeRatio").value(nullValue()))
+                .andExpect(jsonPath("$.data.valuation.beta").value(1.05))
+                .andExpect(jsonPath("$.data.rebalancing.items[0].recommendedQuantity").value(nullValue()))
+                .andExpect(jsonPath("$.data.rebalancing.items[0].expectedTradeAmount").value(nullValue()))
+                .andExpect(jsonPath("$.data.rebalancing.items[1].recommendedQuantity").value(0.0))
+                .andExpect(jsonPath("$.data.rebalancing.items[1].expectedTradeAmount").value(0))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var dataNode = objectMapper.readTree(responseBody).get("data");
+        var valNode = dataNode.get("valuation");
+        assertThat(valNode.has("cagr")).isTrue();
+        assertThat(valNode.get("cagr").isNull()).isTrue();
+        assertThat(valNode.get("volatility").isNumber()).isTrue();
+        assertThat(valNode.get("mdd").isNumber()).isTrue();
+        assertThat(valNode.has("sharpeRatio")).isTrue();
+        assertThat(valNode.get("sharpeRatio").isNull()).isTrue();
+
+        var rebItems = dataNode.get("rebalancing").get("items");
+        assertThat(rebItems.get(0).has("recommendedQuantity")).isTrue();
+        assertThat(rebItems.get(0).get("recommendedQuantity").isNull()).isTrue();
+        assertThat(rebItems.get(0).has("expectedTradeAmount")).isTrue();
+        assertThat(rebItems.get(0).get("expectedTradeAmount").isNull()).isTrue();
+    }
+
+    private static List<FieldDescriptor> valuationFields(String prefix) {
+        return List.of(
+                fieldWithPath(prefix + "totalPurchaseAmount").type(JsonFieldType.NUMBER).description("총 매수 금액"),
+                nullableRequiredField(prefix + "currentTotalValue", JsonFieldType.NUMBER, "현재 총 자산 가치 (가격 누락 시 null)"),
+                nullableRequiredField(prefix + "totalProfitLoss", JsonFieldType.NUMBER, "총 평가 손익 (가격 누락 시 null)"),
+                nullableRequiredField(prefix + "totalReturnRate", JsonFieldType.NUMBER, "총 수익률 (%, 가격 누락 시 null)"),
+                nullableRequiredField(prefix + "dailyProfitLoss", JsonFieldType.NUMBER, "당일 평가 손익 (가격/전일 종가 누락 시 null)"),
+                nullableRequiredField(prefix + "dailyReturnRate", JsonFieldType.NUMBER, "당일 수익률 (%, 가격/전일 종가 누락 또는 전일 평가액 0 이하 시 null)"),
+                nullableRequiredField(prefix + "cagr", JsonFieldType.NUMBER, "연평균 성장률 (CAGR, 미산출 시 null)"),
+                nullableRequiredField(prefix + "volatility", JsonFieldType.NUMBER, "연간 변동성 (미산출 시 null)"),
+                nullableRequiredField(prefix + "alpha", JsonFieldType.NUMBER, "초과 수익률 (Alpha, 미산출 시 null)"),
+                nullableRequiredField(prefix + "mdd", JsonFieldType.NUMBER, "최대 낙폭 (MDD, 미산출 시 null)"),
+                nullableRequiredField(prefix + "sharpeRatio", JsonFieldType.NUMBER, "샤프 지수 (미산출 시 null)"),
+                nullableRequiredField(prefix + "beta", JsonFieldType.NUMBER, "베타 계수 (미산출 시 null)"),
+                fieldWithPath(prefix + "totalInstitutionalNetBuying").type(JsonFieldType.NUMBER).description("총 기관 순매수 금액"),
+                fieldWithPath(prefix + "totalForeignNetBuying").type(JsonFieldType.NUMBER).description("총 외국인 순매수 금액"),
+                fieldWithPath(prefix + "totalPersonNetBuying").type(JsonFieldType.NUMBER).description("총 개인 순매수 금액"),
+                fieldWithPath(prefix + "valuationStatus").type(JsonFieldType.STRING).description("평가 상태 (COMPLETE, PARTIAL, UNAVAILABLE)"),
+                nullableRequiredField(prefix + "asOfDate", JsonFieldType.STRING, "평가에 사용한 마지막 완료 EOD 기준일 (시세 없음 시 null)"),
+                fieldWithPath(prefix + "missingSymbols").type(JsonFieldType.ARRAY).description("가격 누락 종목 코드 목록").attributes(key("itemsType").value("string"))
+        );
+    }
+
+    private static List<FieldDescriptor> diversificationFields(String prefix) {
+        return List.of(
+                nullableRequiredField(prefix + "totalValue", JsonFieldType.NUMBER, "총 자산 가치 (가격 누락 시 null)"),
+                fieldWithPath(prefix + "assetRatios").type(JsonFieldType.ARRAY).description("자산군별 비중 목록"),
+                fieldWithPath(prefix + "assetRatios[].name").type(JsonFieldType.STRING).description("자산군 명칭"),
+                fieldWithPath(prefix + "assetRatios[].value").type(JsonFieldType.NUMBER).description("비중 (%)"),
+                fieldWithPath(prefix + "sectorRatios").type(JsonFieldType.ARRAY).description("섹터별 비중 목록"),
+                fieldWithPath(prefix + "sectorRatios[].name").type(JsonFieldType.STRING).description("섹터 명칭"),
+                fieldWithPath(prefix + "sectorRatios[].value").type(JsonFieldType.NUMBER).description("비중 (%)"),
+                fieldWithPath(prefix + "countryRatios").type(JsonFieldType.ARRAY).description("국가별 비중 목록"),
+                fieldWithPath(prefix + "countryRatios[].name").type(JsonFieldType.STRING).description("국가 명칭"),
+                fieldWithPath(prefix + "countryRatios[].value").type(JsonFieldType.NUMBER).description("비중 (%)")
+        );
+    }
+
+    private static List<FieldDescriptor> rebalancingFields(String prefix) {
+        return List.of(
+                nullableRequiredField(prefix + "totalValue", JsonFieldType.NUMBER, "총 자산 가치 (가격 누락 시 null)"),
+                fieldWithPath(prefix + "items").type(JsonFieldType.ARRAY).description("리밸런싱 항목 목록 (가격 누락 시 빈 배열)"),
+                fieldWithPath(prefix + "items[].symbol").type(JsonFieldType.STRING).description("종목 심볼"),
+                fieldWithPath(prefix + "items[].name").type(JsonFieldType.STRING).description("종목명"),
+                fieldWithPath(prefix + "items[].currentWeight").type(JsonFieldType.NUMBER).description("현재 비중 (%)"),
+                fieldWithPath(prefix + "items[].targetWeight").type(JsonFieldType.NUMBER).description("목표 비중 (%)"),
+                fieldWithPath(prefix + "items[].diffWeight").type(JsonFieldType.NUMBER).description("비중 차이 (%p)"),
+                fieldWithPath(prefix + "items[].currentQuantity").type(JsonFieldType.NUMBER).description("현재 보유 수량"),
+                nullableRequiredField(prefix + "items[].recommendedQuantity", JsonFieldType.NUMBER, "권장 매매 수량 (현재가 0원 등 산출 불가 시 null)"),
+                fieldWithPath(prefix + "items[].currentPrice").type(JsonFieldType.NUMBER).description("현재가"),
+                nullableRequiredField(prefix + "items[].expectedTradeAmount", JsonFieldType.NUMBER, "예상 매매 금액 (현재가 0원 등 산출 불가 시 null)")
+        );
+    }
+
+    private static FieldDescriptor nullableRequiredField(String path, JsonFieldType type, String description) {
+        return fieldWithPath(path)
+                .type(type)
+                .description(description)
+                .optional()
+                .attributes(key("validationConstraints").value(List.of(
+                        Map.of("name", "javax.validation.constraints.NotNull", "configuration", Map.of())
+                )));
     }
 }

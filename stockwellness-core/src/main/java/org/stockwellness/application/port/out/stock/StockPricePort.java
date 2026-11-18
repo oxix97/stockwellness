@@ -14,10 +14,6 @@ import org.stockwellness.domain.stock.price.TradeDirection;
 
 public interface StockPricePort {
 
-    StockPrice save(StockPrice stockPrice);
-
-    void saveAll(List<StockPrice> stockPrices);
-
     List<StockSupplyRankingResult> findTopInstitutionStocksBySupply(LocalDate date, TradeDirection direction, int limit);
 
     List<StockSupplyRankingResult> findTopForeignStocksBySupply(LocalDate date, TradeDirection direction, int limit);
@@ -70,7 +66,7 @@ public interface StockPricePort {
     /**
      * 여러 종목의 최근 시세 이력을 일괄 로드합니다.
      */
-    Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> isinCodes, int limit);
+    Map<String, List<StockPrice>> loadRecentHistoriesBatch(List<String> tickers, int limit);
 
     /**
      * 특정 종목의 시세 데이터를 로드합니다. (캐시 우선 활용)

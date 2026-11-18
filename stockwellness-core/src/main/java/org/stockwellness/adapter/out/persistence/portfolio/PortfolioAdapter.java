@@ -9,8 +9,11 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.application.port.out.portfolio.LoadAdvisorPort;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
 import org.stockwellness.application.port.out.portfolio.SaveAdvisorPort;
+import org.stockwellness.adapter.out.persistence.stock.repository.StockRepository;
+import org.stockwellness.domain.portfolio.AssetType;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.advisor.AdvisorReport;
+import org.stockwellness.domain.stock.exception.InvalidStockCodeException;
 
 @Component
 @RequiredArgsConstructor
@@ -18,6 +21,7 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
 
     private final PortfolioRepository portfolioRepository;
     private final AdvisorReportRepository advisorReportRepository;
+    private final StockRepository stockRepository;
 
     @Override
     public Optional<Portfolio> findById(Long id) {
@@ -58,6 +62,11 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
 
     @Override
     public Portfolio savePortfolio(Portfolio portfolio) {
+        portfolio.getItems().stream()
+                .filter(item -> item.getAssetType() == AssetType.STOCK)
+                .forEach(item -> item.assignStock(stockRepository.findByTicker(item.getSymbol())
+                        .orElseThrow(() -> new InvalidStockCodeException(
+                                "Stock not found with symbol: " + item.getSymbol()))));
         return portfolioRepository.save(portfolio);
     }
 
@@ -68,7 +77,7 @@ public class PortfolioAdapter implements PortfolioPort, LoadAdvisorPort, SaveAdv
 
     @Override
     public Optional<AdvisorReport> loadLatestReport(Long portfolioId) {
-        return advisorReportRepository.findFirstByPortfolioIdOrderByCreatedAtDesc(portfolioId);
+        return advisorReportRepository.findFirstByPortfolioIdOrderByGeneratedAtDescIdDesc(portfolioId);
     }
 
     @Override

@@ -11,9 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.stockwellness.adapter.out.external.kis.dto.BenchmarkPriceData;
-import org.stockwellness.adapter.out.external.kis.dto.KisInvestorPriceDetail;
+import org.stockwellness.adapter.out.external.kis.dto.KisInvestorTradeByStockDaily;
 import org.stockwellness.adapter.out.external.kis.exception.KisApiException;
 import org.stockwellness.domain.stock.Stock;
+import org.stockwellness.domain.stock.Currency;
+import org.stockwellness.domain.stock.MarketType;
+import org.stockwellness.domain.stock.StockStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
@@ -192,48 +195,46 @@ class KisDailyPriceAdapterTest {
     }
 
     @Test
-    @DisplayName("주식 일자별 투자자 매매 추이 조회 성공 테스트")
-    void fetchInvestorPrices_success() {
-        // given
-        Stock stock = Stock.ofIndex("005930", "삼성전자");
-        LocalDate startDate = LocalDate.of(2026, 4, 11);
-        LocalDate endDate = LocalDate.of(2026, 4, 11);
+    @DisplayName("종목별 일별 수급 조회는 공식 FHPTJ04160001 요청 계약과 원천 유형 필드를 매핑한다")
+    void fetchInvestorTradeByStockDaily_usesTheDocumentedRequestAndMapsInvestorTypes() {
+        Stock stock = Stock.of("005930", "KR7005930003", "삼성전자", MarketType.KOSPI,
+                Currency.KRW, null, StockStatus.ACTIVE);
+        LocalDate tradeDate = LocalDate.of(2026, 10, 5);
+        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")))
+                .andExpect(requestTo(containsString("FID_COND_MRKT_DIV_CODE=J")))
+                .andExpect(requestTo(containsString("FID_INPUT_ISCD=005930")))
+                .andExpect(requestTo(containsString("FID_INPUT_DATE_1=20261005")))
+                .andExpect(requestTo(containsString("FID_ORG_ADJ_PRC=")))
+                .andExpect(requestTo(containsString("FID_ETC_CLS_CODE=")))
+                .andExpect(header("tr_id", "FHPTJ04160001"))
+                .andRespond(withSuccess("""
+                        {"rtCd":"0","output1":{},"output2":[{
+                          "stck_bsop_date":"20261005",
+                          "frgn_ntby_qty":"-1","frgn_ntby_tr_pbmn":"-2",
+                          "orgn_ntby_qty":"3","orgn_ntby_tr_pbmn":"4",
+                          "prsn_ntby_qty":"5","prsn_ntby_tr_pbmn":"6",
+                          "scrt_ntby_qty":"7","scrt_ntby_tr_pbmn":"8",
+                          "insu_ntby_qty":"9","insu_ntby_tr_pbmn":"10",
+                          "ivtr_ntby_qty":"11","ivtr_ntby_tr_pbmn":"12",
+                          "pe_fund_ntby_vol":"13","pe_fund_ntby_tr_pbmn":"14",
+                          "bank_ntby_qty":"15","bank_ntby_tr_pbmn":"16",
+                          "fund_ntby_qty":"17","fund_ntby_tr_pbmn":"18",
+                          "mrbn_ntby_qty":"19","mrbn_ntby_tr_pbmn":"20",
+                          "etc_orgt_ntby_vol":"21","etc_orgt_ntby_tr_pbmn":"22",
+                          "etc_corp_ntby_vol":"23","etc_corp_ntby_tr_pbmn":"24",
+                          "etc_ntby_qty":"25","etc_ntby_tr_pbmn":"26"
+                        }]}
+                        """, MediaType.APPLICATION_JSON));
 
-        String mockResponse = """
-                {
-                  "rtCd": "0",
-                  "msgCd": "MCA00000",
-                  "msg1": "정상처리 되었습니다.",
-                  "output": [
-                    {
-                      "stck_bsop_date": "20260411",
-                      "stck_clpr": "84000",
-                      "prdy_vrss_sign": "1",
-                      "prdy_vrss": "500",
-                      "prdy_ctrt": "0.60",
-                      "acml_vol": "15000000",
-                      "prsn_ntby_qty": "1000",
-                      "frgn_ntby_qty": "2000",
-                      "orgn_ntby_qty": "3000",
-                      "prsn_ntby_tr_pbmn": "1000",
-                      "frgn_ntby_tr_pbmn": "2000",
-                      "orgn_ntby_tr_pbmn": "3000"
-                    }
-                  ]
-                }
-                """;
+        List<KisInvestorTradeByStockDaily> result = adapter.fetchInvestorTradeByStockDaily(stock, tradeDate);
 
-        mockServer.expect(requestTo(containsString("/uapi/domestic-stock/v1/quotations/inquire-investor")))
-                .andExpect(header("tr_id", "FHKST01010900"))
-                .andRespond(withSuccess(mockResponse, MediaType.APPLICATION_JSON));
-
-        // when
-        List<KisInvestorPriceDetail> result = adapter.fetchInvestorPrices(stock, startDate, endDate);
-
-        // then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).baseDate()).isEqualTo("20260411");
-        assertThat(result.get(0).netInstitutionalBuyingAmt()).isEqualByComparingTo("3000");
+        assertThat(result).singleElement().satisfies(row -> {
+            assertThat(row.baseDate()).isEqualTo("20261005");
+            assertThat(row.foreignNetQuantity()).isEqualTo("-1");
+            assertThat(row.financialInvestmentNetAmount()).isEqualTo("8");
+            assertThat(row.privateFundNetQuantity()).isEqualTo("13");
+            assertThat(row.otherCorporateNetAmount()).isEqualTo("24");
+        });
         mockServer.verify();
     }
 

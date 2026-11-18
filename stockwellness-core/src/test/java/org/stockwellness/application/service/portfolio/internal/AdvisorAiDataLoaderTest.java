@@ -12,16 +12,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.application.port.out.portfolio.AdvisorAiContext;
 import org.stockwellness.application.port.out.portfolio.PortfolioPort;
-import org.stockwellness.application.port.out.stock.LoadBenchmarkPort;
+import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
 import org.stockwellness.application.port.out.stock.LoadTechnicalDataPort;
-import org.stockwellness.application.port.out.stock.StockPort;
 import org.stockwellness.domain.portfolio.Portfolio;
 import org.stockwellness.domain.portfolio.PortfolioItem;
-import org.stockwellness.domain.stock.Stock;
 import org.stockwellness.domain.stock.analysis.AiAnalysisContext;
+import org.stockwellness.domain.stock.exception.StockDataNotFoundException;
+import org.stockwellness.application.port.out.stock.IndexPriceObservation;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -38,13 +38,10 @@ class AdvisorAiDataLoaderTest {
     private PortfolioPort portfolioPort;
 
     @Mock
-    private StockPort stockPort;
-
-    @Mock
     private LoadTechnicalDataPort loadTechnicalDataPort;
 
     @Mock
-    private LoadBenchmarkPort loadBenchmarkPort;
+    private IndexDailyReadPort indexDailyReadPort;
 
     @Test
     @DisplayName("포트폴리오의 AI 분석 컨텍스트를 정상적으로 로드한다")
@@ -52,22 +49,23 @@ class AdvisorAiDataLoaderTest {
         // given
         Long portfolioId = 1L;
         Portfolio portfolio = Portfolio.create(1L, "테스트", "");
-        PortfolioItem item = PortfolioItem.createStock("AAPL", BigDecimal.TEN, new BigDecimal("150"), "USD", new BigDecimal("100"), LocalDate.now());
+        PortfolioItem item = PortfolioItem.createStock("005930", BigDecimal.TEN, new BigDecimal("150"), "KRW", new BigDecimal("100"), LocalDate.now());
         portfolio.updateItems(List.of(item));
 
         given(portfolioPort.findById(portfolioId)).willReturn(Optional.of(portfolio));
         
-        Stock stock = mock(Stock.class);
-        given(stock.getTicker()).willReturn("AAPL");
-        given(stock.getName()).willReturn("애플");
-        given(stockPort.loadStocksByTickers(anyList())).willReturn(List.of(stock));
-
         AiAnalysisContext tech = mock(AiAnalysisContext.class);
+        LocalDate tradeDate = LocalDate.now();
+        given(tech.isinCode()).willReturn("005930");
+        given(tech.baseDate()).willReturn(tradeDate);
         given(tech.priceInfo()).willReturn(new AiAnalysisContext.PriceSummary(new BigDecimal("150"), BigDecimal.ZERO, BigDecimal.ZERO));
-        given(loadTechnicalDataPort.loadTechnicalContexts(anyList())).willReturn(Map.of("AAPL", tech));
+        var input = new LoadTechnicalDataPort.CanonicalStockAnalysisInput(
+                1L, "005930", "삼성전자", tradeDate, "KRX", 1, "{}", "test-v1", tech);
+        given(loadTechnicalDataPort.loadTechnicalContexts(anyList())).willReturn(Map.of("005930", input));
         
-        StockPriceResult benchmark = new StockPriceResult(LocalDate.now(), new BigDecimal("2500"), new BigDecimal("2510"), new BigDecimal("2490"), new BigDecimal("2505"), new BigDecimal("2505"), 1000000L, null, null, null, null, null);
-        given(loadBenchmarkPort.loadBenchmarkPrices(eq("KOSPI"), any(), any())).willReturn(List.of(benchmark));
+        IndexPriceObservation benchmark = new IndexPriceObservation(1L, LocalDate.now(), null, null,
+                new BigDecimal("2505"), null, null, null, null, null, 1, "FINAL");
+        given(indexDailyReadPort.recentFinal("0001", LocalDate.now(), 2)).willReturn(List.of(benchmark));
 
         // when
         AdvisorAiContext context = dataLoader.loadContext(portfolioId);
@@ -75,9 +73,21 @@ class AdvisorAiDataLoaderTest {
         // then
         assertThat(context.portfolioName()).isEqualTo("테스트");
         assertThat(context.holdings()).hasSize(1);
-        assertThat(context.holdings().get(0).ticker()).isEqualTo("AAPL");
-        assertThat(context.holdings().get(0).name()).isEqualTo("애플");
+        assertThat(context.holdings().get(0).ticker()).isEqualTo("005930");
+        assertThat(context.holdings().get(0).name()).isEqualTo("삼성전자");
         assertThat(context.benchmarks()).hasSize(1);
         assertThat(context.benchmarks().get(0).name()).isEqualTo("KOSPI");
+    }
+
+    @Test
+    @DisplayName("FINAL 종목 데이터가 없는 포트폴리오는 AI 입력으로 만들지 않는다")
+    void loadContext_rejectsMissingCanonicalFinalPrice() {
+        Portfolio portfolio = Portfolio.create(1L, "테스트", "");
+        portfolio.updateItems(List.of(PortfolioItem.createStock("AAPL", BigDecimal.TEN,
+                new BigDecimal("150"), "USD", new BigDecimal("100"), LocalDate.now())));
+        given(portfolioPort.findById(1L)).willReturn(Optional.of(portfolio));
+        given(loadTechnicalDataPort.loadTechnicalContexts(anyList())).willReturn(Map.of());
+
+        assertThatThrownBy(() -> dataLoader.loadContext(1L)).isInstanceOf(StockDataNotFoundException.class);
     }
 }

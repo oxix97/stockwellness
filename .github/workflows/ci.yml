@@ -21,7 +21,11 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Set up Gradle and restore build cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) || (github.event_name != 'pull_request' && github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main') }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -33,7 +37,7 @@ jobs:
         run: docker version
 
       - name: Build & Test (all modules)
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon --configuration-cache
 
       - name: Upload JaCoCo report
         if: always()
@@ -45,9 +49,61 @@ jobs:
             **/build/reports/jacoco/test/jacocoTestReport.xml
           retention-days: 7
 
+  integration-issue-331:
+    name: Issue 331 Full-chain Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle and restore build cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Start disposable PostgreSQL, Kafka, and Redis
+        run: docker compose -p stockwellness-issue331 -f .github/test-services/issue-331-compose.yml up -d --wait --wait-timeout 120
+
+      - name: Run Issue 331 full-chain integration test
+        run: ./gradlew :stockwellness-api:integrationTest --no-daemon --configuration-cache
+        env:
+          SW331_ENABLE_INTEGRATION: 'true'
+          SW331_TEST_POSTGRES_URL: jdbc:postgresql://127.0.0.1:55433/stockwellness_331_it
+          SW331_TEST_POSTGRES_USER: issue331
+          SW331_TEST_POSTGRES_PASSWORD: issue331-test-only
+          SW331_TEST_KAFKA_BOOTSTRAP: 127.0.0.1:59093
+          SW331_TEST_REDIS_HOST: 127.0.0.1
+          SW331_TEST_REDIS_PORT: '56380'
+          SW331_TEST_CACHE_NAMESPACE: issue331-it-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Stop disposable services
+        if: always()
+        run: docker compose -p stockwellness-issue331 -f .github/test-services/issue-331-compose.yml down --volumes --remove-orphans
+
+      - name: Upload integration test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-331-integration-test-report
+          path: stockwellness-api/build/reports/tests/integrationTest
+          if-no-files-found: warn
+          retention-days: 7
+
   deploy-api:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: build
+    needs: [ build, integration-issue-331 ]
     permissions:
       actions: read
       contents: read
@@ -57,7 +113,7 @@ jobs:
 
   deploy-batch:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: build
+    needs: [ build, integration-issue-331 ]
     permissions:
       actions: read
       contents: read

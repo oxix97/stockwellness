@@ -2,6 +2,7 @@ package org.stockwellness.adapter.out.persistence.member;
 
 import java.util.Optional;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +17,14 @@ import org.stockwellness.domain.member.MemberStatus;
 import org.stockwellness.domain.shared.Email;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest(properties = "spring.flyway.enabled=false")
+@DataJpaTest
 @Import({QueryDslConfig.class, JpaConfig.class})
 @ActiveProfiles("test")
 @DisplayName("MemberRepository 통합 테스트")
 class MemberRepositoryTest {
+    @Autowired
+    private EntityManager entityManager;
+
     @Autowired
     private MemberRepository memberRepository;
 
@@ -30,8 +34,10 @@ class MemberRepositoryTest {
         // given
         String emailStr = "test@stockwellness.com";
         Member member = Member.register(emailStr, "tester", LoginType.GOOGLE);
+        member.updateNotifications(false, true, true);
         memberRepository.save(member);
         memberRepository.flush();
+        entityManager.clear();
 
         // when
         Optional<Member> found = memberRepository.findByEmail(new Email(emailStr));
@@ -41,6 +47,9 @@ class MemberRepositoryTest {
         assertThat(found.get().getEmail().getAddress()).isEqualTo(emailStr);
         assertThat(found.get().getNickname()).isEqualTo("tester");
         assertThat(found.get().getStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(found.get().isNotificationRebalancing()).isFalse();
+        assertThat(found.get().isNotificationMarketAlert()).isTrue();
+        assertThat(found.get().isNotificationNewListing()).isTrue();
     }
 
     @Test

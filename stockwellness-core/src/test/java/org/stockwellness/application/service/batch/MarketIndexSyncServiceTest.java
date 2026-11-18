@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +17,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.stockwellness.adapter.out.persistence.stock.repository.IndexSeriesRepository;
 import org.stockwellness.adapter.out.persistence.stock.repository.MarketIndexRepository;
 import org.stockwellness.application.parser.MarketIndexMstParser;
 import org.stockwellness.domain.stock.insight.MarketIndex;
+import org.stockwellness.domain.stock.insight.IndexSeries;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -33,6 +37,9 @@ class MarketIndexSyncServiceTest {
 
     @Mock
     private MarketIndexRepository marketIndexRepository;
+
+    @Mock
+    private IndexSeriesRepository indexSeriesRepository;
 
     private MockedStatic<MarketIndexMstParser> parserMockedStatic;
 
@@ -86,6 +93,7 @@ class MarketIndexSyncServiceTest {
                 
                 parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(List.of(index1, index2));
                 given(marketIndexRepository.findAll()).willReturn(List.of());
+                stubOverseasBenchmarkPersistence();
 
                 // when
                 marketIndexSyncService.syncIndices(fileName);
@@ -115,6 +123,7 @@ class MarketIndexSyncServiceTest {
                 
                 parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(List.of(existing, newIndex));
                 given(marketIndexRepository.findAll()).willReturn(List.of(existing));
+                stubOverseasBenchmarkPersistence();
 
                 // when
                 marketIndexSyncService.syncIndices(fileName);
@@ -125,6 +134,101 @@ class MarketIndexSyncServiceTest {
             } finally {
                 Files.deleteIfExists(tempFile);
             }
+        }
+
+        @Test
+        @DisplayName("실제 마스터 division의 국내 benchmark 4개를 canonical series로 등록한다")
+        void shouldRegisterAllFourDomesticBenchmarksFromMasterDivisions() throws IOException {
+            String fileName = "idxcode.mst";
+            Path kisDir = Paths.get("kis");
+            if (!Files.exists(kisDir)) Files.createDirectory(kisDir);
+            Path tempFile = kisDir.resolve(fileName);
+            Files.createFile(tempFile);
+
+            try {
+                List<MarketIndex> benchmarks = List.of(
+                        MarketIndex.of("0001", "KOSPI", "0"),
+                        MarketIndex.of("1001", "KOSDAQ", "1"),
+                        MarketIndex.of("2001", "KOSPI 200", "2"),
+                        MarketIndex.of("3003", "KOSDAQ 150", "3"));
+                parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(benchmarks);
+                given(marketIndexRepository.findAll()).willReturn(List.of());
+                given(marketIndexRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+                given(indexSeriesRepository
+                        .findByProviderAndProviderNamespaceAndProviderSeriesCodeAndReturnBasisAndDividendBasisAndCurrency(
+                                any(), any(), any(), any(), any(), any())).willReturn(Optional.empty());
+                given(indexSeriesRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+                marketIndexSyncService.syncIndices(fileName);
+
+                org.mockito.ArgumentCaptor<MarketIndex> savedIndexes = org.mockito.ArgumentCaptor.forClass(MarketIndex.class);
+                verify(marketIndexRepository, times(7)).save(savedIndexes.capture());
+                assertThat(savedIndexes.getAllValues()).extracting(MarketIndex::getIndexKey)
+                        .containsExactlyInAnyOrder("KOSPI:0001", "KOSDAQ:1001", "KOSPI:2001", "KOSDAQ:3003",
+                                "US:SPX", "US:NDX", "US:DJI");
+                org.mockito.ArgumentCaptor<IndexSeries> series = org.mockito.ArgumentCaptor.forClass(IndexSeries.class);
+                verify(indexSeriesRepository, times(7)).save(series.capture());
+                assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSPI".equals(value.getProviderNamespace()))
+                        .extracting(value -> value.getProviderSeriesCode() + ":" + value.getCalendarMarketCode())
+                        .containsExactlyInAnyOrder("0001:KOSPI", "2001:KOSPI");
+                assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSDAQ".equals(value.getProviderNamespace()))
+                        .extracting(value -> value.getProviderSeriesCode() + ":" + value.getCalendarMarketCode())
+                        .containsExactlyInAnyOrder("1001:KOSDAQ", "3003:KOSDAQ");
+                assertThat(series.getAllValues()).filteredOn(value -> "kis.idxcode.KOSPI".equals(value.getProviderNamespace())
+                                || "kis.idxcode.KOSDAQ".equals(value.getProviderNamespace()))
+                        .allSatisfy(value -> {
+                            assertThat(value.getProvider()).isEqualTo("KIS");
+                            assertThat(value.getReturnBasis()).isEqualTo("PRICE");
+                            assertThat(value.getDividendBasis()).isEqualTo("NONE");
+                            assertThat(value.getCurrency()).isEqualTo("KRW");
+                        });
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
+        }
+
+        @Test
+        @DisplayName("해외 KIS 벤치마크는 SPX·NDX·다우만 canonical 시리즈로 등록한다")
+        void shouldSeedOnlyKisSupportedOverseasBenchmarks() throws IOException {
+            String fileName = "supported-overseas.mst";
+            Path kisDir = Paths.get("kis");
+            if (!Files.exists(kisDir)) Files.createDirectory(kisDir);
+            Path tempFile = kisDir.resolve(fileName);
+            Files.createFile(tempFile);
+
+            try {
+                parserMockedStatic.when(() -> MarketIndexMstParser.parse(any())).thenReturn(List.of());
+                given(marketIndexRepository.findAll()).willReturn(List.of());
+                stubOverseasBenchmarkPersistence();
+
+                marketIndexSyncService.syncIndices(fileName);
+
+                org.mockito.ArgumentCaptor<IndexSeries> saved = org.mockito.ArgumentCaptor.forClass(IndexSeries.class);
+                verify(indexSeriesRepository, times(3)).save(saved.capture());
+                assertThat(saved.getAllValues()).extracting(IndexSeries::getProviderSeriesCode)
+                        .containsExactlyInAnyOrder("SPX", "NDX", ".DJI");
+                assertThat(saved.getAllValues()).extracting(series -> series.getProviderSeriesCode()
+                        + ":" + series.getCalendarMarketCode())
+                        .containsExactlyInAnyOrder("SPX:NYSE", "NDX:NASDAQ", ".DJI:NYSE");
+                assertThat(saved.getAllValues()).allSatisfy(series -> {
+                    assertThat(series.getProviderNamespace()).isEqualTo("kis.ovrs.idxcode.N");
+                    assertThat(series.getCurrency()).isEqualTo("USD");
+                    assertThat(series.getReturnBasis()).isEqualTo("PRICE");
+                    assertThat(series.getDividendBasis()).isEqualTo("NONE");
+                    assertThat(series.isCanonical()).isTrue();
+                });
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
+        }
+
+        private void stubOverseasBenchmarkPersistence() {
+            given(marketIndexRepository.findByIndexKey(any())).willReturn(Optional.empty());
+            given(marketIndexRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+            given(indexSeriesRepository
+                    .findByProviderAndProviderNamespaceAndProviderSeriesCodeAndReturnBasisAndDividendBasisAndCurrency(
+                            any(), any(), any(), any(), any(), any())).willReturn(Optional.empty());
+            given(indexSeriesRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         }
     }
 }

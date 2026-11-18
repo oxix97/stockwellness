@@ -1,112 +1,99 @@
 package org.stockwellness.domain.portfolio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.stockwellness.domain.shared.AbstractEntity;
-import static jakarta.persistence.FetchType.LAZY;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import static lombok.AccessLevel.PROTECTED;
 
-/**
- * 포트폴리오의 주요 통계 및 위험 지표를 관리하는 도메인 모델입니다.
- * 최대 낙폭(MDD), 샤프 지수, 베타 지수 등의 지표를 포함합니다.
- */
 @Getter
 @Entity
+@Table(name = "portfolio_stats")
 @ToString
 @NoArgsConstructor(access = PROTECTED)
-public class PortfolioStats extends AbstractEntity {
+public class PortfolioStats {
 
-    /**
-     * 해당 통계의 대상 포트폴리오
-     */
-    @OneToOne(fetch = LAZY)
+    @Id
+    @Column(name = "portfolio_id")
+    private Long id;
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "portfolio_id", nullable = false)
     private Portfolio portfolio;
 
-    /**
-     * 통계 계산 기준일
-     */
-    @Column(nullable = false)
+    @Column(name = "base_date", nullable = false)
     private LocalDate baseDate;
 
-    /**
-     * 최대 낙폭 (MDD, Maximum Drawdown)
-     * 특정 기간 동안 고점 대비 저점의 최대 하락률을 나타냅니다.
-     */
-    @Column(precision = 7, scale = 4)
+    @Column(name = "window_start")
+    private LocalDate windowStart;
+
+    @Column(name = "price_basis", nullable = false, length = 30)
+    private String priceBasis;
+
+    @Column(name = "configuration_version", nullable = false)
+    private long configurationVersion;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "input_manifest", nullable = false)
+    private Map<String, Object> inputManifest;
+
+    @Column(name = "mdd", precision = 12, scale = 6)
     private BigDecimal mdd;
 
-    /**
-     * 샤프 지수 (Sharpe Ratio)
-     * 위험 대비 수익률을 나타내며, 지수가 높을수록 위험 대비 성과가 우수함을 의미합니다.
-     */
-    @Column(precision = 7, scale = 4)
+    @Column(name = "sharpe_ratio", precision = 12, scale = 6)
     private BigDecimal sharpeRatio;
 
-    /**
-     * 베타 지수 (Beta)
-     * 시장 지수(KOSPI 등) 대비 변동성을 나타냅니다. 1보다 크면 시장보다 변동성이 큽니다.
-     */
-    @Column(precision = 7, scale = 4)
+    @Column(name = "beta", precision = 12, scale = 6)
     private BigDecimal beta;
 
-    /**
-     * 설정 시점 이후 누적 수익률
-     */
-    @Column(precision = 19, scale = 4)
+    @Column(name = "inception_return", precision = 19, scale = 4)
     private BigDecimal inceptionReturn;
 
-    /**
-     * 비교 벤치마크 수익률
-     */
-    @Column(precision = 19, scale = 4)
+    @Column(name = "benchmark_return", precision = 19, scale = 4)
     private BigDecimal benchmarkReturn;
 
-    /**
-     * 새로운 포트폴리오 통계 인스턴스를 생성합니다.
-     *
-     * @param portfolio 대상 포트폴리오
-     * @param baseDate 기준일
-     * @param mdd 최대 낙폭
-     * @param sharpeRatio 샤프 지수
-     * @param beta 베타 지수
-     * @param inceptionReturn 설정 이후 수익률
-     * @param benchmarkReturn 벤치마크 수익률
-     * @return 생성된 PortfolioStats 객체
-     */
-    public static PortfolioStats create(Portfolio portfolio, LocalDate baseDate, BigDecimal mdd, BigDecimal sharpeRatio, BigDecimal beta, BigDecimal inceptionReturn, BigDecimal benchmarkReturn) {
-        PortfolioStats stats = new PortfolioStats();
+    @Column(name = "calculated_at", nullable = false)
+    private Instant calculatedAt;
+
+    public static PortfolioStats create(Portfolio portfolio, LocalDate windowStart, LocalDate baseDate,
+                                        String priceBasis, Map<String, Object> inputManifest,
+                                        BigDecimal mdd, BigDecimal sharpeRatio, BigDecimal beta,
+                                        BigDecimal inceptionReturn, BigDecimal benchmarkReturn) {
+        var stats = new PortfolioStats();
         stats.portfolio = portfolio;
-        stats.baseDate = baseDate;
-        stats.mdd = mdd;
-        stats.sharpeRatio = sharpeRatio;
-        stats.beta = beta;
-        stats.inceptionReturn = inceptionReturn;
-        stats.benchmarkReturn = benchmarkReturn;
+        stats.update(portfolio.getConfigurationVersion(), windowStart, baseDate, priceBasis, inputManifest, mdd, sharpeRatio, beta,
+                inceptionReturn, benchmarkReturn);
         return stats;
     }
 
-    /**
-     * 통계 지표를 최신 데이터로 업데이트합니다.
-     *
-     * @param baseDate 새로운 기준일
-     * @param mdd 새로운 최대 낙폭
-     * @param sharpeRatio 새로운 샤프 지수
-     * @param beta 새로운 베타 지수
-     * @param inceptionReturn 새로운 설정 이후 수익률
-     * @param benchmarkReturn 새로운 벤치마크 수익률
-     */
-    public void update(LocalDate baseDate, BigDecimal mdd, BigDecimal sharpeRatio, BigDecimal beta, BigDecimal inceptionReturn, BigDecimal benchmarkReturn) {
+    public void update(long configurationVersion, LocalDate windowStart, LocalDate baseDate, String priceBasis,
+                       Map<String, Object> inputManifest, BigDecimal mdd, BigDecimal sharpeRatio,
+                       BigDecimal beta, BigDecimal inceptionReturn, BigDecimal benchmarkReturn) {
         this.baseDate = baseDate;
+        this.windowStart = windowStart;
+        this.priceBasis = priceBasis;
+        this.configurationVersion = configurationVersion;
+        this.inputManifest = Map.copyOf(inputManifest);
         this.mdd = mdd;
         this.sharpeRatio = sharpeRatio;
         this.beta = beta;
         this.inceptionReturn = inceptionReturn;
         this.benchmarkReturn = benchmarkReturn;
+        this.calculatedAt = Instant.now();
     }
 }

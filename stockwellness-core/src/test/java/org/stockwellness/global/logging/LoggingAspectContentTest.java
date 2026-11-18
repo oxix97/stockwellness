@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.stockwellness.application.service.TestService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -95,6 +96,15 @@ class LoggingAspectContentTest {
         assertThat(jsonNode.get("args").get(0).asText()).isEqualTo("Hello");
         assertThat(jsonNode.get("args").get(1).asInt()).isEqualTo(123);
         assertThat(jsonNode.get("result").asText()).isEqualTo("Hello 123");
+    }
+
+    @Test
+    void request_header_arguments_are_masked_in_logs() throws IOException {
+        testService.executeWithHeader("sensitive-header", "payload");
+
+        JsonNode jsonNode = objectMapper.readTree(listAppender.list.getLast().getFormattedMessage());
+        assertThat(jsonNode.get("args").get(0).asText()).isEqualTo("********");
+        assertThat(jsonNode.get("args").get(0).asText()).isNotEqualTo("sensitive-header");
     }
 
     @Configuration

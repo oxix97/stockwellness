@@ -21,10 +21,10 @@ import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.stockwellness.adapter.out.persistence.stock.repository.StockPriceRepository;
 import org.stockwellness.application.port.in.batch.BatchControlUseCase;
 import org.stockwellness.application.port.in.batch.BatchMonitoringUseCase;
 import org.stockwellness.application.port.out.stock.StockPort;
+import org.stockwellness.application.port.out.stock.StockPriceReadPort;
 import org.stockwellness.application.service.batch.MarketIndexSyncService;
 import org.stockwellness.batch.support.exception.BatchException;
 import org.stockwellness.domain.stock.price.PriceIssueType;
@@ -59,7 +59,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
     private final Job backfillMarketWeatherJob;
     private final StockPort stockPort;
     private final MarketIndexSyncService marketIndexSyncService;
-    private final StockPriceRepository stockPriceRepository;
+    private final StockPriceReadPort stockPriceReadPort;
 
     public BatchOperationsService(
             @Qualifier("jobLauncher") JobLauncher jobLauncher,
@@ -76,7 +76,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
             @Qualifier("backfillMarketWeatherJob") Job backfillMarketWeatherJob,
             StockPort stockPort,
             MarketIndexSyncService marketIndexSyncService,
-            StockPriceRepository stockPriceRepository
+            StockPriceReadPort stockPriceReadPort
     ) {
         this.jobLauncher = jobLauncher;
         this.asyncJobLauncher = asyncJobLauncher;
@@ -92,7 +92,7 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
         this.backfillMarketWeatherJob = backfillMarketWeatherJob;
         this.stockPort = stockPort;
         this.marketIndexSyncService = marketIndexSyncService;
-        this.stockPriceRepository = stockPriceRepository;
+        this.stockPriceReadPort = stockPriceReadPort;
     }
 
     @Override
@@ -200,13 +200,13 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
 
     @Override
     public DataIntegrityResult checkDataIntegrity(LocalDate startDate, LocalDate endDate) {
-        var invalidPrices = stockPriceRepository.findInvalidPrices(startDate, endDate);
+        var invalidPrices = stockPriceReadPort.invalidPriceObservations(startDate, endDate);
         List<InvalidPriceIssue> issues = invalidPrices.stream()
                 .map(price -> new InvalidPriceIssue(
-                        price.getStock().getTicker(),
-                        price.getStock().getName(),
-                        price.getId().getBaseDate(),
-                        price.getClosePrice() == null ? PriceIssueType.NULL_PRICE.name() : PriceIssueType.ZERO_PRICE.name()
+                        price.ticker(),
+                        price.name(),
+                        price.tradeDate(),
+                        price.closePrice() == null ? PriceIssueType.NULL_PRICE.name() : PriceIssueType.ZERO_PRICE.name()
                 ))
                 .toList();
         return new DataIntegrityResult(issues.size(), issues);
@@ -272,7 +272,17 @@ public class BatchOperationsService implements BatchControlUseCase, BatchMonitor
             addStringIfPresent(builder, "startDate", normalizeDate(command.startDate()));
             addStringIfPresent(builder, "endDate", normalizeDate(command.endDate()));
         } else if (command.jobType() == BatchJobType.STOCK_FOREIGN_INSTITUTION) {
-            addStringIfPresent(builder, "targetDate", normalizeDate(command.targetDate()));
+            String targetDate = normalizeDate(command.targetDate());
+            if (targetDate == null) {
+                targetDate = DateUtil.format(DateUtil.today());
+            }
+            builder.addString("startDate", targetDate);
+            builder.addString("endDate", targetDate);
+            builder.addString("targetDate", targetDate);
+        } else if (command.jobType() == BatchJobType.SECTOR_EOD_SYNC) {
+            builder.addString("market", "KR");
+            String targetDate = normalizeDate(command.targetDate() != null ? command.targetDate() : command.endDate());
+            builder.addString("targetDate", targetDate != null ? targetDate : DateUtil.format(DateUtil.today()));
         }
 
         if (command.targetTicker() != null && command.jobType() != BatchJobType.STOCK_FOREIGN_INSTITUTION) {

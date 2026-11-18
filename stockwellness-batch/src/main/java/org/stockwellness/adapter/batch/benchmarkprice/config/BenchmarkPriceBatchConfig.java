@@ -22,6 +22,7 @@ import org.stockwellness.adapter.batch.benchmarkprice.step.writer.BenchmarkPrice
 import org.stockwellness.adapter.out.external.kis.adapter.KisDailyPriceAdapter;
 import org.stockwellness.application.port.in.batch.BenchmarkPriceSyncUseCase;
 import org.stockwellness.application.port.out.stock.BenchmarkPricePort;
+import org.stockwellness.application.service.batch.BenchmarkPriceSyncService;
 import org.stockwellness.domain.stock.price.BenchmarkPrice;
 import org.stockwellness.global.util.DateUtil;
 
@@ -34,7 +35,6 @@ public class BenchmarkPriceBatchConfig {
     private final JobExecutionListener commonJobListener;
     private final PlatformTransactionManager transactionManager;
     private final KisDailyPriceAdapter kisAdapter;
-    private final BenchmarkPriceSyncUseCase benchmarkPriceSyncUseCase;
     private final BenchmarkPricePort benchmarkPricePort;
 
     @Bean
@@ -82,7 +82,13 @@ public class BenchmarkPriceBatchConfig {
 
     @Bean
     @StepScope
-    public BenchmarkPriceDataProcessor benchmarkPriceDataProcessor() {
+    public BenchmarkPriceSyncUseCase benchmarkPriceSyncUseCase() {
+        return new BenchmarkPriceSyncService(benchmarkPricePort);
+    }
+
+    @Bean
+    @StepScope
+    public BenchmarkPriceDataProcessor benchmarkPriceDataProcessor(BenchmarkPriceSyncUseCase benchmarkPriceSyncUseCase) {
         return new BenchmarkPriceDataProcessor(benchmarkPriceSyncUseCase);
     }
 

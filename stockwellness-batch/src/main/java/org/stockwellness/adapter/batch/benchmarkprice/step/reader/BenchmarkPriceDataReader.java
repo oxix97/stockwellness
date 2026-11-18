@@ -15,6 +15,9 @@ import org.stockwellness.domain.stock.BenchmarkType;
  */
 @Slf4j
 public class BenchmarkPriceDataReader implements ItemReader<BenchmarkPriceDataWrapper> {
+    private static final List<BenchmarkType> SUPPORTED_BENCHMARKS = List.of(
+            BenchmarkType.KOSPI, BenchmarkType.KOSDAQ, BenchmarkType.KOSPI_200, BenchmarkType.KOSDAQ_150,
+            BenchmarkType.S_P_500, BenchmarkType.NASDAQ_100, BenchmarkType.DOW_JONES);
 
     private final KisDailyPriceAdapter kisAdapter;
     private final LocalDate startDate;
@@ -32,7 +35,7 @@ public class BenchmarkPriceDataReader implements ItemReader<BenchmarkPriceDataWr
         this.kisAdapter = kisAdapter;
         this.startDate = startDate;
         this.endDate = endDate;
-        this.typeIterator = Arrays.asList(BenchmarkType.values()).iterator();
+        this.typeIterator = SUPPORTED_BENCHMARKS.iterator();
     }
 
     /**
