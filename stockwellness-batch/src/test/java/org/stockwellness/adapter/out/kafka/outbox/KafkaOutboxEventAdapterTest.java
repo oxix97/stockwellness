@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -44,6 +46,21 @@ class KafkaOutboxEventAdapterTest {
         assertThatThrownBy(() -> adapter.publish("portfolio-analysis-completed", "{}"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not acknowledged");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void kafka_timeout_is_wrapped_and_returned_to_the_outbox_relay_for_retry() throws Exception {
+        KafkaTemplate<String, Object> kafkaTemplate = org.mockito.Mockito.mock(KafkaTemplate.class);
+        CompletableFuture<SendResult<String, Object>> timedOut = org.mockito.Mockito.mock(CompletableFuture.class);
+        when(timedOut.get(10, TimeUnit.SECONDS)).thenThrow(new TimeoutException("broker ack timed out"));
+        when(kafkaTemplate.send(eq("portfolio-analysis-completed"), any())).thenReturn(timedOut);
+        var adapter = new KafkaOutboxEventAdapter(kafkaTemplate, objectMapper());
+
+        assertThatThrownBy(() -> adapter.publish("portfolio-analysis-completed", "{}"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not acknowledged")
+                .hasCauseInstanceOf(TimeoutException.class);
     }
 
     private static com.fasterxml.jackson.databind.ObjectMapper objectMapper() {

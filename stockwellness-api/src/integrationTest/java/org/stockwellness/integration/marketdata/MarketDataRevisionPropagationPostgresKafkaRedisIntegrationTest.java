@@ -5,8 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.anyLong;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
@@ -33,8 +41,11 @@ import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.errors.TimeoutException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -55,13 +66,17 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -77,6 +92,7 @@ import org.stockwellness.adapter.out.persistence.stock.TechnicalIndicatorAdapter
 import org.stockwellness.application.port.in.batch.MarketDataRevisionUseCase;
 import org.stockwellness.application.port.in.batch.MarketDerivedDataUseCase;
 import org.stockwellness.application.port.out.outbox.OutboxEventPublisherPort;
+import org.stockwellness.application.port.out.outbox.OutboxPort;
 import org.stockwellness.application.port.out.stock.IndexDailyPort;
 import org.stockwellness.application.port.out.stock.IndexDailyReadPort;
 import org.stockwellness.application.port.out.stock.SectorLeadingStockPort;
@@ -135,6 +151,8 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
     @Autowired private IndexDailyReadPort indexDailyReadPort;
     @Autowired private MarketDerivedDataService derivedService;
     @Autowired private OutboxRelay relay;
+    @Autowired private OutboxPort outboxPort;
+    @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private KafkaTemplate<String, Object> kafkaTemplate;
     @Autowired private KafkaListenerEndpointRegistry listenerRegistry;
     @Autowired private CacheManager cacheManager;
@@ -446,6 +464,8 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
 
             verifyIndexBreadthCorrectionPipeline(auditConsumer);
             verifySectorWeatherCorrectionPipeline(auditConsumer);
+            verifyNetworkTimeoutRecovery(stock, auditConsumer);
+            verifyJvmKillNineRecovery(auditConsumer);
         } finally {
             failureGate.release();
             completionFailureGate.release();
@@ -1249,5 +1269,175 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
         }
 
         void release() { released.countDown(); }
+    }
+
+    private void verifyNetworkTimeoutRecovery(Stock stock, KafkaConsumer<String, String> auditConsumer) throws Exception {
+        EodStockPrice fourthRevision = quote(stock, new BigDecimal("159.75"));
+        sourceAdapter.upsert(List.of(fourthRevision));
+        MarketDataRevisionEvent event = readOnlyOutboxEvent();
+        assertThat(event.eventId()).isEqualTo("STOCK_PRICE:" + stockId + ":KRX:" + targetDate + ":4");
+        assertThat(readSourceRevision()).isEqualTo(4);
+
+        try (ServerSocket blackhole = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            ExecutorService acceptPool = Executors.newSingleThreadExecutor();
+            List<Socket> acceptedSockets = new CopyOnWriteArrayList<>();
+            acceptPool.submit(() -> {
+                while (!blackhole.isClosed()) {
+                    try {
+                        acceptedSockets.add(blackhole.accept());
+                    } catch (Exception ignored) {
+                        break;
+                    }
+                }
+            });
+            Map<String, Object> props = Map.of(
+                    ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:" + blackhole.getLocalPort(),
+                    ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                    ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class,
+                    ProducerConfig.MAX_BLOCK_MS_CONFIG, 500,
+                    ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 500,
+                    ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 1000,
+                    ProducerConfig.RETRIES_CONFIG, 0
+            );
+            DefaultKafkaProducerFactory<String, Object> timeoutFactory = new DefaultKafkaProducerFactory<>(props);
+            try {
+                KafkaTemplate<String, Object> timeoutTemplate = new KafkaTemplate<>(timeoutFactory);
+                KafkaOutboxEventAdapter timeoutAdapter = new KafkaOutboxEventAdapter(timeoutTemplate, objectMapper);
+                OutboxRelay timeoutRelay = new OutboxRelay(outboxPort, timeoutAdapter);
+
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> timeoutRelay.relay());
+
+                assertThat(outboxStatus(event)).isEqualTo("PENDING");
+                assertThat(jdbc.queryForObject("SELECT error_message FROM outbox_event WHERE payload LIKE ?",
+                        String.class, "%" + event.eventId() + "%"))
+                        .containsAnyOf("Send failed", "not acknowledged by Kafka");
+                assertThat(countAuditEvents(auditConsumer, event.eventId())).isZero();
+                System.out.printf("ISSUE340_NETWORK_TIMEOUT eventId=%s outbox=PENDING blackholePort=%d%n",
+                        event.eventId(), blackhole.getLocalPort());
+            } finally {
+                timeoutFactory.destroy();
+                for (Socket socket : acceptedSockets) {
+                    try {
+                        socket.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                acceptPool.shutdownNow();
+            }
+        }
+
+        relay.relay();
+        awaitOutboxStatus(event, "COMPLETED");
+        assertThat(awaitKafkaEvent(auditConsumer, KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC, event.eventId()))
+                .isEqualTo(event);
+        awaitDerivedRevision(4);
+        awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "PENDING");
+        relay.relay();
+        awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "COMPLETED");
+        assertThat(awaitKafkaEvent(auditConsumer, KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event.eventId()))
+                .isEqualTo(event);
+        System.out.printf("ISSUE340_NETWORK_TIMEOUT_RECOVERED eventId=%s outbox=COMPLETED derivedRevision=%d%n",
+                event.eventId(), readManifestRevision());
+    }
+
+    private void verifyJvmKillNineRecovery(KafkaConsumer<String, String> auditConsumer) throws Exception {
+        String javaBin = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String eventId = "STOCK_PRICE:" + stockId + ":KRX:" + targetDate + ":5";
+        String payload = objectMapper.writeValueAsString(
+                MarketDataRevisionEvent.stock(stockId, targetDate, QUOTE_SCOPE, 5));
+
+        Process process = new ProcessBuilder(
+                javaBin,
+                "-cp", System.getProperty("java.class.path"),
+                KillNineOutboxWorker.class.getName(),
+                requiredEnvironment("SW331_TEST_POSTGRES_URL"),
+                requiredEnvironment("SW331_TEST_POSTGRES_USER"),
+                requiredEnvironment("SW331_TEST_POSTGRES_PASSWORD"),
+                String.valueOf(stockId),
+                targetDate.toString(),
+                QUOTE_SCOPE,
+                "169.75",
+                KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC,
+                payload)
+                .redirectErrorStream(true)
+                .start();
+
+        int exitCode;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line = reader.readLine();
+            assertThat(line).isEqualTo("READY_FOR_KILL9");
+            process.destroyForcibly();
+            exitCode = process.waitFor();
+        } finally {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        }
+
+        assertThat(exitCode).isNotZero();
+        assertThat(readSourceRevision()).isEqualTo(5);
+        assertThat(readSourceClose()).isEqualByComparingTo("169.75");
+        MarketDataRevisionEvent event = readOnlyOutboxEvent();
+        assertThat(event.eventId()).isEqualTo(eventId);
+        assertThat(outboxStatus(event)).isEqualTo("PENDING");
+        assertThat(countAuditEvents(auditConsumer, eventId)).isZero();
+        System.out.printf("ISSUE340_JVM_KILL9 eventId=%s exitCode=%d outbox=PENDING sourceRevision=%d%n",
+                eventId, exitCode, readSourceRevision());
+
+        relay.relay();
+        awaitOutboxStatus(event, "COMPLETED");
+        assertThat(awaitKafkaEvent(auditConsumer, KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC, eventId))
+                .isEqualTo(event);
+        awaitDerivedRevision(5);
+        awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "PENDING");
+        relay.relay();
+        awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "COMPLETED");
+        assertThat(awaitKafkaEvent(auditConsumer, KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, eventId))
+                .isEqualTo(event);
+        System.out.printf("ISSUE340_JVM_KILL9_RECOVERED eventId=%s outbox=COMPLETED derivedRevision=%d%n",
+                eventId, readManifestRevision());
+    }
+
+    public static class KillNineOutboxWorker {
+        public static void main(String[] args) throws Exception {
+            String url = args[0];
+            String user = args[1];
+            String password = args[2];
+            long stockId = Long.parseLong(args[3]);
+            LocalDate tradeDate = LocalDate.parse(args[4]);
+            String quoteScope = args[5];
+            BigDecimal closePrice = new BigDecimal(args[6]);
+            String topic = args[7];
+            String payload = args[8];
+
+            try (Connection conn = DriverManager.getConnection(url, user, password)) {
+                conn.setAutoCommit(false);
+                try (PreparedStatement updatePrice = conn.prepareStatement(
+                        "UPDATE stock_price_daily SET open_price = ?, high_price = ?, low_price = ?, close_price = ?, revision = 5 WHERE stock_id = ? AND trade_date = ? AND quote_scope = ?");
+                     PreparedStatement insertOutbox = conn.prepareStatement(
+                             "INSERT INTO outbox_event(topic, payload, status, created_at, updated_at) VALUES (?, ?, 'PENDING', NOW(), NOW())")) {
+                    updatePrice.setBigDecimal(1, closePrice);
+                    updatePrice.setBigDecimal(2, closePrice.add(BigDecimal.ONE));
+                    updatePrice.setBigDecimal(3, closePrice.subtract(BigDecimal.ONE));
+                    updatePrice.setBigDecimal(4, closePrice);
+                    updatePrice.setLong(5, stockId);
+                    updatePrice.setObject(6, tradeDate);
+                    updatePrice.setString(7, quoteScope);
+                    if (updatePrice.executeUpdate() != 1) {
+                        throw new IllegalStateException("Expected 1 stock_price_daily row updated");
+                    }
+                    insertOutbox.setString(1, topic);
+                    insertOutbox.setString(2, payload);
+                    insertOutbox.executeUpdate();
+                    conn.commit();
+                } catch (Exception ex) {
+                    conn.rollback();
+                    throw ex;
+                }
+            }
+            System.out.println("READY_FOR_KILL9");
+            System.out.flush();
+            Thread.sleep(60_000);
+        }
     }
 }
