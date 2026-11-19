@@ -163,13 +163,21 @@ done
 # ── 4단계: nginx 업스트림 전환 ───────────────────────────────
 log "[4/5] nginx 업스트림 전환 -> ${NEXT_UPSTREAM}"
 
+NGINX_CONF_BACKUP="${NGINX_CONF}.bak"
+cp "${NGINX_CONF}" "${NGINX_CONF_BACKUP}"
+
 sed -i \
     "s|server [^;]*;   # ${CURRENT_MARK}|server ${NEXT_UPSTREAM};   # ${NEXT_MARK}|" \
     "${NGINX_CONF}"
 
-# 설정을 검증한 후 중단 없이 재로드
-docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -t \
-    || fail "nginx 설정 검증 실패 — 업스트림 전환 취소"
+# 설정을 검증한 후 중단 없이 재로드 (실패 시 원본 복구)
+if ! docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -t; then
+    mv "${NGINX_CONF_BACKUP}" "${NGINX_CONF}"
+    docker compose --env-file .env.prod -f "${COMPOSE_FILE}" \
+        --profile "${NEXT_SLOT}" stop "${NEXT_SERVICE}" || true
+    fail "nginx 설정 검증 실패 — 업스트림 설정 복구 및 전환 취소"
+fi
+rm -f "${NGINX_CONF_BACKUP}"
 
 docker compose --env-file .env.prod -f "${COMPOSE_FILE}" exec -T nginx nginx -s reload
 ok "nginx 업스트림 전환 완료"
