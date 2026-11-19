@@ -388,3 +388,98 @@ done
 4. 필요하면 `portfolio-create.js`, `watchlist-group-create.js`
 5. `backtest-heavy.js`
 6. 필요하면 `auth-reissue-burst.js`
+
+## 격리 합성 EOD 검증 (Task #337)
+대상 시나리오(`market-indexes.js`, `stock-supply-ranking.js`, `stock-price-history.js`, `analysis-valuation.js`)는 `EOD_CONTRACT_MODE`를 지정하지 않으면 기본 `baseline` 모드(기존 `assertApiSuccess` + `readOptions`/`quickOptions`)로 동작하여 기존 `./run-all.sh` 및 문서화된 호출과 호환된다. 알 수 없는 `EOD_CONTRACT_MODE`(예: `fixtur`)는 VU 실행 전에 즉시 오류로 중단된다.
+
+- `EOD_CONTRACT_MODE=baseline` (기본값): HTTP 200 및 `data` 존재 여부(`assertApiSuccess`), 기존 baseline threshold 유지
+- `EOD_CONTRACT_MODE=structural` (명시 opt-in): 일반/실서버 호환 구조·수학 불변식 검증(빈 수급 목록, `PARTIAL`/`UNAVAILABLE`/0원 평가, `includeBenchmark=true` 빈 벤치마크, `null` weather/등락률 허용, fixture `excludedDates` 미적용)
+- `EOD_CONTRACT_MODE=fixture` (명시 opt-in): `k6/fixtures/eod-read-expected.json` 대조 엄격 검증(`checks: rate==1`, `eod_contract_failures: count==0`, `http_req_failed: rate==0`, 실존 달력일·DTO 스케일·`exactCount`·전체 지수 `history`·사업 의미 필드 비교).
+  - `TICKER=990101` (`stock-price-history.js`)
+  - `PORTFOLIO_ID=9001` (`analysis-valuation.js`)
+  - `SUPPLY_DIRECTION=BUY` 및 `SELL` (`stock-supply-ranking.js`)
+- **`quick` vs 부하(`short`/`standard`/`stress`) 체크 범위**: `quick`에서는 매 요청마다 전체 JSON 파싱과 계약 검증을 수행하고, 부하 모드에서는 각 VU의 첫 응답과 응답 본문(`res.body`)이 직전 검증 응답과 달라진 모든 응답에서 전체 계약 검증을 수행한다(동일 `200` 본문 재응답 시 반복 파싱·실패 배열 할당 생략, 단 1건의 손상 응답도 즉시 `eod_contract_failures` 및 `checks` 실패 처리).
+
+### 1. 격리 DB + 합성 fixture 체크섬 확인
+```bash
+shasum -a 256 \
+  stockwellness-core/src/main/resources/db/manual/2026-11-11-redesign/00-preflight.sql \
+  stockwellness-core/src/main/resources/db/manual/2026-11-11-redesign/02-schema.sql \
+  stockwellness-core/src/main/resources/db/manual/2026-11-11-redesign/03-batch-metadata.sql \
+  stockwellness-core/src/main/resources/db/manual/2026-11-11-redesign/04-reference-data.sql \
+  stockwellness-core/src/main/resources/db/manual/2026-11-11-redesign/05-verify.sql \
+  k6/fixtures/eod-read-seed.sql \
+  k6/fixtures/eod-read-expected.json \
+  k6/fixtures/eod-read-sql-check.sql
+```
+
+### 2. SQL 결과 대조 및 EXPLAIN (ANALYZE, BUFFERS)
+```bash
+psql -X -v ON_ERROR_STOP=1 "$ISOLATED_DB_URL" -f k6/fixtures/eod-read-sql-check.sql
+```
+
+### 3. 오프라인 테스트용 JWT 키·토큰 발급 및 격리 API 기동 (1회성 키)
+`EodFixtureTokenIssuer`는 Spring·DB·Redis·Kafka·외부 네트워크·`.env`를 전혀 사용하지 않고 매 실행 새 무작위 256-bit `JWT_SECRET`과 고정 seed 사용자(`memberId=9001`, `role=USER`, `eod-fixture@synthetic.test`)의 access token만 기존 `JwtProvider`로 생성해 각각 `0600`/`CREATE_NEW` 파일로 저장한다(stdout 미출력, refresh token·외부 키 재사용·임의 id/role 입력 미지원).
+
+```bash
+./gradlew :stockwellness-api:bootJar :stockwellness-api:testClasses
+
+ISO_TMP="$(mktemp -d)"
+unzip -j -q stockwellness-api/build/libs/stockwellness-api-*.jar 'BOOT-INF/lib/*.jar' -d "$ISO_TMP/libs"
+java -cp "stockwellness-api/build/classes/java/test:stockwellness-api/build/classes/java/main:$ISO_TMP/libs/*" \
+  org.stockwellness.support.EodFixtureTokenIssuer \
+  --fixture.secret-out="$ISO_TMP/eod-secret.env" \
+  --fixture.token-out="$ISO_TMP/eod-token.env"
+```
+
+- 격리 API 프로세스 기동 시 `$ISO_TMP/eod-secret.env`의 `JWT_SECRET`만 주입한다(운영/기존 `.env` 미사용).
+- **API 인증·인가 검증 범위**: 격리 API의 `JwtAuthenticationFilter`가 1회성 `JWT_SECRET`으로 토큰을 검증하고, `CustomUserDetailsService`가 격리 PostgreSQL의 seed `member`(`id=9001`, `role=USER`)를 로드한 뒤 `PortfolioAnalysisController`의 포트폴리오 소유권(`portfolioId=9001`) 인가까지 실제 경로로 검증한다. OAuth2 콜백·`/api/v1/auth/exchange`·`/api/v1/auth/reissue` 및 Redis refresh token 수명주기는 이 도구의 검증 범위가 아니다.
+
+### 4. 격리 quick 사전 검증 (1 VU, 10초, opt-in fixture 모드)
+```bash
+docker run --rm -i \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$(pwd)/k6:/scripts:ro" \
+  -e BASE_URL="http://host.docker.internal:18080" \
+  -e K6_MODE=quick \
+  -e EOD_CONTRACT_MODE=fixture \
+  grafana/k6:latest run /scripts/scenarios/market-indexes.js
+
+docker run --rm -i \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$(pwd)/k6:/scripts:ro" \
+  -e BASE_URL="http://host.docker.internal:18080" \
+  -e K6_MODE=quick \
+  -e EOD_CONTRACT_MODE=fixture \
+  -e SUPPLY_DIRECTION=BUY \
+  -e LIMIT=10 \
+  grafana/k6:latest run /scripts/scenarios/stock-supply-ranking.js
+
+docker run --rm -i \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$(pwd)/k6:/scripts:ro" \
+  -e BASE_URL="http://host.docker.internal:18080" \
+  -e K6_MODE=quick \
+  -e EOD_CONTRACT_MODE=fixture \
+  -e TICKER=990101 \
+  -e PERIOD=1Y \
+  -e FREQUENCY=DAILY \
+  -e INCLUDE_BENCHMARK=true \
+  grafana/k6:latest run /scripts/scenarios/stock-price-history.js
+
+docker run --rm -i \
+  --add-host=host.docker.internal:host-gateway \
+  -v "$(pwd)/k6:/scripts:ro" \
+  --env-file "$ISO_TMP/eod-token.env" \
+  -e BASE_URL="http://host.docker.internal:18080" \
+  -e K6_MODE=quick \
+  -e EOD_CONTRACT_MODE=fixture \
+  -e PORTFOLIO_ID=9001 \
+  grafana/k6:latest run /scripts/scenarios/analysis-valuation.js
+```
+
+### 5. 오프라인 JS 계약 회귀 및 토큰 발급기 단위 테스트
+```bash
+node --test k6/tests/eod-contract.test.mjs
+./gradlew :stockwellness-api:test --tests 'org.stockwellness.support.EodFixtureTokenIssuerTest'
+```
