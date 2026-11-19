@@ -587,4 +587,25 @@ class PortfolioAnalysisServiceTest {
                 .extracting(e -> ((GlobalException) e).getErrorCode())
                 .isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("백테스트 0원 및 음수 투자금 요청은 G001로 거부하고 데이터 조회나 계산 엔진을 호출하지 않는다")
+    void runBacktest_zeroOrNegativeAmount_rejectsWithoutCallingEngineOrLoader() {
+        for (BigDecimal invalidAmount : List.of(BigDecimal.ZERO, BigDecimal.valueOf(-1000))) {
+            BacktestPortfolioCommand command = new BacktestPortfolioCommand(
+                    MEMBER_ID, PORTFOLIO_ID, "LUMP_SUM", invalidAmount,
+                    List.of("0001"), ChartPeriod.ONE_YEAR, true, RebalancingPeriod.NONE, Map.of("005930", BigDecimal.valueOf(100)));
+
+            assertThatThrownBy(() -> portfolioAnalysisService.runBacktest(command))
+                    .isInstanceOf(GlobalException.class)
+                    .extracting(e -> ((GlobalException) e).getErrorCode())
+                    .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        verify(dataLoader, never()).loadContext(any(), any());
+        verify(simulationDataProvider, never()).loadData(anyList(), anyList(), any(), any());
+        verify(backtestEngine, never()).runLumpSum(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean());
+        verify(backtestEngine, never()).runDCA(any(), anyMap(), any(), any(), anyString(), any(), anyBoolean());
+        verify(aiAdvisorUseCase, never()).generateBacktestAdvice(any(), anyString(), anyString());
+    }
 }

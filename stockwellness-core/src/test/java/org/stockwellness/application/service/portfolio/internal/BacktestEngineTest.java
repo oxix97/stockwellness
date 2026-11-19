@@ -2,6 +2,7 @@ package org.stockwellness.application.service.portfolio.internal;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,10 +11,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.application.port.in.stock.result.StockPriceResult;
 import org.stockwellness.domain.portfolio.RebalancingPeriod;
+import org.stockwellness.domain.portfolio.strategy.RebalancingStrategy;
 import org.stockwellness.global.error.ErrorCode;
 import org.stockwellness.global.error.exception.GlobalException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 @DisplayName("BacktestEngine 단위 테스트")
 class BacktestEngineTest {
@@ -243,9 +246,351 @@ class BacktestEngineTest {
                 .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
     }
 
+    @Test
+    @DisplayName("거치식 1년: 배당재투자(수정주가) 여부에 따라 기대 평가액·CAGR·TWR·Alpha가 독립 계산표와 일치한다")
+    void lump_sum_one_year_dividend_reinvestment_and_metrics() {
+        LocalDate d0 = LocalDate.of(2025, 1, 1);
+        LocalDate d1 = LocalDate.of(2025, 7, 2);
+        LocalDate d2 = LocalDate.of(2026, 1, 1); // 365 calendar days -> years = 1.0
+        List<StockPriceResult> stock = List.of(
+                price(d0, "100", "100"),
+                price(d1, "105", "110"),
+                price(d2, "110", "121")
+        );
+        List<StockPriceResult> kospi = List.of(
+                price(d0, "100"),
+                price(d1, "105"),
+                price(d2, "110")
+        );
+        SimulationData data = new SimulationData(Map.of("AAPL", stock), Map.of("0001", kospi));
+        Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));
+
+        BacktestResult reinvested = backtestEngine.runLumpSum(
+                data, weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0), true);
+
+        assertThat(reinvested.calculationMethod()).isEqualTo("LUMP_SUM_CAGR_TWR");
+        assertThat(reinvested.xirr()).isNull();
+        assertThat(reinvested.dailyResults().get(0).totalInvested()).isEqualByComparingTo("1000");
+        assertThat(reinvested.dailyResults().get(1).totalValue()).isEqualByComparingTo("1100");
+        assertThat(reinvested.dailyResults().get(1).returnRate()).isEqualByComparingTo("10");
+        assertThat(reinvested.dailyResults().get(2).totalValue()).isEqualByComparingTo("1210");
+        assertThat(reinvested.dailyResults().get(2).returnRate()).isEqualByComparingTo("10");
+        assertThat(reinvested.totalReturnRate()).isEqualByComparingTo("21");
+        assertThat(reinvested.timeWeightedReturnRate()).isEqualByComparingTo("21");
+        assertThat(reinvested.cagr()).isCloseTo(new BigDecimal("21"), within(new BigDecimal("0.0001")));
+        assertThat(reinvested.mdd()).isZero();
+        assertThat(reinvested.relativeMdd()).isZero();
+        assertThat(reinvested.alpha()).isEqualByComparingTo("11"); // 21% - 10%
+        assertThat(reinvested.itemReturns().get("AAPL")).isEqualByComparingTo("21");
+        assertThat(reinvested.sortinoRatio()).isNull();
+        assertThat(reinvested.recoveryPeriod()).isZero();
+
+        BacktestResult priceOnly = backtestEngine.runLumpSum(
+                data, weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.valueOf(3.0), false);
+
+        assertThat(priceOnly.dailyResults().get(2).totalValue()).isEqualByComparingTo("1100");
+        assertThat(priceOnly.totalReturnRate()).isEqualByComparingTo("10");
+        assertThat(priceOnly.cagr()).isCloseTo(new BigDecimal("10"), within(new BigDecimal("0.0001")));
+        assertThat(priceOnly.alpha()).isZero();
+    }
+
+    @Test
+    @DisplayName("거치식 음수 수익률: 가격 100에서 1,000 투자 후 90 평가 시 평가액 900, 손익 -100, 수익률 -10%, MDD +10%를 반환한다")
+    void lump_sum_negative_return_1000_invested_at_100_evaluated_at_90() {
+        LocalDate d0 = LocalDate.of(2025, 1, 1);
+        LocalDate d1 = LocalDate.of(2026, 1, 1); // 365 days -> years = 1.0
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(d0, "100"), price(d1, "90"))),
+                Map.of("0001", List.of(price(d0, "100"), price(d1, "100")))
+        );
+
+        BacktestResult result = backtestEngine.runLumpSum(
+                data, Map.of("AAPL", BigDecimal.valueOf(100)), BigDecimal.valueOf(1000),
+                RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(result.dailyResults()).hasSize(2);
+        assertThat(result.dailyResults().get(0).totalValue()).isEqualByComparingTo("1000");
+        assertThat(result.dailyResults().get(1).totalInvested()).isEqualByComparingTo("1000");
+        assertThat(result.dailyResults().get(1).totalValue()).isEqualByComparingTo("900");
+        assertThat(result.dailyResults().get(1).totalValue().subtract(result.dailyResults().get(1).totalInvested()))
+                .isEqualByComparingTo("-100");
+        assertThat(result.dailyResults().get(1).returnRate()).isEqualByComparingTo("-10");
+        assertThat(result.totalReturnRate()).isEqualByComparingTo("-10");
+        assertThat(result.timeWeightedReturnRate()).isEqualByComparingTo("-10");
+        assertThat(result.cagr()).isCloseTo(new BigDecimal("-10"), within(new BigDecimal("0.0001")));
+        assertThat(result.xirr()).isNull();
+        // ReturnSeries.calculateMDD는 (peak - trough) / peak * 100 양수 크기(+)를 반환한다.
+        assertThat(result.mdd()).isEqualByComparingTo("10");
+        assertThat(result.relativeMdd()).isEqualByComparingTo("10");
+        assertThat(result.alpha()).isEqualByComparingTo("-10");
+        assertThat(result.itemReturns().get("AAPL")).isEqualByComparingTo("-10");
+        assertThat(result.recoveryPeriod()).isEqualTo(365L);
+    }
+
+    @Test
+    @DisplayName("적립식 1년: 동일 월 중복 입금 없이 XIRR 10%, TWR 10%, 총투자금 2,000, 평가액 2,100을 계산한다")
+    void dca_one_year_exact_xirr_and_same_month_single_deposit() {
+        LocalDate d0 = LocalDate.of(2025, 1, 2);
+        LocalDate d1 = LocalDate.of(2025, 1, 15); // same YearMonth -> no additional deposit
+        LocalDate d2 = LocalDate.of(2026, 1, 2);  // 365 days from d0 -> second deposit
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(d0, "100"), price(d1, "110"), price(d2, "110"))),
+                Map.of("0001", List.of(price(d0, "100"), price(d1, "105"), price(d2, "110")))
+        );
+
+        BacktestResult result = backtestEngine.runDCA(
+                data, Map.of("AAPL", BigDecimal.valueOf(100)), BigDecimal.valueOf(1000),
+                RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(result.calculationMethod()).isEqualTo("DCA_XIRR_TWR");
+        assertThat(result.cagr()).isNull();
+        assertThat(result.dailyResults()).hasSize(3);
+        assertThat(result.dailyResults().get(0).totalInvested()).isEqualByComparingTo("1000");
+        assertThat(result.dailyResults().get(1).totalInvested()).isEqualByComparingTo("1000");
+        assertThat(result.dailyResults().get(1).totalValue()).isEqualByComparingTo("1100");
+        assertThat(result.dailyResults().get(1).returnRate()).isEqualByComparingTo("10");
+        assertThat(result.dailyResults().get(2).totalInvested()).isEqualByComparingTo("2000");
+        assertThat(result.dailyResults().get(2).totalValue()).isCloseTo(new BigDecimal("2100"), within(new BigDecimal("0.0001")));
+        assertThat(result.dailyResults().get(2).returnRate()).isCloseTo(BigDecimal.ZERO, within(new BigDecimal("0.000001")));
+        assertThat(result.timeWeightedReturnRate()).isCloseTo(new BigDecimal("10"), within(new BigDecimal("0.0001")));
+        // -1000 + (-1000 + 2100) / (1 + r)^1 = 0 => r = 10%
+        assertThat(result.xirr()).isCloseTo(new BigDecimal("10"), within(new BigDecimal("0.0001")));
+        assertThat(result.mdd()).isZero();
+        assertThat(result.itemReturns().get("AAPL")).isCloseTo(new BigDecimal("5"), within(new BigDecimal("0.0001")));
+    }
+
+    @Test
+    @DisplayName("적립식 음수 수익률: XIRR -10%, TWR -10%, MDD +10%, CAGR null을 반환한다")
+    void dca_negative_return_produces_negative_xirr_and_twr() {
+        LocalDate d0 = LocalDate.of(2025, 1, 1);
+        LocalDate d1 = LocalDate.of(2026, 1, 1); // 365 days -> t = 1.0
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(d0, "100"), price(d1, "90"))),
+                Map.of("0001", List.of(price(d0, "100"), price(d1, "100")))
+        );
+
+        BacktestResult result = backtestEngine.runDCA(
+                data, Map.of("AAPL", BigDecimal.valueOf(100)), BigDecimal.valueOf(1000),
+                RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(result.cagr()).isNull();
+        assertThat(result.dailyResults().get(1).totalInvested()).isEqualByComparingTo("2000");
+        assertThat(result.dailyResults().get(1).totalValue()).isCloseTo(new BigDecimal("1900"), within(new BigDecimal("0.0001")));
+        assertThat(result.dailyResults().get(1).returnRate()).isCloseTo(new BigDecimal("-10"), within(new BigDecimal("0.0001")));
+        assertThat(result.timeWeightedReturnRate()).isCloseTo(new BigDecimal("-10"), within(new BigDecimal("0.0001")));
+        // -1000 + (-1000 + 1900) / (1 + r)^1 = 0 => r = -10%
+        assertThat(result.xirr()).isCloseTo(new BigDecimal("-10"), within(new BigDecimal("0.0001")));
+        assertThat(result.mdd()).isEqualByComparingTo("10");
+        assertThat(result.itemReturns().get("AAPL")).isCloseTo(new BigDecimal("-5"), within(new BigDecimal("0.0001")));
+    }
+
+    @Test
+    @DisplayName("0원 및 음수 투자금은 거치식·적립식 모두 G001(INVALID_INPUT_VALUE)로 거부한다")
+    void zero_and_negative_amount_fail_with_g001() {
+        LocalDate day = LocalDate.of(2025, 1, 2);
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(day, "100"))),
+                Map.of("0001", List.of(price(day, "100")))
+        );
+        Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));
+
+        for (BigDecimal invalidAmount : List.of(BigDecimal.ZERO, BigDecimal.valueOf(-1000))) {
+            assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                    data, weights, invalidAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                    .isInstanceOf(GlobalException.class)
+                    .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE));
+
+            assertThatThrownBy(() -> backtestEngine.runDCA(
+                    data, weights, invalidAmount, RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                    .isInstanceOf(GlobalException.class)
+                    .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE));
+        }
+    }
+
+    @Test
+    @DisplayName("휴장일: 종목 휴장일에 직전 거래일 종가를 유지(forward-fill)하여 일간 수익률 0%, 벤치마크는 당일 종가로 계산한다")
+    void market_holiday_forward_fills_last_known_price_and_zero_daily_return() {
+        LocalDate d0 = LocalDate.of(2025, 1, 2);
+        LocalDate holiday = LocalDate.of(2025, 1, 3);
+        LocalDate d2 = LocalDate.of(2025, 1, 6);
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(d0, "100"), price(d2, "110"))),
+                Map.of("0001", List.of(price(d0, "100"), price(holiday, "105"), price(d2, "110")))
+        );
+
+        BacktestResult result = backtestEngine.runLumpSum(
+                data, Map.of("AAPL", BigDecimal.valueOf(100)), BigDecimal.valueOf(1000),
+                RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(result.dailyResults()).extracting(BacktestResult.DailyBacktestResult::date)
+                .containsExactly(d0, holiday, d2);
+        assertThat(result.dailyResults().get(1).totalValue()).isEqualByComparingTo("1000");
+        assertThat(result.dailyResults().get(1).returnRate()).isZero();
+        assertThat(result.dailyResults().get(1).benchmarkReturnRates().get("0001")).isEqualByComparingTo("5");
+        assertThat(result.dailyResults().get(2).totalValue()).isEqualByComparingTo("1100");
+        assertThat(result.dailyResults().get(2).returnRate()).isEqualByComparingTo("10");
+        assertThat(result.dailyResults().get(2).benchmarkReturnRates().get("0001")).isEqualByComparingTo("10");
+        assertThat(result.totalReturnRate()).isEqualByComparingTo("10");
+        assertThat(result.alpha()).isZero();
+    }
+
+    @Test
+    @DisplayName("가격 누락: 가중치 종목 시세 부재, 빈 리스트, null 종가, 음수 종가는 모두 S002로 실패한다")
+    void missing_stock_price_cases_fail_with_s002() {
+        LocalDate day = LocalDate.of(2025, 1, 2);
+        Map<String, List<StockPriceResult>> validBenchmark = Map.of("0001", List.of(price(day, "100")));
+
+        // 1) 가중치 종목 중 하나가 stockPrices에 없음
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(Map.of("AAPL", List.of(price(day, "100"))), validBenchmark),
+                Map.of("AAPL", BigDecimal.valueOf(50), "MSFT", BigDecimal.valueOf(50)),
+                BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        // 2) 빈 시세 리스트
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(Map.of("AAPL", List.of()), validBenchmark),
+                Map.of("AAPL", BigDecimal.valueOf(100)),
+                BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        // 3) closePrice == null (dividendReinvested=false)
+        StockPriceResult nullClose = new StockPriceResult(
+                day, null, null, null, null, null, 100L, null, null, null, null, null);
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(Map.of("AAPL", List.of(nullClose)), validBenchmark),
+                Map.of("AAPL", BigDecimal.valueOf(100)),
+                BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        // 4) 음수 종가
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(Map.of("AAPL", List.of(price(day, "-50"))), validBenchmark),
+                Map.of("AAPL", BigDecimal.valueOf(100)),
+                BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("단일 관측치: 거치식은 수익률·CAGR 0, 적립식은 CAGR·XIRR null과 안전 지표를 반환한다")
+    void single_observation_date_lump_sum_and_dca() {
+        LocalDate day = LocalDate.of(2025, 1, 2);
+        SimulationData data = new SimulationData(
+                Map.of("AAPL", List.of(price(day, "100"))),
+                Map.of("0001", List.of(price(day, "100")))
+        );
+        Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));
+
+        BacktestResult lumpSum = backtestEngine.runLumpSum(
+                data, weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(lumpSum.dailyResults()).hasSize(1);
+        assertThat(lumpSum.dailyResults().getFirst().totalValue()).isEqualByComparingTo("1000");
+        assertThat(lumpSum.dailyResults().getFirst().totalInvested()).isEqualByComparingTo("1000");
+        assertThat(lumpSum.dailyResults().getFirst().returnRate()).isZero();
+        assertThat(lumpSum.totalReturnRate()).isZero();
+        assertThat(lumpSum.timeWeightedReturnRate()).isZero();
+        assertThat(lumpSum.cagr()).isZero();
+        assertThat(lumpSum.xirr()).isNull();
+        assertThat(lumpSum.mdd()).isZero();
+        assertThat(lumpSum.relativeMdd()).isZero();
+        assertThat(lumpSum.volatility()).isZero();
+        assertThat(lumpSum.sharpeRatio()).isZero();
+        assertThat(lumpSum.sortinoRatio()).isNull();
+        assertThat(lumpSum.recoveryPeriod()).isNull();
+        assertThat(lumpSum.beta()).isOne();
+        assertThat(lumpSum.alpha()).isZero();
+
+        BacktestResult dca = backtestEngine.runDCA(
+                data, weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(dca.dailyResults()).hasSize(1);
+        assertThat(dca.calculationMethod()).isEqualTo("DCA_XIRR_TWR");
+        assertThat(dca.cagr()).isNull();
+        assertThat(dca.xirr()).isNull();
+        assertThat(dca.timeWeightedReturnRate()).isZero();
+        assertThat(dca.sortinoRatio()).isNull();
+        assertThat(dca.recoveryPeriod()).isNull();
+    }
+
+    @Test
+    @DisplayName("필수 primary 벤치마크 누락: 보조 벤치마크가 있어도 요청한 primary가 없거나 비어 있으면 S002로 실패한다")
+    void missing_primary_benchmark_even_with_secondary_benchmark_fails_with_s002() {
+        LocalDate day = LocalDate.of(2025, 1, 2);
+        Map<String, List<StockPriceResult>> stocks = Map.of("AAPL", List.of(price(day, "100")));
+        Map<String, BigDecimal> weights = Map.of("AAPL", BigDecimal.valueOf(100));
+
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(stocks, Map.of("1001", List.of(price(day, "100")))),
+                weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+
+        assertThatThrownBy(() -> backtestEngine.runLumpSum(
+                new SimulationData(stocks, Map.of("0001", List.of())),
+                weights, BigDecimal.valueOf(1000), RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false))
+                .isInstanceOf(GlobalException.class)
+                .satisfies(error -> assertThat(((GlobalException) error).getErrorCode()).isEqualTo(ErrorCode.PRICE_DATA_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("경계 반올림: 중간 소수 수량(scale=16)과 월간 리밸런싱 수량(scale=8)의 반올림 오차가 계약 범위 내에 있다")
+    void boundary_rounding_fractional_shares_and_monthly_rebalance_scale() {
+        LocalDate d0 = LocalDate.of(2025, 1, 2);
+        LocalDate d1 = LocalDate.of(2025, 2, 3);
+        LocalDate d2 = LocalDate.of(2025, 2, 4);
+
+        // 1) 단일 종목 소수점 수량 scale=16 HALF_UP (1000 / 300 = 3.3333333333333333)
+        BacktestResult fractional = backtestEngine.runLumpSum(
+                new SimulationData(
+                        Map.of("AAPL", List.of(price(d0, "300"), price(d1, "300"))),
+                        Map.of("0001", List.of(price(d0, "100"), price(d1, "100")))
+                ),
+                Map.of("AAPL", BigDecimal.valueOf(100)), BigDecimal.valueOf(1000),
+                RebalancingPeriod.NONE, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(fractional.dailyResults().get(0).totalValue())
+                .isEqualByComparingTo(new BigDecimal("999.9999999999999900"));
+        assertThat(fractional.dailyResults().get(1).returnRate()).isZero();
+
+        // 4원을 25%/75%로 배분: 1/200000000=0.000000005, 3/200000000=0.000000015.
+        // scale 8 HALF_UP 수량은 각각 0.00000001, 0.00000002이며 현금 잔액은 모델에 없다.
+        // 리밸런싱 직후 평가액은 2+4=6원, 다음 날 A 가격이 두 배면 4+4=8원이다.
+        Map<String, BigDecimal> weights = Map.of("A", BigDecimal.valueOf(25), "B", BigDecimal.valueOf(75));
+        Map<String, BigDecimal> prices = Map.of("A", new BigDecimal("200000000"), "B", new BigDecimal("200000000"));
+        Map<String, BigDecimal> shares = new HashMap<>();
+        new RebalancingStrategy().rebalance(shares, new BigDecimal("4"), weights, prices);
+        assertThat(shares.get("A")).isEqualByComparingTo("0.00000001");
+        assertThat(shares.get("B")).isEqualByComparingTo("0.00000002");
+
+        BacktestResult rebalanced = backtestEngine.runLumpSum(
+                new SimulationData(
+                        Map.of(
+                                "A", List.of(price(d0, "200000000"), price(d1, "200000000"), price(d2, "400000000")),
+                                "B", List.of(price(d0, "200000000"), price(d1, "200000000"), price(d2, "200000000"))
+                        ),
+                        Map.of("0001", List.of(price(d0, "100"), price(d1, "100"), price(d2, "100")))
+                ),
+                weights, BigDecimal.valueOf(4), RebalancingPeriod.MONTHLY, "KOSPI", BigDecimal.ZERO, false);
+
+        assertThat(rebalanced.dailyResults().get(0).totalValue()).isEqualByComparingTo("4");
+        assertThat(rebalanced.dailyResults().get(1).totalValue()).isEqualByComparingTo("6");
+        assertThat(rebalanced.dailyResults().get(2).totalValue()).isEqualByComparingTo("8");
+
+    }
+
     private static StockPriceResult price(LocalDate date, String close) {
-        BigDecimal value = new BigDecimal(close);
+        return price(date, close, close);
+    }
+
+    private static StockPriceResult price(LocalDate date, String close, String adjClose) {
+        BigDecimal closeValue = new BigDecimal(close);
+        BigDecimal adjCloseValue = new BigDecimal(adjClose);
         return new StockPriceResult(
-                date, value, value, value, value, value, 100L, null, null, null, null, null);
+                date, closeValue, closeValue, closeValue, closeValue, adjCloseValue, 100L, null, null, null, null, null);
     }
 }
