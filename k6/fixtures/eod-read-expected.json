@@ -1,0 +1,305 @@
+{
+  "fixtureVersion": "2026-11-18-t337-v2",
+  "asOfDate": "2026-11-18",
+  "previousDate": "2026-11-17",
+  "earlierDate": "2026-11-16",
+  "excludedDates": ["2026-11-19", "2099-12-31"],
+  "units": {
+    "indexLevel": "POINTS",
+    "ratePercent": "PERCENT_0_TO_100",
+    "stockPriceKrw": "KRW",
+    "amountKrw": "KRW",
+    "portfolioAmountKrw": "KRW"
+  },
+  "marketIndexes": {
+    "exactCount": 7,
+    "expectedWeather": {
+      "weatherLevel": "SUNNY",
+      "reasonCode": "STEADY_ADVANCE",
+      "asOfDate": "2026-11-18"
+    },
+    "indexes": [
+      {
+        "ticker": "0001",
+        "name": "코스피 종합",
+        "currentPrice": 2625,
+        "fluctuationRate": 5,
+        "history": [
+          { "date": "2026-11-16", "close": 2480 },
+          { "date": "2026-11-17", "close": 2500 },
+          { "date": "2026-11-18", "close": 2625 }
+        ]
+      },
+      {
+        "ticker": "1001",
+        "name": "코스닥 종합",
+        "currentPrice": 792,
+        "fluctuationRate": -1,
+        "history": [
+          { "date": "2026-11-16", "close": 805 },
+          { "date": "2026-11-17", "close": 800 },
+          { "date": "2026-11-18", "close": 792 }
+        ]
+      },
+      {
+        "ticker": "2001",
+        "name": "코스피 200",
+        "currentPrice": 340.3,
+        "fluctuationRate": 2.5,
+        "history": [
+          { "date": "2026-11-16", "close": 330 },
+          { "date": "2026-11-17", "close": 332 },
+          { "date": "2026-11-18", "close": 340.3 }
+        ]
+      },
+      {
+        "ticker": "3003",
+        "name": "코스닥 150",
+        "currentPrice": 1287,
+        "fluctuationRate": -1,
+        "history": [
+          { "date": "2026-11-16", "close": 1310 },
+          { "date": "2026-11-17", "close": 1300 },
+          { "date": "2026-11-18", "close": 1287 }
+        ]
+      },
+      {
+        "ticker": "SPX",
+        "name": "S&P 500",
+        "currentPrice": 5908.5,
+        "fluctuationRate": 1,
+        "history": [
+          { "date": "2026-11-16", "close": 5800 },
+          { "date": "2026-11-17", "close": 5850 },
+          { "date": "2026-11-18", "close": 5908.5 }
+        ]
+      },
+      {
+        "ticker": "NDX",
+        "name": "나스닥 100",
+        "currentPrice": 20300,
+        "fluctuationRate": 1.5,
+        "history": [
+          { "date": "2026-11-16", "close": 20200 },
+          { "date": "2026-11-17", "close": 20000 },
+          { "date": "2026-11-18", "close": 20300 }
+        ]
+      },
+      {
+        "ticker": ".DJI",
+        "name": "다우존스 산업",
+        "currentPrice": 42785,
+        "fluctuationRate": -0.5,
+        "history": [
+          { "date": "2026-11-16", "close": 43100 },
+          { "date": "2026-11-17", "close": 43000 },
+          { "date": "2026-11-18", "close": 42785 }
+        ]
+      }
+    ]
+  },
+  "supplyRanking": {
+    "effectiveDate": "2026-11-18",
+    "BUY": {
+      "institutionItems": [
+        {
+          "ticker": "990101",
+          "stockName": "합성알파전자",
+          "sectorName": "합성전기전자",
+          "currentPrice": 11000,
+          "fluctuationRate": 10,
+          "netBuyingQuantity": 50000,
+          "netBuyingAmount": 550000000,
+          "transactionAmount": 1650000000
+        },
+        {
+          "ticker": "990102",
+          "stockName": "합성베타바이오",
+          "sectorName": "합성전기전자",
+          "currentPrice": 19000,
+          "fluctuationRate": -5,
+          "netBuyingQuantity": 20000,
+          "netBuyingAmount": 380000000,
+          "transactionAmount": 1520000000
+        },
+        {
+          "ticker": "990103",
+          "stockName": "합성감마소재",
+          "sectorName": "합성전기전자",
+          "currentPrice": 52000,
+          "fluctuationRate": 4,
+          "netBuyingQuantity": 7308,
+          "netBuyingAmount": 380000000,
+          "transactionAmount": 2080000000
+        }
+      ],
+      "foreignItems": [
+        {
+          "ticker": "990101",
+          "stockName": "합성알파전자",
+          "sectorName": "합성전기전자",
+          "currentPrice": 11000,
+          "fluctuationRate": 10,
+          "netBuyingQuantity": 30000,
+          "netBuyingAmount": 330000000,
+          "transactionAmount": 1650000000
+        },
+        {
+          "ticker": "990102",
+          "stockName": "합성베타바이오",
+          "sectorName": "합성전기전자",
+          "currentPrice": 19000,
+          "fluctuationRate": -5,
+          "netBuyingQuantity": 17368,
+          "netBuyingAmount": 330000000,
+          "transactionAmount": 1520000000
+        },
+        {
+          "ticker": "990103",
+          "stockName": "합성감마소재",
+          "sectorName": "합성전기전자",
+          "currentPrice": 52000,
+          "fluctuationRate": 4,
+          "netBuyingQuantity": 4000,
+          "netBuyingAmount": 208000000,
+          "transactionAmount": 2080000000
+        }
+      ]
+    },
+    "SELL": {
+      "institutionItems": [
+        {
+          "ticker": "990104",
+          "stockName": "합성델타물류",
+          "sectorName": "합성전기전자",
+          "currentPrice": 27000,
+          "fluctuationRate": -10,
+          "netBuyingQuantity": -18519,
+          "netBuyingAmount": -500000000,
+          "transactionAmount": 1620000000
+        },
+        {
+          "ticker": "990105",
+          "stockName": "합성엡실론누락",
+          "sectorName": "합성전기전자",
+          "currentPrice": null,
+          "fluctuationRate": null,
+          "netBuyingQuantity": -20000,
+          "netBuyingAmount": -300000000,
+          "transactionAmount": null
+        },
+        {
+          "ticker": "990106",
+          "stockName": "합성제타중공업",
+          "sectorName": "합성전기전자",
+          "currentPrice": 40400,
+          "fluctuationRate": 1,
+          "netBuyingQuantity": -7426,
+          "netBuyingAmount": -300000000,
+          "transactionAmount": 1212000000
+        }
+      ],
+      "foreignItems": [
+        {
+          "ticker": "990104",
+          "stockName": "합성델타물류",
+          "sectorName": "합성전기전자",
+          "currentPrice": 27000,
+          "fluctuationRate": -10,
+          "netBuyingQuantity": -22222,
+          "netBuyingAmount": -600000000,
+          "transactionAmount": 1620000000
+        },
+        {
+          "ticker": "990105",
+          "stockName": "합성엡실론누락",
+          "sectorName": "합성전기전자",
+          "currentPrice": null,
+          "fluctuationRate": null,
+          "netBuyingQuantity": -10000,
+          "netBuyingAmount": -150000000,
+          "transactionAmount": null
+        }
+      ]
+    }
+  },
+  "priceHistory": {
+    "stocks": {
+      "990101": {
+        "ticker": "990101",
+        "currency": "KRW",
+        "stockName": "합성알파전자",
+        "benchmarkName": "KOSPI",
+        "DAILY": {
+          "pointCount": 3,
+          "prices": [
+            {
+              "date": "2026-11-16",
+              "open": 9500,
+              "high": 9700,
+              "low": 9400,
+              "close": 9600,
+              "adjClose": 4800,
+              "volume": 100000,
+              "transactionAmt": 960000000,
+              "ma5": 9500,
+              "ma20": 9300,
+              "ma60": 9100,
+              "ma120": 9000
+            },
+            {
+              "date": "2026-11-17",
+              "open": 9800,
+              "high": 10100,
+              "low": 9700,
+              "close": 10000,
+              "adjClose": 5000,
+              "volume": 120000,
+              "transactionAmt": 1200000000,
+              "ma5": 9750,
+              "ma20": 9500,
+              "ma60": 9250,
+              "ma120": 9080
+            },
+            {
+              "date": "2026-11-18",
+              "open": 10200,
+              "high": 11200,
+              "low": 10100,
+              "close": 11000,
+              "adjClose": 11000,
+              "volume": 150000,
+              "transactionAmt": 1650000000,
+              "ma5": 10200,
+              "ma20": 9800,
+              "ma60": 9500,
+              "ma120": 9200
+            }
+          ],
+          "benchmarks": [
+            { "date": "2026-11-16", "returnRate": 0 },
+            { "date": "2026-11-17", "returnRate": 0.8065 },
+            { "date": "2026-11-18", "returnRate": 5.8468 }
+          ]
+        }
+      }
+    }
+  },
+  "valuation": {
+    "portfolios": {
+      "9001": {
+        "memberEmail": "eod-fixture@synthetic.test",
+        "memberLoginType": "KAKAO",
+        "valuationStatus": "COMPLETE",
+        "asOfDate": "2026-11-18",
+        "totalPurchaseAmount": 1950000,
+        "currentTotalValue": 2050000,
+        "totalProfitLoss": 100000,
+        "totalReturnRate": 5.1282,
+        "dailyProfitLoss": 50000,
+        "dailyReturnRate": 2.5,
+        "missingSymbols": []
+      }
+    }
+  }
+}
