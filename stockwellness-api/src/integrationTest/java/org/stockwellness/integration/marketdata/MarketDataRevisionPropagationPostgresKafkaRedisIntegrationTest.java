@@ -27,10 +27,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -140,6 +144,8 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
     @Autowired private CommitGate commitGate;
     @Autowired private RevisionTrace revisionTrace;
     @Autowired private DerivedCallTrace derivedCallTrace;
+    @Autowired private FailureGate failureGate;
+    @Autowired private CompletionFailureGate completionFailureGate;
 
     @MockitoBean private SectorLeadingStockPort sectorLeadingStockPort;
 
@@ -274,20 +280,78 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
         String cacheNamespace = requiredEnvironment("SW331_TEST_CACHE_NAMESPACE");
         try (KafkaConsumer<String, String> auditConsumer = newKafkaAuditConsumer()) {
             awaitAuditAssignment(auditConsumer);
-            faultSwitch.armFailure();
-            relay.relay();
-            assertThat(outboxStatus(event)).isEqualTo("PENDING");
-            assertThat(jdbc.queryForObject("SELECT error_message FROM outbox_event WHERE payload = ?",
-                    String.class, outboxPayload())).contains("synthetic relay failure");
+            MessageListenerContainer failedListener = listenerForGroup(DERIVED_GROUP);
+            MessageListenerContainer retryListener = listenerForGroup(DERIVED_GROUP + "-derived-retry-1000");
+            retryListener.stop();
+            Awaitility.await().atMost(WAIT).until(() -> !retryListener.isRunning());
+            failureGate.arm();
+            // The broker rejects this record at the topic boundary; restore the limit before retrying.
+            setBrokerMessageLimit("1");
+            try {
+                relay.relay();
+                assertThat(outboxStatus(event)).isEqualTo("PENDING");
+                assertThat(faultSwitch.sourceAttempts()).isEqualTo(1);
+                assertThat(faultSwitch.publisherFailure()).hasRootCauseInstanceOf(RecordTooLargeException.class);
+                System.out.printf("ISSUE340_BROKER_CAUSE eventId=%s%n", event.eventId());
+                faultSwitch.publisherFailure().printStackTrace(System.out);
+                assertThat(countAuditEvents(auditConsumer, event.eventId())).isZero();
+                assertThat(jdbc.queryForObject("SELECT error_message FROM outbox_event WHERE payload = ?",
+                        String.class, outboxPayload())).contains("not acknowledged by Kafka");
+                System.out.printf("ISSUE340_BROKER_REJECT eventId=%s outbox=PENDING sourceRevision=%d derivedRevision=%d%n",
+                        event.eventId(), readSourceRevision(), readManifestRevision());
+            } finally {
+                setBrokerMessageLimit(null);
+            }
 
             relay.relay();
             awaitOutboxStatus(event, "COMPLETED");
-            assertThat(awaitKafkaEvent(auditConsumer, KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC, event.eventId()))
-                    .isEqualTo(event);
-            awaitListener(() -> jdbc.queryForObject("SELECT last_value FROM sw331_completion_failure_seq",
-                    Long.class) >= 1L);
+            assertThat(faultSwitch.sourceAttempts()).isEqualTo(2);
+            AtomicInteger observed = new AtomicInteger();
+            Awaitility.await().atMost(WAIT).until(() -> {
+                observed.addAndGet((int) countAuditEvents(auditConsumer, event.eventId()));
+                return observed.get() > 0;
+            });
+            observed.addAndGet((int) countAuditEvents(auditConsumer, event.eventId()));
+            assertThat(observed.get()).isEqualTo(1);
+            System.out.printf("ISSUE340_BROKER_COUNTS eventId=%s publisherAttempts=%d brokerObservedAfterReject=0 brokerObservedAfterAck=%d%n",
+                    event.eventId(), faultSwitch.sourceAttempts(), observed.get());
+            assertThat(failureGate.awaitEntered(WAIT)).isTrue();
             assertThat(readManifestRevision()).isEqualTo(1);
             assertThat(completionOutboxCount(event)).isZero();
+            assertThat(marketCache.get(marketKey).get()).isEqualTo("synthetic-old-market");
+            ExecutorService stopper = Executors.newSingleThreadExecutor();
+            try {
+                var stopped = stopper.submit((Runnable) failedListener::stop);
+                Awaitility.await().atMost(WAIT).until(() -> !failedListener.isRunning());
+                failureGate.release();
+                stopped.get(WAIT.toSeconds(), TimeUnit.SECONDS);
+                assertThat(failedListener.isRunning()).isFalse();
+                assertThat(readManifestRevision()).isEqualTo(1);
+                assertThat(completionOutboxCount(event)).isZero();
+                long attemptsBeforeRestart = revisionTrace.count(event.eventId());
+                completionFailureGate.arm();
+                retryListener.start();
+                awaitListenerAssigned(retryListener);
+                awaitListener(() -> revisionTrace.count(event.eventId()) > attemptsBeforeRestart);
+                failedListener.start();
+                awaitListenerAssigned(failedListener);
+                System.out.printf("ISSUE340_CONSUMER_RESTART eventId=%s before=%d after=%d sourceRevision=%d%n",
+                        event.eventId(), attemptsBeforeRestart, revisionTrace.count(event.eventId()), readSourceRevision());
+            } finally {
+                failureGate.release();
+                stopper.shutdownNow();
+            }
+            assertThat(completionFailureGate.awaitEntered(WAIT)).isTrue();
+            try {
+                assertThat(jdbc.queryForObject("SELECT last_value FROM sw331_completion_failure_seq", Long.class))
+                        .isGreaterThanOrEqualTo(1L);
+                assertThat(readManifestRevision()).isEqualTo(1);
+                assertThat(completionOutboxCount(event)).isZero();
+                System.out.printf("ISSUE340_COMPLETION_ROLLBACK eventId=%s sourceRevision=%d derivedRevision=%d completionCount=%d%n",
+                        event.eventId(), readSourceRevision(), readManifestRevision(), completionOutboxCount(event));
+            } finally {
+                completionFailureGate.release();
+            }
             awaitDerivedRevision(2);
             awaitListener(() -> revisionTrace.count(event.eventId()) >= 3);
             assertThat(derivedCallTrace.count()).isGreaterThanOrEqualTo(3);
@@ -322,9 +386,10 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
                     .isEqualTo(event);
             assertThat(marketCache.get(marketKey).get()).isEqualTo("synthetic-duplicate-market");
             assertThat(portfolioCache.get(portfolioKey).get()).isEqualTo("synthetic-duplicate-portfolio");
+            long deliveriesBeforeRestart = revisionTrace.count(event.eventId());
             derivedListener.start();
             awaitListenerAssigned(derivedListener);
-            awaitListener(() -> revisionTrace.count(event.eventId()) >= 3);
+            awaitListener(() -> revisionTrace.count(event.eventId()) > deliveriesBeforeRestart);
             awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "PENDING");
             relay.relay();
             awaitOutboxStatus(KafkaTopicConfig.MARKET_DATA_REVISION_COMPLETED_TOPIC, event, "COMPLETED");
@@ -381,6 +446,9 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
 
             verifyIndexBreadthCorrectionPipeline(auditConsumer);
             verifySectorWeatherCorrectionPipeline(auditConsumer);
+        } finally {
+            failureGate.release();
+            completionFailureGate.release();
         }
 
     }
@@ -774,6 +842,15 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
                 close.multiply(BigDecimal.valueOf(1000)), SOURCE, "FINAL");
     }
 
+    private void setBrokerMessageLimit(String value) throws Exception {
+        ConfigResource topic = new ConfigResource(ConfigResource.Type.TOPIC, KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC);
+        AlterConfigOp operation = new AlterConfigOp(new ConfigEntry("max.message.bytes", value),
+                value == null ? AlterConfigOp.OpType.DELETE : AlterConfigOp.OpType.SET);
+        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", requiredEnvironment("SW331_TEST_KAFKA_BOOTSTRAP")))) {
+            admin.incrementalAlterConfigs(Map.of(topic, List.of(operation))).all().get(10, TimeUnit.SECONDS);
+        }
+    }
+
     private void rejectOutboxInserts() {
         jdbc.execute("""
                 CREATE FUNCTION sw331_reject_outbox_insert() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -973,6 +1050,15 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
         });
     }
 
+    private long countAuditEvents(KafkaConsumer<String, String> consumer, String eventId) {
+        long count = 0;
+        for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofSeconds(1))
+                .records(KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC)) {
+            if (eventId.equals(record.key())) count++;
+        }
+        return count;
+    }
+
     private MarketDataRevisionEvent awaitKafkaEvent(KafkaConsumer<String, String> consumer, String topic,
             String eventId) throws Exception {
         AtomicReference<ConsumerRecord<String, String>> match = new AtomicReference<>();
@@ -1027,22 +1113,37 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
         @Bean CommitGate commitGate() { return new CommitGate(); }
         @Bean RevisionTrace revisionTrace() { return new RevisionTrace(); }
         @Bean DerivedCallTrace derivedCallTrace() { return new DerivedCallTrace(); }
+        @Bean @Primary FailureGate failureGate() { return new FailureGate(); }
+        @Bean CompletionFailureGate completionFailureGate() { return new CompletionFailureGate(); }
 
         @Bean
         @Primary
         OutboxEventPublisherPort retryingPublisher(KafkaOutboxEventAdapter delegate, FaultSwitch faultSwitch) {
             return (topic, payload) -> {
+                faultSwitch.record(topic);
                 if (faultSwitch.consumeFailure()) throw new IllegalStateException("synthetic relay failure");
-                delegate.publish(topic, payload);
+                try {
+                    delegate.publish(topic, payload);
+                } catch (RuntimeException ex) {
+                    faultSwitch.recordFailure(ex);
+                    throw ex;
+                }
             };
         }
 
         @Bean
         @Primary
-        MarketDataRevisionUseCase tracingRevisionUseCase(MarketDataRevisionService delegate, RevisionTrace trace) {
+        MarketDataRevisionUseCase tracingRevisionUseCase(MarketDataRevisionService delegate, RevisionTrace trace, FailureGate failureGate,
+                CompletionFailureGate completionFailureGate) {
             return event -> {
                 trace.record(event);
-                delegate.recalculate(event);
+                try {
+                    delegate.recalculate(event);
+                } catch (RuntimeException ex) {
+                    failureGate.afterFailure();
+                    completionFailureGate.afterFailure();
+                    throw ex;
+                }
             };
         }
 
@@ -1076,6 +1177,12 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
 
     static class FaultSwitch {
         private final AtomicBoolean failNext = new AtomicBoolean();
+        private final AtomicInteger sourceAttempts = new AtomicInteger();
+        private final AtomicReference<RuntimeException> publisherFailure = new AtomicReference<>();
+        void recordFailure(RuntimeException ex) { publisherFailure.set(ex); }
+        RuntimeException publisherFailure() { return publisherFailure.get(); }
+        void record(String topic) { if (KafkaTopicConfig.MARKET_DATA_REVISION_TOPIC.equals(topic)) sourceAttempts.incrementAndGet(); }
+        int sourceAttempts() { return sourceAttempts.get(); }
         void armFailure() { failNext.set(true); }
         boolean consumeFailure() { return failNext.compareAndSet(true, false); }
     }
@@ -1091,6 +1198,27 @@ class MarketDataRevisionPropagationPostgresKafkaRedisIntegrationTest {
         void record() { calls.incrementAndGet(); }
         int count() { return calls.get(); }
     }
+
+    static class FailureGate {
+        private final AtomicBoolean armed = new AtomicBoolean();
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch released = new CountDownLatch(1);
+        void arm() { armed.set(true); }
+        void afterFailure() {
+            if (!armed.compareAndSet(true, false)) return;
+            entered.countDown();
+            try {
+                if (!released.await(WAIT.toSeconds(), TimeUnit.SECONDS)) throw new IllegalStateException("failure gate timed out");
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(ex);
+            }
+        }
+        boolean awaitEntered(Duration timeout) throws InterruptedException { return entered.await(timeout.toMillis(), TimeUnit.MILLISECONDS); }
+        void release() { released.countDown(); }
+    }
+
+    static class CompletionFailureGate extends FailureGate {}
 
     static class CommitGate {
         private final AtomicBoolean armed = new AtomicBoolean();
