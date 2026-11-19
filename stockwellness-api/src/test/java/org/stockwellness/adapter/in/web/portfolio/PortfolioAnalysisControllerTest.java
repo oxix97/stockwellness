@@ -964,6 +964,186 @@ class PortfolioAnalysisControllerTest extends RestDocsSupport {
         assertThat(rebItems.get(0).get("expectedTradeAmount").isNull()).isTrue();
     }
 
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("백테스팅: 음수 투자금은 G001로 거부하고 백테스트 계산을 호출하지 않는다")
+    void run_backtest_negative_amount() throws Exception {
+        BacktestRequest request = new BacktestRequest(
+                "LUMP_SUM",
+                BigDecimal.valueOf(-1000),
+                "KOSPI",
+                "1Y",
+                true,
+                RebalancingPeriod.NONE,
+                Map.of("005930", BigDecimal.valueOf(100))
+        );
+
+        mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .content(objectMapper.writeValueAsString(request))
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("G001"))
+                .andExpect(jsonPath("$.errors[0].field").value("amount"));
+
+        verifyNoInteractions(portfolioFacade);
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("백테스팅: 지원하지 않는 primaryBenchmark(SPY)는 G001로 거부하고 백테스트 계산을 호출하지 않는다")
+    void run_backtest_unsupported_primary_benchmark() throws Exception {
+        BacktestRequest request = new BacktestRequest(
+                "LUMP_SUM",
+                BigDecimal.valueOf(1000000),
+                "SPY",
+                "1Y",
+                true,
+                RebalancingPeriod.NONE,
+                Map.of("005930", BigDecimal.valueOf(100))
+        );
+
+        mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .content(objectMapper.writeValueAsString(request))
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("G001"));
+
+        verifyNoInteractions(portfolioFacade);
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("백테스팅: benchmarkTicker JSON alias는 primaryBenchmark로 바인딩된다")
+    void run_backtest_benchmark_ticker_alias() throws Exception {
+        BacktestResult result = new BacktestResult(
+                List.of(new BacktestResult.DailyBacktestResult(
+                        LocalDate.of(2025, 1, 2), BigDecimal.valueOf(1000), BigDecimal.valueOf(1000),
+                        BigDecimal.ZERO, Map.of("0001", BigDecimal.ZERO))),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO,
+                Map.of("005930", BigDecimal.ZERO),
+                List.of(new BacktestResult.IndexComparison("코스피", "0001", BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO)),
+                "ok", null, BigDecimal.ZERO, "LUMP_SUM_CAGR_TWR", null, null
+        );
+        given(portfolioFacade.runBacktest(any())).willReturn(result);
+
+        String requestJson = """
+                {
+                  "strategy": "LUMP_SUM",
+                  "amount": 1000000,
+                  "benchmarkTicker": "KOSPI",
+                  "period": "1Y",
+                  "dividendReinvested": true,
+                  "rebalancingPeriod": "NONE",
+                  "weights": {"005930": 100}
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .content(requestJson)
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.primaryBenchmark").value("KOSPI"));
+
+        ArgumentCaptor<BacktestPortfolioCommand> commandCaptor = ArgumentCaptor.forClass(BacktestPortfolioCommand.class);
+        verify(portfolioFacade).runBacktest(commandCaptor.capture());
+        assertThat(commandCaptor.getValue().benchmarkTickers()).containsExactly("0001", "1001", "SPX");
+    }
+
+    @Test
+    @MockMember(id = 1L)
+    @DisplayName("백테스팅 응답 DTO는 금액 scale=0, 수익률/비율 scale=4 HALF_UP 경계 반올림을 적용한다")
+    void run_backtest_response_boundary_rounding_half_up() throws Exception {
+        Map<String, BigDecimal> benchmarkRates = new LinkedHashMap<>();
+        benchmarkRates.put("0001", new BigDecimal("-0.00005"));
+        BacktestResult result = new BacktestResult(
+                List.of(new BacktestResult.DailyBacktestResult(
+                        LocalDate.of(2025, 1, 2),
+                        new BigDecimal("1000.5"),
+                        new BigDecimal("2000.4999"),
+                        new BigDecimal("10.12345"),
+                        benchmarkRates
+                )),
+                new BigDecimal("-10.12345"), // cagr -> -10.1235 (HALF_UP away from zero)
+                new BigDecimal("0.00005"),   // mdd -> 0.0001
+                new BigDecimal("0.00004"),   // relativeMdd -> 0.0000
+                new BigDecimal("1.23455"),   // sharpeRatio -> 1.2346
+                new BigDecimal("10.12344"),  // totalReturnRate -> 10.1234
+                new BigDecimal("2.34565"),   // volatility -> 2.3457
+                new BigDecimal("-0.00005"),  // alpha -> -0.0001
+                new BigDecimal("1.00005"),   // beta -> 1.0001
+                new BigDecimal("12.34565"),  // bestYearRate -> 12.3457
+                new BigDecimal("-5.43215"),  // worstYearRate -> -5.4322
+                Map.of("005930", new BigDecimal("-10.00005")),
+                List.of(new BacktestResult.IndexComparison(
+                        "코스피", "0001",
+                        new BigDecimal("5.55555"),
+                        new BigDecimal("-1.11115"),
+                        new BigDecimal("1.00004"),
+                        new BigDecimal("3.33335"),
+                        new BigDecimal("-0.55555")
+                )),
+                "ok",
+                null,
+                new BigDecimal("10.12344"),
+                "LUMP_SUM_CAGR_TWR",
+                new BigDecimal("-2.22225"),
+                10L
+        );
+        given(portfolioFacade.runBacktest(any())).willReturn(result);
+
+        BacktestRequest request = new BacktestRequest(
+                "LUMP_SUM",
+                BigDecimal.valueOf(1000),
+                "KOSPI",
+                "1Y",
+                true,
+                RebalancingPeriod.NONE,
+                Map.of("005930", BigDecimal.valueOf(100))
+        );
+
+        String responseBody = mockMvc.perform(post("/api/v1/portfolios/{portfolioId}/analysis/backtest", 100L)
+                        .header("Authorization", "Bearer {ACCESS_TOKEN}")
+                        .content(objectMapper.writeValueAsString(request))
+                        .contentType(APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.dailyResults[0].totalValue").value(1001))
+                .andExpect(jsonPath("$.data.dailyResults[0].totalInvested").value(2000))
+                .andExpect(jsonPath("$.data.dailyResults[0].returnRate").value(10.1235))
+                .andExpect(jsonPath("$.data.dailyResults[0].benchmarkReturnRate").value(-0.0001))
+                .andExpect(jsonPath("$.data.cagr").value(-10.1235))
+                .andExpect(jsonPath("$.data.mdd").value(0.0001))
+                .andExpect(jsonPath("$.data.relativeMdd").value(0.0))
+                .andExpect(jsonPath("$.data.sharpeRatio").value(1.2346))
+                .andExpect(jsonPath("$.data.sortinoRatio").value(-2.2223))
+                .andExpect(jsonPath("$.data.totalReturnRate").value(10.1234))
+                .andExpect(jsonPath("$.data.timeWeightedReturnRate").value(10.1234))
+                .andExpect(jsonPath("$.data.volatility").value(2.3457))
+                .andExpect(jsonPath("$.data.alpha").value(-0.0001))
+                .andExpect(jsonPath("$.data.beta").value(1.0001))
+                .andExpect(jsonPath("$.data.itemReturns['005930']").value(-10.0001))
+                .andExpect(jsonPath("$.data.comparisons[0].totalReturn").value(5.5556))
+                .andExpect(jsonPath("$.data.comparisons[0].alpha").value(-1.1112))
+                .andExpect(jsonPath("$.data.comparisons[0].beta").value(1.0))
+                .andExpect(jsonPath("$.data.comparisons[0].mdd").value(3.3334))
+                .andExpect(jsonPath("$.data.comparisons[0].relativeMdd").value(-0.5556))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var dataNode = objectMapper.readTree(responseBody).get("data");
+        assertThat(dataNode.get("dailyResults").get(0).get("totalValue").decimalValue()).isEqualByComparingTo("1001");
+        assertThat(dataNode.get("dailyResults").get(0).get("totalInvested").decimalValue()).isEqualByComparingTo("2000");
+        assertThat(dataNode.get("cagr").decimalValue()).isEqualByComparingTo("-10.1235");
+        assertThat(dataNode.get("timeWeightedReturnRate").decimalValue()).isEqualByComparingTo("10.1234");
+    }
+
     private static List<FieldDescriptor> valuationFields(String prefix) {
         return List.of(
                 fieldWithPath(prefix + "totalPurchaseAmount").type(JsonFieldType.NUMBER).description("총 매수 금액"),

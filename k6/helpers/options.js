@@ -37,6 +37,20 @@ export function readOptions(name) {
   };
 }
 
+export function strictReadOptions(name) {
+  const mode = __ENV.K6_MODE || 'standard';
+  const base = mode === 'quick' ? quickOptions(name) : readOptions(name);
+  return {
+    ...base,
+    thresholds: {
+      ...base.thresholds,
+      http_req_failed: ['rate==0'],
+      checks: ['rate==1'],
+      eod_contract_failures: ['count==0'],
+    },
+  };
+}
+
 export function heavyReadOptions(name) {
   return {
     scenarios: {
