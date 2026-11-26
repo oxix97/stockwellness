@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.stockwellness.domain.stock.TradingCalendar;
 
@@ -27,7 +29,7 @@ class UsMarketCalendarTest {
         assertThat(blackFriday.getClosesAt()).isEqualTo(OffsetDateTime.parse("2025-11-28T13:00-05:00"));
         assertThat(fullYear.stream().filter(TradingCalendar::isTradingDay)).hasSize(250);
         assertThat(fullYear.stream().filter(day -> day.isTradingDay()
-                && day.getClosesAt().toLocalTime().equals(java.time.LocalTime.of(13, 0)))).hasSize(3);
+                && day.getClosesAt().toLocalTime().equals(LocalTime.of(13, 0)))).hasSize(3);
     }
 
     @Test
@@ -70,7 +72,7 @@ class UsMarketCalendarTest {
         assertThat(rows).hasSize(365);
         assertThat(rows.stream().filter(TradingCalendar::isTradingDay)).hasSize(251);
         assertThat(rows.stream().filter(day -> day.isTradingDay()
-                && day.getClosesAt().toLocalTime().equals(java.time.LocalTime.of(13, 0)))).hasSize(2);
+                && day.getClosesAt().toLocalTime().equals(LocalTime.of(13, 0)))).hasSize(2);
     }
 
     @Test
@@ -105,10 +107,110 @@ class UsMarketCalendarTest {
     }
 
     @Test
+    void published_2027_calendar_includes_all_holidays_and_single_early_close_for_both_exchanges() {
+        var nyseYear = calendar.calendarDays("NYSE", LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31));
+        var nasdaqYear = calendar.calendarDays("NASDAQ", LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31));
+
+        var expectedClosed = List.of(
+                LocalDate.of(2027, 1, 1),
+                LocalDate.of(2027, 1, 18),
+                LocalDate.of(2027, 2, 15),
+                LocalDate.of(2027, 3, 26),
+                LocalDate.of(2027, 5, 31),
+                LocalDate.of(2027, 6, 18),
+                LocalDate.of(2027, 7, 5),
+                LocalDate.of(2027, 9, 6),
+                LocalDate.of(2027, 11, 25),
+                LocalDate.of(2027, 12, 24));
+
+        for (LocalDate holiday : expectedClosed) {
+            TradingCalendar nyseDay = calendar.calendarDays("NYSE", holiday, holiday).getFirst();
+            TradingCalendar nasdaqDay = calendar.calendarDays("NASDAQ", holiday, holiday).getFirst();
+            assertThat(nyseDay.isTradingDay()).isFalse();
+            assertThat(nyseDay.getSource()).isEqualTo("NYSE:OFFICIAL:2027");
+            assertThat(nasdaqDay.isTradingDay()).isFalse();
+            assertThat(nasdaqDay.getSource()).isEqualTo("NASDAQ:OFFICIAL:2027");
+        }
+
+        TradingCalendar nyseEarlyClose = calendar.calendarDays("NYSE", LocalDate.of(2027, 11, 26), LocalDate.of(2027, 11, 26))
+                .getFirst();
+        TradingCalendar nasdaqEarlyClose = calendar.calendarDays("NASDAQ", LocalDate.of(2027, 11, 26), LocalDate.of(2027, 11, 26))
+                .getFirst();
+        assertThat(nyseEarlyClose.isTradingDay()).isTrue();
+        assertThat(nyseEarlyClose.getOpensAt()).isEqualTo(OffsetDateTime.parse("2027-11-26T09:30-05:00"));
+        assertThat(nyseEarlyClose.getClosesAt()).isEqualTo(OffsetDateTime.parse("2027-11-26T13:00-05:00"));
+        assertThat(nasdaqEarlyClose.isTradingDay()).isTrue();
+        assertThat(nasdaqEarlyClose.getClosesAt()).isEqualTo(OffsetDateTime.parse("2027-11-26T13:00-05:00"));
+
+        assertThat(nyseYear).hasSize(365);
+        assertThat(nyseYear.stream().filter(TradingCalendar::isTradingDay)).hasSize(251);
+        assertThat(nyseYear.stream().filter(day -> day.isTradingDay()
+                && day.getClosesAt().toLocalTime().equals(LocalTime.of(13, 0)))).hasSize(1);
+        assertThat(nasdaqYear).hasSize(365);
+        assertThat(nasdaqYear.stream().filter(TradingCalendar::isTradingDay)).hasSize(251);
+        assertThat(nasdaqYear.stream().filter(day -> day.isTradingDay()
+                && day.getClosesAt().toLocalTime().equals(LocalTime.of(13, 0)))).hasSize(1);
+    }
+
+    @Test
+    void year_boundary_2026_to_2027_resolves_prior_year_session_and_2027_early_close() {
+        var boundary = calendar.calendarDays("NYSE", LocalDate.of(2026, 12, 31), LocalDate.of(2027, 1, 4));
+        assertThat(boundary).hasSize(5);
+        assertThat(boundary.get(0).isTradingDay()).isTrue();
+        assertThat(boundary.get(1).isTradingDay()).isFalse();
+        assertThat(boundary.get(4).isTradingDay()).isTrue();
+
+        assertThat(calendar.latestTradingDayOnOrBefore("NASDAQ", LocalDate.of(2027, 1, 3)).getTradeDate())
+                .isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(calendar.latestCompletedSession("NYSE", Instant.parse("2027-01-04T20:59:59Z")).getTradeDate())
+                .isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(calendar.latestCompletedSession("NYSE", Instant.parse("2027-11-26T17:59:59Z")).getTradeDate())
+                .isEqualTo(LocalDate.of(2027, 11, 24));
+        assertThat(calendar.latestCompletedSession("NASDAQ", Instant.parse("2027-11-26T18:00:00Z")).getTradeDate())
+                .isEqualTo(LocalDate.of(2027, 11, 26));
+    }
+
+    @Test
+    void year_2027_dst_transitions_and_supported_range_boundaries_are_exact() {
+        TradingCalendar beforeSpringDst = calendar.calendarDays("NYSE", LocalDate.of(2027, 3, 12), LocalDate.of(2027, 3, 12))
+                .getFirst();
+        TradingCalendar afterSpringDst = calendar.calendarDays("NYSE", LocalDate.of(2027, 3, 15), LocalDate.of(2027, 3, 15))
+                .getFirst();
+        TradingCalendar beforeFallDst = calendar.calendarDays("NASDAQ", LocalDate.of(2027, 11, 5), LocalDate.of(2027, 11, 5))
+                .getFirst();
+        TradingCalendar afterFallDst = calendar.calendarDays("NASDAQ", LocalDate.of(2027, 11, 8), LocalDate.of(2027, 11, 8))
+                .getFirst();
+
+        assertThat(beforeSpringDst.getOpensAt()).isEqualTo(OffsetDateTime.parse("2027-03-12T09:30-05:00"));
+        assertThat(beforeSpringDst.getClosesAt().toInstant()).isEqualTo(Instant.parse("2027-03-12T21:00:00Z"));
+        assertThat(afterSpringDst.getOpensAt()).isEqualTo(OffsetDateTime.parse("2027-03-15T09:30-04:00"));
+        assertThat(afterSpringDst.getClosesAt().toInstant()).isEqualTo(Instant.parse("2027-03-15T20:00:00Z"));
+
+        assertThat(beforeFallDst.getOpensAt()).isEqualTo(OffsetDateTime.parse("2027-11-05T09:30-04:00"));
+        assertThat(beforeFallDst.getClosesAt().toInstant()).isEqualTo(Instant.parse("2027-11-05T20:00:00Z"));
+        assertThat(afterFallDst.getOpensAt()).isEqualTo(OffsetDateTime.parse("2027-11-08T09:30-05:00"));
+        assertThat(afterFallDst.getClosesAt().toInstant()).isEqualTo(Instant.parse("2027-11-08T21:00:00Z"));
+
+        TradingCalendar firstSupported = calendar.calendarDays("NYSE", LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 1))
+                .getFirst();
+        TradingCalendar lastSupported = calendar.calendarDays("NASDAQ", LocalDate.of(2027, 12, 31), LocalDate.of(2027, 12, 31))
+                .getFirst();
+        assertThat(firstSupported.isTradingDay()).isFalse();
+        assertThat(lastSupported.isTradingDay()).isTrue();
+        assertThat(lastSupported.getClosesAt()).isEqualTo(OffsetDateTime.parse("2027-12-31T16:00-05:00"));
+    }
+
+    @Test
     void unsupported_markets_and_years_fail_closed() {
         assertThatThrownBy(() -> calendar.calendarDays("COMP", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 1)))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> calendar.calendarDays("NYSE", LocalDate.of(2027, 1, 4), LocalDate.of(2027, 1, 4)))
+        assertThatThrownBy(() -> calendar.calendarDays("NYSE", LocalDate.of(2024, 12, 31), LocalDate.of(2024, 12, 31)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("verified calendar");
+        assertThatThrownBy(() -> calendar.calendarDays("NYSE", LocalDate.of(2028, 1, 3), LocalDate.of(2028, 1, 3)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("verified calendar");
+        assertThatThrownBy(() -> calendar.calendarDays("NASDAQ", LocalDate.of(2028, 1, 3), LocalDate.of(2028, 1, 3)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("verified calendar");
     }

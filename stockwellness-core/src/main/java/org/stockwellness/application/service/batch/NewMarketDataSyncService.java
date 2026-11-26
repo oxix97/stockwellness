@@ -2,6 +2,7 @@ package org.stockwellness.application.service.batch;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -12,10 +13,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +46,6 @@ import org.stockwellness.domain.stock.price.InvestorSourceType;
 import org.stockwellness.domain.stock.price.EodStockInvestorTradeDaily;
 
 @Service
-@RequiredArgsConstructor
 public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     private static final int FIRST_VERIFIED_KRX_YEAR = 2025;
     private static final int LAST_VERIFIED_KRX_YEAR = 2026;
@@ -75,6 +76,39 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     private final EodStockInvestorTradePort eodStockInvestorTradePort;
     private final IndexDailyPort indexDailyPort;
     private final TradingCalendarPort tradingCalendarPort;
+    private final Clock clock;
+
+    @Autowired
+    public NewMarketDataSyncService(
+            KisDailyPricePort kisDailyPricePort,
+            KisIndexPricePort kisIndexPricePort,
+            KisHolidayPort kisHolidayPort,
+            EodStockPricePort eodStockPricePort,
+            EodStockInvestorTradePort eodStockInvestorTradePort,
+            IndexDailyPort indexDailyPort,
+            TradingCalendarPort tradingCalendarPort) {
+        this(kisDailyPricePort, kisIndexPricePort, kisHolidayPort, eodStockPricePort,
+                eodStockInvestorTradePort, indexDailyPort, tradingCalendarPort, Clock.systemUTC());
+    }
+
+    NewMarketDataSyncService(
+            KisDailyPricePort kisDailyPricePort,
+            KisIndexPricePort kisIndexPricePort,
+            KisHolidayPort kisHolidayPort,
+            EodStockPricePort eodStockPricePort,
+            EodStockInvestorTradePort eodStockInvestorTradePort,
+            IndexDailyPort indexDailyPort,
+            TradingCalendarPort tradingCalendarPort,
+            Clock clock) {
+        this.kisDailyPricePort = kisDailyPricePort;
+        this.kisIndexPricePort = kisIndexPricePort;
+        this.kisHolidayPort = kisHolidayPort;
+        this.eodStockPricePort = eodStockPricePort;
+        this.eodStockInvestorTradePort = eodStockInvestorTradePort;
+        this.indexDailyPort = indexDailyPort;
+        this.tradingCalendarPort = tradingCalendarPort;
+        this.clock = Objects.requireNonNull(clock, "clock is required");
+    }
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -91,6 +125,9 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 throw new IllegalArgumentException("KIS calendar response contains an invalid or duplicate row");
             }
             boolean open = "Y".equals(row.marketOpen());
+            if (date.getYear() > LAST_VERIFIED_KRX_YEAR && !date.equals(baseDate)) {
+                continue;
+            }
             if (open && (date.getYear() < FIRST_VERIFIED_KRX_YEAR || date.getYear() > LAST_VERIFIED_KRX_YEAR)) {
                 throw new IllegalStateException("No verified KRX session hours for open date " + date);
             }
@@ -114,7 +151,11 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     public void syncStockPrices(Stock stock, LocalDate startDate, LocalDate endDate) {
         validateRange(stock, startDate, endDate);
         if (stock.getStatus() == StockStatus.DELISTED) throw new IllegalArgumentException("Delisted stock cannot be collected");
-        List<LocalDate> openDates = verifiedOpenDates(stock, startDate, endDate);
+        Instant now = clock.instant();
+        ensureEndDateNotFuture(stock.getMarketCode(), endDate, now);
+        List<LocalDate> openDates = completedListedOpenDates(stock, startDate, endDate, now,
+                "No completed KIS stock price EOD session in requested range");
+        LocalDate adjustmentAsOf = LocalDate.ofInstant(now, marketZone(stock.getMarketCode()));
         boolean incomplete = false;
         for (List<LocalDate> chunk : calendarWindows(openDates, startDate, endDate, STOCK_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
@@ -141,8 +182,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 if (seen.add(missing)) records.add(EodStockPrice.of(stock, missing, "KRX", null, null, null,
                         null, null, null, "KIS:" + STOCK_API + ":RAW", "INCOMPLETE"));
             }
-            List<StockPriceAdjustment> adjustments = adjustedPrices(stock, from, to, requestedDates,
-                    LocalDate.now(ZoneId.of("Asia/Seoul")));
+            List<StockPriceAdjustment> adjustments = adjustedPrices(stock, from, to, requestedDates, adjustmentAsOf);
             eodStockPricePort.upsertObservations(records, adjustments);
             incomplete |= records.stream().anyMatch(record -> "INCOMPLETE".equals(record.getDataStatus()));
         }
@@ -160,7 +200,10 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 || stock.getStatus() == StockStatus.DELISTED) {
             throw new IllegalArgumentException("Only non-delisted KRX stocks are supported for investor collection");
         }
-        List<LocalDate> openDates = verifiedOpenDates(stock, startDate, endDate);
+        Instant now = clock.instant();
+        ensureEndDateNotFuture(stock.getMarketCode(), endDate, now);
+        List<LocalDate> openDates = completedListedOpenDates(stock, startDate, endDate, now,
+                "No completed KIS investor EOD session in requested range");
         boolean incomplete = false;
         for (int offset = 0; offset < openDates.size(); offset += INVESTOR_MAX_ROWS) {
             List<LocalDate> chunk = List.copyOf(openDates.subList(offset,
@@ -187,7 +230,6 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                 observations.put(date, row);
             }
 
-            Instant collectedAt = Instant.now();
             List<EodStockInvestorTradeDaily> records = new ArrayList<>(chunk.size() * INVESTOR_TYPES.size());
             for (LocalDate tradeDate : chunk) {
                 Map<InvestorSourceType, InvestorFlows> flows = investorFlows(observations.get(tradeDate));
@@ -197,7 +239,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                     BigDecimal netAmount = flow == null ? null : investorAmount(flow.amount());
                     String status = quantity != null && netAmount != null ? "PROVISIONAL" : "INCOMPLETE";
                     records.add(new EodStockInvestorTradeDaily(stock.getId(), tradeDate, "KRX", type, quantity,
-                            netAmount, status, "KIS:" + INVESTOR_API + ":J", collectedAt));
+                            netAmount, status, "KIS:" + INVESTOR_API + ":J", now));
                 }
             }
             incomplete |= records.stream().anyMatch(row -> "INCOMPLETE".equals(row.dataStatus()));
@@ -235,23 +277,19 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
     public void syncIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate) {
         validateRange(series, startDate, endDate);
         requireSupportedIndexSeries(series);
-        ensureEndDateNotFuture(series.getCalendarMarketCode(), endDate);
+        Instant now = clock.instant();
+        ensureEndDateNotFuture(series.getCalendarMarketCode(), endDate, now);
         if ("kis.ovrs.idxcode.N".equals(series.getProviderNamespace())) {
-            upsertOverseasIndexPrices(series, startDate, endDate);
+            upsertOverseasIndexPrices(series, startDate, endDate, now);
             return;
         }
-        upsertDomesticIndexPrices(series, startDate, endDate);
+        upsertDomesticIndexPrices(series, startDate, endDate, now);
     }
 
-    private void upsertDomesticIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate) {
+    private void upsertDomesticIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate, Instant now) {
         String marketCode = series.getCalendarMarketCode();
-        List<LocalDate> openDates = verifiedOpenDates(marketCode, startDate, endDate);
-        Instant now = Instant.now();
-        List<LocalDate> completedDates = openDates.stream()
-                .filter(date -> isEodSessionComplete(marketCode, date, now)).toList();
-        if (!openDates.isEmpty() && completedDates.isEmpty()) {
-            throw new IllegalStateException("No completed KIS index EOD session in requested range");
-        }
+        List<LocalDate> completedDates = completedOpenDates(marketCode, startDate, endDate, now,
+                "No completed KIS index EOD session in requested range");
         List<IndexDaily> records = new ArrayList<>();
         for (List<LocalDate> chunk : calendarWindows(completedDates, startDate, endDate, INDEX_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
@@ -283,22 +321,17 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                         BenchmarkDataStatus.INCOMPLETE, null));
             }
         }
-        indexDailyPort.upsert(records);
+        if (!records.isEmpty()) indexDailyPort.upsert(records);
         if (records.stream().anyMatch(record -> record.getPriceStatus() == BenchmarkDataStatus.INCOMPLETE)) {
             throw new IllegalStateException("KIS index price source returned incomplete observations for "
                     + series.getProviderSeriesCode() + " in " + startDate + ".." + endDate);
         }
     }
 
-    private void upsertOverseasIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate) {
+    private void upsertOverseasIndexPrices(IndexSeries series, LocalDate startDate, LocalDate endDate, Instant now) {
         String marketCode = series.getCalendarMarketCode();
-        List<LocalDate> openDates = verifiedOpenDates(marketCode, startDate, endDate);
-        Instant now = Instant.now();
-        List<LocalDate> completedDates = openDates.stream()
-                .filter(date -> isEodSessionComplete(marketCode, date, now)).toList();
-        if (!openDates.isEmpty() && completedDates.isEmpty()) {
-            throw new IllegalStateException("No completed KIS overseas index EOD session in requested range");
-        }
+        List<LocalDate> completedDates = completedOpenDates(marketCode, startDate, endDate, now,
+                "No completed KIS overseas index EOD session in requested range");
         List<IndexDaily> records = new ArrayList<>();
         for (List<LocalDate> chunk : calendarWindows(completedDates, startDate, endDate, INDEX_MAX_ROWS)) {
             LocalDate from = chunk.getFirst();
@@ -331,7 +364,7 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
                         BenchmarkDataStatus.INCOMPLETE, null));
             }
         }
-        indexDailyPort.upsert(records);
+        if (!records.isEmpty()) indexDailyPort.upsert(records);
         if (records.stream().anyMatch(record -> record.getPriceStatus() == BenchmarkDataStatus.INCOMPLETE)) {
             throw new IllegalStateException("KIS overseas index price source returned incomplete observations for "
                     + series.getProviderSeriesCode() + " in " + startDate + ".." + endDate);
@@ -361,25 +394,56 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
         }
     }
 
-    private static void ensureEndDateNotFuture(String marketCode, LocalDate endDate) {
+    private static void ensureEndDateNotFuture(String marketCode, LocalDate endDate, Instant now) {
         ZoneId zone = marketZone(marketCode);
-        if (endDate.isAfter(LocalDate.now(zone))) {
+        if (endDate.isAfter(LocalDate.ofInstant(now, zone))) {
             throw new IllegalArgumentException("KIS EOD end date cannot be in the future for " + marketCode);
         }
     }
 
-    static boolean isEodSessionComplete(String marketCode, LocalDate tradeDate, Instant now) {
-        ZoneId zone = marketZone(marketCode);
-        LocalDate marketToday = now.atZone(zone).toLocalDate();
+    private List<LocalDate> completedOpenDates(String marketCode, LocalDate startDate, LocalDate endDate,
+            Instant now, String emptyMessage) {
+        return completedOpenDates(marketCode, startDate, endDate, null, now, emptyMessage);
+    }
+
+    private List<LocalDate> completedListedOpenDates(Stock stock, LocalDate startDate, LocalDate endDate,
+            Instant now, String emptyMessage) {
+        return completedOpenDates(stock.getMarketCode(), startDate, endDate, stock.getListingDate(), now, emptyMessage);
+    }
+
+    private List<LocalDate> completedOpenDates(String marketCode, LocalDate startDate, LocalDate endDate,
+            LocalDate listingDate, Instant now, String emptyMessage) {
+        List<TradingCalendar> openSessions = verifiedOpenSessions(marketCode, startDate, endDate);
+        if (listingDate != null) {
+            openSessions = openSessions.stream()
+                    .filter(session -> !session.getTradeDate().isBefore(listingDate))
+                    .toList();
+        }
+        List<LocalDate> completedDates = new ArrayList<>(openSessions.size());
+        for (TradingCalendar session : openSessions) {
+            if (!isEodSessionComplete(session, now)) {
+                throw new IllegalStateException(emptyMessage);
+            }
+            completedDates.add(session.getTradeDate());
+        }
+        return List.copyOf(completedDates);
+    }
+
+    static boolean isEodSessionComplete(TradingCalendar session, Instant now) {
+        if (session == null || now == null) {
+            throw new IllegalArgumentException("Trading session and current instant are required");
+        }
+        if (!session.isTradingDay()) return false;
+        ZoneId zone = marketZone(session.getMarketCode());
+        LocalDate marketToday = LocalDate.ofInstant(now, zone);
+        LocalDate tradeDate = session.getTradeDate();
         if (tradeDate.isBefore(marketToday)) return true;
         if (tradeDate.isAfter(marketToday)) return false;
-        // shortcut: wait until 16:00 ET on early-close days; use verified trading_calendar.closes_at when available.
-        LocalTime close = switch (marketCode) {
-            case "KOSPI", "KOSDAQ" -> LocalTime.of(15, 30);
-            case "NASDAQ", "NYSE" -> LocalTime.of(16, 0);
-            default -> throw new IllegalArgumentException("Unsupported KIS market calendar: " + marketCode);
-        };
-        return !now.isBefore(tradeDate.atTime(close).atZone(zone).toInstant());
+        if (session.getClosesAt() == null) {
+            throw new IllegalStateException(
+                    "Session close time is unknown for " + session.getMarketCode() + " " + tradeDate);
+        }
+        return !now.isBefore(session.getClosesAt().toInstant());
     }
 
     private static ZoneId marketZone(String marketCode) {
@@ -390,23 +454,17 @@ public class NewMarketDataSyncService implements NewMarketDataSyncUseCase {
         };
     }
 
-    private List<LocalDate> verifiedOpenDates(String marketCode, LocalDate startDate, LocalDate endDate) {
+    private List<TradingCalendar> verifiedOpenSessions(String marketCode, LocalDate startDate, LocalDate endDate) {
         Map<LocalDate, TradingCalendar> calendar = tradingCalendarPort.findAll(marketCode, startDate, endDate).stream()
                 .collect(Collectors.toMap(TradingCalendar::getTradeDate, Function.identity(),
                         (left, right) -> { throw new IllegalStateException("Duplicate calendar date"); }));
-        List<LocalDate> openDates = new ArrayList<>();
+        List<TradingCalendar> openSessions = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             TradingCalendar day = calendar.get(date);
             if (day == null) throw new IllegalStateException("Trading calendar is unknown for " + marketCode + " " + date);
-            if (day.isTradingDay()) openDates.add(date);
+            if (day.isTradingDay()) openSessions.add(day);
         }
-        return openDates;
-    }
-
-    private List<LocalDate> verifiedOpenDates(Stock stock, LocalDate startDate, LocalDate endDate) {
-        List<LocalDate> openDates = verifiedOpenDates(stock.getMarketCode(), startDate, endDate);
-        LocalDate listingDate = stock.getListingDate();
-        return listingDate == null ? openDates : openDates.stream().filter(date -> !date.isBefore(listingDate)).toList();
+        return openSessions;
     }
 
     private static List<List<LocalDate>> calendarWindows(List<LocalDate> openDates, LocalDate startDate,

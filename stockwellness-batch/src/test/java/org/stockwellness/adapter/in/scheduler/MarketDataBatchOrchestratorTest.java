@@ -136,6 +136,53 @@ class MarketDataBatchOrchestratorTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void scheduled_us_run_at_2027_year_boundary_prepares_prior_year_completed_session_calendar() {
+        var result = orchestrator.runScheduled("US", Instant.parse("2027-01-04T20:59:59Z"));
+
+        assertThat(result.effectiveEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(result.stages()).extracting(MarketDataBatchOrchestrator.StageResult::stage)
+                .contains("calendar-2026-12-31-2027-01-04");
+        ArgumentCaptor<List<TradingCalendar>> upserted = ArgumentCaptor.forClass(List.class);
+        verify(calendarPort).upsert(upserted.capture());
+        assertThat(upserted.getValue())
+                .anySatisfy(day -> {
+                    assertThat(day.getMarketCode()).isEqualTo("NYSE");
+                    assertThat(day.getTradeDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+                    assertThat(day.isTradingDay()).isTrue();
+                })
+                .anySatisfy(day -> {
+                    assertThat(day.getMarketCode()).isEqualTo("NASDAQ");
+                    assertThat(day.getTradeDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+                    assertThat(day.isTradingDay()).isTrue();
+                });
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void scheduled_us_new_years_day_and_manual_year_boundary_use_2026_12_31_and_prepare_calendar() throws Exception {
+        var scheduledHoliday = orchestrator.runScheduled("US", Instant.parse("2027-01-01T21:15:00Z"));
+        assertThat(scheduledHoliday.effectiveEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(scheduledHoliday.runId()).isEqualTo("US-daily-2027-01-01");
+        assertThat(scheduledHoliday.stages()).extracting(MarketDataBatchOrchestrator.StageResult::stage)
+                .contains("calendar-2026-12-31-2027-01-01");
+
+        var manualBoundary = orchestrator.runManual("US", LocalDate.of(2026, 12, 31),
+                LocalDate.of(2027, 1, 4), "us-year-boundary", Instant.parse("2027-01-04T20:59:59Z"));
+        assertThat(manualBoundary.effectiveEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        assertThat(manualBoundary.stages()).extracting(MarketDataBatchOrchestrator.StageResult::stage)
+                .contains("calendar-2026-12-31-2027-01-04");
+
+        ArgumentCaptor<List<TradingCalendar>> upserted = ArgumentCaptor.forClass(List.class);
+        verify(calendarPort, times(2)).upsert(upserted.capture());
+        assertThat(upserted.getAllValues().get(0)).anySatisfy(day -> {
+            assertThat(day.getMarketCode()).isEqualTo("NYSE");
+            assertThat(day.getTradeDate()).isEqualTo(LocalDate.of(2027, 1, 1));
+            assertThat(day.isTradingDay()).isFalse();
+        });
+    }
+
+    @Test
     void kr_run_orders_calendar_master_price_investor_index_and_derived_jobs() {
         LocalDate today = LocalDate.of(2026, 11, 15);
         LocalDate previousSession = LocalDate.of(2026, 11, 13);

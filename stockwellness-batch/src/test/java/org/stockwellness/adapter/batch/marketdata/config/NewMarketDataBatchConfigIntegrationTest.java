@@ -159,6 +159,14 @@ class NewMarketDataBatchConfigIntegrationTest {
     @Qualifier("stockMasterSyncJob")
     private Job stockMasterSyncJob;
 
+    @Autowired
+    @Qualifier("dailyStockPriceBatchJob")
+    private Job dailyStockPriceBatchJob;
+
+    @Autowired
+    @Qualifier("stockInvestorTradeDetailJob")
+    private Job stockInvestorTradeDetailJob;
+
     @MockitoBean private KisDailyPriceAdapter kisDailyPriceAdapter;
     @MockitoBean private KisHolidayAdapter kisHolidayAdapter;
     @MockitoBean private EodStockInvestorTradePort investorTradePort;
@@ -208,12 +216,13 @@ class NewMarketDataBatchConfigIntegrationTest {
 
     @AfterEach
     void removeDerivedJobFixtures() {
-        jdbcTemplate.update("delete from stock_price_daily where stock_id in (select id from stock where ticker in ('005930', '999999', '910001', '910002', '919993', '910004', '910005', '910006', '910007'))");
-        jdbcTemplate.update("delete from trading_calendar where source in ('test:kis-252-session', 'test:kis-target-investor')");
+        jdbcTemplate.update("delete from stock_price_adjustment where stock_id in (select id from stock where ticker in ('005930', '999999', '910001', '910002', '919993', '910004', '910005', '910006', '910007', '910008'))");
+        jdbcTemplate.update("delete from stock_price_daily where stock_id in (select id from stock where ticker in ('005930', '999999', '910001', '910002', '919993', '910004', '910005', '910006', '910007', '910008'))");
+        jdbcTemplate.update("delete from trading_calendar where source in ('test:kis-252-session', 'test:kis-target-investor', 'test:future', 'test:multiday-incomplete') or trade_date in (date '2026-12-15', date '2026-12-31', date '2027-01-01', date '2027-01-04')");
         jdbcTemplate.update("delete from index_daily where series_id in (select id from index_series where provider = 'KIS' and provider_series_code in ('0001','0027','9099','0001.TR','1001.BAK','1001','SPX'))");
         jdbcTemplate.update("delete from index_series where provider = 'KIS' and provider_series_code in ('0001','0027','9099','0001.TR','1001.BAK','1001','SPX')");
         jdbcTemplate.update("delete from market_index where index_key in ('KOSPI:0001', 'KOSDAQ:1001', 'KOSPI:0027', 'KOSPI:9099', 'SPX')");
-        for (String ticker : List.of("005930", "999999", "910001", "910002", "919993", "910004", "910005", "910006", "910007")) {
+        for (String ticker : List.of("005930", "999999", "910001", "910002", "919993", "910004", "910005", "910006", "910007", "910008")) {
             stockRepository.findByTickerAndMarketCode(ticker,
                     ticker.equals("910002") ? "KOSDAQ" : "KOSPI").ifPresent(stockRepository::delete);
         }
@@ -341,6 +350,177 @@ class NewMarketDataBatchConfigIntegrationTest {
                 .isEqualTo(Instant.parse("2026-10-05T06:30:00Z"));
         assertThat(session.get("source")).isEqualTo("KIS:CTCA0903R|KRX:REGULAR");
         verify(kisHolidayAdapter).fetchHolidays(START_DATE);
+    }
+
+    @Test
+    void trading_calendar_job_skips_unverified_2027_lookahead_while_persisting_2026_dates() throws Exception {
+        LocalDate baseDate = LocalDate.of(2026, 12, 15);
+        given(kisHolidayAdapter.fetchHolidays(baseDate)).willReturn(List.of(
+                new KisHolidayEntry("20261215", "Y"),
+                new KisHolidayEntry("20261231", "N"),
+                new KisHolidayEntry("20270101", "N"),
+                new KisHolidayEntry("20270104", "Y")));
+
+        JobExecution execution = jobLauncher.run(tradingCalendarJob, parameters("baseDate", baseDate.toString()));
+
+        assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from trading_calendar where trade_date in (date '2026-12-15', date '2026-12-31')",
+                Integer.class)).isEqualTo(4);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from trading_calendar where trade_date in (date '2027-01-01', date '2027-01-04')",
+                Integer.class)).isZero();
+    }
+
+    @Test
+    void public_stock_and_investor_batch_jobs_reject_future_date_before_calling_kis_or_writing() throws Exception {
+        Stock stock = saveDomesticStock("910008", MarketType.KOSPI, StockStatus.ACTIVE, "ST");
+        LocalDate futureDate = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(5);
+        tradingCalendarAdapter.upsert(List.of(calendarDay("KOSPI", futureDate, true, "test:future")));
+
+        JobExecution canonicalPrice = jobLauncher.run(stockPriceJob,
+                dateRangeParameters(futureDate, futureDate, stock.getTicker()));
+        JobExecution legacyPrice = jobLauncher.run(dailyStockPriceBatchJob, new JobParametersBuilder()
+                .addString("targetTicker", stock.getTicker())
+                .addString("startDate", futureDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+                .addString("endDate", futureDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+                .addString("targetDate", futureDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+                .addLong("run.id", System.nanoTime())
+                .toJobParameters());
+        JobExecution canonicalInvestor = jobLauncher.run(investorTradeJob,
+                dateRangeParameters(futureDate, futureDate, stock.getTicker()));
+        JobExecution legacyInvestor = jobLauncher.run(stockInvestorTradeDetailJob,
+                dateRangeParameters(futureDate, futureDate, stock.getTicker()));
+
+        for (JobExecution execution : List.of(canonicalPrice, legacyPrice, canonicalInvestor, legacyInvestor)) {
+            assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
+            assertThat(execution.getStepExecutions()).singleElement()
+                    .satisfies(step -> assertThat(step.getExitStatus().getExitDescription()).contains("future"));
+        }
+        verify(kisDailyPriceAdapter, never()).fetchDailyPrices(any(Stock.class), any(), any());
+        verify(kisDailyPriceAdapter, never()).fetchAdjustedDailyPrices(any(Stock.class), any(), any());
+        verify(kisDailyPriceAdapter, never()).fetchInvestorTradeByStockDaily(any(Stock.class), any());
+        verify(investorTradePort, never()).upsert(any());
+        assertThat(jdbcTemplate.queryForObject("select count(*) from stock_price_daily where stock_id = ?",
+                Integer.class, stock.getId())).isZero();
+    }
+
+    @Test
+    void public_stock_and_investor_batch_jobs_fail_closed_for_multiday_range_ending_on_incomplete_today_and_succeed_on_retry()
+            throws Exception {
+        Stock stock = saveDomesticStock("910008", MarketType.KOSPI, StockStatus.ACTIVE, "ST");
+        ZoneId korea = ZoneId.of("Asia/Seoul");
+        LocalDate today = LocalDate.now(korea);
+        LocalDate yesterday = today.minusDays(1);
+        tradingCalendarAdapter.upsert(List.of(
+                calendarDay("KOSPI", yesterday, true, "test:multiday-incomplete"),
+                TradingCalendar.of("KOSPI", today, true,
+                        today.atTime(LocalTime.of(0, 0)).atZone(korea).toOffsetDateTime(),
+                        today.atTime(LocalTime.of(23, 59, 59)).atZone(korea).toOffsetDateTime(),
+                        "test:multiday-incomplete")));
+
+        JobExecution priceBeforeClose = jobLauncher.run(stockPriceJob,
+                dateRangeParameters(yesterday, today, stock.getTicker()));
+        JobExecution investorBeforeClose = jobLauncher.run(investorTradeJob,
+                dateRangeParameters(yesterday, today, stock.getTicker()));
+        JobExecution legacyInvestorBeforeClose = jobLauncher.run(stockInvestorTradeDetailJob,
+                dateRangeParameters(yesterday, today, stock.getTicker()));
+
+        for (JobExecution execution : List.of(priceBeforeClose, investorBeforeClose, legacyInvestorBeforeClose)) {
+            assertThat(execution.getStatus()).isEqualTo(BatchStatus.FAILED);
+            assertThat(execution.getStepExecutions()).singleElement()
+                    .satisfies(step -> assertThat(step.getExitStatus().getExitDescription())
+                            .contains("No completed KIS"));
+        }
+        verify(kisDailyPriceAdapter, never()).fetchDailyPrices(any(Stock.class), any(), any());
+        verify(kisDailyPriceAdapter, never()).fetchAdjustedDailyPrices(any(Stock.class), any(), any());
+        verify(kisDailyPriceAdapter, never()).fetchInvestorTradeByStockDaily(any(Stock.class), any());
+        verify(investorTradePort, never()).upsert(any());
+        assertThat(jdbcTemplate.queryForObject("select count(*) from stock_price_daily where stock_id = ?",
+                Integer.class, stock.getId())).isZero();
+
+        tradingCalendarAdapter.upsert(List.of(
+                TradingCalendar.of("KOSPI", today, true,
+                        today.atTime(LocalTime.of(0, 0)).atZone(korea).toOffsetDateTime(),
+                        today.atTime(LocalTime.of(0, 0, 1)).atZone(korea).toOffsetDateTime(),
+                        "test:multiday-incomplete")));
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(yesterday), eq(today)))
+                .willReturn(List.of(
+                        capturedOrGeneratedRow(yesterday, 0),
+                        capturedOrGeneratedRow(today, 1)));
+        given(kisDailyPriceAdapter.fetchAdjustedDailyPrices(any(Stock.class), eq(yesterday), eq(today)))
+                .willReturn(List.of(
+                        capturedOrGeneratedRow(yesterday, 0),
+                        capturedOrGeneratedRow(today, 1)));
+        given(kisDailyPriceAdapter.fetchInvestorTradeByStockDaily(any(Stock.class), eq(today)))
+                .willReturn(List.of(investorRow(yesterday), investorRow(today)));
+
+        JobExecution retriedPrice = jobLauncher.run(stockPriceJob,
+                dateRangeParameters(yesterday, today, stock.getTicker()));
+        JobExecution retriedInvestor = jobLauncher.run(investorTradeJob,
+                dateRangeParameters(yesterday, today, stock.getTicker()));
+
+        assertThat(retriedPrice.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(retriedInvestor.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from stock_price_daily where stock_id = ?",
+                Integer.class, stock.getId())).isEqualTo(2);
+        verify(investorTradePort).upsert(org.mockito.ArgumentMatchers.argThat(rows -> rows.size() == 26));
+    }
+
+    @Test
+    void stock_eod_job_reread_keeps_atomicity_on_adjusted_failure_and_revises_provisional_without_outbox()
+            throws Exception {
+        Stock stock = saveDomesticStock("910008", MarketType.KOSPI, StockStatus.ACTIVE, "ST");
+        LocalDate tradeDate = LocalDate.of(2026, 11, 12);
+        tradingCalendarAdapter.upsert(List.of(calendarDay("KOSPI", tradeDate, true, "test:kis-252-session")));
+
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willReturn(List.of(capturedOrGeneratedRow(tradeDate, 0)));
+        given(kisDailyPriceAdapter.fetchAdjustedDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willReturn(List.of(capturedOrGeneratedRow(tradeDate, 0)));
+
+        JobExecution initial = jobLauncher.run(stockPriceJob, dateRangeParameters(tradeDate, tradeDate, stock.getTicker()));
+        assertThat(initial.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+
+        KisDailyPriceDetail failedRawCandidate = new KisDailyPriceDetail(
+                tradeDate, new BigDecimal("208500"), new BigDecimal("214000"),
+                new BigDecimal("206000"), new BigDecimal("207000"), 19721557L,
+                new BigDecimal("4126896638615"), "00", "0.00", "N", "2", new BigDecimal("500"), "");
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willReturn(List.of(failedRawCandidate));
+        given(kisDailyPriceAdapter.fetchAdjustedDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willThrow(new IllegalStateException("adjusted provider unavailable"));
+
+        JobExecution failedReread = jobLauncher.run(stockPriceJob, dateRangeParameters(tradeDate, tradeDate, stock.getTicker()));
+        assertThat(failedReread.getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThat(jdbcTemplate.queryForObject(
+                "select close_price from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'",
+                BigDecimal.class, stock.getId(), tradeDate)).isEqualByComparingTo("206500");
+        assertThat(jdbcTemplate.queryForObject(
+                "select revision from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'",
+                Integer.class, stock.getId(), tradeDate)).isEqualTo(1);
+
+        KisDailyPriceDetail revised208000 = new KisDailyPriceDetail(
+                tradeDate, new BigDecimal("208500"), new BigDecimal("214000"),
+                new BigDecimal("206000"), new BigDecimal("208000"), 19721557L,
+                new BigDecimal("4126896638615"), "00", "0.00", "N", "2", new BigDecimal("500"), "");
+        given(kisDailyPriceAdapter.fetchDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willReturn(List.of(revised208000));
+        given(kisDailyPriceAdapter.fetchAdjustedDailyPrices(any(Stock.class), eq(tradeDate), eq(tradeDate)))
+                .willReturn(List.of(revised208000));
+
+        JobExecution revised = jobLauncher.run(stockPriceJob, dateRangeParameters(tradeDate, tradeDate, stock.getTicker()));
+        assertThat(revised.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jdbcTemplate.queryForObject(
+                "select close_price from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'",
+                BigDecimal.class, stock.getId(), tradeDate)).isEqualByComparingTo("208000");
+        assertThat(jdbcTemplate.queryForObject(
+                "select revision from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'",
+                Integer.class, stock.getId(), tradeDate)).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                "select data_status from stock_price_daily where stock_id = ? and trade_date = ? and quote_scope = 'KRX'",
+                String.class, stock.getId(), tradeDate)).isEqualTo("PROVISIONAL");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from outbox_event", Integer.class)).isZero();
     }
 
     @Test

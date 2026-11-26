@@ -59,6 +59,8 @@ No reviewed KIS API sample or captured response exposes a provider-issued finali
 
 The finality gap is intentional and visible: no FINAL evidence has been inferred. Task #320 remains open; any data without provider proof remains PROVISIONAL.
 
+> 2026-11-26 업데이트: 엔드포인트별 요청 계약 요약표, 필드별 단위·DB 매핑·근거 상태, 공식 KIS 확인 질의 체크리스트 및 #320 회귀 검증 통합 현황은 [KIS 계약 근거 재확인](2026-11-15-kis-contract-evidence-recheck.md) 하단 섹션을 참조한다.
+
 ## KIS-owned source recheck (2026-11-15)
 
 Reviewed the public KIS Developers API index and KIS-owned `open-trading-api` examples/configuration on 2026-11-15 (Asia/Seoul). No authenticated API call was made. The repository examples demonstrate request construction and field labels; they are not a substitute for a complete endpoint response schema.
