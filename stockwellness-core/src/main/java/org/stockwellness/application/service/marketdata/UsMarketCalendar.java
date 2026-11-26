@@ -12,14 +12,14 @@ import org.springframework.stereotype.Component;
 import org.stockwellness.domain.stock.TradingCalendar;
 
 /**
- * Published 2025-2026 cash-equity sessions for the KIS-supported US index series.
+ * Published 2025-2027 cash-equity sessions for the KIS-supported US index series.
  * Dates outside the verified schedule fail closed until an exchange calendar is reviewed and added.
  */
 @Component
 public final class UsMarketCalendar {
 
     private static final int FIRST_VERIFIED_YEAR = 2025;
-    private static final int LAST_VERIFIED_YEAR = 2026;
+    private static final int LAST_VERIFIED_YEAR = 2027;
     private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
     private static final LocalTime REGULAR_OPEN = LocalTime.of(9, 30);
     private static final LocalTime REGULAR_CLOSE = LocalTime.of(16, 0);
@@ -45,13 +45,24 @@ public final class UsMarketCalendar {
             LocalDate.of(2026, 7, 3),
             LocalDate.of(2026, 9, 7),
             LocalDate.of(2026, 11, 26),
-            LocalDate.of(2026, 12, 25));
+            LocalDate.of(2026, 12, 25),
+            LocalDate.of(2027, 1, 1),
+            LocalDate.of(2027, 1, 18),
+            LocalDate.of(2027, 2, 15),
+            LocalDate.of(2027, 3, 26),
+            LocalDate.of(2027, 5, 31),
+            LocalDate.of(2027, 6, 18),
+            LocalDate.of(2027, 7, 5),
+            LocalDate.of(2027, 9, 6),
+            LocalDate.of(2027, 11, 25),
+            LocalDate.of(2027, 12, 24));
     private static final Set<LocalDate> EARLY_CLOSE_DATES = Set.of(
             LocalDate.of(2025, 7, 3),
             LocalDate.of(2025, 11, 28),
             LocalDate.of(2025, 12, 24),
             LocalDate.of(2026, 11, 27),
-            LocalDate.of(2026, 12, 24));
+            LocalDate.of(2026, 12, 24),
+            LocalDate.of(2027, 11, 26));
 
     public List<TradingCalendar> calendarDays(String marketCode, LocalDate startDate, LocalDate endDate) {
         validateMarket(marketCode);
