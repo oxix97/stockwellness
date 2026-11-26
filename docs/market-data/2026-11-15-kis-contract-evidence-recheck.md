@@ -1,4 +1,4 @@
-# KIS 계약 근거 재확인 — 2026-11-15 (2026-11-16 업데이트)
+# KIS 계약 근거 재확인 — 2026-11-15 (2026-11-26 업데이트)
 
 범위: 공개 KIS Developers API 목록, KIS 소유 `open-trading-api` 예제, KIS API 전체 문서 내보내기 자료를 확인했다. 인증 호출은 하지 않았다. 내보내기 자료는 `한국투자증권_오픈API_전체문서_20260211_030000`의 읽기 전용 사본이다.
 
@@ -106,3 +106,55 @@ KIS Developers 공개 API 목록의 endpoint 상세 레코드를 확인했다. �
 - 이 결과는 격리된 API → PostgreSQL 실제 요청 경로의 검증이다. 운영 API 배포, 운영 DB 적재/전환, FINAL 가격이 있는 성공 응답, 전체 종목 표본, 지수 endpoint, FE 화면은 검증하지 않았다.
 
 앞선 원본 대사 증거는 동일 Batch → KIS → 격리 PostgreSQL 요청 경로에 한정된다. KIS FINAL 근거와 운영 스키마 호환성이 미확정인 동안 운영 배포는 보류한다.
+
+## 엔드포인트별 요청 계약 요약 (2026-11-26 통합)
+
+| TR ID / 구분 | 요청 경로 | 필수 쿼리 파라미터 예시 | 회당 조회 상한 (근거 vs 관측) | 지원 범위 | 저장소 비밀 제거 실응답 fixture |
+|---|---|---|---|---|---|
+| `FHKST03010100` (RAW) | `/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice` | `FID_COND_MRKT_DIV_CODE=J`, `FID_INPUT_ISCD=005930`, `FID_INPUT_DATE_1=20261112`, `FID_INPUT_DATE_2=20261112`, `FID_PERIOD_DIV_CODE=D`, `FID_ORG_ADJ_PRC=1` | **100건** (문서 근거: `20260211` 사본 `A14:B14`, 2026-03-27 `a08c3421...`). 코드는 100 calendar-day 창 분할(`STOCK_MAX_ROWS=100`). | `ACTIVE`, `KOSPI`/`KOSDAQ`, `ST`/`EF`/`EN`, `000000..999999`, `listing_date` 이후 세션 | 있음 (`domestic-daily-success.json`, SHA-256 `fa0178a6...`) |
+| `FHKST03010100` (ADJUSTED) | `/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice` | 위와 동일 + `FID_ORG_ADJ_PRC=0` | **100건** (문서 근거 동일, `FID_ORG_ADJ_PRC` `0=수정주가`/`1=원주가`는 이 endpoint 한정). | 위와 동일 (`stock_price_adjustment`, `PROVIDER_ADJUSTED`) | 미보관 (2026-11-16 대사 시 RAW/ADJUSTED body SHA-256 동일 관측 기록만 존재) |
+| `FHPTJ04160001` | `/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily` | `FID_COND_MRKT_DIV_CODE=J`, `FID_INPUT_ISCD=005930`, `FID_INPUT_DATE_1=20261113`, `FID_ORG_ADJ_PRC=""`, `FID_ETC_CLS_CODE=""` (`custtype=P`) | 최대 **30거래일** 반환은 2026-11-16 실호출 관측(공식 상한 문서 계약 여부 미확정). 코드는 30세션 창 분할(`INVESTOR_MAX_ROWS=30`) 후 창 외 과거 행 무시. | 비-상장폐지 `KOSPI`/`KOSDAQ` 종목 × 13개 투자자 유형 (`InvestorSourceType`) | 미보관 (`KisDailyPriceAdapterTest`는 합성 JSON 사용) |
+| `FHKUP03500100` | `/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice` | `FID_COND_MRKT_DIV_CODE=U`, `FID_INPUT_ISCD=0001`, `FID_INPUT_DATE_1=20261112`, `FID_INPUT_DATE_2=20261112`, `FID_PERIOD_DIV_CODE=D` (`custtype=P`) | 코드는 보수적으로 **50 calendar days** 창 분할(`INDEX_MAX_ROWS=50`). 공식 회당 최대 건수 미확정. | 국내 시장지수 4종(`0001`, `1001`, `2001`, `3003`) + 검증 업종 67종 (`PRICE`/`NONE`/`KRW`) | 미보관 (`#331` `2026-11-17 12:03 KST` 댓글 기록 기준으로는 국내 지수 71 series의 252-date coverage만 확인되고 행 값 대사가 남아 있었음. 별도 후속 외부 기록인 `2026-11-17 17:33 KST` PO 읽기 전용 보고서 `stockwellness-project/docs/qa/issue-331-handoff/2026-11-17-task-1-read-only-reproduction.md`가 격리 PostgreSQL `stockwellness-acceptance-pg-20261116`의 71 series `2025-11-04..2026-11-13` 17,892행과 별도 작업트리에 보존된 568개 원문 응답을 오프라인 대사해 OHLCV·거래대금 불일치 0, `PROVISIONAL` revision 1(17,854행)/revision 2(38행) 일치를 기록함. 다만 38행 원인 조사는 범위 제외, `FINAL`·단위 근거 미확정, 본 저장소 비밀 제거 fixture 미적재 상태는 유지됨) |
+| `FHKST03030100` | `/uapi/overseas-price/v1/quotations/inquire-daily-chartprice` | `FID_COND_MRKT_DIV_CODE=N`, `FID_INPUT_ISCD=SPX`, `FID_INPUT_DATE_1=20261112`, `FID_INPUT_DATE_2=20261112`, `FID_PERIOD_DIV_CODE=D` (`custtype=P`) | 코드는 보수적으로 **50 calendar days** 창 분할(`INDEX_MAX_ROWS=50`). 공식 회당 최대 건수 미확정. | US 3종(`SPX` NYSE, `NDX` NASDAQ, `.DJI` NYSE, `USD`). `COMP`/`SOX` fail-closed 거부. | 있음 (`overseas-index-daily-2026-11-12.json`, 3종 샘플; `#331` `2026-11-17 12:03 KST` 기록에 US 3종 보존 캡처 33쌍·756행 오프라인 대사 차이 0 포함, 단위·FINAL 미확정 유지) |
+| `CTCA0903R` | `/uapi/domestic-stock/v1/quotations/chk-holiday` | `BASS_DT=20261119`, `CTX_AREA_NK=""`, `CTX_AREA_FK=""` (`custtype=P`) | 일별 개장 여부(`opnd_yn` Y/N)만 제공, 세션 시각 미제공. | KRX `KOSPI`/`KOSDAQ` 쌍, 2025–2026 검증 연도 기준(요청 `baseDate`의 미검증 연도 영업일 `opnd_yn=Y`만 fail-closed; 검증 연도 요청의 `2027+` lookahead 행은 저장 제외) | 미보관 (세션 시각 검증용 `market-sessions-2026.json`만 보유) |
+
+## 필드별 단위·정밀도·DB 매핑·근거 상태 (2026-11-26 통합)
+
+| Endpoint / TR | 응답 필드 (`output2`) | DB 테이블 / 컬럼 (`02-schema.sql`) | 코드 변환 (`NewMarketDataSyncService`) | 근거 문서 / 레코드 | 상태 |
+|---|---|---|---|---|---|
+| `FHKST03010100` (RAW) | `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_clpr` | `stock_price_daily`: `open_price`, `high_price`, `low_price`, `close_price` (`numeric(19,4)`) | 원문 그대로 `scale=4, RoundingMode.UNNECESSARY` | `20260211` `B75:G81`, `a08c3421...` (단위·정밀도 미기재) | `UNCONFIRMED(BLOCKED)` |
+| `FHKST03010100` (RAW) | `acml_vol`, `acml_tr_pbmn` | `stock_price_daily`: `volume` (`bigint`), `trading_amount` (`numeric(25,2)`) | 원문 그대로 `Long` / `scale=2, UNNECESSARY` (임의 환산 금지) | 위와 동일 (단위·정밀도 미기재) | `UNCONFIRMED(BLOCKED)` |
+| `FHKST03010100` (RAW) | `mod_yn`, `rt_cd` | `stock_price_daily`: `data_status` (`PROVISIONAL`/`INCOMPLETE`), `revision` | `PROVISIONAL` 유지 (`FINAL` 승격 금지) | `20260211` `G84` (체결 부재 차트 표기) | `CONFIRMED`(비-FINAL) / `BLOCKED`(FINAL 규칙) |
+| `FHKST03010100` (ADJUSTED) | `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_clpr` (`FID_ORG_ADJ_PRC=0`) | `stock_price_adjustment`: `open_price`, `high_price`, `low_price`, `adjusted_close` (`numeric(19,4)`, `PROVIDER_ADJUSTED`) | 원문 그대로 `scale=4, UNNECESSARY` | `20260211` `B35:G35` (`0=수정주가`, 산식 미기재) | `UNCONFIRMED(BLOCKED)` |
+| `FHPTJ04160001` | 13개 유형 `*_ntby_qty` / `*_ntby_vol` | `stock_investor_trade_daily`: `net_quantity` (`numeric(19,6)`) | 원문 그대로 `scale=6, UNNECESSARY` | `20260211` `A14:B14`, `G56`; `141f0f11...` (2026-04-10): **주** | 단위 `CONFIRMED` / 반올림·정밀도 `BLOCKED` |
+| `FHPTJ04160001` | 13개 유형 `*_ntby_tr_pbmn` | `stock_investor_trade_daily`: `net_amount` (`numeric(25,2)`) | `×1,000,000` (백만원→원), `scale=2, UNNECESSARY` | `20260211` `A14:B14`, `G57`; `141f0f11...` (2026-04-10): **백만원** | 단위 `CONFIRMED` (`FHPTJ04160001` 한정) / 반올림·FINAL `BLOCKED` |
+| `FHKUP03500100` | `bstp_nmix_oprc`, `bstp_nmix_hgpr`, `bstp_nmix_lwpr`, `bstp_nmix_prpr` | `index_daily`: `open_value`, `high_value`, `low_value`, `close_value` (`numeric(19,4)`) | 원문 그대로 `scale=4, UNNECESSARY` | 공개 예제 필드 매핑만 존재 (단위·정밀도 미기재) | `UNCONFIRMED(BLOCKED)` |
+| `FHKUP03500100` | `acml_vol`, `acml_tr_pbmn` | `index_daily`: `volume` (`bigint`), `trading_amount` (`numeric(25,2)`) | 원문 그대로 `Long` / `scale=2, UNNECESSARY` | 단위(주 vs 천주, 원 vs 백만원) 미확인 | `UNCONFIRMED(BLOCKED)` |
+| `FHKST03030100` | `ovrs_nmix_oprc`, `ovrs_nmix_hgpr`, `ovrs_nmix_lwpr`, `ovrs_nmix_prpr` | `index_daily`: `open_value`, `high_value`, `low_value`, `close_value` (`numeric(19,4)`) | 원문 그대로 `scale=4, UNNECESSARY` | 해외 지수 예제 및 2026-11-13 캡처 3종 (4자리 소수 반올림 규칙 미확인) | `UNCONFIRMED(BLOCKED)` |
+| `FHKST03030100` | `acml_vol`, 미제공 `trading_amount` | `index_daily`: `volume` (`bigint`), `trading_amount` (`null`) | `SPX`/`NDX` `0` 보존, `.DJI` 정수 보존, `trading_amount=null` | `overseas-index-daily-2026-11-12.json` | `UNCONFIRMED(BLOCKED)` (`acml_vol` 의미·단위) |
+| `CTCA0903R` + 거래소 공지 | `bass_dt`, `opnd_yn` | `trading_calendar`: `is_trading_day`, `opens_at`, `closes_at` (`timestamptz`) | KRX `2025–2026` 공식 시각 결합; US `2025–2027` (`UsMarketCalendar`) 결합 | `krx-session-calendar.md`, `us-session-calendar.md` | KRX `2025–2026`·US `2025–2027` `CONFIRMED` / KRX `2027+` `BLOCKED` |
+
+## 공식 KIS 확인 질의 체크리스트 (Blocked-1 ~ Blocked-2 해제 조건)
+
+1. `FHKST03010100`, `FHPTJ04160001`, `FHKUP03500100`, `FHKST03030100` 각 TR에 장 마감 후 확정(`FINAL`) 상태를 판별할 수 있는 공식 응답 필드/코드가 존재하는지 여부.
+2. 별도 확정 필드가 없다면 각 endpoint별 공식 EOD 확정 기준 시각(KRX 정규장/수능일, US 정규장/조기종료일)과 사후 정정 가능 기간.
+3. `2026-11-12` `005930` 동일 조건 재조회 시 `rt_cd=0`, `mod_yn=N` 상태에서 종가가 `206500 → 208000`으로 변동한 공식 원인(시간외/NXT 반영 또는 장 마감 후 정정 등).
+4. `FHKST03010100`의 OHLC·`acml_vol`·`acml_tr_pbmn` 공식 단위·소수 정밀도·반올림 규칙 및 `FID_ORG_ADJ_PRC=0` 수정주가 산식(배당·분할·감자 소급 기준).
+5. `FHPTJ04160001`의 반올림·절사·공급자 저장 정밀도 규칙 및 1회 최대 30거래일 반환의 공식 계약 여부.
+6. `FHKUP03500100`의 지수·`acml_vol`(주 vs 천주)·`acml_tr_pbmn`(원 vs 백만원) 공식 단위/회당 최대 건수 및 `index_daily` breadth·지수 수급 원천 TR; `FHKST03030100`의 `ovrs_nmix_*` 반올림·`acml_vol` 의미/단위·회당 최대 건수 및 2026-12-06 Nasdaq 23/5 도입 이후 일봉 정규장(16:00 ET) 기준 유지 여부.
+
+## 이슈 #320 상태 및 2026-11-26 코드·회귀 보강 내역
+
+- **이슈 #320 상태:** **`OPEN` 유지** (#320 AC #5). 공급자 `FINAL` 판정 규칙(Blocked-1)과 가격·지수·업종 단위/정밀도·조정 산식(Blocked-2) 미확정으로 승격·단위 확정 구현은 보류한다.
+- **2026-11-26 검증 완료 범위 (`READY`):**
+  - `NewMarketDataSyncService`의 지수·주식·투자자 수집 경로 전반에 주입된 `Clock`을 일관 적용해(`adjustmentAsOf` 및 투자자 `collectedAt` 포함) 동일 요청 내 날짜 검증(`ensureEndDateNotFuture`)과 당일 `trading_calendar.closes_at` 완료 판정(`completedOpenDates`)이 동일한 `Instant`를 사용하도록 정합화했다. 요청 범위 내 대상 영업일(종목의 경우 `listing_date` 이후 영업일) 중 **어느 하나라도 미완료이거나 당일 `closes_at`이 누락되면** 외부 KIS API 호출이나 DB `upsert` 전에 `IllegalStateException`으로 fail-closed 실패해 부분 적재 후 재실행 누락을 방지한다. 신규상장 이전 빈 범위와 휴장일 전용 범위는 KIS 호출·저장 없이 정상 종료한다.
+  - `NewMarketDataSyncService.syncTradingCalendar`에서 검증된 연도(`2025–2026`) `baseDate` 요청 응답에 포함된 미검증 미래 연도 lookahead 행(`> 2026`, `!= baseDate`)은 형식·중복 검증을 유지한 채 저장 대상에서 제외해 연말 `CTCA0903R` 다일 응답이 현재 연도 달력 적재를 막지 않도록 수정했다(미검증 연도 영업일 `opnd_yn=Y`에 한해 fail-closed 유지).
+  - `MarketDataBatchOrchestrator.runScheduled("US", ...)`가 연도 경계(예: `2027-01-04T20:59:59Z` → `latest=2026-12-31`, `2027-01-01T21:15:00Z` 휴장일 크론)에서도 직전 완료 세션을 달력 준비 범위에 포함하도록 보강하고, KRX `syncTradingCalendar`의 정규장·연초 개장일·수능일·휴장일·미검증 연도/오류 응답 fail-closed 단위 테스트를 추가했다.
+  - 4개 기간별 API(`FHKST03010100`, `FHPTJ04160001`, `FHKUP03500100`, `FHKST03030100`)의 252거래일 수집 창 분할(100일·30세션·50일)과 중복/누락 0·`PROVISIONAL` 유지·과거 재수집 원자성 회귀 테스트를 추가했다.
+  - `overseas-index-daily-2026-11-12.json`(`SPX`, `NDX`, `.DJI`) 직접 입력과 `domestic-daily-success.json`(`206500`) + 2026-11-13 재조회(`208000`, `mod_yn=N`) 재현 합성 입력에 대한 `PROVISIONAL` 유지·revision 증가 회귀 테스트를 추가했다.
+- **남은 차단 범위 (`BLOCKED`) 및 미검증·후속 과제:**
+  - `Blocked-1`(`FINAL` 근거), `Blocked-2`(단위/정밀도/조정 산식), `Blocked-3`(본 저장소 미보관 비밀 제거 실응답 fixture 보완; `#331` `2026-11-17 12:03 KST` 기록의 US 3종 33쌍/756행 대사와 외부 `2026-11-17 17:33 KST` PO 보고서의 국내 지수 71 series/17,892행 대사는 별도 기록이나, 본 저장소 `src/test/resources/kis/source-contract/` fixture 적재·38행 원인 조사·`FINAL`/단위는 미완료 상태 유지), `Blocked-4`(KRX 2027년 공식 달력).
+  - **잔여 미검증·운용 위험 (`#320` 외부/후속 과제):**
+    1. 레거시 `benchmarkPriceSyncJob`(`BenchmarkPriceBatchConfig`/`BenchmarkPriceDataReader`)은 `NewMarketDataSyncService`를 거치지 않아 `trading_calendar`/`isEodSessionComplete`를 검증하지 않고 `DateUtil.today()` 기본 범위로 조회하며 실패 시 일부 지수만 건너뛰고 계속 진행한다.
+    2. `StockInvestorTradeDetailScheduler`는 평일 `16:00 KST` 고정 cron으로 `stockInvestorTradeDetailJob`을 호출하므로 KRX 수능일(16:30 KST 종료)에는 `NewMarketDataSyncService`의 fail-closed 가드에 의해 차단되며 `16:30 KST` 이후 자동 재시도를 수행하지 않는다(정규 스케줄은 `16:45 KST` `StockwellnessScheduler`가 담당).
+    3. `stock_price_adjustment` 단독 소급 변동(원시 주가 `stock_price_daily` 불변 상태에서 수정주가만 정정) 시 `EodStockPriceAdapter.writeAdjustments`가 `stock_price_daily.revision`을 증가시키거나 `market-data-revision` Outbox 이벤트를 발행하지 않으므로, 향후 `FINAL` 전환 및 `PROVIDER_ADJUSTED` 지표·캐시 무효화 연계 전 별도 계약 보강이 필요하다.

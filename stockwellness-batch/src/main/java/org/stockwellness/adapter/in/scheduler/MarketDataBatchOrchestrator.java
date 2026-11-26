@@ -64,8 +64,15 @@ public class MarketDataBatchOrchestrator {
         Market market = Market.parse(marketCode);
         if (now == null) throw new IllegalArgumentException("Current instant is required");
         String runId = scheduledRunId(market, now);
-        List<StageResult> calendarStages = prepareRecentCalendar(market, now, runId);
-        LocalDate latest = resolveLatestCompletedSession(market, now);
+        List<StageResult> calendarStages;
+        LocalDate latest;
+        if (market == Market.US) {
+            latest = resolveLatestCompletedSession(market, now);
+            calendarStages = prepareRecentCalendar(market, now, latest, runId);
+        } else {
+            calendarStages = prepareRecentCalendar(market, now, null, runId);
+            latest = resolveLatestCompletedSession(market, now);
+        }
         RunResult result = runPrepared(market, latest, latest, latest, runId, null, calendarStages);
         log.info("Canonical market-data run completed: market={}, date={}, runId={}, stages={}",
                 market, latest, runId, result.stages().size());
@@ -100,7 +107,7 @@ public class MarketDataBatchOrchestrator {
         }
         String runId = normalizeRunId(requestedRunId, market, startDate, requestedEndDate);
         List<StageResult> calendarStages = new ArrayList<>();
-        if (market == Market.KR) calendarStages.addAll(prepareRecentCalendar(market, now, runId));
+        if (market == Market.KR) calendarStages.addAll(prepareRecentCalendar(market, now, null, runId));
         LocalDate latestCompleted = resolveLatestCompletedSession(market, now);
         LocalDate endLimit = requestedEndDate.isAfter(latestCompleted) ? latestCompleted : requestedEndDate;
         LocalDate effectiveEndDate;
@@ -130,13 +137,16 @@ public class MarketDataBatchOrchestrator {
         return result;
     }
 
-    private List<StageResult> prepareRecentCalendar(Market market, Instant now, String runId) {
+    private List<StageResult> prepareRecentCalendar(Market market, Instant now, LocalDate requiredSession, String runId) {
         if (now == null) throw new IllegalArgumentException("Current instant is required");
         ZoneId zone = market == Market.KR ? KOREA_ZONE : US_ZONE;
         LocalDate today = now.atZone(zone).toLocalDate();
         LocalDate start = today.minusDays(CALENDAR_LOOKBACK_DAYS);
         if (market == Market.US && start.getYear() != today.getYear()) {
             start = LocalDate.of(today.getYear(), 1, 1);
+        }
+        if (requiredSession != null && requiredSession.isBefore(start)) {
+            start = requiredSession;
         }
         return prepareCalendarRange(market, start, today, runId);
     }
